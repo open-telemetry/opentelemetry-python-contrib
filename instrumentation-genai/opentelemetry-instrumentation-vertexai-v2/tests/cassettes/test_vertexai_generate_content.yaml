@@ -25,21 +25,20 @@ interactions:
       string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\":
         \"model\",\n        \"parts\": [\n          {\n            \"text\": \" The
         image shows a table with a cup of coffee, a bowl of blueberries, and a plate
-        of scones with blueberries on it. There are also pink flowers on the table.\"\n
-        \         }\n        ]\n      },\n      \"finishReason\": 1,\n      \"safetyRatings\":
-        [\n        {\n          \"category\": 1,\n          \"probability\": 1,\n
-        \         \"probabilityScore\": 0.02758789,\n          \"severity\": 1,\n
-        \         \"severityScore\": 0.072753906\n        },\n        {\n          \"category\":
-        2,\n          \"probability\": 1,\n          \"probabilityScore\": 0.026000977,\n
-        \         \"severity\": 1,\n          \"severityScore\": 0.07080078\n        },\n
-        \       {\n          \"category\": 3,\n          \"probability\": 1,\n          \"probabilityScore\":
-        0.04272461,\n          \"severity\": 1,\n          \"severityScore\": 0.036865234\n
-        \       },\n        {\n          \"category\": 4,\n          \"probability\":
-        1,\n          \"probabilityScore\": 0.08496094,\n          \"severity\": 1,\n
-        \         \"severityScore\": 0.09033203\n        }\n      ],\n      \"avgLogprobs\":
-        -0.09576562472752162\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
-        265,\n    \"candidatesTokenCount\": 35,\n    \"totalTokenCount\": 300\n  },\n
-        \ \"modelVersion\": \"gemini-pro-vision\"\n}\n"
+        of scones. There are also some flowers on the table.\"\n          }\n        ]\n
+        \     },\n      \"finishReason\": 1,\n      \"safetyRatings\": [\n        {\n
+        \         \"category\": 1,\n          \"probability\": 1,\n          \"probabilityScore\":
+        0.02331543,\n          \"severity\": 1,\n          \"severityScore\": 0.05493164\n
+        \       },\n        {\n          \"category\": 2,\n          \"probability\":
+        1,\n          \"probabilityScore\": 0.026367188,\n          \"severity\":
+        1,\n          \"severityScore\": 0.05493164\n        },\n        {\n          \"category\":
+        3,\n          \"probability\": 1,\n          \"probabilityScore\": 0.046142578,\n
+        \         \"severity\": 1,\n          \"severityScore\": 0.030639648\n        },\n
+        \       {\n          \"category\": 4,\n          \"probability\": 1,\n          \"probabilityScore\":
+        0.080566406,\n          \"severity\": 1,\n          \"severityScore\": 0.095214844\n
+        \       }\n      ],\n      \"avgLogprobs\": -0.11595650642148909\n    }\n
+        \ ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 265,\n    \"candidatesTokenCount\":
+        31,\n    \"totalTokenCount\": 296\n  },\n  \"modelVersion\": \"gemini-pro-vision\"\n}\n"
     headers:
       Cache-Control:
       - private
@@ -52,7 +51,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '1296'
+      - '1275'
     status:
       code: 200
       message: OK

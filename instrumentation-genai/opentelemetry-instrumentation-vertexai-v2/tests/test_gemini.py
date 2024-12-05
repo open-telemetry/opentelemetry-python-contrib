@@ -30,7 +30,7 @@ def test_vertexai_generate_content(exporter):
         "gen_ai.operation.name": "text_completion",
         "gen_ai.request.model": "gemini-pro-vision",
         "gen_ai.response.model": "gemini-pro-vision",
-        "gen_ai.usage.output_tokens": 35,
+        "gen_ai.usage.output_tokens": 31,
         "gen_ai.usage.input_tokens": 265,
     }
 

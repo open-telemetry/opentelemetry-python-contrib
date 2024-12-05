@@ -143,7 +143,6 @@ def _set_span_attribute(span, name, value):
     if value is not None:
         if value != "":
             span.set_attribute(name, value)
-    return
 
 
 def _set_input_attributes(
@@ -214,8 +213,6 @@ def _set_input_attributes(
         gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
         kwargs.get("frequency_penalty"),
     )
-
-    return
 
 
 @dont_throw
@@ -347,12 +344,11 @@ async def _awrap(
             return _build_from_streaming_response(
                 span, event_logger, response, llm_model
             )
-        elif is_async_streaming_response(response):
+        if is_async_streaming_response(response):
             return _abuild_from_streaming_response(
                 span, event_logger, response, llm_model
             )
-        else:
-            _handle_response(span, event_logger, response, llm_model)
+        _handle_response(span, event_logger, response, llm_model)
 
     span.end()
     return response
@@ -395,12 +391,11 @@ def _wrap(
             return _build_from_streaming_response(
                 span, event_logger, response, llm_model
             )
-        elif is_async_streaming_response(response):
+        if is_async_streaming_response(response):
             return _abuild_from_streaming_response(
                 span, event_logger, response, llm_model
             )
-        else:
-            _handle_response(span, event_logger, response, llm_model)
+        _handle_response(span, event_logger, response, llm_model)
 
     span.end()
     return response

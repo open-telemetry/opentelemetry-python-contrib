@@ -20,11 +20,13 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 pytest_plugins = []
 
+FAKE_PROJECT = "fake-project"
+
 
 @pytest.fixture(scope="session")
 def exporter():
-    exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
+    span_exporter = InMemorySpanExporter()
+    processor = SimpleSpanProcessor(span_exporter)
 
     provider = TracerProvider()
     provider.add_span_processor(processor)
@@ -32,11 +34,11 @@ def exporter():
 
     VertexAIInstrumentor().instrument()
 
-    return exporter
+    return span_exporter
 
 
 @pytest.fixture(autouse=True)
-def clear_exporter(exporter):
+def clear_exporter(exporter):  # pylint: disable=redefined-outer-name
     exporter.clear()
 
 
@@ -50,10 +52,12 @@ def vertexai_init(vcr: VCR) -> None:
     # When not recording (in CI), don't do any auth. That prevents trying to read application
     # default credentials from the filesystem or metadata server and oauth token exchange. This
     # is not the interesting part of our instrumentation to test.
-    if vcr.record_mode is RecordMode.NONE:
-        vertexai.init(credentials=AnonymousCredentials())
-    else:
-        vertexai.init()
+    print(f"VCR Mode is {vcr.record_mode=}, {RecordMode.NONE}")
+    vertex_init_kwargs = {"api_transport": "rest"}
+    if vcr.record_mode == RecordMode.NONE:
+        vertex_init_kwargs["credentials"] = AnonymousCredentials()
+        vertex_init_kwargs["project"] = FAKE_PROJECT
+    vertexai.init(**vertex_init_kwargs)
 
 
 @pytest.fixture(scope="module")
@@ -79,7 +83,7 @@ def vcr_config():
     def before_record_cb(request: Request):
         request.headers = filter_headers(request.headers)
         request.uri = re.sub(
-            r"/projects/[^/]+/", "/projects/fake-project/", request.uri
+            r"/projects/[^/]+/", f"/projects/{FAKE_PROJECT}/", request.uri
         )
         return request
 

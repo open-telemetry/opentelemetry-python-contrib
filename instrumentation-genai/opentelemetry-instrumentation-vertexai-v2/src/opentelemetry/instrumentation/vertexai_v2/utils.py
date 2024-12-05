@@ -14,9 +14,13 @@
 
 import logging
 import traceback
+from typing import Callable, Optional, ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def dont_throw(func):
+def dont_throw(func: Callable[P, R]) -> Callable[P, Optional[R]]:
     """
     A decorator that wraps the passed in function and logs exceptions instead of throwing them.
 
@@ -26,14 +30,15 @@ def dont_throw(func):
     # Obtain a logger specific to the function's module
     logger = logging.getLogger(func.__module__)
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> Optional[R]:
         try:
             return func(*args, **kwargs)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             logger.debug(
                 "failed to trace in %s, error: %s",
                 func.__name__,
                 traceback.format_exc(),
             )
+        return None
 
     return wrapper
