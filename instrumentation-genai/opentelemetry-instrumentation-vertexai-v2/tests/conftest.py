@@ -90,6 +90,7 @@ def vcr_config():
         return response
 
     return {
+        "decode_compressed_response": True,
         "before_record_request": before_record_cb,
         "before_record_response": before_response_cb,
         "ignore_hosts": ["oauth2.googleapis.com"],

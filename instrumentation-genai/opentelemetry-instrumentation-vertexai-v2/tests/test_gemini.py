@@ -25,12 +25,12 @@ def test_vertexai_generate_content(exporter):
     vertexai_span = spans[0]
     assert len(spans) == 1
 
-    assert vertexai_span.attributes == {
+    assert dict(vertexai_span.attributes) == {
         "gen_ai.system": "vertex_ai",
         "gen_ai.operation.name": "text_completion",
         "gen_ai.request.model": "gemini-pro-vision",
         "gen_ai.response.model": "gemini-pro-vision",
-        "gen_ai.usage.output_tokens": 30,
+        "gen_ai.usage.output_tokens": 35,
         "gen_ai.usage.input_tokens": 265,
     }
 
