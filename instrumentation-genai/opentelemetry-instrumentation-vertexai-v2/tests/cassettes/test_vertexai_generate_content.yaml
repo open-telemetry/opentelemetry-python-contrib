@@ -1,0 +1,59 @@
+interactions:
+- request:
+    body: "{\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\":
+      [\n        {\n          \"fileData\": {\n            \"mimeType\": \"image/jpeg\",\n
+      \           \"fileUri\": \"gs://generativeai-downloads/images/scones.jpg\"\n
+      \         }\n        },\n        {\n          \"text\": \"what is shown in this
+      image?\"\n        }\n      ]\n    }\n  ]\n}"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '317'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1beta1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-pro-vision:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\":
+        \"model\",\n        \"parts\": [\n          {\n            \"text\": \" The
+        image shows a table with a cup of coffee, a bowl of blueberries, and several
+        blueberry scones. There are also pink flowers on the table.\"\n          }\n
+        \       ]\n      },\n      \"finishReason\": 1,\n      \"safetyRatings\":
+        [\n        {\n          \"category\": 1,\n          \"probability\": 1,\n
+        \         \"probabilityScore\": 0.024780273,\n          \"severity\": 1,\n
+        \         \"severityScore\": 0.072753906\n        },\n        {\n          \"category\":
+        2,\n          \"probability\": 1,\n          \"probabilityScore\": 0.025512695,\n
+        \         \"severity\": 1,\n          \"severityScore\": 0.06738281\n        },\n
+        \       {\n          \"category\": 3,\n          \"probability\": 1,\n          \"probabilityScore\":
+        0.040283203,\n          \"severity\": 1,\n          \"severityScore\": 0.03515625\n
+        \       },\n        {\n          \"category\": 4,\n          \"probability\":
+        1,\n          \"probabilityScore\": 0.07910156,\n          \"severity\": 1,\n
+        \         \"severityScore\": 0.083984375\n        }\n      ],\n      \"avgLogprobs\":
+        -0.068832365671793613\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\":
+        265,\n    \"candidatesTokenCount\": 30,\n    \"totalTokenCount\": 295\n  },\n
+        \ \"modelVersion\": \"gemini-pro-vision\"\n}\n"
+    headers:
+      Cache-Control:
+      - private
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+    status:
+      code: 200
+      message: OK
+version: 1
