@@ -164,8 +164,6 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         self,
         connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
-        enable_commenter: bool = False,
-        commenter_options: dict = None,
     ):
         if self._is_instrumented_by_opentelemetry:
             # _instrument (via BaseInstrumentor) or instrument_connection (this)
@@ -182,8 +180,6 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         connection.cursor_factory = _new_cursor_factory(
             base_factory=connection.cursor_factory,
             tracer_provider=tracer_provider,
-            enable_commenter=enable_commenter,
-            commenter_options=commenter_options,
         )
         self._is_instrumented_by_opentelemetry = True
 
@@ -240,13 +236,7 @@ class CursorTracer(dbapi.CursorTracer):
         return statement
 
 
-def _new_cursor_factory(
-    db_api: dbapi.DatabaseApiIntegration = None,
-    base_factory: pg_cursor = None,
-    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
-    enable_commenter: bool = False,
-    commenter_options: dict = None,
-):
+def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
     if not db_api:
         db_api = DatabaseApiIntegration(
             __name__,
@@ -254,9 +244,6 @@ def _new_cursor_factory(
             connection_attributes=Psycopg2Instrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
-            enable_commenter=enable_commenter,
-            commenter_options=commenter_options,
-            connect_module=psycopg2,
         )
 
     base_factory = base_factory or pg_cursor
