@@ -592,9 +592,15 @@ class TestDBApiIntegration(TestBase):
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)
 
+    @mock.patch(
+        "opentelemetry.instrumentation.dbapi.get_traced_connection_proxy"
+    )
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
-    def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
-        dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
+    def test_instrument_connection_kwargs_defaults(
+        self, mock_dbapiint, mock_get_cnx_proxy
+    ):
+        mock_get_cnx_proxy.return_value = "foo_cnx"
+        cnx = dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
         kwargs = mock_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], None)
         self.assertEqual(kwargs["version"], "")
@@ -603,11 +609,19 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], False)
         self.assertEqual(kwargs["commenter_options"], None)
         self.assertEqual(kwargs["connect_module"], None)
+        assert cnx == "foo_cnx"
 
+    @mock.patch(
+        "opentelemetry.instrumentation.dbapi.get_traced_connection_proxy"
+    )
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
-    def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
+    def test_instrument_connection_kwargs_provided(
+        self, mock_dbapiint, mock_get_cnx_proxy
+    ):
         mock_tracer_provider = mock.MagicMock()
         mock_connect_module = mock.MagicMock()
+        mock_custom_dbapiint = mock.MagicMock()
+        mock_custom_get_cnx_proxy = mock.MagicMock()
         dbapi.instrument_connection(
             self.tracer,
             mock.Mock(),
@@ -619,8 +633,11 @@ class TestDBApiIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"foo": "bar"},
             connect_module=mock_connect_module,
+            db_api_integration_factory=mock_custom_dbapiint,
+            get_cnx_proxy=mock_custom_get_cnx_proxy,
         )
-        kwargs = mock_dbapiint.call_args[1]
+        mock_dbapiint.assert_not_called()
+        kwargs = mock_custom_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], {"foo": "bar"})
         self.assertEqual(kwargs["version"], "test")
         self.assertIs(kwargs["tracer_provider"], mock_tracer_provider)
@@ -628,6 +645,8 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": "bar"})
         self.assertIs(kwargs["connect_module"], mock_connect_module)
+        mock_get_cnx_proxy.assert_not_called()
+        mock_custom_get_cnx_proxy.assert_called_once()
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()
