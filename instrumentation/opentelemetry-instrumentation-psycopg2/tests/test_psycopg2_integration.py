@@ -208,6 +208,7 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 0)
 
         Psycopg2Instrumentor().instrument()
+        cnx = psycopg2.connect(database="test")
         cnx = Psycopg2Instrumentor().instrument_connection(cnx)
         cursor = cnx.cursor()
         cursor.execute(query)
