@@ -16,10 +16,13 @@ import types
 from unittest import mock
 
 import psycopg2
+import pytest
 
 import opentelemetry.instrumentation.psycopg2
 from opentelemetry import trace
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.instrumentation.psycopg2 import (
+    Psycopg2Instrumentor,
+)
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 
@@ -66,6 +69,10 @@ class MockConnection:
 
 
 class TestPostgresqlIntegration(TestBase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch(
@@ -190,7 +197,13 @@ class TestPostgresqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
-        cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        instrumentor = Psycopg2Instrumentor()
+        original_cursor_factory = cnx.cursor_factory
+        cnx = instrumentor.instrument_connection(cnx)
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+        self.assertEqual(
+            instrumentor._otel_cursor_factory, original_cursor_factory
+        )
         cursor = cnx.cursor()
         cursor.execute(query)
 
@@ -207,9 +220,52 @@ class TestPostgresqlIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
-        Psycopg2Instrumentor().instrument()
+        instrumentor = Psycopg2Instrumentor()
+        instrumentor.instrument()
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+
         cnx = psycopg2.connect(database="test")
         cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        self.assertEqual(
+            self.caplog.records[0].getMessage(),
+            "Attempting to instrument Psycopg2 connection while already instrumented",
+        )
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+        # Will not set cursor_factory if already instrumented
+        self.assertEqual(instrumentor._otel_cursor_factory, None)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_with_instrument_connection(self):
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        cnx = psycopg2.connect(database="test")
+        original_cursor_factory = cnx.cursor_factory
+        instrumentor = Psycopg2Instrumentor()
+        cnx = instrumentor.instrument_connection(cnx)
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+        self.assertEqual(
+            instrumentor._otel_cursor_factory, original_cursor_factory
+        )
+
+        cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+        self.assertEqual(
+            self.caplog.records[0].getMessage(),
+            "Attempting to instrument Psycopg2 connection while already instrumented",
+        )
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+        self.assertEqual(
+            instrumentor._otel_cursor_factory, original_cursor_factory
+        )
         cursor = cnx.cursor()
         cursor.execute(query)
 
@@ -218,7 +274,8 @@ class TestPostgresqlIntegration(TestBase):
 
     # pylint: disable=unused-argument
     def test_uninstrument_connection_with_instrument(self):
-        Psycopg2Instrumentor().instrument()
+        instrumentor = Psycopg2Instrumentor()
+        instrumentor.instrument()
         cnx = psycopg2.connect(database="test")
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
@@ -226,6 +283,7 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
 
         cnx = Psycopg2Instrumentor().uninstrument_connection(cnx)
         cursor = cnx.cursor()
@@ -233,17 +291,24 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        self.assertFalse(instrumentor._is_instrumented_by_opentelemetry)
 
     # pylint: disable=unused-argument
     def test_uninstrument_connection_with_instrument_connection(self):
         cnx = psycopg2.connect(database="test")
-        Psycopg2Instrumentor().instrument_connection(cnx)
+        original_cursor_factory = cnx.cursor_factory
+        instrumentor = Psycopg2Instrumentor()
+        instrumentor.instrument_connection(cnx)
         query = "SELECT * FROM test"
         cursor = cnx.cursor()
         cursor.execute(query)
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        self.assertTrue(instrumentor._is_instrumented_by_opentelemetry)
+        self.assertEqual(
+            instrumentor._otel_cursor_factory, original_cursor_factory
+        )
 
         cnx = Psycopg2Instrumentor().uninstrument_connection(cnx)
         cursor = cnx.cursor()
@@ -251,6 +316,8 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        self.assertFalse(instrumentor._is_instrumented_by_opentelemetry)
+        self.assertEqual(instrumentor._otel_cursor_factory, None)
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
