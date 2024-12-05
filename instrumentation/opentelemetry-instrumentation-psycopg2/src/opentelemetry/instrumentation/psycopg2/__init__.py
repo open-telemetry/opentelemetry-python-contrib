@@ -106,7 +106,6 @@ import typing
 from typing import Collection
 
 import psycopg2
-import wrapt
 from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
@@ -168,10 +167,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         enable_commenter: bool = False,
         commenter_options: dict = None,
     ):
-        if isinstance(connection, wrapt.ObjectProxy):
-            # The connection is already instrumented from wrapt.wrap_function_wrapper
-            # of the psycopg2 module's `connect` method by DB-API `wrap_connect`,
-            # so the Psycopg2Instrumentor is marked as instrumenting.
+        if self._is_instrumented_by_opentelemetry:
+            # _instrument (via BaseInstrumentor) or instrument_connection (this)
+            # was already called
             _logger.warning(
                 "Attempting to instrument Psycopg connection while already instrumented"
             )
