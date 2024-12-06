@@ -151,6 +151,7 @@ def test_chat_completion_extra_params(
         max_tokens=50,
         stream=False,
         extra_body={"service_tier": "default"},
+        response_format={"type": "text"},
     )
 
     spans = span_exporter.get_finished_spans()
@@ -165,6 +166,12 @@ def test_chat_completion_extra_params(
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER]
         == "default"
+    )
+    assert (
+        spans[0].attributes[
+            GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        ]
+        == "text"
     )
 
 

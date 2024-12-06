@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Coerce openai response_format to semconv format
+  ([#3073](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3073))
 - Add example to `opentelemetry-instrumentation-openai-v2`
   ([#3006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3006))
 - Support for `AsyncOpenAI/AsyncCompletions` ([#2984](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2984))

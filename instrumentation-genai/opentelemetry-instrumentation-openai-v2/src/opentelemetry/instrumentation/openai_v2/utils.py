@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from os import environ
-from typing import Optional, Union
+from typing import Mapping, Optional, Union
 from urllib.parse import urlparse
 
 from httpx import URL
@@ -202,11 +202,22 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
             "frequency_penalty"
         ),
-        GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT: kwargs.get(
-            "response_format"
-        ),
         GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
     }
+
+    if (response_format := kwargs.get("response_format")) is not None:
+        # response_format may be string or object with a string in the `type` key
+        if isinstance(response_format, Mapping):
+            if (
+                response_format_type := response_format.get("type")
+            ) is not None:
+                attributes[
+                    GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+                ] = response_format_type
+        else:
+            attributes[
+                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+            ] = response_format
 
     set_server_address_and_port(client_instance, attributes)
     service_tier = kwargs.get("service_tier")

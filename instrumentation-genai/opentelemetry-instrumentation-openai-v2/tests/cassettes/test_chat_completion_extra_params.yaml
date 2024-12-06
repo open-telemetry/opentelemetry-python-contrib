@@ -10,6 +10,9 @@ interactions:
         ],
         "model": "gpt-4o-mini",
         "max_tokens": 50,
+        "response_format": {
+          "type": "text"
+        },
         "seed": 42,
         "stream": false,
         "temperature": 0.5,
@@ -25,13 +28,13 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '183'
+      - '220'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.54.3
+      - OpenAI/Python 1.26.0
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -41,22 +44,20 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.54.3
-      x-stainless-retry-count:
-      - '0'
+      - 1.26.0
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.12.6
+      - 3.12.7
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASYMT7913Sp58qhZqQgY7g7Ia2J4M",
+          "id": "chatcmpl-AbMH70fQA9lMPIClvBPyBSjqJBm9F",
           "object": "chat.completion",
-          "created": 1731368633,
+          "created": 1733467125,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -86,19 +87,17 @@ interactions:
             }
           },
           "service_tier": "default",
-          "system_fingerprint": "fp_0ba0d124f1"
+          "system_fingerprint": "fp_0705bf87c0"
         }
     headers:
-      CF-Cache-Status:
-      - DYNAMIC
       CF-RAY:
-      - 8e1225a3f8e9ce65-SIN
+      - 8eda465e8fe9e58c-KUL
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 11 Nov 2024 23:43:53 GMT
+      - Fri, 06 Dec 2024 06:38:46 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -110,11 +109,13 @@ interactions:
       - X-Request-ID
       alt-svc:
       - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
       content-length:
       - '825'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '431'
+      - '558'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -128,11 +129,11 @@ interactions:
       x-ratelimit-remaining-tokens:
       - '199943'
       x-ratelimit-reset-requests:
-      - 14.746s
+      - 12.967s
       x-ratelimit-reset-tokens:
       - 16ms
       x-request-id:
-      - req_81e29a8992ea8001c0240bd990acf0ab
+      - req_22ff608d47a299f0780f52360631eabb
     status:
       code: 200
       message: OK
