@@ -18,7 +18,7 @@ Instrument confluent-kafka-python to report instrumentation-confluent-kafka prod
 Usage
 -----
 
-.. code-block:: python
+.. code:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
     from confluent_kafka import Producer, Consumer
@@ -54,7 +54,6 @@ Usage
             consumer.close()
 
     basic_consume_loop(consumer, "my-topic")
-    ---
 
 The _instrument method accepts the following keyword args:
   tracer_provider (TracerProvider) - an optional tracer provider
@@ -95,7 +94,6 @@ The _instrument method accepts the following keyword args:
     p.produce('my-topic',b'raw_bytes')
     msg = c.poll()
 
-___
 """
 
 from typing import Collection
