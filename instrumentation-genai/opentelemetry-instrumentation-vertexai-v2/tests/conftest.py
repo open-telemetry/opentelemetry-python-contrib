@@ -1,10 +1,12 @@
 """Unit tests configuration module."""
 
+import json
 import re
 from typing import Any, Mapping, MutableMapping
 
 import pytest
 import vertexai
+import yaml
 from google.auth.credentials import AnonymousCredentials
 from vcr import VCR
 from vcr.record_mode import RecordMode
@@ -97,3 +99,70 @@ def vcr_config():
         "before_record_response": before_response_cb,
         "ignore_hosts": ["oauth2.googleapis.com"],
     }
+
+
+class LiteralBlockScalar(str):
+    """Formats the string as a literal block scalar, preserving whitespace and
+    without interpreting escape characters"""
+
+
+def literal_block_scalar_presenter(dumper, data):
+    """Represents a scalar string as a literal block, via '|' syntax"""
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
+
+yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
+
+
+def process_string_value(string_value):
+    """Pretty-prints JSON or returns long strings as a LiteralBlockScalar"""
+    try:
+        json_data = json.loads(string_value)
+        return LiteralBlockScalar(json.dumps(json_data, indent=2))
+    except (ValueError, TypeError):
+        if len(string_value) > 80:
+            return LiteralBlockScalar(string_value)
+    return string_value
+
+
+def convert_body_to_literal(data):
+    """Searches the data for body strings, attempting to pretty-print JSON"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Handle response body case (e.g., response.body.string)
+            if key == "body" and isinstance(value, dict) and "string" in value:
+                value["string"] = process_string_value(value["string"])
+
+            # Handle request body case (e.g., request.body)
+            elif key == "body" and isinstance(value, str):
+                data[key] = process_string_value(value)
+
+            else:
+                convert_body_to_literal(value)
+
+    elif isinstance(data, list):
+        for idx, choice in enumerate(data):
+            data[idx] = convert_body_to_literal(choice)
+
+    return data
+
+
+class PrettyPrintJSONBody:
+    """This makes request and response body recordings more readable."""
+
+    @staticmethod
+    def serialize(cassette_dict):
+        cassette_dict = convert_body_to_literal(cassette_dict)
+        return yaml.dump(
+            cassette_dict, default_flow_style=False, allow_unicode=True
+        )
+
+    @staticmethod
+    def deserialize(cassette_string):
+        return yaml.load(cassette_string, Loader=yaml.Loader)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def fixture_vcr(vcr):
+    vcr.register_serializer("yaml", PrettyPrintJSONBody)
+    return vcr
