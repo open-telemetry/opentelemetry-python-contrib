@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-sdk-extension-aws`: make ecs and beanstalk resource detector silent when loaded outside AWS
+  ([#3076](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3076))
 - `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
   ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
 - `opentelemetry-distro` default to OTLP log exporter.
