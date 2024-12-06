@@ -29,7 +29,7 @@ logger = getLogger(__name__)
 def initialize():
     # prevents auto-instrumentation of subprocesses if code execs another python process
     environ["PYTHONPATH"] = _python_path_without_directory(
-        environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
+        environ.get("PYTHONPATH", ""), dirname(abspath(__file__)), pathsep
     )
 
     try:
