@@ -169,6 +169,18 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         enable_commenter: bool = False,
         commenter_options: dict = None,
     ):
+        """Enable instrumentation of a Psycopg2 connection.
+
+        Args:
+            connection: The connection to instrument.
+            tracer_provider: Optional tracer provider to use. If omitted
+                the current globally configured one is used.
+            enable_commenter: Optional flag to enable/disable sqlcommenter (default disabled).
+            commenter_options: Optional configurations for tags to be appended at the sql query.
+
+        Returns:
+            An instrumented connection.
+        """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 
