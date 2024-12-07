@@ -107,6 +107,9 @@ from typing import Collection
 
 import psycopg2
 from psycopg2.extensions import (
+    connection as pg_connection,  # pylint: disable=no-name-in-module
+)
+from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
@@ -161,8 +164,8 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(
-        connection,
-        tracer_provider=None,
+        connection: pg_connection,
+        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
         commenter_options: dict = None,
     ):
