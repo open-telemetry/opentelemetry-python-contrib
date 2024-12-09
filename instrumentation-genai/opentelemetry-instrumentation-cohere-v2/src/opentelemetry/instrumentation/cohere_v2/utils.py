@@ -181,13 +181,9 @@ def _response_to_event(response: cohere.ChatResponse, capture_content):
     }
 
     if response.message:
-        message = {
-            "role": (
-                response.message.role
-                if response.message.role and response.message.role != "assistant"
-                else None
-            )
-        }
+        message = {}
+        if response.message.role and response.message.role != "assistant":
+            message["role"] = response.message.role
         tool_calls = extract_tool_calls(response.message, capture_content)
         if tool_calls:
             message["tool_calls"] = tool_calls

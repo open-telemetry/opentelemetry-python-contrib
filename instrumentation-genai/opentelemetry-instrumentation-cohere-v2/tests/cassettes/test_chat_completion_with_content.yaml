@@ -40,7 +40,7 @@ interactions:
     body:
       string: |-
         {
-          "id": "06e43724-5286-4eeb-bb10-bad73f976655",
+          "id": "e7d8e128-c2b6-452b-9274-a52298d4e279",
           "message": {
             "role": "assistant",
             "content": [
@@ -77,7 +77,7 @@ interactions:
       content-type:
       - application/json
       date:
-      - Mon, 09 Dec 2024 21:08:41 GMT
+      - Mon, 09 Dec 2024 21:18:26 GMT
       expires:
       - Thu, 01 Jan 1970 00:00:00 UTC
       num_chars:
@@ -93,15 +93,15 @@ interactions:
       x-accel-expires:
       - '0'
       x-debug-trace-id:
-      - 52412790708b1cfbe79a11850fbc09ec
+      - afec42690070e90f99584d392dcd1d5d
       x-endpoint-monthly-call-limit:
       - '1000'
       x-envoy-upstream-service-time:
-      - '173'
+      - '192'
       x-trial-endpoint-call-limit:
       - '40'
       x-trial-endpoint-call-remaining:
-      - '37'
+      - '39'
     status:
       code: 200
       message: OK
