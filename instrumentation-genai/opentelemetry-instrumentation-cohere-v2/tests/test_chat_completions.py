@@ -35,7 +35,7 @@ from opentelemetry.semconv._incubating.attributes import (
 
 @pytest.mark.vcr()
 def test_chat_completion_with_content(
-    span_exporter, log_exporter, cohere_client, instrument_with_content, tracer_provider
+    span_exporter, log_exporter, instrument_with_content, cohere_client
 ):
     llm_model_value = "command-r-plus"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -731,9 +731,8 @@ def assert_completion_attributes(
         span,
         request_model,
         response.id,
-        response.model,
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
+        response.usage.tokens.input_tokens,
+        response.usage.tokens.output_tokens,
         operation_name,
         server_address,
     )

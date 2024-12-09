@@ -69,7 +69,7 @@ def get_property_value(obj, property_name):
 
 def set_server_address_and_port(client_instance: cohere.client_v2.V2Client, attributes):
     base_client = getattr(client_instance, "_client_wrapper", None)
-    base_url = getattr(base_client, "base_url", None)
+    base_url = getattr(base_client, "_base_url", None)
     if not base_url:
         return
 
