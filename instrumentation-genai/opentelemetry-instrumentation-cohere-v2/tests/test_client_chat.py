@@ -34,7 +34,7 @@ from opentelemetry.semconv._incubating.attributes import (
 
 
 @pytest.mark.vcr()
-def test_chat_completion_with_content(
+def test_chat_with_content(
     span_exporter, log_exporter, instrument_with_content, cohere_client
 ):
     llm_model_value = "command-r-plus"
