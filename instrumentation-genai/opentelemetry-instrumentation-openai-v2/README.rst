@@ -19,8 +19,60 @@ package to your requirements.
 
     pip install opentelemetry-instrumentation-openai-v2
 
-If you don't have an OpenAI application, yet, try our `example <example>`_
-which only needs a valid OpenAI API key.
+If you don't have an OpenAI application, yet, try our `examples <examples>`_
+which only need a valid OpenAI API key.
+
+Check out `zero-code example <examples/zero-code>`_ for a quick start.
+
+Usage
+-----
+
+This section describes how to set up OpenAI instrumentation if you're setting OpenTelemetry up manually.
+Check out the `manual example <examples/manual>`_ for more details.
+
+Instrumenting all clients
+*************************
+
+When using the instrumentor, all clients will automatically trace OpenAI chat completion operations.
+You can also optionally capture prompts and completions as log events.
+
+Make sure to configure OpenTelemetry tracing, logging, and events to capture all telemetry emitted by the instrumentation.
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+
+    OpenAIInstrumentor().instrument()
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": "Write a short poem on open telemetry."},
+        ],
+    )
+
+Enabling message content
+*************************
+
+Message content such as the contents of the prompt, completion, function arguments and return values
+are not captured by default. To capture message content as log events, set the environment variable
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to `true`.
+
+Uninstrument
+************
+
+To uninstrument clients, call the uninstrument method:
+
+.. code-block:: python
+
+    from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+
+    OpenAIInstrumentor().instrument()
+    # ...
+
+    # Uninstrument all clients
+    OpenAIInstrumentor().uninstrument()
 
 References
 ----------
