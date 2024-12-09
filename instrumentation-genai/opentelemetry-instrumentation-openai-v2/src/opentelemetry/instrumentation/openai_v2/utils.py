@@ -27,18 +27,6 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
-
-
-def is_content_enabled() -> bool:
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
-
-    return capture_content.lower() == "true"
-
 
 def extract_tool_calls(item, capture_content):
     tool_calls = get_property_value(item, "tool_calls")

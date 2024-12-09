@@ -1,5 +1,7 @@
 import cohere
+import openai
 
+import openai.resources
 from opentelemetry import trace
 from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
 from opentelemetry.sdk.trace import TracerProvider

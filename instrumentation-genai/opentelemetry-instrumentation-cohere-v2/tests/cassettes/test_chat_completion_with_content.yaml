@@ -2,132 +2,106 @@ interactions:
 - request:
     body: |-
       {
+        "model": "command-r-plus",
         "messages": [
           {
             "role": "user",
             "content": "Say this is a test"
           }
         ],
-        "model": "gpt-4o-mini",
         "stream": false
       }
     headers:
       accept:
-      - application/json
+      - '*/*'
       accept-encoding:
       - gzip, deflate
       authorization:
-      - Bearer test_openai_api_key
+      - Bearer Z4EInAKRbIRKQV9lRZTciJqYyUBHXZGVUOAFBlRJ
       connection:
       - keep-alive
       content-length:
-      - '106'
+      - '109'
       content-type:
       - application/json
       host:
-      - api.openai.com
+      - api.cohere.com
       user-agent:
-      - OpenAI/Python 1.54.3
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.54.3
-      x-stainless-retry-count:
-      - '0'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.12.6
+      - python-httpx/0.27.2
+      x-fern-language:
+      - Python
+      x-fern-sdk-name:
+      - cohere
+      x-fern-sdk-version:
+      - 5.11.4
     method: POST
-    uri: https://api.openai.com/v1/chat/completions
+    uri: https://api.cohere.com/v2/chat
   response:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASYMQRl3A3DXL9FWCK9tnGRcKIO7q",
-          "object": "chat.completion",
-          "created": 1731368630,
-          "model": "gpt-4o-mini-2024-07-18",
-          "choices": [
-            {
-              "index": 0,
-              "message": {
-                "role": "assistant",
-                "content": "This is a test.",
-                "refusal": null
-              },
-              "logprobs": null,
-              "finish_reason": "stop"
-            }
-          ],
-          "usage": {
-            "prompt_tokens": 12,
-            "completion_tokens": 5,
-            "total_tokens": 17,
-            "prompt_tokens_details": {
-              "cached_tokens": 0,
-              "audio_tokens": 0
-            },
-            "completion_tokens_details": {
-              "reasoning_tokens": 0,
-              "audio_tokens": 0,
-              "accepted_prediction_tokens": 0,
-              "rejected_prediction_tokens": 0
-            }
+          "id": "78c201dd-0f3d-43c4-a245-5ab6d28636ef",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "This is a test."
+              }
+            ]
           },
-          "system_fingerprint": "fp_0ba0d124f1"
+          "finish_reason": "COMPLETE",
+          "usage": {
+            "billed_units": {
+              "input_tokens": 5,
+              "output_tokens": 5
+            },
+            "tokens": {
+              "input_tokens": 198,
+              "output_tokens": 5
+            }
+          }
         }
     headers:
-      CF-Cache-Status:
-      - DYNAMIC
-      CF-RAY:
-      - 8e122593ff368bc8-SIN
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Date:
-      - Mon, 11 Nov 2024 23:43:50 GMT
-      Server:
-      - cloudflare
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Length:
+      - '266'
       Set-Cookie: test_set_cookie
-      Transfer-Encoding:
-      - chunked
-      X-Content-Type-Options:
-      - nosniff
+      Via:
+      - 1.1 google
       access-control-expose-headers:
-      - X-Request-ID
-      alt-svc:
-      - h3=":443"; ma=86400
-      content-length:
-      - '765'
-      openai-organization: test_openai_org_id
-      openai-processing-ms:
-      - '287'
-      openai-version:
-      - '2020-10-01'
-      strict-transport-security:
-      - max-age=31536000; includeSubDomains; preload
-      x-ratelimit-limit-requests:
-      - '10000'
-      x-ratelimit-limit-tokens:
-      - '200000'
-      x-ratelimit-remaining-requests:
-      - '9999'
-      x-ratelimit-remaining-tokens:
-      - '199977'
-      x-ratelimit-reset-requests:
-      - 8.64s
-      x-ratelimit-reset-tokens:
-      - 6ms
-      x-request-id:
-      - req_58cff97afd0e7c0bba910ccf0b044a6f
+      - X-Debug-Trace-ID
+      cache-control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      content-type:
+      - application/json
+      date:
+      - Mon, 09 Dec 2024 19:22:13 GMT
+      expires:
+      - Thu, 01 Jan 1970 00:00:00 UTC
+      num_chars:
+      - '1188'
+      num_tokens:
+      - '10'
+      pragma:
+      - no-cache
+      server:
+      - envoy
+      vary:
+      - Origin
+      x-accel-expires:
+      - '0'
+      x-debug-trace-id:
+      - 5bf598783ce550fab3dbd3c54bd617e7
+      x-endpoint-monthly-call-limit:
+      - '1000'
+      x-envoy-upstream-service-time:
+      - '212'
+      x-trial-endpoint-call-limit:
+      - '40'
+      x-trial-endpoint-call-remaining:
+      - '39'
     status:
       code: 200
       message: OK

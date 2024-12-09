@@ -5,10 +5,10 @@ import os
 
 import pytest
 import yaml
-from openai import AsyncOpenAI, OpenAI
+from cohere import ClientV2
 
-from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
-from opentelemetry.instrumentation.openai_v2.utils import (
+from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
+from opentelemetry.instrumentation.genai_utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.sdk._events import EventLoggerProvider
@@ -54,18 +54,13 @@ def fixture_event_logger_provider(log_exporter):
 
 @pytest.fixture(autouse=True)
 def environment():
-    if not os.getenv("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
+    if not os.getenv("CO_API_KEY"):
+        os.environ["CO_API_KEY"] = "test_cohere_api_key"
 
 
 @pytest.fixture
-def openai_client():
-    return OpenAI()
-
-
-@pytest.fixture
-def async_openai_client():
-    return AsyncOpenAI()
+def cohere_client():
+    return ClientV2()
 
 
 @pytest.fixture(scope="module")
@@ -73,9 +68,6 @@ def vcr_config():
     return {
         "filter_headers": [
             ("cookie", "test_cookie"),
-            ("authorization", "Bearer test_openai_api_key"),
-            ("openai-organization", "test_openai_org_id"),
-            ("openai-project", "test_openai_project_id"),
         ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
@@ -84,7 +76,7 @@ def vcr_config():
 
 @pytest.fixture(scope="function")
 def instrument_no_content(tracer_provider, event_logger_provider):
-    instrumentor = OpenAIInstrumentor()
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
@@ -99,7 +91,7 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
-    instrumentor = OpenAIInstrumentor()
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
@@ -181,6 +173,5 @@ def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!
     """
-    response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response

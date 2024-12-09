@@ -30,7 +30,6 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 from .utils import (
     choice_to_event,
     get_llm_request_attributes,
-    handle_span_exception,
     is_streaming,
     message_to_event,
     set_span_attribute,
