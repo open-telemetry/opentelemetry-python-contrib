@@ -26,7 +26,7 @@ typing_extensions==4.12.2
 urllib3==2.2.2
 Werkzeug==3.0.3
 wrapt==1.16.0
-yarl==1.9.4
+yarl==1.18.3
 zipp==3.19.2
 -e opentelemetry-instrumentation
 -e util/opentelemetry-util-http
