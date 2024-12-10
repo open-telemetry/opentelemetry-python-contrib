@@ -308,6 +308,47 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
 
+    def test_url_template_new_semconv(self):
+        self.client().simulate_get("/user/123")
+        spans = self.memory_exporter.get_finished_spans()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+
+        self.assertEqual(len(spans), 1)
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /user/{user_id}")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description,
+            None,
+        )
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
+                SpanAttributes.SERVER_ADDRESS: "falconframework.org",
+                SpanAttributes.URL_SCHEME: "http",
+                SpanAttributes.SERVER_PORT: 80,
+                SpanAttributes.URL_PATH: "/",
+                SpanAttributes.CLIENT_PORT: 65133,
+                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+                "falcon.resource": "UserResource",
+                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
+            },
+        )
+
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name == "http.server.request.duration":
+                        data_points = list(metric.data.data_points)
+                        for point in data_points:
+                            self.assertIn(
+                                "http.route",
+                                point.attributes,
+                            )
+
     def test_url_template(self):
         self.client().simulate_get("/user/123")
         spans = self.memory_exporter.get_finished_spans()
@@ -390,6 +431,28 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            self.assertTrue(len(metrics_list.resource_metrics) != 0)
+
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metric in resource_metric.scope_metrics:
+                    for metric in scope_metric.metrics:
+                        data_points = list(metric.data.data_points)
+                        self.assertEqual(len(data_points), 1)
+                        for point in list(metric.data.data_points):
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertEqual(point.count, 1)
+                            if isinstance(point, NumberDataPoint):
+                                self.assertEqual(point.value, 0)
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr,
+                                    _recommended_metrics_attrs_old[
+                                        metric.name
+                                    ],
+                                )
 
     def test_uninstrument_after_instrument(self):
         self.client().simulate_get(path="/hello")
@@ -486,7 +549,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                             self.assertEqual(point.value, 0)
                             number_data_point_seen = True
                         for attr in point.attributes:
-                            print(metric.name)
                             self.assertIn(
                                 attr,
                                 _recommended_metrics_attrs_both[metric.name],

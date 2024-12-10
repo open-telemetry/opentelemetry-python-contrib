@@ -214,17 +214,20 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
 )
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-falcon.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-falcon.span_key"
+_ENVIRON_REQ_ATTRS = "opentelemetry-falcon.req_attrs"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-falcon.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
@@ -245,6 +248,31 @@ else:
     # Falcon 1
     _instrument_app = "API"
     _falcon_version = 1
+
+
+def set_status_code(
+    span,
+    status_code,
+    metric_attributes=None,
+    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+):
+    """Adds HTTP response attributes to span using the status_code argument."""
+    status_code_str = str(status_code)
+
+    try:
+        status_code = int(status_code)
+    except ValueError:
+        status_code = -1
+    if metric_attributes is None:
+        metric_attributes = {}
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        status_code_str,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
@@ -393,6 +421,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         activation.__enter__()
         env[_ENVIRON_SPAN_KEY] = span
         env[_ENVIRON_ACTIVATION_KEY] = activation
+        env[_ENVIRON_REQ_ATTRS] = attributes
         exception = None
 
         def _start_response(status, response_headers, *args, **kwargs):
@@ -478,8 +507,9 @@ class _TraceMiddleware:
 
     def process_response(self, req, resp, resource, req_succeeded=None):  # pylint:disable=R0201,R0912
         span = req.env.get(_ENVIRON_SPAN_KEY)
+        req_attrs = req.env.get(_ENVIRON_REQ_ATTRS)
 
-        if not span or not span.is_recording():
+        if not span:
             return
 
         status = resp.status
@@ -497,16 +527,21 @@ class _TraceMiddleware:
                 else:
                     status = "500"
 
-        status = status.split(" ")[0]
+        status_code = status.split(" ")[0]
         try:
-            _set_status(
+            set_status_code(
                 span,
-                {},
-                int(status),
-                resp.status,
-                span.kind == trace.SpanKind.SERVER,
-                self._sem_conv_opt_in_mode,
+                status_code,
+                req_attrs,
+                sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
             )
+
+            if (
+                _report_new(self._sem_conv_opt_in_mode)
+                and req.uri_template
+                and req_attrs is not None
+            ):
+                req_attrs[HTTP_ROUTE] = req.uri_template
 
             # Falcon 1 does not support response headers. So
             # send an empty dict.
@@ -518,9 +553,7 @@ class _TraceMiddleware:
                 # Check if low-cardinality route is available as per semantic-conventions
                 if req.uri_template:
                     span.update_name(f"{req.method} {req.uri_template}")
-                    span.set_attribute(
-                        SpanAttributes.HTTP_ROUTE, req.uri_template
-                    )
+                    span.set_attribute(HTTP_ROUTE, req.uri_template)
                 else:
                     span.update_name(f"{req.method}")
 
