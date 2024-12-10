@@ -524,9 +524,7 @@ class _TraceMiddleware:
             if exc_type and not req_succeeded:
                 if "HTTPNotFound" in exc_type.__name__:
                     status = "404"
-                elif isinstance(exc, falcon.HTTPError) or isinstance(
-                    exc, falcon.HTTPStatus
-                ):
+                elif isinstance(exc, falcon.HTTPError, falcon.HTTPStatus):
                     try:
                         status = exc.title.split(" ")[0]
                     except ValueError:
