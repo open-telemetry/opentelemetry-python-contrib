@@ -10,6 +10,9 @@ interactions:
         ],
         "model": "gpt-4o-mini",
         "max_tokens": 50,
+        "response_format": {
+          "type": "text"
+        },
         "seed": 42,
         "stream": false,
         "temperature": 0.5,
@@ -25,7 +28,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '183'
+      - '220'
       content-type:
       - application/json
       host:
@@ -45,16 +48,16 @@ interactions:
       x-stainless-runtime:
       - CPython
       x-stainless-runtime-version:
-      - 3.12.5
+      - 3.12.7
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
       string: |-
         {
-          "id": "chatcmpl-ASv9WMTAMZY4O1EImv3csZa6Ch7KI",
+          "id": "chatcmpl-AbMH3rR6OBMN9hG5w0TRrezuiHLMr",
           "object": "chat.completion",
-          "created": 1731456242,
+          "created": 1733467121,
           "model": "gpt-4o-mini-2024-07-18",
           "choices": [
             {
@@ -84,19 +87,19 @@ interactions:
             }
           },
           "service_tier": "default",
-          "system_fingerprint": "fp_0ba0d124f1"
+          "system_fingerprint": "fp_bba3c8e70b"
         }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8e1a8088f867e167-MRS
+      - 8eda4640ead3e535-KUL
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 13 Nov 2024 00:04:02 GMT
+      - Fri, 06 Dec 2024 06:38:42 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -112,25 +115,25 @@ interactions:
       - '825'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '488'
+      - '835'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-ratelimit-limit-requests:
-      - '30000'
+      - '10000'
       x-ratelimit-limit-tokens:
-      - '150000000'
+      - '200000'
       x-ratelimit-remaining-requests:
-      - '29999'
+      - '9999'
       x-ratelimit-remaining-tokens:
-      - '149999943'
+      - '199943'
       x-ratelimit-reset-requests:
-      - 2ms
+      - 8.64s
       x-ratelimit-reset-tokens:
-      - 0s
+      - 16ms
       x-request-id:
-      - req_6df08d6267415e8f5db3628a6757edad
+      - req_fea877c0a861ff92a6a5217247681f24
     status:
       code: 200
       message: OK
