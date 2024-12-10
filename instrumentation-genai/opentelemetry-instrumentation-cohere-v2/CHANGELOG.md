@@ -8,4 +8,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Initial Cohere instrumentation
-  ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
+  ([#3081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3081))

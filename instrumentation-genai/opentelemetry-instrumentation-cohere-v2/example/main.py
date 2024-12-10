@@ -1,7 +1,5 @@
 import cohere
-import openai
 
-import openai.resources
 from opentelemetry import trace
 from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -18,7 +16,7 @@ trace.get_tracer_provider().add_span_processor(
 )
 tracer = trace.get_tracer(__name__)
 
-co = cohere.ClientV2('Z4EInAKRbIRKQV9lRZTciJqYyUBHXZGVUOAFBlRJ')
+co = cohere.ClientV2()
 
 with tracer.start_as_current_span("foo"):
     response = co.chat(

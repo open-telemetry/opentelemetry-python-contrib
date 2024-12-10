@@ -17,7 +17,7 @@ interactions:
       accept-encoding:
       - gzip, deflate
       authorization:
-      - Bearer Z4EInAKRbIRKQV9lRZTciJqYyUBHXZGVUOAFBlRJ
+      - Bearer test_cohere_api_key
       connection:
       - keep-alive
       content-length:
@@ -40,7 +40,7 @@ interactions:
     body:
       string: |-
         {
-          "id": "d6c6c01a-e089-47be-aa35-8e342a2425e6",
+          "id": "68d63b3a-360d-4460-9cb9-8413ef2adc52",
           "message": {
             "role": "assistant",
             "content": [
@@ -77,7 +77,7 @@ interactions:
       content-type:
       - application/json
       date:
-      - Mon, 09 Dec 2024 21:38:34 GMT
+      - Tue, 10 Dec 2024 16:04:21 GMT
       expires:
       - Thu, 01 Jan 1970 00:00:00 UTC
       num_chars:
@@ -93,11 +93,11 @@ interactions:
       x-accel-expires:
       - '0'
       x-debug-trace-id:
-      - 5f3eace25a51f8493ce35165bd0e83e6
+      - 90f329169476c8dd3d7bf0071236f7f8
       x-endpoint-monthly-call-limit:
       - '1000'
       x-envoy-upstream-service-time:
-      - '196'
+      - '188'
       x-trial-endpoint-call-limit:
       - '40'
       x-trial-endpoint-call-remaining:

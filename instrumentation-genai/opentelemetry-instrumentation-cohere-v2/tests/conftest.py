@@ -68,6 +68,7 @@ def vcr_config():
     return {
         "filter_headers": [
             ("cookie", "test_cookie"),
+            ("authorization", "Bearer test_cohere_api_key"),
         ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
