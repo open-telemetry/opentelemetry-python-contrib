@@ -405,7 +405,7 @@ class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
         wrapt.ObjectProxy.__init__(self, connection)
-        self.db_api_integration = db_api_integration
+        self._self_db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
         if object.__getattribute__(self, name):
@@ -417,7 +417,8 @@ class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
 
     def cursor(self, *args: Any, **kwargs: Any):
         return get_traced_cursor_proxy(
-            self.__wrapped__.cursor(*args, **kwargs), self.db_api_integration
+            self.__wrapped__.cursor(*args, **kwargs),
+            self._self_db_api_integration,
         )
 
     def __enter__(self):
@@ -569,20 +570,20 @@ class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
         db_api_integration: DatabaseApiIntegration,
     ):
         wrapt.ObjectProxy.__init__(self, cursor)
-        self._cursor_tracer = CursorTracer[CursorT](db_api_integration)
+        self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
-        return self._cursor_tracer.traced_execution(
+        return self._self_cursor_tracer.traced_execution(
             self.__wrapped__, self.__wrapped__.execute, *args, **kwargs
         )
 
     def executemany(self, *args: Any, **kwargs: Any):
-        return self._cursor_tracer.traced_execution(
+        return self._self_cursor_tracer.traced_execution(
             self.__wrapped__, self.__wrapped__.executemany, *args, **kwargs
         )
 
     def callproc(self, *args: Any, **kwargs: Any):
-        return self._cursor_tracer.traced_execution(
+        return self._self_cursor_tracer.traced_execution(
             self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
         )
 
