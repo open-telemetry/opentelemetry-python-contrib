@@ -516,14 +516,21 @@ class _TraceMiddleware:
         if resource is None:
             status = "404"
         else:
+            exc_type, exc = None, None
             if _ENVIRON_EXC in req.env:
                 exc = req.env[_ENVIRON_EXC]
                 exc_type = type(exc)
-            else:
-                exc_type, exc = None, None
+
             if exc_type and not req_succeeded:
                 if "HTTPNotFound" in exc_type.__name__:
                     status = "404"
+                elif isinstance(exc, falcon.HTTPError) or isinstance(
+                    exc, falcon.HTTPStatus
+                ):
+                    try:
+                        status = exc.title.split(" ")[0]
+                    except ValueError:
+                        status = "500"
                 else:
                     status = "500"
 
