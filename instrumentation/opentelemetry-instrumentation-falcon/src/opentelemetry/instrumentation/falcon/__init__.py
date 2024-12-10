@@ -214,13 +214,11 @@ from opentelemetry.instrumentation.utils import (
     extract_attributes_from_object,
 )
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
@@ -255,7 +253,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
     def __init__(self, *args, **kwargs):
         otel_opts = kwargs.pop("_otel_opts", {})
 
-        _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
@@ -416,10 +413,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 duration_attrs = otel_wsgi._parse_duration_attrs(
                     attributes, _HTTPStabilityMode.DEFAULT
                 )
-                if span.is_recording():
-                    duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                        span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
-                    )
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs
                 )
@@ -427,16 +420,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 duration_attrs = otel_wsgi._parse_duration_attrs(
                     attributes, _HTTPStabilityMode.HTTP
                 )
-                if span.is_recording():
-                    duration_attrs[
-                        SpanAttributes.HTTP_RESPONSE_STATUS_CODE
-                    ] = span.attributes.get(
-                        SpanAttributes.HTTP_RESPONSE_STATUS_CODE
-                    )
-                    if span.status.status_code == StatusCode.ERROR:
-                        duration_attrs[ERROR_TYPE] = span.attributes.get(
-                            ERROR_TYPE
-                        )
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs
                 )
