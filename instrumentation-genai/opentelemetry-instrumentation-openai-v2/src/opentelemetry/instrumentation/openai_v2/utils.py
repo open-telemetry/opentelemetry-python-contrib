@@ -26,22 +26,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
-from opentelemetry.trace.status import Status, StatusCode
-
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
-
-
-def is_content_enabled() -> bool:
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
-
-    return capture_content.lower() == "true"
 
 
 def extract_tool_calls(item, capture_content):
@@ -227,12 +211,3 @@ def get_llm_request_attributes(
 
     # filter out None values
     return {k: v for k, v in attributes.items() if v is not None}
-
-
-def handle_span_exception(span, error):
-    span.set_status(Status(StatusCode.ERROR, str(error)))
-    if span.is_recording():
-        span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-        )
-    span.end()
