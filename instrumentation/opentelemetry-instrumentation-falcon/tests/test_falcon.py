@@ -57,6 +57,8 @@ _recommended_attrs = {
     "http.server.duration": _server_duration_attrs_old,
 }
 
+_parsed_falcon_version = package_version.parse(_falcon_version)
+
 
 class TestFalconBase(TestBase):
     def setUp(self):
@@ -124,7 +126,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
@@ -132,11 +133,20 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
+            )
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        if _parsed_falcon_version < package_version.parse("3.1.2"):
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
+        else:
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_TARGET], "/hello"
             )
         self.memory_exporter.clear()
 
@@ -155,18 +165,26 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
+            )
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        if _parsed_falcon_version < package_version.parse("3.1.2"):
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
+        else:
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_TARGET], "/does-not-exist"
             )
 
     def test_500(self):
@@ -192,18 +210,26 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
+            )
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        if _parsed_falcon_version < package_version.parse("3.1.2"):
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
+        else:
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_TARGET], "/error"
             )
 
     def test_url_template(self):
@@ -225,13 +251,21 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
         )
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        if _parsed_falcon_version < package_version.parse("3.1.2"):
+            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
+        else:
+            self.assertEqual(
+                span.attributes[SpanAttributes.HTTP_TARGET], "/user/123"
+            )
 
     def test_uninstrument(self):
         self.client().simulate_get(path="/hello")
@@ -524,8 +558,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_version)
-        < package_version.parse("2.0.0"),
+        condition=_parsed_falcon_version < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
     def test_custom_response_header_added_in_server_span(self):
@@ -559,8 +592,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_version)
-        < package_version.parse("2.0.0"),
+        condition=_parsed_falcon_version < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
     def test_custom_response_header_not_added_in_internal_span(self):
