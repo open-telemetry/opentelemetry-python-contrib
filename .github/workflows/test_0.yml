@@ -2518,6 +2518,24 @@ jobs:
       - name: Run tests
         run: tox -e py38-test-instrumentation-falcon-2 -- -ra
 
+  py38-test-instrumentation-falcon-3_ubuntu-latest:
+    name: instrumentation-falcon-3 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-falcon-3 -- -ra
+
   py39-test-instrumentation-falcon-0_ubuntu-latest:
     name: instrumentation-falcon-0 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -2571,6 +2589,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-falcon-2 -- -ra
+
+  py39-test-instrumentation-falcon-3_ubuntu-latest:
+    name: instrumentation-falcon-3 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-falcon-3 -- -ra
 
   py310-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 3.10 Ubuntu
@@ -2626,6 +2662,24 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-falcon-3 -- -ra
 
+  py310-test-instrumentation-falcon-4_ubuntu-latest:
+    name: instrumentation-falcon-4 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-falcon-4 -- -ra
+
   py311-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 3.11 Ubuntu
     runs-on: ubuntu-latest
@@ -2680,6 +2734,24 @@ jobs:
       - name: Run tests
         run: tox -e py311-test-instrumentation-falcon-3 -- -ra
 
+  py311-test-instrumentation-falcon-4_ubuntu-latest:
+    name: instrumentation-falcon-4 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-falcon-4 -- -ra
+
   py312-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 3.12 Ubuntu
     runs-on: ubuntu-latest
@@ -2733,6 +2805,24 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-falcon-3 -- -ra
+
+  py312-test-instrumentation-falcon-4_ubuntu-latest:
+    name: instrumentation-falcon-4 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-falcon-4 -- -ra
 
   pypy3-test-instrumentation-falcon-0_ubuntu-latest:
     name: instrumentation-falcon-0 pypy-3.8 Ubuntu
@@ -2805,6 +2895,24 @@ jobs:
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-falcon-3 -- -ra
+
+  pypy3-test-instrumentation-falcon-4_ubuntu-latest:
+    name: instrumentation-falcon-4 pypy-3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-falcon-4 -- -ra
 
   py38-test-instrumentation-fastapi_ubuntu-latest:
     name: instrumentation-fastapi 3.8 Ubuntu
@@ -4407,111 +4515,3 @@ jobs:
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-mysqlclient -- -ra
-
-  py39-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-mysqlclient -- -ra
-
-  py310-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-mysqlclient -- -ra
-
-  py311-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-mysqlclient -- -ra
-
-  py312-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-mysqlclient -- -ra
-
-  pypy3-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-mysqlclient -- -ra
-
-  py38-test-instrumentation-psycopg2_ubuntu-latest:
-    name: instrumentation-psycopg2 3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Install tox
-        run: pip install tox
-
-      - name: Run tests
-        run: tox -e py38-test-instrumentation-psycopg2 -- -ra
