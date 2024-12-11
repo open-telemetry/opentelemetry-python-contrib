@@ -30,8 +30,9 @@ Usage
 
     SQLite3Instrumentor().instrument()
 
-    cnx = sqlite3.connect('example.db')
+    cnx = sqlite3.connect(':memory:')
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
