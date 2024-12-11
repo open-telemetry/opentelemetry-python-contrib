@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Collection, Optional, Union
+from typing import Collection
 
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -27,10 +29,10 @@ logger = getLogger(__name__)
 
 
 class DependencyConflict:
-    required: str = None
-    found: Optional[str] = None
+    required: str | None = None
+    found: str | None = None
 
-    def __init__(self, required, found=None):
+    def __init__(self, required: str | None, found: str | None = None):
         self.required = required
         self.found = found
 
@@ -40,7 +42,7 @@ class DependencyConflict:
 
 def get_dist_dependency_conflicts(
     dist: Distribution,
-) -> Optional[DependencyConflict]:
+) -> DependencyConflict | None:
     instrumentation_deps = []
     extra = "extra"
     instruments = "instruments"
@@ -57,8 +59,8 @@ def get_dist_dependency_conflicts(
 
 
 def get_dependency_conflicts(
-    deps: Collection[Union[str, Requirement]],
-) -> Optional[DependencyConflict]:
+    deps: Collection[str | Requirement],
+) -> DependencyConflict | None:
     for dep in deps:
         if isinstance(dep, Requirement):
             req = dep

@@ -14,7 +14,8 @@
 
 """
 SQLite instrumentation supporting `sqlite3`_, it can be enabled by
-using ``SQLite3Instrumentor``.
+using ``SQLite3Instrumentor``. At this time, cursor objects must
+be explicitly initialized as shown below to support tracing.
 
 .. _sqlite3: https://docs.python.org/3/library/sqlite3.html
 
@@ -29,8 +30,9 @@ Usage
 
     SQLite3Instrumentor().instrument()
 
-    cnx = sqlite3.connect('example.db')
+    cnx = sqlite3.connect(':memory:')
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
