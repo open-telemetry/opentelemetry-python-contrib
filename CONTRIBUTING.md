@@ -278,6 +278,19 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Testing
   - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
 
+### Update supported instrumentation package versions
+
+- Update the respective instrumentation `pyproject.toml` file in _instruments_ entry under `[project.optional-dependencies]` section
+- Update instrumentation `package.py` file in `_instruments` variable
+- Run command `tox -e generate` to regenerate necessary files
+
+If you're adding support for a new version of the instrumentation package, follow these additional steps:
+
+- Add new test-requirements.txt file with the respective package version required for testing
+- Add a new test environment entry for the package version in `tox.ini` and run `tox -e generate-workflows` to generate new workflows
+
+Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976), [#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845)
+
 ## Guideline for GenAI instrumentations
 
 Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems will be placed in the [instrumentation-genai](./instrumentation-genai) folder. This section covers contributions related to those instrumentations. Please note that the [guidelines for instrumentations](#guideline-for-instrumentations) and [expectations from contributors](#expectations-from-contributors) still apply.
