@@ -389,6 +389,7 @@ class DatabaseApiIntegration:
             self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
 
 
+# pylint: disable=abstract-method
 class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
