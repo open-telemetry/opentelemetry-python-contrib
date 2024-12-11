@@ -16,7 +16,7 @@
 The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
 using ``PsycopgInstrumentor``.
 
-.. _Psycopg: http://initd.org/psycopg/
+.. _Psycopg: https://www.psycopg.org/psycopg3/docs/
 
 SQLCOMMENTER
 *****************************************
@@ -139,7 +139,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """Integrate with PostgreSQL Psycopg library.
-        Psycopg: http://initd.org/psycopg/
+        Psycopg: https://www.psycopg.org/psycopg3/docs/
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)

@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """
-The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
+The integration with PostgreSQL supports the `Psycopg2`_ library, it can be enabled by
 using ``Psycopg2Instrumentor``.
 
-.. _Psycopg: http://initd.org/psycopg/
+.. _Psycopg2: https://www.psycopg.org/docs/
 
 SQLCOMMENTER
 *****************************************
@@ -138,8 +138,8 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Integrate with PostgreSQL Psycopg library.
-        Psycopg: http://initd.org/psycopg/
+        """Integrate with PostgreSQL Psycopg2 library.
+        Psycopg2: https://www.psycopg.org/docs/
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
