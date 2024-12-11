@@ -278,6 +278,20 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Testing
   - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
 
+### Update supported instrumentation package versions
+
+- Navigate to the **instrumentation package directory:**
+  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+- At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+If you're adding support for a new version of the instrumentation package, follow these additional steps:
+
+- At the **instrumentation package directory:** Add new test-requirements.txt file with the respective package version required for testing
+- At the **root of the project directory**: Add a new test environment entry for the package version in [tox.ini](./tox.ini) and run `tox -e generate-workflows` to regenerate new workflows accordingly. In the same [tox.ini](./tox.ini) file, search for `opentelemetry-instrumentation-{package}/test-requirements` and add a new line to point to the new test-requirements.txt you created in the previous step so tox can install the correct requirements.
+
+Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976), [#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845)
+
 ## Guideline for GenAI instrumentations
 
 Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems will be placed in the [instrumentation-genai](./instrumentation-genai) folder. This section covers contributions related to those instrumentations. Please note that the [guidelines for instrumentations](#guideline-for-instrumentations) and [expectations from contributors](#expectations-from-contributors) still apply.
