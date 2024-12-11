@@ -162,7 +162,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
         dbapi.wrap_connect(
             __name__,
-            psycopg.Connection,  # pylint: disable=no-member
+            pg_connection,  # pylint: disable=no-member
             "connect",
             self._DATABASE_SYSTEM,
             self._CONNECTION_ATTRIBUTES,
@@ -189,7 +189,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         """ "Disable Psycopg instrumentation"""
         dbapi.unwrap_connect(psycopg, "connect")  # pylint: disable=no-member
         dbapi.unwrap_connect(
-            psycopg.Connection,
+            pg_connection,
             "connect",  # pylint: disable=no-member
         )
         dbapi.unwrap_connect(
