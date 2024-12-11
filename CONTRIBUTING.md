@@ -280,14 +280,15 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 
 ### Update supported instrumentation package versions
 
-- Update the respective instrumentation `pyproject.toml` file in _instruments_ entry under `[project.optional-dependencies]` section
-- Update instrumentation `package.py` file in `_instruments` variable
-- Run command `tox -e generate` to regenerate necessary files
+- Navigate to the **instrumentation package directory:**
+  - Update the respective instrumentation **`pyproject.toml`** file by modifying _instruments_ entry in the [project.optional-dependencies] section with the new version constraint
+  - Update instrumentation **`package.py`** file in `_instruments` variable with the new version constraint
+- At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
 
 If you're adding support for a new version of the instrumentation package, follow these additional steps:
 
-- Add new test-requirements.txt file with the respective package version required for testing
-- Add a new test environment entry for the package version in `tox.ini` and run `tox -e generate-workflows` to generate new workflows
+- At the **instrumentation package directory:** Add new test-requirements.txt file with the respective package version required for testing
+- At the **root of the project directory**: Add a new test environment entry for the package version in [tox.ini](./tox.ini) and run `tox -e generate-workflows` to regenerate new workflows accordingly. At the same file, search for `opentelemetry-instrumentation-{package}/test-requirements` and add a new line to point to the new test-requirements.txt you created in the previous step so tox can install the correct requirements.
 
 Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976), [#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845)
 
