@@ -45,6 +45,10 @@ import typing
 import wrapt
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.dbapi.proxy import (
+    BaseTracedConnectionProxy,
+    BaseTracedCursorProxy,
+)
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
@@ -191,6 +195,8 @@ def instrument_connection(
     enable_commenter: bool = False,
     commenter_options: dict = None,
     connect_module: typing.Callable[..., typing.Any] = None,
+    db_api_integration_factory: typing.ClassVar = None,
+    get_cnx_proxy: typing.Callable[..., typing.Any] = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -206,6 +212,10 @@ def instrument_connection(
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
+        db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
+            default one is used.
+        get_cnx_proxy: Method to get traced connextion proxy.  If none is passed the
+            default one is used.
 
     Returns:
         An instrumented connection.
@@ -214,7 +224,11 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_integration = DatabaseApiIntegration(
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
+
+    db_integration = db_api_integration_factory(
         name,
         database_system,
         connection_attributes=connection_attributes,
@@ -226,7 +240,9 @@ def instrument_connection(
         connect_module=connect_module,
     )
     db_integration.get_connection_attributes(connection)
-    return get_traced_connection_proxy(connection, db_integration)
+
+    get_cnx_proxy = get_cnx_proxy or get_traced_connection_proxy
+    return get_cnx_proxy(connection, db_integration)
 
 
 def uninstrument_connection(connection):
@@ -397,30 +413,11 @@ def get_traced_connection_proxy(
     connection, db_api_integration, *args, **kwargs
 ):
     # pylint: disable=abstract-method
-    class TracedConnectionProxy(wrapt.ObjectProxy):
-        # pylint: disable=unused-argument
-        def __init__(self, connection, *args, **kwargs):
-            wrapt.ObjectProxy.__init__(self, connection)
-
-        def __getattribute__(self, name):
-            if object.__getattribute__(self, name):
-                return object.__getattribute__(self, name)
-
-            return object.__getattribute__(
-                object.__getattribute__(self, "_connection"), name
-            )
-
+    class TracedConnectionProxy(BaseTracedConnectionProxy):
         def cursor(self, *args, **kwargs):
             return get_traced_cursor_proxy(
                 self.__wrapped__.cursor(*args, **kwargs), db_api_integration
             )
-
-        def __enter__(self):
-            self.__wrapped__.__enter__()
-            return self
-
-        def __exit__(self, *args, **kwargs):
-            self.__wrapped__.__exit__(*args, **kwargs)
 
     return TracedConnectionProxy(connection, *args, **kwargs)
 
@@ -547,34 +544,11 @@ class CursorTracer:
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
-    _cursor_tracer = CursorTracer(db_api_integration)
-
-    # pylint: disable=abstract-method
-    class TracedCursorProxy(wrapt.ObjectProxy):
-        # pylint: disable=unused-argument
-        def __init__(self, cursor, *args, **kwargs):
-            wrapt.ObjectProxy.__init__(self, cursor)
-
-        def execute(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self.__wrapped__, self.__wrapped__.execute, *args, **kwargs
+    class TracedCursorProxy(BaseTracedCursorProxy):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._cursor_tracer = CursorTracer(
+                db_api_integration,
             )
-
-        def executemany(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self.__wrapped__, self.__wrapped__.executemany, *args, **kwargs
-            )
-
-        def callproc(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self.__wrapped__, self.__wrapped__.callproc, *args, **kwargs
-            )
-
-        def __enter__(self):
-            self.__wrapped__.__enter__()
-            return self
-
-        def __exit__(self, *args, **kwargs):
-            self.__wrapped__.__exit__(*args, **kwargs)
 
     return TracedCursorProxy(cursor, *args, **kwargs)
