@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.29.0/0.50b0 (2024-12-11)
+
 ### Added
 
 - `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
