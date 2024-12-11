@@ -1,0 +1,106 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "fileData": {
+                  "mimeType": "image/jpeg",
+                  "fileUri": "gs://generativeai-downloads/images/scones.jpg"
+                }
+              },
+              {
+                "text": "what is shown in this image?"
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '317'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1beta1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-pro-vision:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": " The image shows a table with a cup of coffee, a bowl of blueberries, and a plate of scones with blueberries on top. There are also pink flowers on the table."
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "safetyRatings": [
+                {
+                  "category": 1,
+                  "probability": 1,
+                  "probabilityScore": 0.025512695,
+                  "severity": 1,
+                  "severityScore": 0.06933594
+                },
+                {
+                  "category": 2,
+                  "probability": 1,
+                  "probabilityScore": 0.026367188,
+                  "severity": 1,
+                  "severityScore": 0.07080078
+                },
+                {
+                  "category": 3,
+                  "probability": 1,
+                  "probabilityScore": 0.041503906,
+                  "severity": 1,
+                  "severityScore": 0.03466797
+                },
+                {
+                  "category": 4,
+                  "probability": 1,
+                  "probabilityScore": 0.091308594,
+                  "severity": 1,
+                  "severityScore": 0.09033203
+                }
+              ],
+              "avgLogprobs": -0.09557106835501535
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 265,
+            "candidatesTokenCount": 35,
+            "totalTokenCount": 300
+          },
+          "modelVersion": "gemini-pro-vision"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '1299'
+    status:
+      code: 200
+      message: OK
+version: 1
