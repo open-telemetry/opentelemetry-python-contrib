@@ -42,8 +42,9 @@ from __future__ import annotations
 import functools
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
+import wrapt
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace as trace_api
@@ -56,15 +57,6 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
-
-if TYPE_CHECKING:
-
-    class wrapt:  # pylint: disable=invalid-name
-        class ObjectProxy:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-else:
-    import wrapt
 
 _DB_DRIVER_ALIASES = {
     "MySQLdb": "mysqlclient",
