@@ -110,9 +110,6 @@ from psycopg import (
     AsyncCursor as pg_async_cursor,  # pylint: disable=import-self,no-name-in-module
 )
 from psycopg import (
-    Connection as pg_connection,  # pylint: disable=no-name-in-module
-)
-from psycopg import (
     Cursor as pg_cursor,  # pylint: disable=no-name-in-module,import-self
 )
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
@@ -200,7 +197,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(
-        connection: pg_connection,
+        connection: psycopg.Connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
         commenter_options: dict = None,
