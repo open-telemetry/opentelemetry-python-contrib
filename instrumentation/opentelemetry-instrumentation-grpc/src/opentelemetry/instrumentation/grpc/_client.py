@@ -24,6 +24,7 @@ from collections import OrderedDict
 from typing import Callable, MutableMapping
 
 import grpc
+import wrapt
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import grpcext
@@ -71,6 +72,58 @@ def _safe_invoke(function: Callable, *args):
         logger.error(
             "Error when invoking function '%s'", function_name, exc_info=ex
         )
+
+
+# pylint:disable=abstract-method
+class OpenTelemetryStreamWrapper(wrapt.ObjectProxy):
+    def __init__(self, wrapped, span: trace.Span):
+        super().__init__(wrapped)
+        self._self_span = span
+        self._span_ended = False
+
+    def _end_span_if_not_already_ended(self, status_code=None, status=None):
+        if self._span_ended:
+            return
+
+        if status_code is not None:
+            self._self_span.set_attribute(
+                SpanAttributes.RPC_GRPC_STATUS_CODE, status_code
+            )
+        if status is not None:
+            self._self_span.set_status(status)
+        self._span_ended = True
+        self._self_span.end()
+
+    def __del__(self):
+        self._end_span_if_not_already_ended()
+        self.__wrapped__.__del__()
+
+    def __iter__(self):
+        return self
+
+    def cancel(self):
+        self._end_span_if_not_already_ended(
+            status_code=grpc.StatusCode.CANCELLED.value[0]
+        )
+        return self.__wrapped__.cancel()
+
+    def __next__(self):
+        return self._next()
+
+    def next(self):
+        return self._next()
+
+    def _next(self):
+        try:
+            return self.__wrapped__._next()
+        except StopIteration:
+            self._end_span_if_not_already_ended()
+            raise
+        except grpc.RpcError as err:
+            self._end_span_if_not_already_ended(
+                err.code().value[0], Status(StatusCode.ERROR)
+            )
+            raise err
 
 
 class OpenTelemetryClientInterceptor(
@@ -195,7 +248,9 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
 
-        with self._start_span(client_info.full_method) as span:
+        with self._start_span(
+            client_info.full_method, end_on_exit=False
+        ) as span:
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
@@ -207,14 +262,9 @@ class OpenTelemetryClientInterceptor(
             if client_info.is_client_stream:
                 rpc_info.request = request_or_iterator
 
-            try:
-                yield from invoker(request_or_iterator, metadata)
-            except grpc.RpcError as err:
-                span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(
-                    SpanAttributes.RPC_GRPC_STATUS_CODE, err.code().value[0]
-                )
-                raise err
+            stream = invoker(request_or_iterator, metadata)
+
+            return OpenTelemetryStreamWrapper(stream, span)
 
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
