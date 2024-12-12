@@ -63,7 +63,7 @@ You can run `tox` with the following arguments:
 
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
-* `tox -e docs` to regenerate the API docs
+* `tox -e docs` to regenerate all docs 
 * `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
@@ -89,7 +89,9 @@ for more detail on available tox commands.
 
 ### Troubleshooting
 
-> Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
+
+For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the CI to maintain compatibility when building the documentation.
 
 ### Benchmarks
 
