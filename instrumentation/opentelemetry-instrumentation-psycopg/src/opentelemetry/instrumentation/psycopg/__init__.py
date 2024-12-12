@@ -118,8 +118,10 @@ from opentelemetry.trace import TracerProvider
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
 
-Connection = TypeVar("Connection", psycopg.Connection, psycopg.AsyncConnection)
-Cursor = TypeVar("Cursor", psycopg.Cursor, psycopg.AsyncCursor)
+ConnectionT = TypeVar(
+    "ConnectionT", psycopg.Connection, psycopg.AsyncConnection
+)
+CursorT = TypeVar("CursorT", psycopg.Cursor, psycopg.AsyncCursor)
 
 
 class PsycopgInstrumentor(BaseInstrumentor):
@@ -195,8 +197,8 @@ class PsycopgInstrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(
-        connection: Connection, tracer_provider: TracerProvider | None = None
-    ) -> Connection:
+        connection: ConnectionT, tracer_provider: TracerProvider | None = None
+    ) -> ConnectionT:
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 
@@ -216,7 +218,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def uninstrument_connection(connection: Connection) -> Connection:
+    def uninstrument_connection(connection: ConnectionT) -> ConnectionT:
         connection.cursor_factory = getattr(
             connection, _OTEL_CURSOR_FACTORY_KEY, None
         )
@@ -264,7 +266,7 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
 
 
 class CursorTracer(dbapi.CursorTracer):
-    def get_operation_name(self, cursor: Cursor, args: list[Any]) -> str:
+    def get_operation_name(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
             return ""
 
@@ -279,7 +281,7 @@ class CursorTracer(dbapi.CursorTracer):
 
         return ""
 
-    def get_statement(self, cursor: Cursor, args: list[Any]) -> str:
+    def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
             return ""
 
