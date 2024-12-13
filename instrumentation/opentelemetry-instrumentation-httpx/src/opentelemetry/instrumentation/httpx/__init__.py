@@ -890,12 +890,14 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 that is called right before the span ends
         """
 
-        if getattr(
-            client._transport, "_is_instrumented_by_opentelemetry", False
-        ):
+        if getattr(client, "_is_instrumented_by_opentelemetry", False):
             _logger.warning(
                 "Attempting to instrument Httpx client while already instrumented"
             )
+            return
+        if getattr(
+            client._transport, "is_instrumented_by_opentelemetry", False
+        ):
             return
 
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -949,6 +951,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         ),
                     )
             client._transport._is_instrumented_by_opentelemetry = True
+            client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -975,6 +978,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         ),
                     )
             client._transport._is_instrumented_by_opentelemetry = True
+            client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
     def uninstrument_client(
@@ -990,8 +994,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             for transport in client._mounts.values():
                 unwrap(transport, "handle_request")
             client._transport._is_instrumented_by_opentelemetry = False
+            client._is_instrumented_by_opentelemetry = False
         elif hasattr(client._transport, "handle_async_request"):
             unwrap(client._transport, "handle_async_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_async_request")
             client._transport._is_instrumented_by_opentelemetry = False
+            client._is_instrumented_by_opentelemetry = False
