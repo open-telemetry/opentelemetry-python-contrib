@@ -929,8 +929,9 @@ class BaseTestCases:
             self.assert_span(num_spans=1)
 
         def test_instrument_multiple_clients_with_the_same_transport(self):
-            client1 = typing.cast(httpx.Client, self.create_client())
-            client2 = self.create_client(client1._transport)
+            transport = self.create_transport()
+            client1 = self.create_client(transport=transport)
+            client2 = self.create_client(trasnport=transport)
 
             HTTPXClientInstrumentor().instrument_client(client1)
             HTTPXClientInstrumentor().instrument_client(client2)
