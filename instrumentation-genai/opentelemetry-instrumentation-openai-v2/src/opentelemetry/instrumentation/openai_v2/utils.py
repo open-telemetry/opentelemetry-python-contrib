@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from os import environ
-from typing import Optional, Union
+from typing import Mapping, Optional, Union
 from urllib.parse import urlparse
 
 from httpx import URL
@@ -26,6 +26,10 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
+from opentelemetry.trace.status import Status, StatusCode
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
@@ -138,9 +142,11 @@ def choice_to_event(choice, capture_content):
 
     if choice.message:
         message = {
-            "role": choice.message.role
-            if choice.message and choice.message.role
-            else None
+            "role": (
+                choice.message.role
+                if choice.message and choice.message.role
+                else None
+            )
         }
         tool_calls = extract_tool_calls(choice.message, capture_content)
         if tool_calls:
@@ -196,11 +202,22 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
             "frequency_penalty"
         ),
-        GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT: kwargs.get(
-            "response_format"
-        ),
         GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
     }
+
+    if (response_format := kwargs.get("response_format")) is not None:
+        # response_format may be string or object with a string in the `type` key
+        if isinstance(response_format, Mapping):
+            if (
+                response_format_type := response_format.get("type")
+            ) is not None:
+                attributes[
+                    GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+                ] = response_format_type
+        else:
+            attributes[
+                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+            ] = response_format
 
     set_server_address_and_port(client_instance, attributes)
     service_tier = kwargs.get("service_tier")
@@ -210,3 +227,12 @@ def get_llm_request_attributes(
 
     # filter out None values
     return {k: v for k, v in attributes.items() if v is not None}
+
+
+def handle_span_exception(span, error):
+    span.set_status(Status(StatusCode.ERROR, str(error)))
+    if span.is_recording():
+        span.set_attribute(
+            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+        )
+    span.end()

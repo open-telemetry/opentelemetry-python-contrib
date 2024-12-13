@@ -5,7 +5,7 @@ import os
 
 import pytest
 import yaml
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.instrumentation.openai_v2.utils import (
@@ -63,6 +63,11 @@ def openai_client():
     return OpenAI()
 
 
+@pytest.fixture
+def async_openai_client():
+    return AsyncOpenAI()
+
+
 @pytest.fixture(scope="module")
 def vcr_config():
     return {
@@ -79,6 +84,10 @@ def vcr_config():
 
 @pytest.fixture(scope="function")
 def instrument_no_content(tracer_provider, event_logger_provider):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+    )
+
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -86,6 +95,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
     )
 
     yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
 
 

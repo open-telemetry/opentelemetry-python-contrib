@@ -11,14 +11,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.29.0/0.50b0 (2024-12-11)
+
 ### Added
 
+- `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
+  ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
+- `opentelemetry-distro` default to OTLP log exporter.
+  ([#3042](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3042))
 - `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
   ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
-  - Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
+- Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
   ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+- `opentelemetry-instrumentation-sqlalchemy` Add sqlcomment to `db.statement` attribute
+  ([#2937](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2937))
+- `opentelemetry-instrumentation-dbapi` Add sqlcomment to `db.statement` attribute
+  ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
+- `opentelemetry-instrumentation-dbapi` instrument_connection accepts optional connect_module
+  ([#3027](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3027))
+- `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
+  ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
+- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
+  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
+- `opentelemetry-instrumentation-click`: new instrumentation to trace click commands
+  ([#2994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2994))
 
 ### Fixed
+
+- `opentelemetry-instrumentation-starlette`: Retrieve `meter_provider` key instead of `_meter_provider` on `_instrument`
+  ([#3048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3048))
+- `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
+  ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
+- `opentelemetry-instrumentation-system_metrics`: fix callbacks reading wrong config
+  ([#3025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3025))
+- `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
+  ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
+- Replace all instrumentor unit test `assertEqualSpanInstrumentationInfo` calls with `assertEqualSpanInstrumentationScope` calls
+  ([#3037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3037))
+- `opentelemetry-instrumentation-sqlalchemy` Fixes engines from `sqlalchemy.engine_from_config` not being fully instrumented
+  ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
+- `opentelemetry-instrumentation-sqlalchemy`: Fix a remaining memory leak in EngineTracer
+  ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
+- `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
+  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
 
 ### Breaking changes
 
@@ -26,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
 - Drop `opentelemetry-instrumentation-test` package from default instrumentation list
   ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+- `opentelemetry-instrumentation-httpx`: remove private unused `_InstrumentedClient` and `_InstrumentedAsyncClient` classes
+  ([#3036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3036))
 
 ## Version 1.28.0/0.49b0 (2024-11-05)
 

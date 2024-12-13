@@ -168,10 +168,23 @@ class EngineTracer:
         self._add_used_to_connection_usage(1)
 
     @classmethod
+    def _dispose_of_event_listener(cls, obj):
+        try:
+            cls._remove_event_listener_params.remove(obj)
+        except ValueError:
+            pass
+
+    @classmethod
     def _register_event_listener(cls, target, identifier, func, *args, **kw):
         listen(target, identifier, func, *args, **kw)
         cls._remove_event_listener_params.append(
             (weakref.ref(target), identifier, func)
+        )
+
+        weakref.finalize(
+            target,
+            cls._dispose_of_event_listener,
+            (weakref.ref(target), identifier, func),
         )
 
     @classmethod
@@ -219,28 +232,31 @@ class EngineTracer:
         )
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
+                if self.enable_commenter:
+                    commenter_data = {
+                        "db_driver": conn.engine.driver,
+                        # Driver/framework centric information.
+                        "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+                    }
+
+                    if self.commenter_options.get(
+                        "opentelemetry_values", True
+                    ):
+                        commenter_data.update(**_get_opentelemetry_values())
+
+                    # Filter down to just the requested attributes.
+                    commenter_data = {
+                        k: v
+                        for k, v in commenter_data.items()
+                        if self.commenter_options.get(k, True)
+                    }
+
+                    statement = _add_sql_comment(statement, **commenter_data)
+
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
-            if self.enable_commenter:
-                commenter_data = {
-                    "db_driver": conn.engine.driver,
-                    # Driver/framework centric information.
-                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
-                }
-
-                if self.commenter_options.get("opentelemetry_values", True):
-                    commenter_data.update(**_get_opentelemetry_values())
-
-                # Filter down to just the requested attributes.
-                commenter_data = {
-                    k: v
-                    for k, v in commenter_data.items()
-                    if self.commenter_options.get(k, True)
-                }
-
-                statement = _add_sql_comment(statement, **commenter_data)
 
         context._otel_span = span
 

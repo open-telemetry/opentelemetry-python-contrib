@@ -182,6 +182,17 @@ class TestSqlalchemyInstrumentation(TestBase):
             "opentelemetry.instrumentation.sqlalchemy",
         )
 
+    def test_instrument_engine_from_config(self):
+        SQLAlchemyInstrumentor().instrument()
+        from sqlalchemy import engine_from_config  # pylint: disable-all
+
+        engine = engine_from_config({"sqlalchemy.url": "sqlite:///:memory:"})
+        cnx = engine.connect()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+
     def test_create_engine_wrapper_enable_commenter(self):
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         SQLAlchemyInstrumentor().instrument(
@@ -417,6 +428,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         from sqlalchemy import create_engine
 
+        from opentelemetry.instrumentation.sqlalchemy.engine import (
+            EngineTracer,
+        )
+
         callback = mock.Mock()
 
         def make_shortlived_engine():
@@ -432,3 +447,4 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         gc.collect()
         assert callback.call_count == 5
+        assert len(EngineTracer._remove_event_listener_params) == 0

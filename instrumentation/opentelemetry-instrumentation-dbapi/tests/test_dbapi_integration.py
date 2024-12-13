@@ -14,6 +14,7 @@
 
 
 import logging
+import re
 from unittest import mock
 
 from opentelemetry import context
@@ -306,6 +307,44 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_level='1.0',dbapi_threadsafety='unknown',driver_paramstyle='unknown',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
+    def test_executemany_comment_matches_db_statement_attribute(self):
+        connect_module = mock.MagicMock()
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertRegex(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+        )
+
+        cursor_span_id = re.search(r"[a-zA-Z0-9_]{16}", cursor.query).group()
+        db_statement_span_id = re.search(
+            r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]
+        ).group()
+        self.assertEqual(cursor_span_id, db_statement_span_id)
+
     def test_compatible_build_version_psycopg_psycopg2_libpq(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
@@ -552,6 +591,43 @@ class TestDBApiIntegration(TestBase):
         connection.database = "-"
         connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
+        dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], None)
+        self.assertEqual(kwargs["version"], "")
+        self.assertEqual(kwargs["tracer_provider"], None)
+        self.assertEqual(kwargs["capture_parameters"], False)
+        self.assertEqual(kwargs["enable_commenter"], False)
+        self.assertEqual(kwargs["commenter_options"], None)
+        self.assertEqual(kwargs["connect_module"], None)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
+    def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
+        mock_tracer_provider = mock.MagicMock()
+        mock_connect_module = mock.MagicMock()
+        dbapi.instrument_connection(
+            self.tracer,
+            mock.Mock(),
+            "foo",
+            connection_attributes={"foo": "bar"},
+            version="test",
+            tracer_provider=mock_tracer_provider,
+            capture_parameters=True,
+            enable_commenter=True,
+            commenter_options={"foo": "bar"},
+            connect_module=mock_connect_module,
+        )
+        kwargs = mock_dbapiint.call_args[1]
+        self.assertEqual(kwargs["connection_attributes"], {"foo": "bar"})
+        self.assertEqual(kwargs["version"], "test")
+        self.assertIs(kwargs["tracer_provider"], mock_tracer_provider)
+        self.assertEqual(kwargs["capture_parameters"], True)
+        self.assertEqual(kwargs["enable_commenter"], True)
+        self.assertEqual(kwargs["commenter_options"], {"foo": "bar"})
+        self.assertIs(kwargs["connect_module"], mock_connect_module)
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()

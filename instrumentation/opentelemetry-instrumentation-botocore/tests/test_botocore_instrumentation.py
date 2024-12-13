@@ -104,6 +104,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span("EC2", "DescribeInstances", request_id=request_id)
 
     @mock_aws
+    def test_no_op_tracer_provider_ec2(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        ec2 = self._make_client("ec2")
+        ec2.describe_instances()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_not_recording(self):
         mock_tracer = Mock()
         mock_span = Mock()
@@ -149,6 +162,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span("S3", "ListBuckets")
 
     @mock_aws
+    def test_no_op_tracer_provider_s3(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        s3 = self._make_client("s3")
+        s3.list_buckets()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_s3_put(self):
         s3 = self._make_client("s3")
 
@@ -175,6 +201,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span(
             "SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH
         )
+
+    @mock_aws
+    def test_no_op_tracer_provider_sqs(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        sqs = self._make_client("sqs")
+        sqs.list_queues()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_sqs_send_message(self):
@@ -205,6 +244,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span("Kinesis", "ListStreams")
 
     @mock_aws
+    def test_no_op_tracer_provider_kinesis(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        kinesis = self._make_client("kinesis")
+        kinesis.list_streams()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_unpatch(self):
         kinesis = self._make_client("kinesis")
 
@@ -212,6 +264,19 @@ class TestBotocoreInstrumentor(TestBase):
 
         kinesis.list_streams()
         self.assertEqual(0, len(self.memory_exporter.get_finished_spans()))
+
+    @mock_aws
+    def test_no_op_tracer_provider_kms(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        kms = self._make_client("kms")
+        kms.list_keys(Limit=21)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_uninstrument_does_not_inject_headers(self):
@@ -269,6 +334,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertEqual(expected, dict(span.attributes))
 
     @mock_aws
+    def test_no_op_tracer_provider_sts(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        sts = self._make_client("sts")
+        sts.get_caller_identity()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_propagator_injects_into_request(self):
         headers = {}
         previous_propagator = get_global_textmap()
@@ -307,6 +385,19 @@ class TestBotocoreInstrumentor(TestBase):
             )
         finally:
             set_global_textmap(previous_propagator)
+
+    @mock_aws
+    def test_no_op_tracer_provider_xray(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        xray_client = self._make_client("xray")
+        xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_override_xray_propagator_injects_into_request(self):

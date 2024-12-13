@@ -18,7 +18,7 @@ Instrument aiokafka to report instrumentation-kafka produced and consumed messag
 Usage
 -----
 
-..code:: python
+.. code:: python
 
     from opentelemetry.instrumentation.aiokafka import AIOKafkaInstrumentor
     from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
@@ -45,7 +45,8 @@ this function signature is:
 def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 
-.. code: python
+.. code:: python
+
     from opentelemetry.instrumentation.kafka import AIOKafkaInstrumentor
     from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 
