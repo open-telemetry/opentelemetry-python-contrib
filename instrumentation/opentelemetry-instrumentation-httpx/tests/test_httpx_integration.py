@@ -1223,7 +1223,7 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         transport: typing.Optional[SyncOpenTelemetryTransport] = None,
         **kwargs,
     ):
-        return httpx.Client(**kwargs)
+        return httpx.Client(transport=transport, **kwargs)
 
     def perform_request(
         self,
@@ -1273,7 +1273,7 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
         **kwargs,
     ):
-        return httpx.AsyncClient(**kwargs)
+        return httpx.AsyncClient(transport=transport, **kwargs)
 
     def perform_request(
         self,
