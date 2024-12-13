@@ -1,5 +1,8 @@
-OpenTelemetry Redis Instrumentation
-===================================
+.. include:: ../../../instrumentation/opentelemetry-instrumentation-redis/README.rst
+    :end-before: References
+
+Usage
+-----
 
 .. automodule:: opentelemetry.instrumentation.redis
     :members:
