@@ -781,8 +781,8 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             self.memory_exporter.get_finished_spans()
         )
         not_expected = {
-            "http.request.header.custom-test-header_1": ("Test Value 1",),
-            "http.request.header.custom-test-header_2": (
+            "http.request.header.custom-test-header-1": ("Test Value 1",),
+            "http.request.header.custom-test-header-2": (
                 "TestValue2,TestValue3",
             ),
         }

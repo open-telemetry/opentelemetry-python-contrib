@@ -870,16 +870,16 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
     def test_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom-test-header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom-test-header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my-custom-regex-header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my-custom-regex-header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
             "http.response.header.my-secret-header": ("[REDACTED]",),
