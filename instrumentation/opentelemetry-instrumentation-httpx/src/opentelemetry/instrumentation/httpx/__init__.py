@@ -890,9 +890,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 that is called right before the span ends
         """
 
-        if getattr(
-            client._transport, "_is_instrumented_by_opentelemetry", False
-        ):
+        if getattr(client, "_is_instrumented_by_opentelemetry", False):
             _logger.warning(
                 "Attempting to instrument Httpx client while already instrumented"
             )
