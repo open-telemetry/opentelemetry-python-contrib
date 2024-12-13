@@ -19,7 +19,6 @@ import unittest
 import wsgiref.util as wsgiref_util
 from unittest import mock
 from urllib.parse import urlsplit
-from wsgiref.types import StartResponse, WSGIEnvironment
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
@@ -144,9 +143,7 @@ def wsgi_with_custom_response_headers(environ, start_response):
     return [b"*"]
 
 
-def wsgi_with_repeat_custom_response_headers(
-    environ: WSGIEnvironment, start_response: StartResponse
-):
+def wsgi_with_repeat_custom_response_headers(environ, start_response):
     assert isinstance(environ, dict)
     start_response(
         "200 OK",
