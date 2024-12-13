@@ -33,6 +33,12 @@ Usage
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+    
+    cnx = MySQLInstrumentor().instrument_connection(cnx)
+    cursor = cnx.cursor()
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    cnx.close()
 
 API
 ---
