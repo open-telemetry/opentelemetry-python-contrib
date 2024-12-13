@@ -121,7 +121,10 @@ The name of the added span attribute will follow the format ``http.request.heade
 The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
-``http.request.header.custom-request-header = ["<value1>,<value2>"]``
+
+.. code-block:: none
+
+    http.request.header.custom-request-header = ["<value1>,<value2>"]
 
 Response headers
 ****************
@@ -143,7 +146,10 @@ The name of the added span attribute will follow the format ``http.response.head
 The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
-``http.response.header.custom-response-header = ["<value1>,<value2>"]``
+
+.. code-block:: none
+
+    http.response.header.custom-response-header = ["<value1>,<value2>"]
 
 Note:
     Environment variable names to capture http headers are still experimental, and thus are subject to change.
