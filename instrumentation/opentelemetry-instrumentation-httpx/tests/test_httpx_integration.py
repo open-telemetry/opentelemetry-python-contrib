@@ -931,7 +931,7 @@ class BaseTestCases:
         def test_instrument_multiple_clients_with_the_same_transport(self):
             transport = self.create_transport()
             client1 = self.create_client(transport=transport)
-            client2 = self.create_client(trasnport=transport)
+            client2 = self.create_client(transport=transport)
 
             HTTPXClientInstrumentor().instrument_client(client1)
             HTTPXClientInstrumentor().instrument_client(client2)
