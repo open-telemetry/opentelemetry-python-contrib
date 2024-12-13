@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-util-http` Don't normalize headers with "hyphen -> underscore"
+  ([#3104](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3104))
+
 ## Version 1.29.0/0.50b0 (2024-12-11)
 
 ### Added
