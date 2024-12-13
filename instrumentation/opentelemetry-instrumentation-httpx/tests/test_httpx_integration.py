@@ -928,18 +928,6 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
 
-        def test_instrument_multiple_clients_with_the_same_transport(self):
-            transport = self.create_transport()
-            client1 = self.create_client(transport=transport)
-            client2 = self.create_client(transport=transport)
-
-            HTTPXClientInstrumentor().instrument_client(client1)
-            HTTPXClientInstrumentor().instrument_client(client2)
-
-            result = self.perform_request(self.URL, client=client1)
-            self.assertEqual(result.text, "Hello!")
-            self.assert_span(num_spans=1)
-
         def test_instrumentation_without_client(self):
             HTTPXClientInstrumentor().instrument()
             results = [
@@ -1147,6 +1135,18 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         span = self.assert_span()
 
         self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+
+    def test_instrument_multiple_clients_with_the_same_transport(self):
+        transport = self.create_transport()
+        client1 = self.create_client(transport=transport)
+        client2 = self.create_client(transport=transport)
+
+        HTTPXClientInstrumentor().instrument_client(client1)
+        HTTPXClientInstrumentor().instrument_client(client2)
+
+        result = self.perform_request(self.URL, client=client1)
+        self.assertEqual(result.text, "Hello!")
+        self.assert_span(num_spans=1)
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
