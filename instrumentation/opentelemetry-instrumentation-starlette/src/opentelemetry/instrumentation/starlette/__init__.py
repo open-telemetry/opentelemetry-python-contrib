@@ -109,11 +109,10 @@ Additionally, the special keyword ``all`` can be used to capture all request hea
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="all"
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-list containing the header values.
+is the normalized HTTP header name (lowercase). The value of the attribute will be a list containing the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
+``http.request.header.custom-request-header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
@@ -143,11 +142,10 @@ Additionally, the special keyword ``all`` can be used to capture all response he
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="all"
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-list containing the header values.
+is the normalized HTTP header name (lowercase). The value of the attribute will be a list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
+``http.response.header.custom-response-header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
@@ -283,7 +281,7 @@ class StarletteInstrumentor(BaseInstrumentor):
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs: Any):
-        """uninstrumenting all created apps by user"""
+        """Uninstrument all applications created by the user."""
         for instance in _InstrumentedStarlette._instrumented_starlette_apps:
             self.uninstrument_app(instance)
         _InstrumentedStarlette._instrumented_starlette_apps.clear()

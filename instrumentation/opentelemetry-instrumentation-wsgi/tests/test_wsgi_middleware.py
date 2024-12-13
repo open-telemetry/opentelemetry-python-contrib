@@ -19,6 +19,7 @@ import unittest
 import wsgiref.util as wsgiref_util
 from unittest import mock
 from urllib.parse import urlsplit
+from wsgiref.types import StartResponse, WSGIEnvironment
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
@@ -143,7 +144,9 @@ def wsgi_with_custom_response_headers(environ, start_response):
     return [b"*"]
 
 
-def wsgi_with_repeat_custom_response_headers(environ, start_response):
+def wsgi_with_repeat_custom_response_headers(
+    environ: WSGIEnvironment, start_response: StartResponse
+):
     assert isinstance(environ, dict)
     start_response(
         "200 OK",
@@ -935,15 +938,15 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         self.iterate_response(response)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-1": ("Test Value 1",),
+            "http.request.header.custom-test-header-2": (
                 "TestValue2,TestValue3",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(span, expected)
 
@@ -968,7 +971,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             self.iterate_response(response)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.request.header.custom_test_header_1": ("Test Value 1",),
+                "http.request.header.custom-test-header-1": ("Test Value 1",),
             }
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
@@ -988,20 +991,20 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         self.iterate_response(response)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.content_type": (
+            "http.response.header.content-type": (
                 "text/plain; charset=utf-8",
             ),
-            "http.response.header.content_length": ("100",),
-            "http.response.header.my_custom_header": (
+            "http.response.header.content-length": ("100",),
+            "http.response.header.my-custom-header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(span, expected)
 
@@ -1022,7 +1025,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
             self.iterate_response(response)
             span = self.memory_exporter.get_finished_spans()[0]
             not_expected = {
-                "http.response.header.my_custom_header": (
+                "http.response.header.my-custom-header": (
                     "my-custom-value-1,my-custom-header-2",
                 ),
             }
@@ -1043,7 +1046,7 @@ class TestAdditionOfCustomRequestResponseHeaders(WsgiTestBase):
         self.iterate_response(response)
         span = self.memory_exporter.get_finished_spans()[0]
         expected = {
-            "http.response.header.my_custom_header": (
+            "http.response.header.my-custom-header": (
                 "my-custom-value-1,my-custom-value-2",
             ),
         }

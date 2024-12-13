@@ -715,8 +715,8 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
             self.memory_exporter.get_finished_spans()
         )
         expected = {
-            "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-1": ("Test Value 1",),
+            "http.request.header.custom-test-header-2": (
                 "TestValue2,TestValue3",
             ),
         }
@@ -736,11 +736,11 @@ class TestTornadoCustomRequestResponseHeadersAddedWithServerSpan(TornadoTest):
             self.memory_exporter.get_finished_spans()
         )
         expected = {
-            "http.response.header.content_type": (
+            "http.response.header.content-type": (
                 "text/plain; charset=utf-8",
             ),
-            "http.response.header.content_length": ("0",),
-            "http.response.header.my_custom_header": (
+            "http.response.header.content-length": ("0",),
+            "http.response.header.my-custom-header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
         }
@@ -781,8 +781,8 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             self.memory_exporter.get_finished_spans()
         )
         not_expected = {
-            "http.request.header.custom_test_header_1": ("Test Value 1",),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header_1": ("Test Value 1",),
+            "http.request.header.custom-test-header_2": (
                 "TestValue2,TestValue3",
             ),
         }
@@ -803,11 +803,11 @@ class TestTornadoCustomRequestResponseHeadersNotAddedWithInternalSpan(
             self.memory_exporter.get_finished_spans()
         )
         not_expected = {
-            "http.response.header.content_type": (
+            "http.response.header.content-type": (
                 "text/plain; charset=utf-8",
             ),
-            "http.response.header.content_length": ("0",),
-            "http.response.header.my_custom_header": (
+            "http.response.header.content-length": ("0",),
+            "http.response.header.my-custom-header": (
                 "my-custom-value-1,my-custom-header-2",
             ),
         }
