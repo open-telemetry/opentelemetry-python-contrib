@@ -92,12 +92,16 @@ class MySQLInstrumentor(BaseInstrumentor):
         """Enable instrumentation in a MySQL connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: The optional tracer provider to use. If omitted
-                the current globally configured one is used.
+            connection (mysql.connector.Connection):
+                The existing MySQL connection instance to instrument. This connection is typically
+                obtained through `mysql.connector.connect()` and is instrumented to collect telemetry
+                data about database interactions.
+            tracer_provider (TracerProvider, optional):
+                An optional `TracerProvider` instance to use for tracing. If not provided, the globally
+                configured tracer provider will be automatically used.
 
         Returns:
-            An instrumented connection.
+            An instrumented MySQL connection with OpenTelemetry tracing enabled,
         """
         return dbapi.instrument_connection(
             __name__,
