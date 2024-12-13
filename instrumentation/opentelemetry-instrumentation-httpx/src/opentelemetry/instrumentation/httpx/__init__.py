@@ -192,6 +192,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import typing
 from asyncio import iscoroutinefunction
@@ -249,8 +251,8 @@ AsyncResponseHook = typing.Callable[
 
 class RequestInfo(typing.NamedTuple):
     method: bytes
-    url: URL
-    headers: typing.Optional[Headers]
+    url: httpx.URL
+    headers: httpx.Headers | None
     stream: typing.Optional[
         typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]
     ]
@@ -259,7 +261,7 @@ class RequestInfo(typing.NamedTuple):
 
 class ResponseInfo(typing.NamedTuple):
     status_code: int
-    headers: typing.Optional[Headers]
+    headers: httpx.Headers | None
     stream: typing.Iterable[bytes]
     extensions: typing.Optional[dict]
 
