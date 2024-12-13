@@ -65,7 +65,7 @@ Unless explicitly stated otherwise, any instrumentation here for a particular li
 The
 [`instrumentation/`](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation)
 directory includes OpenTelemetry instrumentation packages, which can be installed
-separately as:
+separately as :
 
 ```sh
 pip install opentelemetry-instrumentation-{integration}
