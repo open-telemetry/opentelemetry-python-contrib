@@ -56,7 +56,7 @@ the query with contextual information.
     cursor.close()
     cnx.close()
     
-    instrumented_connection = MySQLClientInstrumentor.instrument_connection(
+    instrumented_cnx = MySQLClientInstrumentor.instrument_connection(
         cnx,
         enable_commenter=True,
         commenter_options={
@@ -65,11 +65,11 @@ the query with contextual information.
             "driver_paramstyle": False
             }
         )
-    cursor = instrumented_connection.cursor()
+    cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
-    instrumented_connection.commit()
+    instrumented_cnx.commit()
     cursor.close()
-    instrumented_connection.close()
+    instrumented_cnx.close()
 
 For example,
 ::
