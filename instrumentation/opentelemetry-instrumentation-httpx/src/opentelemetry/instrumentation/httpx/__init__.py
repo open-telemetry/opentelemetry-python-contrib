@@ -890,7 +890,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 that is called right before the span ends
         """
 
-        if getattr(client, "_is_instrumented_by_opentelemetry", False):
+        if getattr(
+            client._transport, "_is_instrumented_by_opentelemetry", False
+        ):
             _logger.warning(
                 "Attempting to instrument Httpx client while already instrumented"
             )
@@ -946,7 +948,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             response_hook=response_hook,
                         ),
                     )
-            client._is_instrumented_by_opentelemetry = True
+            client._transport._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -972,7 +974,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             async_response_hook=async_response_hook,
                         ),
                     )
-            client._is_instrumented_by_opentelemetry = True
+            client._transport._is_instrumented_by_opentelemetry = True
 
     @staticmethod
     def uninstrument_client(
@@ -987,9 +989,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             unwrap(client._transport, "handle_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_request")
-            client._is_instrumented_by_opentelemetry = False
+            client._transport._is_instrumented_by_opentelemetry = False
         elif hasattr(client._transport, "handle_async_request"):
             unwrap(client._transport, "handle_async_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_async_request")
-            client._is_instrumented_by_opentelemetry = False
+            client._transport._is_instrumented_by_opentelemetry = False
