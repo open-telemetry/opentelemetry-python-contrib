@@ -175,9 +175,12 @@ class _OpenTelemetrySemanticConventionStability:
         # http/dup,database/dup has higher precedence over http,database
         if dup_mode.value in opt_in_list:
             return dup_mode
-        elif stable_mode.value in opt_in_list:
-            return stable_mode
-        return _StabilityMode.DEFAULT
+
+        return (
+            stable_mode
+            if stable_mode.value in opt_in_list
+            else _StabilityMode.DEFAULT
+        )
 
     @classmethod
     def _get_opentelemetry_stability_opt_in_mode(cls, signal_type):
