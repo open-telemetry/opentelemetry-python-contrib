@@ -217,6 +217,6 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         # Verify no span attributes are set if not recording
         span.set_attribute.assert_not_called()
         span.set_status.assert_not_called()
-        # status code set for metrics independent of tracing decision for
+        # Verify status code set for metrics independent of tracing decision
         self.assertIn("http.status_code", metrics_attributes)
         self.assertIn("http.response.status_code", metrics_attributes)
