@@ -43,7 +43,11 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer,
+    connections_usage,
+    enable_commenter=False,
+    commenter_options=None,
+    enable_attribute_commenter=False,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -57,6 +61,7 @@ def _wrap_create_async_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            enable_attribute_commenter,
         )
         return engine
 
@@ -64,7 +69,11 @@ def _wrap_create_async_engine(
 
 
 def _wrap_create_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer,
+    connections_usage,
+    enable_commenter=False,
+    commenter_options=None,
+    enable_attribute_commenter=False,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -77,6 +86,7 @@ def _wrap_create_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            enable_attribute_commenter,
         )
         return engine
 
@@ -110,12 +120,14 @@ class EngineTracer:
         connections_usage,
         enable_commenter=False,
         commenter_options=None,
+        enable_attribute_commenter=False,
     ):
         self.tracer = tracer
         self.connections_usage = connections_usage
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self.enable_attribute_commenter = enable_attribute_commenter
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -251,12 +263,21 @@ class EngineTracer:
                         if self.commenter_options.get(k, True)
                     }
 
-                    statement = _add_sql_comment(statement, **commenter_data)
+                    if self.enable_attribute_commenter:
+                        statement = _add_sql_comment(
+                            statement, **commenter_data
+                        )
 
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
                 span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
                 for key, value in attrs.items():
                     span.set_attribute(key, value)
+
+                if (
+                    self.enable_commenter
+                    and not self.enable_attribute_commenter
+                ):
+                    statement = _add_sql_comment(statement, **commenter_data)
 
         context._otel_span = span
 
