@@ -26,7 +26,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.trace.status import StatusCode
 
 
-def semconv_stability_mode(mode):
+def stability_mode(mode):
     def decorator(test_case):
         @patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: mode})
         def wrapper(*args, **kwargs):
@@ -40,7 +40,7 @@ def semconv_stability_mode(mode):
 
 
 class TestOpenTelemetrySemConvStability(TestCase):
-    @semconv_stability_mode("")
+    @stability_mode("")
     def test_default_mode(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -48,9 +48,15 @@ class TestOpenTelemetrySemConvStability(TestCase):
             ),
             _StabilityMode.DEFAULT,
         )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE
+            ),
+            _StabilityMode.DEFAULT,
+        )
 
-    @semconv_stability_mode("http")
-    def test_http_mode(self):
+    @stability_mode("http")
+    def test_http_stable_mode(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.HTTP
@@ -58,7 +64,7 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.HTTP,
         )
 
-    @semconv_stability_mode("http/dup")
+    @stability_mode("http/dup")
     def test_http_dup_mode(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -67,8 +73,8 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.HTTP_DUP,
         )
 
-    @semconv_stability_mode("database")
-    def test_database_mode(self):
+    @stability_mode("database")
+    def test_database_stable_mode(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.DATABASE
@@ -76,7 +82,7 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.DATABASE,
         )
 
-    @semconv_stability_mode("database/dup")
+    @stability_mode("database/dup")
     def test_database_dup_mode(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -85,8 +91,8 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.DATABASE_DUP,
         )
 
-    @semconv_stability_mode("database,http")
-    def test_multiple_stability_modes(self):
+    @stability_mode("database,http")
+    def test_multiple_stability_database_http_modes(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.DATABASE
@@ -100,7 +106,37 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.HTTP,
         )
 
-    @semconv_stability_mode("database,database/dup,http,http/dup")
+    @stability_mode("database,http/dup")
+    def test_multiple_stability_database_http_dup_modes(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE
+            ),
+            _StabilityMode.DATABASE,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP
+            ),
+            _StabilityMode.HTTP_DUP,
+        )
+
+    @stability_mode("database/dup,http")
+    def test_multiple_stability_database_dup_http_stable_modes(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE
+            ),
+            _StabilityMode.DATABASE_DUP,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP
+            ),
+            _StabilityMode.HTTP,
+        )
+
+    @stability_mode("database,database/dup,http,http/dup")
     def test_stability_mode_dup_precedence(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
