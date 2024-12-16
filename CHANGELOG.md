@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.29.0/0.50b0 (2024-12-11)
+
 ### Added
 
 - `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
@@ -50,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
 - `opentelemetry-instrumentation-sqlalchemy`: Fix a remaining memory leak in EngineTracer
   ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
+- `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
+  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
 
 ### Breaking changes
 
