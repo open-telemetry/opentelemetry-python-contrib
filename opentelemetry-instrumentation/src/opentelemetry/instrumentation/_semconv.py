@@ -120,11 +120,11 @@ class _StabilityMode(Enum):
     DATABASE_DUP = "database/dup"
 
 
-def _report_new(mode):
+def _report_new(mode: _StabilityMode):
     return mode != _StabilityMode.DEFAULT
 
 
-def _report_old(mode):
+def _report_old(mode: _StabilityMode):
     return mode not in (_StabilityMode.HTTP, _StabilityMode.DATABASE)
 
 
@@ -138,9 +138,10 @@ class _OpenTelemetrySemanticConventionStability:
         with cls._lock:
             if cls._initialized:
                 return
+
             # Users can pass in comma delimited string for opt-in options
-            # Only values for http stability are supported for now
-            opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN, "")
+            # Only values for http and database stability are supported for now
+            opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN)
 
             if not opt_in:
                 # early return in case of default
@@ -183,7 +184,10 @@ class _OpenTelemetrySemanticConventionStability:
         )
 
     @classmethod
-    def _get_opentelemetry_stability_opt_in_mode(cls, signal_type):
+    def _get_opentelemetry_stability_opt_in_mode(
+        cls, signal_type: _OpenTelemetryStabilitySignalType
+    ) -> _StabilityMode:
+        # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)
         return cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
             signal_type, _StabilityMode.DEFAULT
         )
