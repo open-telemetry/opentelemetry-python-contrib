@@ -79,6 +79,11 @@ def _http_get_function_fargate(url: str, *args, **kwargs) -> str:
 
 
 class AwsEcsResourceDetectorTest(unittest.TestCase):
+    @patch.dict("os.environ", {}, clear=True)
+    def test_not_on_ecs(self):
+        actual = AwsEcsResourceDetector().detect()
+        self.assertDictEqual(actual.attributes.copy(), {})
+
     @patch.dict(
         "os.environ",
         {"ECS_CONTAINER_METADATA_URI": "mock-uri"},
