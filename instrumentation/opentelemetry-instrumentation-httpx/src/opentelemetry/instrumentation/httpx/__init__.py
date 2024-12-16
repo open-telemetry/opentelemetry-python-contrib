@@ -402,6 +402,8 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             that is called right before the span ends
     """
 
+    _is_instrumented_by_opentelemetry = True
+
     def __init__(
         self,
         transport: httpx.BaseTransport,
@@ -526,6 +528,8 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
     """
+
+    _is_instrumented_by_opentelemetry = True
 
     def __init__(
         self,
