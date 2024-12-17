@@ -55,7 +55,7 @@ the query with contextual information.
     cnx.commit()
     cursor.close()
     cnx.close()
-    
+
     instrumented_cnx = MySQLClientInstrumentor.instrument_connection(
         cnx,
         enable_commenter=True,
@@ -197,7 +197,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
                     - `driver_paramstyle`: Adds the parameter style.
                     - `opentelemetry_values`: Includes traceparent values.
                 Refer to *SQLCommenter Configurations* above for more information
-                
+
         Returns:
             An instrumented MySQL connection with OpenTelemetry support enabled.
         """

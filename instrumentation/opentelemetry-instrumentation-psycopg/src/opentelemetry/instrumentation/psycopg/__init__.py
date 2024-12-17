@@ -92,18 +92,18 @@ Usage
     PsycopgInstrumentor().instrument()
 
     cnx = psycopg.connect(database='Database')
-    
+
     cursor = cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
-    
+
     instrumented_cnx = instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     instrumented_cnx.close()
-    
+
 API
 ---
 """
@@ -205,15 +205,15 @@ class PsycopgInstrumentor(BaseInstrumentor):
     def instrument_connection(connection, tracer_provider=None):
         """Enable instrumentation in a psycopg connection.
 
-            Args:
-                connection: psycopg.Connection
-                    The psycopg connection object to be instrumented.
-                tracer_provider: opentelemetry.trace.TracerProvider, optional
-                    The TracerProvider to use for instrumentation. If not provided,
-                    the global TracerProvider will be used.
+        Args:
+            connection: psycopg.Connection
+                The psycopg connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not provided,
+                the global TracerProvider will be used.
 
-            Returns:
-                An instrumented psycopg connection object.
+        Returns:
+            An instrumented psycopg connection object.
         """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False

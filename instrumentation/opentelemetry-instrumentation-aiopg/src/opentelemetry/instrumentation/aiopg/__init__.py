@@ -35,19 +35,19 @@ Usage
     cnx.close()
 
     pool = await aiopg.create_pool(database='Database')
-    
+
     cnx = await pool.acquire()
     cursor = await cnx.cursor()
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
-    
+
     cnx = AiopgInstrumentor().instrument_connection(cnx)
     cursor = await cnx.cursor()
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
-    
+
 API
 ---
 """

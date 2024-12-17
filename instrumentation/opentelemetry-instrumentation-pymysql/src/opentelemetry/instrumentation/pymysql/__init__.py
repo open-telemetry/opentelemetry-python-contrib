@@ -56,12 +56,12 @@ Usage
     cnx.commit()
     cursor.close()
     cnx.close()
-    
+
     instrumented_cnx = PyMySQLInstrumentor().instrument_connection(
         cnx,
         enable_commenter=True,
         commenter_options={
-            "db_driver": True, 
+            "db_driver": True,
             "mysql_client_version": True
         }
     )

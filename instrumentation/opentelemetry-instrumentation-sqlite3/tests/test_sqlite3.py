@@ -29,7 +29,9 @@ class TestSQLite3(TestBase):
         self._cursor = self._connection.cursor()
         self._connection2 = dbapi2.connect(":memory:")
         self._cursor2 = self._connection2.cursor()
-        self._connection3 = SQLite3Instrumentor.instrument_connection(dbapi2.connect(":memory:"))
+        self._connection3 = SQLite3Instrumentor.instrument_connection(
+            dbapi2.connect(":memory:")
+        )
         self._cursor3 = self._connection3.cursor()
 
     def tearDown(self):
@@ -84,7 +86,7 @@ class TestSQLite3(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor2.execute(stmt)
         self.validate_spans("CREATE")
-        
+
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor3.execute(stmt)
         self.validate_spans("CREATE")
@@ -107,7 +109,7 @@ class TestSQLite3(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor3.executemany(stmt, data)
         self.validate_spans("INSERT")
-        
+
     def test_callproc(self):
         """Should create a child span for callproc"""
         with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
@@ -115,4 +117,3 @@ class TestSQLite3(TestBase):
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
-

@@ -31,23 +31,19 @@ Usage
     SQLite3Instrumentor().instrument()
 
     cnx = sqlite3.connect(':memory:')
-    
     cursor = cnx.cursor()
     cursor.execute("CREATE TABLE test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
-    
     conn = sqlite3.connect(":memory:")
-    
     instrumented_connection = SQLite3Instrumentor.instrument_connection(conn)
     cursor = instrumented_connection.cursor()
     cursor.execute("CREATE TABLE test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.execute("SELECT * FROM test")     
+    cursor.execute("SELECT * FROM test")
     cursor.close()
     instrumented_connection.close()
-
 API
 ---
 """
@@ -119,11 +115,10 @@ class SQLite3Instrumentor(BaseInstrumentor):
             telemetry for tracing database operations.
 
         Notes:
-            - Instrumentation must be explicitly applied to the connection object 
-              for tracing to work. This is not done automatically by simply calling 
+            - Instrumentation must be explicitly applied to the connection object
+              for tracing to work. This is not done automatically by simply calling
               `SQLite3Instrumentor().instrument()`.
         """
-
         return dbapi.instrument_connection(
             __name__,
             connection,
@@ -146,4 +141,3 @@ class SQLite3Instrumentor(BaseInstrumentor):
             An uninstrumented connection.
         """
         return dbapi.uninstrument_connection(connection)
-
