@@ -87,7 +87,6 @@ from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -100,6 +99,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
@@ -147,7 +147,7 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -312,7 +312,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.DEFAULT,
+                    _StabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
@@ -323,7 +323,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.HTTP,
+                    _StabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
