@@ -91,7 +91,7 @@ for more detail on available tox commands.
 
 Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
 
-For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the CI to maintain compatibility when building the documentation.
+For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
 ### Benchmarks
 
