@@ -190,6 +190,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             commenter_options:
                 A dictionary of configuration options for SQLCommenter. This allows you to customize
                 metadata appended to queries. Possible options include:
+
                     - `db_driver`: Adds the database driver name and version.
                     - `dbapi_threadsafety`: Adds threadsafety information.
                     - `dbapi_level`: Adds the DB-API version.
