@@ -510,6 +510,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                     "db_framework": False,
                     "opentelemetry_values": False,
                 },
+                enable_attribute_commenter=True,
             )
             from sqlalchemy.ext.asyncio import (  # pylint: disable-all
                 create_async_engine,
