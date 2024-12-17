@@ -63,8 +63,8 @@ the query with contextual information.
             "db_driver": True,
             "mysql_client_version": True,
             "driver_paramstyle": False
-            }
-        )
+        }
+    )
     cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
     instrumented_cnx.commit()
@@ -177,17 +177,17 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         """Enable instrumentation in a mysqlclient connection.
 
         Args:
-            connection (MySQLdb.connect or Connection object):
+            connection:
                 The MySQL connection instance to instrument. This connection is typically
                 created using `MySQLdb.connect()` and needs to be wrapped to collect telemetry.
-            tracer_provider (TracerProvider, optional):
+            tracer_provider:
                 A custom `TracerProvider` instance to be used for tracing. If not specified,
                 the globally configured tracer provider will be used.
-            enable_commenter (bool, optional):
+            enable_commenter:
                 A flag to enable the OpenTelemetry SQLCommenter feature. If set to `True`,
                 SQL queries will be enriched with contextual information (e.g., database client details).
                 Default is `None`.
-            commenter_options (dict, optional):
+            commenter_options:
                 A dictionary of configuration options for SQLCommenter. This allows you to customize
                 metadata appended to queries. Possible options include:
                     - `db_driver`: Adds the database driver name and version.
@@ -196,8 +196,6 @@ class MySQLClientInstrumentor(BaseInstrumentor):
                     - `mysql_client_version`: Adds the MySQL client version.
                     - `driver_paramstyle`: Adds the parameter style.
                     - `opentelemetry_values`: Includes traceparent values.
-                Refer to *SQLCommenter Configurations* above for more information
-
         Returns:
             An instrumented MySQL connection with OpenTelemetry support enabled.
         """

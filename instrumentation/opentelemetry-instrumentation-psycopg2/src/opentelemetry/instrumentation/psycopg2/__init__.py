@@ -103,6 +103,7 @@ Usage
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     instrumented_cnx.close()
+
 API
 ---
 """

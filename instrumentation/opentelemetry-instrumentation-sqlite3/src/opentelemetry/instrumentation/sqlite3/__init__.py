@@ -44,6 +44,7 @@ Usage
     cursor.execute("SELECT * FROM test")
     cursor.close()
     instrumented_connection.close()
+
 API
 ---
 """
@@ -111,7 +112,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 the current globally configured one is used.
 
         Returns:
-            SQLite3Connection: An instrumented SQLite connection that supports
+            An instrumented SQLite connection that supports
             telemetry for tracing database operations.
 
         Notes:

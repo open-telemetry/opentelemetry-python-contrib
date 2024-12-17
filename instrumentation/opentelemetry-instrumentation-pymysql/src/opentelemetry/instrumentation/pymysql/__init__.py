@@ -179,16 +179,16 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         """Enable instrumentation in a PyMySQL connection.
 
         Args:
-            connection (pymysql.Connection):
+            connection:
                 The existing PyMySQL connection instance that needs to be instrumented.
                 This connection was typically created using `pymysql.connect()` and is wrapped with OpenTelemetry tracing.
-            tracer_provider (TracerProvider, optional):
+            tracer_provider:
                 An optional `TracerProvider` instance that specifies which tracer provider should be used.
                 If not provided, the globally configured OpenTelemetry tracer provider is automatically applied.
-            enable_commenter (bool, optional):
+            enable_commenter:
                 A flag to enable the SQL Commenter feature. If `True`, query logs will be enriched with additional
                 contextual metadata (e.g., database version, traceparent IDs, driver information).
-            commenter_options (dict, optional):
+            commenter_options:
                 A dictionary containing configuration options for the SQL Commenter feature.
                 You can specify various options, such as enabling driver information, database version logging,
                 traceparent propagation, and other customizable metadata enhancements.
