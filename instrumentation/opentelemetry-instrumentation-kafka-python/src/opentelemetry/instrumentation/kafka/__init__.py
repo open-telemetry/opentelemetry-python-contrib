@@ -18,7 +18,7 @@ Instrument kafka-python to report instrumentation-kafka produced and consumed me
 Usage
 -----
 
-..code:: python
+.. code:: python
 
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
@@ -45,7 +45,8 @@ this function signature is:
 def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 
-.. code: python
+.. code:: python
+
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
 

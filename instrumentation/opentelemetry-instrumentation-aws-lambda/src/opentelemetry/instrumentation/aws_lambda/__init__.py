@@ -29,7 +29,6 @@ Usage
 
     # Enable instrumentation
     BotocoreInstrumentor().instrument()
-    AwsLambdaInstrumentor().instrument()
 
     # Lambda function
     def lambda_handler(event, context):
@@ -38,6 +37,8 @@ Usage
             print(bucket.name)
 
         return "200 OK"
+
+    AwsLambdaInstrumentor().instrument()
 
 API
 ---

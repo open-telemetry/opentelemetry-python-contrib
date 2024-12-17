@@ -1,0 +1,7 @@
+# Need to install the api/sdk in the venv for autodoc. Used by .readthedocs.yml
+opentelemetry-api @ git+https://github.com/open-telemetry/opentelemetry-python.git@main#egg=opentelemetry-api&subdirectory=opentelemetry-api
+opentelemetry-semantic-conventions @ git+https://github.com/open-telemetry/opentelemetry-python.git@main#egg=opentelemetry-semantic-conventions&subdirectory=opentelemetry-semantic-conventions
+opentelemetry-sdk @ git+https://github.com/open-telemetry/opentelemetry-python.git@main#egg=opentelemetry-sdk&subdirectory=opentelemetry-sdk
+./opentelemetry-instrumentation
+./util/opentelemetry-util-http
+-r ./docs-requirements.txt

@@ -1,0 +1,119 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "model": "gpt-4",
+        "stream": true,
+        "stream_options": {
+          "include_usage": true
+        }
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '142'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.54.3
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.54.3
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.6
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"role":"assistant","content":"","refusal":null},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":"\"This"},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":" is"},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":" a"},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":" test"},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":".\""},"logprobs":null,"finish_reason":null}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}],"usage":null}
+
+        data: {"id":"chatcmpl-ASYMZ4oSykiIFK4lXLReDiKyAjsQl","object":"chat.completion.chunk","created":1731368639,"model":"gpt-4-0613","system_fingerprint":null,"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":5,"total_tokens":17,"prompt_tokens_details":{"cached_tokens":0,"audio_tokens":0},"completion_tokens_details":{"reasoning_tokens":0,"audio_tokens":0,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
+
+        data: [DONE]
+
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8e1225c87b273e53-SIN
+      Connection:
+      - keep-alive
+      Content-Type:
+      - text/event-stream; charset=utf-8
+      Date:
+      - Mon, 11 Nov 2024 23:43:59 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-organization: test_openai_org_id
+      openai-processing-ms:
+      - '207'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9978'
+      x-ratelimit-reset-requests:
+      - 8.64s
+      x-ratelimit-reset-tokens:
+      - 132ms
+      x-request-id:
+      - req_c367cf360ee88481fb7cd6c5d45bf9dc
+    status:
+      code: 200
+      message: OK
+version: 1

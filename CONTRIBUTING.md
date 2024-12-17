@@ -34,6 +34,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
   * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
 * [Style Guide](#style-guide)
 * [Guideline for instrumentations](#guideline-for-instrumentations)
+* [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
 * [Expectations from contributors](#expectations-from-contributors)
 
 ## Find a Buddy and get Started Quickly
@@ -67,6 +68,7 @@ You can run `tox` with the following arguments:
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
 * `tox -e lint-some-package` to run lint checks on `some-package`
+* `tox -e generate-workflows` to run creation of new CI workflows if tox environments have been updated
 * `tox -e ruff` to run ruff linter and formatter checks against the entire codebase
 
 `ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
@@ -270,7 +272,23 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Isolate sync and async test
   - For synchronous tests, the typical test case class is inherited from `opentelemetry.test.test_base.TestBase`. However, if you want to write asynchronous tests, the test case class should inherit also from `IsolatedAsyncioTestCase`. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/60fb936b7e5371b3e5587074906c49fb873cbd76/instrumentation/opentelemetry-instrumentation-grpc/tests/test_aio_server_interceptor.py#L84>
-- All instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for the same version. That means that if you want to install your instrumentation you need to install its dependencies from this repo and the core repo also from git.
+- Most of the instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for a [compatible version](https://peps.python.org/pep-0440/#compatible-release). That means that you may need to install the instrumentation dependencies from this repo and the core repo from git.
+- Documentation
+  - When adding a new instrumentation remember to add an entry in `docs/instrumentation/` named `<instrumentation>/<instrumentation>.rst` to have the instrumentation documentation referenced from the index. You can use the entry template available [here](./_template/autodoc_entry.rst)
+- Testing
+  - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
+
+## Guideline for GenAI instrumentations
+
+Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems will be placed in the [instrumentation-genai](./instrumentation-genai) folder. This section covers contributions related to those instrumentations. Please note that the [guidelines for instrumentations](#guideline-for-instrumentations) and [expectations from contributors](#expectations-from-contributors) still apply.
+
+### Get Involved
+
+* Reviewing PRs: If you would like to be tagged as reviewer in new PRs related to these instrumentations, please submit a PR to add your GitHub handle to [component_owners.yml](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/component_owners.yml) under the corresponding instrumentation folder(s).
+
+* Approving PRs: If you would like to be able to approve PRs related to these instrumentations, you must join [opentelemetry-python-contrib-approvers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-approvers) team. Please ask one of the [Python contrib maintainers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-maintainers) to be accepted into the team.
+
+* Tracking and Creating Issues: For tracking issues related to Generative AI, please filter or add the label [gen-ai](https://github.com/open-telemetry/opentelemetry-python-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Agen-ai) when creating or searching issues. If you do not see an issue related to an instrumentation you would like to contribute to, please create a new tracking issue so the community is aware of its progress.
 
 ## Expectations from contributors
 
@@ -284,6 +302,7 @@ When updating the minimum supported Python version remember to:
 
 - Remove the version in `pyproject.toml` trove classifiers
 - Remove the version from `tox.ini`
+- Update github workflows accordingly with `tox -e generate-workflows`
 - Search for `sys.version_info` usage and remove code for unsupported versions
 - Bump `py-version` in `.pylintrc` for Python version dependent checks
 
@@ -293,6 +312,6 @@ When adding support for a new Python release remember to:
 
 - Add the version in `tox.ini`
 - Add the version in `pyproject.toml` trove classifiers
-- Update github workflows accordingly; lint and benchmarks use the latest supported version
+- Update github workflows accordingly with `tox -e generate-workflows`; lint and benchmarks use the latest supported version
 - Update `.pre-commit-config.yaml`
 - Update tox examples in the documentation

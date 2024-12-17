@@ -120,7 +120,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             self.assertIs(span.kind, trace.SpanKind.SERVER)
 
             # Check version and name in span's instrumentation info
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.grpc
             )
 
@@ -188,7 +188,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -252,7 +252,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -307,7 +307,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -371,7 +371,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -594,7 +594,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -626,7 +626,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 

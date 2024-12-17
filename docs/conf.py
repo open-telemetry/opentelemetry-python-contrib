@@ -40,6 +40,13 @@ instr_dirs = [
     if isdir(join(instr, f))
 ]
 
+instr_genai = "../instrumentation-genai"
+instr_genai_dirs = [
+    os.path.abspath("/".join(["../instrumentation-genai", f, "src"]))
+    for f in listdir(instr_genai)
+    if isdir(join(instr_genai, f))
+]
+
 prop = "../propagator"
 prop_dirs = [
     os.path.abspath("/".join([prop, f, "src"]))
@@ -60,7 +67,14 @@ resource_dirs = [
     for f in listdir(resource)
     if isdir(join(resource, f))
 ]
-sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_dirs
+sys.path[:0] = (
+    exp_dirs
+    + instr_dirs
+    + instr_genai_dirs
+    + sdk_ext_dirs
+    + prop_dirs
+    + resource_dirs
+)
 
 # -- Project information -----------------------------------------------------
 

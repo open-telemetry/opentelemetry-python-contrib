@@ -67,7 +67,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -96,7 +96,7 @@ class TestAiopgInstrumentor(TestBase):
                     span = spans_list[0]
 
                     # Check version and name in span's instrumentation info
-                    self.assertEqualSpanInstrumentationInfo(
+                    self.assertEqualSpanInstrumentationScope(
                         span, opentelemetry.instrumentation.aiopg
                     )
 
@@ -117,7 +117,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -148,7 +148,7 @@ class TestAiopgInstrumentor(TestBase):
                         span = spans_list[0]
 
                         # Check version and name in span's instrumentation info
-                        self.assertEqualSpanInstrumentationInfo(
+                        self.assertEqualSpanInstrumentationScope(
                             span, opentelemetry.instrumentation.aiopg
                         )
 

@@ -81,14 +81,13 @@ jobs:
       # rejected by pypi (e.g "3 - Beta"). This would cause a failure during the
       # middle of the package upload causing the action to fail, and certain packages
       # might have already been updated, this would be bad.
-      # EDIT: 5/31/2024 - TestPypi now requires a verified email. Commenting out as a temporary measure
-      # until we found TestPypi credentials.
-      # - name: Publish to TestPyPI
-      #   env:
-      #     TWINE_USERNAME: '__token__'
-      #     TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-      #   run: |
-      #     twine upload --repository testpypi --skip-existing --verbose dist/*
+
+      - name: Publish to TestPyPI
+        env:
+          TWINE_USERNAME: '__token__'
+          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+        run: |
+          twine upload --repository testpypi --skip-existing --verbose dist/*
 
       - name: Publish to PyPI
         env:
@@ -119,36 +118,3 @@ jobs:
           # the step below is creating a pull request against main
           ref: main
 
-      - name: Copy change log updates to main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "VERSION=${STABLE_VERSION}\/${UNSTABLE_VERSION}" >> $GITHUB_ENV
-          echo "RELEASE_TAG=$STABLE_VERSION" >> $GITHUB_ENV
-          ./scripts/merge_changelog_to_main.sh
-
-      - name: Use CLA approved github bot
-        run: .github/scripts/use-cla-approved-github-bot.sh
-
-      - name: Create pull request against main
-        env:
-          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
-        run: |
-          message="Copy change log updates from $GITHUB_REF_NAME"
-          body="Copy log updates from \`$GITHUB_REF_NAME\`."
-          branch="opentelemetrybot/copy-change-log-updates-from-${GITHUB_REF_NAME//\//-}"
-
-          if [[ -z $PRIOR_VERSION_WHEN_PATCH ]]; then
-            if git diff --quiet; then
-              echo there are no updates needed to the change log on main, not creating pull request
-              exit 0 # success
-            fi
-          fi
-
-          git commit -a -m "$message"
-          git push origin HEAD:$branch
-          gh pr create --title "$message" \
-                       --body "$body" \
-                       --head $branch \
-                       --base main

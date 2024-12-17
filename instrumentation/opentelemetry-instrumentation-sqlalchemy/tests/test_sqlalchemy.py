@@ -17,7 +17,10 @@ from unittest import mock
 
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    create_engine,
+    text,
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -43,12 +46,14 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
-        cnx.execute("/* leading comment */ SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
+        cnx.execute(text("/* leading comment */ SELECT	1 + 1;")).fetchall()
         cnx.execute(
-            "/* leading comment */ SELECT	1 + 1; /* trailing comment */"
+            text(
+                "/* leading comment */ SELECT	1 + 1; /* trailing comment */"
+            )
         ).fetchall()
-        cnx.execute("SELECT	1 + 1; /* trailing comment */").fetchall()
+        cnx.execute(text("SELECT	1 + 1; /* trailing comment */")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 5)
@@ -76,9 +81,9 @@ class TestSqlalchemyInstrumentation(TestBase):
         )
 
         cnx_1 = engine_1.connect()
-        cnx_1.execute("SELECT	1 + 1;").fetchall()
+        cnx_1.execute(text("SELECT	1 + 1;")).fetchall()
         cnx_2 = engine_2.connect()
-        cnx_2.execute("SELECT	1 + 1;").fetchall()
+        cnx_2.execute(text("SELECT	1 + 1;")).fetchall()
 
         spans = self.memory_exporter.get_finished_spans()
         # 2 queries + 2 engine connect
@@ -111,7 +116,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 engine=engine.sync_engine, tracer_provider=self.tracer_provider
             )
             async with engine.connect() as cnx:
-                await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
+                await cnx.execute(text("SELECT	1 + 1;"))
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
@@ -144,7 +149,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 tracer_provider=self.tracer_provider,
             )
             cnx = engine.connect()
-            cnx.execute("SELECT	1 + 1;").fetchall()
+            cnx.execute(text("SELECT	1 + 1;")).fetchall()
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
@@ -156,7 +161,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
@@ -177,6 +182,17 @@ class TestSqlalchemyInstrumentation(TestBase):
             "opentelemetry.instrumentation.sqlalchemy",
         )
 
+    def test_instrument_engine_from_config(self):
+        SQLAlchemyInstrumentor().instrument()
+        from sqlalchemy import engine_from_config  # pylint: disable-all
+
+        engine = engine_from_config({"sqlalchemy.url": "sqlite:///:memory:"})
+        cnx = engine.connect()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+
     def test_create_engine_wrapper_enable_commenter(self):
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         SQLAlchemyInstrumentor().instrument(
@@ -187,7 +203,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         # sqlcommenter
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
@@ -207,7 +223,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT  1;").fetchall()
+        cnx.execute(text("SELECT  1;")).fetchall()
         # sqlcommenter
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
@@ -233,7 +249,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
@@ -258,7 +274,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
-                await cnx.execute(sqlalchemy.text("SELECT	1 + 1;"))
+                await cnx.execute(text("SELECT	1 + 1;"))
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
@@ -299,7 +315,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
-                await cnx.execute(sqlalchemy.text("SELECT  1;"))
+                await cnx.execute(text("SELECT  1;"))
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -330,7 +346,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
             engine = create_async_engine("sqlite+aiosqlite:///:memory:")
             async with engine.connect() as cnx:
-                await cnx.execute(sqlalchemy.text("SELECT  1;"))
+                await cnx.execute(text("SELECT  1;"))
             # sqlcommenter
             self.assertRegex(
                 self.caplog.records[1].getMessage(),
@@ -346,7 +362,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
@@ -359,10 +375,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         self.memory_exporter.clear()
         SQLAlchemyInstrumentor().uninstrument()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         engine2 = create_engine("sqlite:///:memory:")
         cnx2 = engine2.connect()
-        cnx2.execute("SELECT	2 + 2;").fetchall()
+        cnx2.execute(text("SELECT	2 + 2;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
@@ -371,7 +387,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=self.tracer_provider,
         )
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
 
@@ -384,13 +400,13 @@ class TestSqlalchemyInstrumentation(TestBase):
         engine = create_engine("sqlite:///:memory:")
 
         cnx = engine.connect()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
 
         self.memory_exporter.clear()
         SQLAlchemyInstrumentor().uninstrument()
-        cnx.execute("SELECT	1 + 1;").fetchall()
+        cnx.execute(text("SELECT	1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
@@ -401,7 +417,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             tracer_provider=trace.NoOpTracerProvider(),
         )
         cnx = engine.connect()
-        cnx.execute("SELECT 1 + 1;").fetchall()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
@@ -412,6 +428,10 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         from sqlalchemy import create_engine
 
+        from opentelemetry.instrumentation.sqlalchemy.engine import (
+            EngineTracer,
+        )
+
         callback = mock.Mock()
 
         def make_shortlived_engine():
@@ -420,10 +440,11 @@ class TestSqlalchemyInstrumentation(TestBase):
             # collection
             weakref.finalize(engine, callback)
             with engine.connect() as conn:
-                conn.execute("SELECT 1 + 1;").fetchall()
+                conn.execute(text("SELECT 1 + 1;")).fetchall()
 
         for _ in range(0, 5):
             make_shortlived_engine()
 
         gc.collect()
         assert callback.call_count == 5
+        assert len(EngineTracer._remove_event_listener_params) == 0

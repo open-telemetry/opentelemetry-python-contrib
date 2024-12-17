@@ -11,6 +11,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.29.0/0.50b0 (2024-12-11)
+
+### Added
+
+- `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
+  ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
+- `opentelemetry-distro` default to OTLP log exporter.
+  ([#3042](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3042))
+- `opentelemetry-instrumentation-sqlalchemy` Update unit tests to run with SQLALchemy 2
+  ([#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976))
+- Add `opentelemetry-instrumentation-openai-v2` to `opentelemetry-bootstrap`
+  ([#2996](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2996))
+- `opentelemetry-instrumentation-sqlalchemy` Add sqlcomment to `db.statement` attribute
+  ([#2937](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2937))
+- `opentelemetry-instrumentation-dbapi` Add sqlcomment to `db.statement` attribute
+  ([#2935](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2935))
+- `opentelemetry-instrumentation-dbapi` instrument_connection accepts optional connect_module
+  ([#3027](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3027))
+- `opentelemetry-instrumentation-mysqlclient` Add sqlcommenter support
+  ([#2941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2941))
+- `opentelemetry-instrumentation-pymysql` Add sqlcommenter support
+  ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
+- `opentelemetry-instrumentation-click`: new instrumentation to trace click commands
+  ([#2994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2994))
+
+### Fixed
+
+- `opentelemetry-instrumentation-starlette`: Retrieve `meter_provider` key instead of `_meter_provider` on `_instrument`
+  ([#3048](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3048))
+- `opentelemetry-instrumentation-httpx`: instrument_client is a static method again
+  ([#3003](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3003))
+- `opentelemetry-instrumentation-system_metrics`: fix callbacks reading wrong config
+  ([#3025](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3025))
+- `opentelemetry-instrumentation-httpx`: Check if mount transport is none before wrap it
+  ([#3022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3022))
+- Replace all instrumentor unit test `assertEqualSpanInstrumentationInfo` calls with `assertEqualSpanInstrumentationScope` calls
+  ([#3037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3037))
+- `opentelemetry-instrumentation-sqlalchemy` Fixes engines from `sqlalchemy.engine_from_config` not being fully instrumented
+  ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
+- `opentelemetry-instrumentation-sqlalchemy`: Fix a remaining memory leak in EngineTracer
+  ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
+- `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
+  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-sqlalchemy` teach instruments version
+  ([#2971](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2971))
+- Drop `opentelemetry-instrumentation-test` package from default instrumentation list
+  ([#2969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2969))
+- `opentelemetry-instrumentation-httpx`: remove private unused `_InstrumentedClient` and `_InstrumentedAsyncClient` classes
+  ([#3036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3036))
+
+## Version 1.28.0/0.49b0 (2024-11-05)
+
 ### Added
 
 - `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
@@ -28,10 +83,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
-- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()` 
+- `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()`
   ([#2901])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901)
 - `opentelemetry-instrumentation-system-metrics` Update metric units to conform to UCUM conventions.
   ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
+- `opentelemetry-instrumentation-celery` Don't detach context without a None token
+  ([#2927](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2927))
+- `opentelemetry-exporter-prometheus-remote-write`: sort labels before exporting
+  ([#2940](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2940))
+- `opentelemetry-instrumentation-dbapi` sqlcommenter key values created from PostgreSQL, MySQL systems
+  ([#2897](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2897))
+- `opentelemetry-instrumentation-system-metrics`: don't report open file descriptors on Windows
+  ([#2946](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2946))
 
 ### Breaking changes
 
@@ -39,6 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2871](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2871))
 - `opentelemetry-instrumentation` Don't fail distro loading if instrumentor raises ImportError, instead skip them
   ([#2923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2923))
+- `opentelemetry-instrumentation-httpx` Rewrote instrumentation to use wrapt instead of subclassing
+  ([#2909](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2909))
 
 ## Version 1.27.0/0.48b0 (2024-08-28)
 

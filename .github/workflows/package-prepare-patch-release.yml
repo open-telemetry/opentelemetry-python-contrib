@@ -8,6 +8,7 @@ on:
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
+        - opentelemetry-instrumentation-openai-v2
         description: 'Package to be released'
         required: true
 jobs:
