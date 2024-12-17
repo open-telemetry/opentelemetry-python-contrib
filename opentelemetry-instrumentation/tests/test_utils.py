@@ -208,6 +208,21 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(commented_sql_without_semicolon, "Select 1")
 
+    def test_psycopg2_sql_composable(self):
+        """Test handling of psycopg2.sql.Composable input"""
+        # Mock psycopg2.sql.Composable object
+        class MockComposable:
+            def __str__(self):
+                return "SELECT * FROM table_name"
+
+        sql_query = MockComposable()
+        comments = {"trace_id": "abc123"}
+        
+        result = _add_sql_comment(sql_query, **comments)
+        expected = "SELECT * FROM table_name /*trace_id='abc123'*/"
+        
+        self.assertEqual(result, expected)
+
     def test_is_instrumentation_enabled_by_default(self):
         self.assertTrue(is_instrumentation_enabled())
         self.assertTrue(is_http_instrumentation_enabled())
