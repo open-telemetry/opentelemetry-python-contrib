@@ -71,6 +71,7 @@ def trace_integration(
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
+    enable_attribute_commenter: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -88,6 +89,7 @@ def trace_integration(
         enable_commenter: Flag to enable/disable sqlcommenter.
         db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
             default one is used.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
     """
     wrap_connect(
         __name__,
@@ -100,6 +102,7 @@ def trace_integration(
         capture_parameters=capture_parameters,
         enable_commenter=enable_commenter,
         db_api_integration_factory=db_api_integration_factory,
+        enable_attribute_commenter=enable_attribute_commenter,
     )
 
 
@@ -115,6 +118,7 @@ def wrap_connect(
     enable_commenter: bool = False,
     db_api_integration_factory=None,
     commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -133,6 +137,7 @@ def wrap_connect(
         db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
 
     """
     db_api_integration_factory = (
@@ -156,6 +161,7 @@ def wrap_connect(
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=connect_module,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -191,6 +197,7 @@ def instrument_connection(
     enable_commenter: bool = False,
     commenter_options: dict = None,
     connect_module: typing.Callable[..., typing.Any] = None,
+    enable_attribute_commenter: bool = False,
 ):
     """Enable instrumentation in a database connection.
 
@@ -206,6 +213,7 @@ def instrument_connection(
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
 
     Returns:
         An instrumented connection.
@@ -224,6 +232,7 @@ def instrument_connection(
         enable_commenter=enable_commenter,
         commenter_options=commenter_options,
         connect_module=connect_module,
+        enable_attribute_commenter=enable_attribute_commenter,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -257,6 +266,7 @@ class DatabaseApiIntegration:
         enable_commenter: bool = False,
         commenter_options: dict = None,
         connect_module: typing.Callable[..., typing.Any] = None,
+        enable_attribute_commenter: bool = False,
     ):
         self.connection_attributes = connection_attributes
         if self.connection_attributes is None:
@@ -277,6 +287,7 @@ class DatabaseApiIntegration:
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
+        self.enable_attribute_commenter = enable_attribute_commenter
         self.database_system = database_system
         self.connection_props = {}
         self.span_attributes = {}
@@ -434,6 +445,9 @@ class CursorTracer:
             if self._db_api_integration.commenter_options
             else {}
         )
+        self._enable_attribute_commenter = (
+            self._db_api_integration.enable_attribute_commenter
+        )
         self._connect_module = self._db_api_integration.connect_module
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -497,51 +511,109 @@ class CursorTracer:
         ) as span:
             if span.is_recording():
                 if args and self._commenter_enabled:
-                    try:
-                        args_list = list(args)
+                    # sqlcomment in query and span attribute
+                    if self._enable_attribute_commenter:
+                        try:
+                            args_list = list(args)
 
-                        # lazy capture of mysql-connector client version using cursor
-                        if (
-                            self._db_api_integration.database_system == "mysql"
-                            and self._db_api_integration.connect_module.__name__
-                            == "mysql.connector"
-                            and not self._db_api_integration.commenter_data[
-                                "mysql_client_version"
-                            ]
-                        ):
-                            self._db_api_integration.commenter_data[
-                                "mysql_client_version"
-                            ] = cursor._cnx._cmysql.get_client_info()
+                            # lazy capture of mysql-connector client version using cursor
+                            if (
+                                self._db_api_integration.database_system
+                                == "mysql"
+                                and self._db_api_integration.connect_module.__name__
+                                == "mysql.connector"
+                                and not self._db_api_integration.commenter_data[
+                                    "mysql_client_version"
+                                ]
+                            ):
+                                self._db_api_integration.commenter_data[
+                                    "mysql_client_version"
+                                ] = cursor._cnx._cmysql.get_client_info()
 
-                        commenter_data = dict(
-                            self._db_api_integration.commenter_data
-                        )
-                        if self._commenter_options.get(
-                            "opentelemetry_values", True
-                        ):
-                            commenter_data.update(
-                                **_get_opentelemetry_values()
+                            commenter_data = dict(
+                                self._db_api_integration.commenter_data
+                            )
+                            if self._commenter_options.get(
+                                "opentelemetry_values", True
+                            ):
+                                commenter_data.update(
+                                    **_get_opentelemetry_values()
+                                )
+
+                            # Filter down to just the requested attributes.
+                            commenter_data = {
+                                k: v
+                                for k, v in commenter_data.items()
+                                if self._commenter_options.get(k, True)
+                            }
+                            statement = _add_sql_comment(
+                                args_list[0], **commenter_data
                             )
 
-                        # Filter down to just the requested attributes.
-                        commenter_data = {
-                            k: v
-                            for k, v in commenter_data.items()
-                            if self._commenter_options.get(k, True)
-                        }
-                        statement = _add_sql_comment(
-                            args_list[0], **commenter_data
-                        )
+                            args_list[0] = statement
+                            args = tuple(args_list)
 
-                        args_list[0] = statement
-                        args = tuple(args_list)
+                        except Exception as exc:  # pylint: disable=broad-except
+                            _logger.exception(
+                                "Exception while generating sql comment: %s",
+                                exc,
+                            )
 
-                    except Exception as exc:  # pylint: disable=broad-except
-                        _logger.exception(
-                            "Exception while generating sql comment: %s", exc
-                        )
+                        self._populate_span(span, cursor, *args)
 
-                self._populate_span(span, cursor, *args)
+                    # sqlcomment in query only
+                    else:
+                        self._populate_span(span, cursor, *args)
+
+                        try:
+                            args_list = list(args)
+
+                            # lazy capture of mysql-connector client version using cursor
+                            if (
+                                self._db_api_integration.database_system
+                                == "mysql"
+                                and self._db_api_integration.connect_module.__name__
+                                == "mysql.connector"
+                                and not self._db_api_integration.commenter_data[
+                                    "mysql_client_version"
+                                ]
+                            ):
+                                self._db_api_integration.commenter_data[
+                                    "mysql_client_version"
+                                ] = cursor._cnx._cmysql.get_client_info()
+
+                            commenter_data = dict(
+                                self._db_api_integration.commenter_data
+                            )
+                            if self._commenter_options.get(
+                                "opentelemetry_values", True
+                            ):
+                                commenter_data.update(
+                                    **_get_opentelemetry_values()
+                                )
+
+                            # Filter down to just the requested attributes.
+                            commenter_data = {
+                                k: v
+                                for k, v in commenter_data.items()
+                                if self._commenter_options.get(k, True)
+                            }
+                            statement = _add_sql_comment(
+                                args_list[0], **commenter_data
+                            )
+
+                            args_list[0] = statement
+                            args = tuple(args_list)
+
+                        except Exception as exc:  # pylint: disable=broad-except
+                            _logger.exception(
+                                "Exception while generating sql comment: %s",
+                                exc,
+                            )
+
+                # No sqlcommenting
+                else:
+                    self._populate_span(span, cursor, *args)
 
             return query_method(*args, **kwargs)
 
