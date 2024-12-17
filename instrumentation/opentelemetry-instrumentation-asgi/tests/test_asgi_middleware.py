@@ -24,12 +24,12 @@ import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -1652,7 +1652,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
 
         self.assertDictEqual(
@@ -1677,7 +1677,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
 
         self.assertDictEqual(
@@ -1715,7 +1715,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
         self.assertEqual(attrs[URL_SCHEME], "http")
         self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
@@ -1726,7 +1726,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
         self.assertEqual(
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
@@ -1762,7 +1762,7 @@ class TestAsgiAttributes(unittest.TestCase):
             self.span,
             404,
             None,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
         expected = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, 1)
@@ -1774,7 +1774,7 @@ class TestAsgiAttributes(unittest.TestCase):
             self.span,
             404,
             None,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
         expected2 = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
