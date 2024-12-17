@@ -205,7 +205,6 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -215,6 +214,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_peer_port_client,
     _set_http_status_code,
     _set_http_url,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.httpx.package import _instruments
 from opentelemetry.instrumentation.httpx.version import __version__
@@ -334,7 +334,7 @@ def _apply_request_client_attributes_to_span(
     span_attributes: dict,
     url: typing.Union[str, URL, httpx.URL],
     method_original: str,
-    semconv: _HTTPStabilityMode,
+    semconv: _StabilityMode,
 ):
     url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
@@ -363,7 +363,7 @@ def _apply_response_client_attributes_to_span(
     span: Span,
     status_code: int,
     http_version: str,
-    semconv: _HTTPStabilityMode,
+    semconv: _StabilityMode,
 ):
     # http semconv transition: http.status_code -> http.response.status_code
     # TODO: use _set_status when it's stable for http clients
