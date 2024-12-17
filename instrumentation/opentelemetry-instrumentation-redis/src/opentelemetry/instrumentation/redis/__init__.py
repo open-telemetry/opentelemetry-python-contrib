@@ -113,7 +113,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, StatusCode, Tracer
 
 if TYPE_CHECKING:
-    from typing import Awaitable, TypeAlias, TypeVar
+    from typing import Awaitable, TypeVar
 
     import redis.asyncio.client
     import redis.asyncio.cluster
@@ -121,10 +121,10 @@ if TYPE_CHECKING:
     import redis.cluster
     import redis.connection
 
-    _RequestHookT: TypeAlias = "Callable[[Span, redis.connection.Connection, list[Any], dict[str, Any]], None]"
-    _ResponseHookT: TypeAlias = (
-        "Callable[[Span, redis.connection.Connection, Any], None]"
-    )
+    _RequestHookT = Callable[
+        [Span, redis.connection.Connection, list[Any], dict[str, Any]], None
+    ]
+    _ResponseHookT = Callable[[Span, redis.connection.Connection, Any], None]
 
     AsyncPipelineInstance = TypeVar(
         "AsyncPipelineInstance",
