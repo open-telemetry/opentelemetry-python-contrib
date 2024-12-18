@@ -451,6 +451,46 @@ class CursorTracer:
         self._connect_module = self._db_api_integration.connect_module
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
+    def _capture_mysql_version(self, cursor) -> None:
+        """Lazy capture of mysql-connector client version using cursor, if applicable"""
+        if (
+            self._db_api_integration.database_system == "mysql"
+            and self._db_api_integration.connect_module.__name__
+            == "mysql.connector"
+            and not self._db_api_integration.commenter_data[
+                "mysql_client_version"
+            ]
+        ):
+            self._db_api_integration.commenter_data["mysql_client_version"] = (
+                cursor._cnx._cmysql.get_client_info()
+            )
+
+    def _get_commenter_data(self) -> dict:
+        """Uses DB-API integration to return commenter data for sqlcomment"""
+        commenter_data = dict(self._db_api_integration.commenter_data)
+        if self._commenter_options.get("opentelemetry_values", True):
+            commenter_data.update(**_get_opentelemetry_values())
+        return {
+            k: v
+            for k, v in commenter_data.items()
+            if self._commenter_options.get(k, True)
+        }
+
+    def _update_args_with_added_sql_comment(self, args, cursor) -> tuple:
+        """Updates args with cursor info and adds sqlcomment to query statement"""
+        try:
+            args_list = list(args)
+            self._capture_mysql_version(cursor)
+            commenter_data = self._get_commenter_data()
+            statement = _add_sql_comment(args_list[0], **commenter_data)
+            args_list[0] = statement
+            args = tuple(args_list)
+        except Exception as exc:  # pylint: disable=broad-except
+            _logger.exception(
+                "Exception while generating sql comment: %s", exc
+            )
+        return args
+
     def _populate_span(
         self,
         span: trace_api.Span,
@@ -511,110 +551,21 @@ class CursorTracer:
         ) as span:
             if span.is_recording():
                 if args and self._commenter_enabled:
-                    # sqlcomment in query and span attribute
                     if self._enable_attribute_commenter:
-                        try:
-                            args_list = list(args)
-
-                            # lazy capture of mysql-connector client version using cursor
-                            if (
-                                self._db_api_integration.database_system
-                                == "mysql"
-                                and self._db_api_integration.connect_module.__name__
-                                == "mysql.connector"
-                                and not self._db_api_integration.commenter_data[
-                                    "mysql_client_version"
-                                ]
-                            ):
-                                self._db_api_integration.commenter_data[
-                                    "mysql_client_version"
-                                ] = cursor._cnx._cmysql.get_client_info()
-
-                            commenter_data = dict(
-                                self._db_api_integration.commenter_data
-                            )
-                            if self._commenter_options.get(
-                                "opentelemetry_values", True
-                            ):
-                                commenter_data.update(
-                                    **_get_opentelemetry_values()
-                                )
-
-                            # Filter down to just the requested attributes.
-                            commenter_data = {
-                                k: v
-                                for k, v in commenter_data.items()
-                                if self._commenter_options.get(k, True)
-                            }
-                            statement = _add_sql_comment(
-                                args_list[0], **commenter_data
-                            )
-
-                            args_list[0] = statement
-                            args = tuple(args_list)
-
-                        except Exception as exc:  # pylint: disable=broad-except
-                            _logger.exception(
-                                "Exception while generating sql comment: %s",
-                                exc,
-                            )
-
+                        # sqlcomment in query and span attribute
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
                         self._populate_span(span, cursor, *args)
-
-                    # sqlcomment in query only
                     else:
+                        # sqlcomment in query only
                         self._populate_span(span, cursor, *args)
-
-                        try:
-                            args_list = list(args)
-
-                            # lazy capture of mysql-connector client version using cursor
-                            if (
-                                self._db_api_integration.database_system
-                                == "mysql"
-                                and self._db_api_integration.connect_module.__name__
-                                == "mysql.connector"
-                                and not self._db_api_integration.commenter_data[
-                                    "mysql_client_version"
-                                ]
-                            ):
-                                self._db_api_integration.commenter_data[
-                                    "mysql_client_version"
-                                ] = cursor._cnx._cmysql.get_client_info()
-
-                            commenter_data = dict(
-                                self._db_api_integration.commenter_data
-                            )
-                            if self._commenter_options.get(
-                                "opentelemetry_values", True
-                            ):
-                                commenter_data.update(
-                                    **_get_opentelemetry_values()
-                                )
-
-                            # Filter down to just the requested attributes.
-                            commenter_data = {
-                                k: v
-                                for k, v in commenter_data.items()
-                                if self._commenter_options.get(k, True)
-                            }
-                            statement = _add_sql_comment(
-                                args_list[0], **commenter_data
-                            )
-
-                            args_list[0] = statement
-                            args = tuple(args_list)
-
-                        except Exception as exc:  # pylint: disable=broad-except
-                            _logger.exception(
-                                "Exception while generating sql comment: %s",
-                                exc,
-                            )
-
-                # No sqlcommenting
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
                 else:
+                    # no sqlcomment
                     self._populate_span(span, cursor, *args)
-
             return query_method(*args, **kwargs)
 
 
