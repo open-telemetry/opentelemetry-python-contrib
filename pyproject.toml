@@ -39,3 +39,18 @@ known-third-party = [
   "opencensus",
 ]
 
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
+[tool.pyright]
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingTypeStubs = false
+reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
+# Add progressively instrumentation packages here.
+include = [
+  "instrumentation/opentelemetry-instrumentation-threading/**/*.py"
+]
+# We should also add type hints to the test suite - It helps on finding bugs.
+# We are excluding for now because it's easier, and more important to add to the instrumentation packages.
+exclude = [
+  "instrumentation/opentelemetry-instrumentation-threading/tests/**",
+]
