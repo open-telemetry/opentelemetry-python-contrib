@@ -13,27 +13,26 @@
 # limitations under the License.
 
 """
-OpenAI client instrumentation supporting `openai`, it can be enabled by
-using ``OpenAIInstrumentor``.
+Cohere client instrumentation supporting `cohere`, it can be enabled by
+using ``CohereInstrumentor``.
 
-.. _openai: https://pypi.org/project/openai/
+.. _openai: https://pypi.org/project/cohere/
 
 Usage
 -----
 
 .. code:: python
 
-    from openai import OpenAI
-    from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+    import cohere
+    from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
 
-    OpenAIInstrumentor().instrument()
+    CohereInstrumentor().instrument()
 
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": "Write a short poem on open telemetry."},
-        ],
+    co = cohere.ClientV2('<your-api-key>')
+
+    response = co.chat(
+        model="command-r-plus", 
+        messages=[{"role": "user", "content": "Write a short poem on OpenTelemetry."}]
     )
 
 API
@@ -45,55 +44,50 @@ from typing import Collection
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._events import get_event_logger
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.instrumentation.genai_utils import is_content_enabled
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.cohere_v2.package import _instruments
+from opentelemetry.instrumentation.cohere_v2.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
-from .patch import async_chat_completions_create, chat_completions_create
+from .patch import client_chat
 
 
-class OpenAIInstrumentor(BaseInstrumentor):
+class CohereInstrumentor(BaseInstrumentor):
+    """An instrumentor for Cohere's client library."""
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Enable OpenAI instrumentation."""
+        """Enable Cohere instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
-            "",
+            __version__,
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
         event_logger_provider = kwargs.get("event_logger_provider")
         event_logger = get_event_logger(
             __name__,
-            "",
+            __version__,
             schema_url=Schemas.V1_28_0.value,
             event_logger_provider=event_logger_provider,
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="Completions.create",
-            wrapper=chat_completions_create(
+            module="cohere.client_v2",
+            name="ClientV2.chat",
+            wrapper=client_chat(
                 tracer, event_logger, is_content_enabled()
             ),
         )
 
-        wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="AsyncCompletions.create",
-            wrapper=async_chat_completions_create(
-                tracer, event_logger, is_content_enabled()
-            ),
-        )
 
     def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel
+        import cohere  # pylint: disable=import-outside-toplevel
 
-        unwrap(openai.resources.chat.completions.Completions, "create")
-        unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+        unwrap(cohere.client_v2.ClientV2, "chat")

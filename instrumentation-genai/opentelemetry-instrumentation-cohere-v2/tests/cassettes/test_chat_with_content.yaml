@@ -1,0 +1,108 @@
+interactions:
+- request:
+    body: |-
+      {
+        "model": "command-r-plus",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say this is a test"
+          }
+        ],
+        "stream": false
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_cohere_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '109'
+      content-type:
+      - application/json
+      host:
+      - api.cohere.com
+      user-agent:
+      - python-httpx/0.27.2
+      x-fern-language:
+      - Python
+      x-fern-sdk-name:
+      - cohere
+      x-fern-sdk-version:
+      - 5.11.4
+    method: POST
+    uri: https://api.cohere.com/v2/chat
+  response:
+    body:
+      string: |-
+        {
+          "id": "68d63b3a-360d-4460-9cb9-8413ef2adc52",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "This is a test."
+              }
+            ]
+          },
+          "finish_reason": "COMPLETE",
+          "usage": {
+            "billed_units": {
+              "input_tokens": 5,
+              "output_tokens": 5
+            },
+            "tokens": {
+              "input_tokens": 198,
+              "output_tokens": 5
+            }
+          }
+        }
+    headers:
+      Alt-Svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      Content-Length:
+      - '266'
+      Set-Cookie: test_set_cookie
+      Via:
+      - 1.1 google
+      access-control-expose-headers:
+      - X-Debug-Trace-ID
+      cache-control:
+      - no-cache, no-store, no-transform, must-revalidate, private, max-age=0
+      content-type:
+      - application/json
+      date:
+      - Tue, 10 Dec 2024 16:04:21 GMT
+      expires:
+      - Thu, 01 Jan 1970 00:00:00 UTC
+      num_chars:
+      - '1188'
+      num_tokens:
+      - '10'
+      pragma:
+      - no-cache
+      server:
+      - envoy
+      vary:
+      - Origin
+      x-accel-expires:
+      - '0'
+      x-debug-trace-id:
+      - 90f329169476c8dd3d7bf0071236f7f8
+      x-endpoint-monthly-call-limit:
+      - '1000'
+      x-envoy-upstream-service-time:
+      - '188'
+      x-trial-endpoint-call-limit:
+      - '40'
+      x-trial-endpoint-call-remaining:
+      - '39'
+    status:
+      code: 200
+      message: OK
+version: 1
