@@ -93,7 +93,7 @@ API
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection, Optional, Union
 
 import redis
 from wrapt import wrap_function_wrapper
@@ -159,7 +159,7 @@ _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 
 def _set_connection_attributes(
-    span: Span, conn: RedisInstance | AsyncRedisInstance
+    span: Span, conn: Union[AsyncRedisInstance, RedisInstance],
 ) -> None:
     if not span.is_recording() or not hasattr(conn, "connection_pool"):
         return
@@ -170,7 +170,7 @@ def _set_connection_attributes(
 
 
 def _build_span_name(
-    instance: RedisInstance | AsyncRedisInstance, cmd_args: tuple[Any, ...]
+    instance: Union[AsyncRedisInstance, RedisInstance], cmd_args: tuple[Any, ...]
 ) -> str:
     if len(cmd_args) > 0 and cmd_args[0]:
         if cmd_args[0] == "FT.SEARCH":
@@ -185,7 +185,7 @@ def _build_span_name(
 
 
 def _build_span_meta_data_for_pipeline(
-    instance: PipelineInstance | AsyncPipelineInstance,
+    instance: Union[AsyncPipelineInstance, PipelineInstance],
 ) -> tuple[list[Any], str, str]:
     try:
         command_stack = (
@@ -217,8 +217,8 @@ def _build_span_meta_data_for_pipeline(
 # pylint: disable=R0915
 def _instrument(
     tracer: Tracer,
-    request_hook: _RequestHookT | None = None,
-    response_hook: _ResponseHookT | None = None,
+    request_hook: Optional[_RequestHookT] = None,
+    response_hook: Optional[_ResponseHookT] = None,
 ):
     def _traced_execute_command(
         func: Callable[..., R],
