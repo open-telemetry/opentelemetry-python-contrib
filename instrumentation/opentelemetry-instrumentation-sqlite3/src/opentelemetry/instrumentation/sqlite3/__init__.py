@@ -27,7 +27,7 @@ Usage
     import sqlite3
     from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     SQLite3Instrumentor().instrument()
 
     cnx = sqlite3.connect(':memory:')
@@ -36,6 +36,13 @@ Usage
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code:: python
+
+    import sqlite3
+    from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
     conn = sqlite3.connect(":memory:")
     instrumented_connection = SQLite3Instrumentor.instrument_connection(conn)
     cursor = instrumented_connection.cursor()

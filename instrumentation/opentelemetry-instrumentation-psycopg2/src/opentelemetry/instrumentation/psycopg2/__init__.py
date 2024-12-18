@@ -88,7 +88,7 @@ Usage
     import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
     cnx = psycopg2.connect(database='Database')
@@ -98,6 +98,13 @@ Usage
     cursor.close()
     cnx.close()
 
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
     instrumented_cnx = Psycopg2Instrumentor.instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)")

@@ -26,6 +26,7 @@ Usage
     import pymysql
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
+    # Call instrument() to wrap all database connections
     PyMySQLInstrumentor().instrument()
 
     cnx = pymysql.connect(database="MySQL_Database")
@@ -34,6 +35,28 @@ Usage
     cnx.commit()
     cursor.close()
     cnx.close()
+
+
+.. code:: python
+
+    import pymysql
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = pymysql.connect(database="MySQL_Database")
+    instrumented_cnx = PyMySQLInstrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+        commenter_options={
+            "db_driver": True,
+            "mysql_client_version": True
+        }
+    )
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    instrumented_cnx.commit()
+    cursor.close()
+    instrumented_cnx.close()
 
 SQLCOMMENTER
 *****************************************
@@ -56,20 +79,6 @@ Usage
     cnx.commit()
     cursor.close()
     cnx.close()
-
-    instrumented_cnx = PyMySQLInstrumentor().instrument_connection(
-        cnx,
-        enable_commenter=True,
-        commenter_options={
-            "db_driver": True,
-            "mysql_client_version": True
-        }
-    )
-    cursor = instrumented_cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
-    instrumented_cnx.commit()
-    cursor.close()
-    instrumented_cnx.close()
 
 
 For example,

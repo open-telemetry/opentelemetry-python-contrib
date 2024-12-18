@@ -26,6 +26,7 @@ Usage
     import mysql.connector
     from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 
+    # Call instrument() to wrap all database connections
     MySQLInstrumentor().instrument()
 
     cnx = mysql.connector.connect(database="MySQL_Database")
@@ -34,11 +35,18 @@ Usage
     cursor.close()
     cnx.close()
 
-    cnx = MySQLInstrumentor().instrument_connection(cnx)
-    cursor = cnx.cursor()
+.. code:: python
+
+    import mysql.connector
+    from opentelemetry.instrumentation.mysql import MySQLInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = mysql.connector.connect(database="MySQL_Database")
+    instrumented_cnx = MySQLInstrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
-    cnx.close()
+    instrumented_cnx.close()
 
 API
 ---

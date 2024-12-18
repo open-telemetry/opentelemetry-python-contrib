@@ -46,7 +46,7 @@ the query with contextual information.
     import MySQLdb
     from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-
+    # Call instrument() to wrap all database connections
     MySQLClientInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
     cnx = MySQLdb.connect(database="MySQL_Database")
@@ -56,6 +56,13 @@ the query with contextual information.
     cursor.close()
     cnx.close()
 
+.. code:: python
+
+    import MySQLdb
+    from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = MySQLdb.connect(database="MySQL_Database")
     instrumented_cnx = MySQLClientInstrumentor.instrument_connection(
         cnx,
         enable_commenter=True,
