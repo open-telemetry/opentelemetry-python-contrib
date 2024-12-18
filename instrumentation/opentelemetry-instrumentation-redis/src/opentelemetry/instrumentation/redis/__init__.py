@@ -159,7 +159,8 @@ _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 
 def _set_connection_attributes(
-    span: Span, conn: Union[AsyncRedisInstance, RedisInstance],
+    span: Span,
+    conn: Union[AsyncRedisInstance, RedisInstance],
 ) -> None:
     if not span.is_recording() or not hasattr(conn, "connection_pool"):
         return
@@ -170,7 +171,8 @@ def _set_connection_attributes(
 
 
 def _build_span_name(
-    instance: Union[AsyncRedisInstance, RedisInstance], cmd_args: tuple[Any, ...]
+    instance: Union[AsyncRedisInstance, RedisInstance],
+    cmd_args: tuple[Any, ...],
 ) -> str:
     if len(cmd_args) > 0 and cmd_args[0]:
         if cmd_args[0] == "FT.SEARCH":
