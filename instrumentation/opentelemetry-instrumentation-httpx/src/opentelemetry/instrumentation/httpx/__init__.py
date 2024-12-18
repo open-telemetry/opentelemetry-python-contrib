@@ -192,6 +192,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import typing
 from asyncio import iscoroutinefunction
@@ -203,7 +205,6 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -213,6 +214,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_peer_port_client,
     _set_http_status_code,
     _set_http_url,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.httpx.package import _instruments
 from opentelemetry.instrumentation.httpx.version import __version__
@@ -249,8 +251,8 @@ AsyncResponseHook = typing.Callable[
 
 class RequestInfo(typing.NamedTuple):
     method: bytes
-    url: URL
-    headers: typing.Optional[Headers]
+    url: httpx.URL
+    headers: httpx.Headers | None
     stream: typing.Optional[
         typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]
     ]
@@ -259,7 +261,7 @@ class RequestInfo(typing.NamedTuple):
 
 class ResponseInfo(typing.NamedTuple):
     status_code: int
-    headers: typing.Optional[Headers]
+    headers: httpx.Headers | None
     stream: typing.Iterable[bytes]
     extensions: typing.Optional[dict]
 
@@ -332,7 +334,7 @@ def _apply_request_client_attributes_to_span(
     span_attributes: dict,
     url: typing.Union[str, URL, httpx.URL],
     method_original: str,
-    semconv: _HTTPStabilityMode,
+    semconv: _StabilityMode,
 ):
     url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
@@ -361,7 +363,7 @@ def _apply_response_client_attributes_to_span(
     span: Span,
     status_code: int,
     http_version: str,
-    semconv: _HTTPStabilityMode,
+    semconv: _StabilityMode,
 ):
     # http semconv transition: http.status_code -> http.response.status_code
     # TODO: use _set_status when it's stable for http clients

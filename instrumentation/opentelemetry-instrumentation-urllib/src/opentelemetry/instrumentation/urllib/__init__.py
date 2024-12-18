@@ -90,7 +90,6 @@ from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -99,6 +98,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_network_protocol_version,
     _set_http_url,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
@@ -209,7 +209,7 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
@@ -305,13 +305,13 @@ def _instrument(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+                sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
             )
             duration_attrs_new = _filter_semconv_duration_attrs(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
+                sem_conv_opt_in_mode=_StabilityMode.HTTP,
             )
 
             duration_attrs_old[SpanAttributes.HTTP_URL] = url
@@ -372,7 +372,7 @@ def _set_status_code_attribute(
     span: Span,
     status_code: int,
     metric_attributes: dict = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     status_code_str = str(status_code)
     try:
@@ -394,7 +394,7 @@ def _set_status_code_attribute(
 
 
 def _create_client_histograms(
-    meter, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    meter, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ) -> Dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
@@ -442,7 +442,7 @@ def _record_histograms(
     request_size: int,
     response_size: int,
     duration_s: float,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     if _report_old(sem_conv_opt_in_mode):
         duration = max(round(duration_s * 1000), 0)
