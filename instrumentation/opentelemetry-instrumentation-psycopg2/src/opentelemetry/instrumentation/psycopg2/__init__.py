@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """
-The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
+The integration with PostgreSQL supports the `Psycopg2`_ library, it can be enabled by
 using ``Psycopg2Instrumentor``.
 
-.. _Psycopg: http://initd.org/psycopg/
+.. _Psycopg2: https://www.psycopg.org/docs/
 
 SQLCOMMENTER
 *****************************************
@@ -111,13 +111,13 @@ from psycopg2.extensions import (
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import _instruments
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
-_OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):
@@ -130,12 +130,14 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
     _DATABASE_SYSTEM = "postgresql"
 
+    _otel_cursor_factory = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Integrate with PostgreSQL Psycopg library.
-        Psycopg: http://initd.org/psycopg/
+        """Integrate with PostgreSQL Psycopg2 library.
+        Psycopg2: https://www.psycopg.org/docs/
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
@@ -158,32 +160,35 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(psycopg2, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
-        if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
-            connection._is_instrumented_by_opentelemetry = False
-
-        if not connection._is_instrumented_by_opentelemetry:
-            setattr(
-                connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
-            )
-            connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
-            )
-            connection._is_instrumented_by_opentelemetry = True
-        else:
+    def instrument_connection(
+        self,
+        connection,
+        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    ):
+        if self._is_instrumented_by_opentelemetry:
+            # _instrument (via BaseInstrumentor) or instrument_connection (this)
+            # was already called
             _logger.warning(
-                "Attempting to instrument Psycopg connection while already instrumented"
+                "Attempting to instrument Psycopg2 connection while already instrumented"
             )
+            self._is_instrumented_by_opentelemetry = True
+            return connection
+
+        # Save cursor_factory at instrumentor level because
+        # psycopg2 connection type does not allow arbitrary attrs
+        self._otel_cursor_factory = connection.cursor_factory
+        connection.cursor_factory = _new_cursor_factory(
+            base_factory=connection.cursor_factory,
+            tracer_provider=tracer_provider,
+        )
+        self._is_instrumented_by_opentelemetry = True
+
         return connection
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    @staticmethod
-    def uninstrument_connection(connection):
-        connection.cursor_factory = getattr(
-            connection, _OTEL_CURSOR_FACTORY_KEY, None
-        )
-
+    def uninstrument_connection(self, connection):
+        self._is_instrumented_by_opentelemetry = False
+        connection.cursor_factory = self._otel_cursor_factory
         return connection
 
 
