@@ -552,19 +552,20 @@ class CursorTracer:
             if span.is_recording():
                 if args and self._commenter_enabled:
                     if self._enable_attribute_commenter:
-                        # sqlcomment in query and span attribute
+                        # sqlcomment is added to executed query and db.statement span attribute
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                         self._populate_span(span, cursor, *args)
                     else:
-                        # sqlcomment in query only
+                        # sqlcomment is only added to executed query
+                        # so db.statement is set before add_sql_comment
                         self._populate_span(span, cursor, *args)
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                 else:
-                    # no sqlcomment
+                    # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
             return query_method(*args, **kwargs)
 
