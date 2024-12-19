@@ -26,10 +26,10 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.50b0.dev",
-  "opentelemetry-semantic-conventions == 0.50b0.dev",
-  "opentelemetry-util-http == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.51b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.51b0.dev",
+  "opentelemetry-semantic-conventions == 0.51b0.dev",
+  "opentelemetry-util-http == 0.51b0.dev",
   "packaging >= 21.0",
 ]
 
@@ -43,6 +43,7 @@ flask = "opentelemetry.instrumentation.flask:FlaskInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-flask"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/flask/version.py"
