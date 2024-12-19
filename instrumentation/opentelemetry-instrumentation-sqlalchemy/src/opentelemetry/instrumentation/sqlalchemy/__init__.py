@@ -65,6 +65,28 @@ For example,
 ::
 Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can optionally configure SQLAlchemy instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    SQLAlchemyInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={},
+        enable_attribute_commenter=True,
+    )
+
+
+For example,
+::
+
+    Invoking engine.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter and attribute_commenter is enabled
+    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
+
+
 Usage
 -----
 .. code:: python
@@ -138,6 +160,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``meter_provider``: a MeterProvider, defaults to global
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
+                ``enable_attribute_commenter``: bool to enable sqlcomment addition to span attribute, defaults to False. Must also set `enable_commenter`.
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -166,19 +189,30 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
 
         _w(
             "sqlalchemy",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
             ),
         )
         _w(
             "sqlalchemy.engine",
             "create_engine",
             _wrap_create_engine(
-                tracer, connections_usage, enable_commenter, commenter_options
+                tracer,
+                connections_usage,
+                enable_commenter,
+                commenter_options,
+                enable_attribute_commenter,
             ),
         )
         # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
@@ -191,6 +225,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     enable_commenter,
                     commenter_options,
+                    enable_attribute_commenter,
                 ),
             )
         _w(
@@ -207,6 +242,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     enable_commenter,
                     commenter_options,
+                    enable_attribute_commenter,
                 ),
             )
         if kwargs.get("engine") is not None:
@@ -216,6 +252,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 connections_usage,
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
+                kwargs.get("enable_attribute_commenter", False),
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -227,6 +264,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     connections_usage,
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
+                    kwargs.get("enable_attribute_commenter", False),
                 )
                 for engine in kwargs.get("engines")
             ]
