@@ -16,7 +16,7 @@
 The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
 using ``PsycopgInstrumentor``.
 
-.. _Psycopg: http://initd.org/psycopg/
+.. _Psycopg: https://www.psycopg.org/psycopg3/docs/
 
 SQLCOMMENTER
 *****************************************
@@ -114,6 +114,7 @@ from psycopg import (
 )
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
 
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg.package import _instruments
@@ -138,7 +139,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """Integrate with PostgreSQL Psycopg library.
-        Psycopg: http://initd.org/psycopg/
+        Psycopg: https://www.psycopg.org/psycopg3/docs/
         """
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
@@ -195,7 +196,24 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection: psycopg.Connection,
+        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        enable_commenter: bool = False,
+        commenter_options: dict = None,
+    ):
+        """Enable instrumentation of a Psycopg connection.
+
+        Args:
+            connection: The connection to instrument.
+            tracer_provider: Optional tracer provider to use. If omitted
+                the current globally configured one is used.
+            enable_commenter: Optional flag to enable/disable sqlcommenter (default disabled).
+            commenter_options: Optional configurations for tags to be appended at the sql query.
+
+        Returns:
+            An instrumented connection.
+        """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 
@@ -204,7 +222,9 @@ class PsycopgInstrumentor(BaseInstrumentor):
                 connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
             )
             connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
+                tracer_provider=tracer_provider,
+                enable_commenter=enable_commenter,
+                commenter_options=commenter_options,
             )
             connection._is_instrumented_by_opentelemetry = True
         else:
@@ -288,7 +308,13 @@ class CursorTracer(dbapi.CursorTracer):
         return statement
 
 
-def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
+def _new_cursor_factory(
+    db_api: dbapi.DatabaseApiIntegration = None,
+    base_factory: pg_cursor = None,
+    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    enable_commenter: bool = False,
+    commenter_options: dict = None,
+):
     if not db_api:
         db_api = DatabaseApiIntegration(
             __name__,
@@ -296,6 +322,9 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
             connection_attributes=PsycopgInstrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg,
         )
 
     base_factory = base_factory or pg_cursor
