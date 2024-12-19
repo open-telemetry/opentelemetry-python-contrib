@@ -44,7 +44,7 @@ Usage
 
     # Alternatively, use instrument_connection for an individual connection
     conn = sqlite3.connect(":memory:")
-    instrumented_connection = SQLite3Instrumentor.instrument_connection(conn)
+    instrumented_connection = SQLite3Instrumentor().instrument_connection(conn)
     cursor = instrumented_connection.cursor()
     cursor.execute("CREATE TABLE test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
@@ -122,10 +122,6 @@ class SQLite3Instrumentor(BaseInstrumentor):
             An instrumented SQLite connection that supports
             telemetry for tracing database operations.
 
-        Notes:
-            - Instrumentation must be explicitly applied to the connection object
-              for tracing to work. This is not done automatically by simply calling
-              `SQLite3Instrumentor().instrument()`.
         """
         return dbapi.instrument_connection(
             __name__,

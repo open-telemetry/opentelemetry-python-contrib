@@ -109,7 +109,7 @@ class MySQLInstrumentor(BaseInstrumentor):
                 configured tracer provider will be automatically used.
 
         Returns:
-            An instrumented MySQL connection with OpenTelemetry tracing enabled,
+            An instrumented MySQL connection with OpenTelemetry tracing enabled.
         """
         return dbapi.instrument_connection(
             __name__,

@@ -105,7 +105,7 @@ Usage
 
     # Alternatively, use instrument_connection for an individual connection
     cnx = psycopg.connect(database='Database')
-    instrumented_cnx = instrument_connection(cnx)
+    instrumented_cnx = PsycopgInstrumentor().instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()

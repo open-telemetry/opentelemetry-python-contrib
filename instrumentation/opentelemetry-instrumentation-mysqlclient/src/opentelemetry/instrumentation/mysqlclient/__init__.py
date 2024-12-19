@@ -63,7 +63,7 @@ the query with contextual information.
 
     # Alternatively, use instrument_connection for an individual connection
     cnx = MySQLdb.connect(database="MySQL_Database")
-    instrumented_cnx = MySQLClientInstrumentor.instrument_connection(
+    instrumented_cnx = MySQLClientInstrumentor().instrument_connection(
         cnx,
         enable_commenter=True,
         commenter_options={
@@ -195,8 +195,8 @@ class MySQLClientInstrumentor(BaseInstrumentor):
                 SQL queries will be enriched with contextual information (e.g., database client details).
                 Default is `None`.
             commenter_options:
-                A dictionary of configuration options for SQLCommenter. This allows you to customize
-                metadata appended to queries. Possible options include:
+                A dictionary of configuration options for SQLCommenter. All options are enabled (True) by default.
+                This allows you to customize metadata appended to queries. Possible options include:
 
                     - `db_driver`: Adds the database driver name and version.
                     - `dbapi_threadsafety`: Adds threadsafety information.
