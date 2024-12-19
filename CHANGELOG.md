@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
+  ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
+- Add support to database stability opt-in in `_semconv` utilities and add tests
+  ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+
+### Fixed
+
+- `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
+  ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+
+
 ## Version 1.29.0/0.50b0 (2024-12-11)
 
 ### Added
