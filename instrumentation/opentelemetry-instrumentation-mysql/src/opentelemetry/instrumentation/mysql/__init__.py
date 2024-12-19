@@ -31,6 +31,7 @@ Usage
 
     cnx = mysql.connector.connect(database="MySQL_Database")
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
@@ -44,6 +45,7 @@ Usage
     cnx = mysql.connector.connect(database="MySQL_Database")
     instrumented_cnx = MySQLInstrumentor().instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     instrumented_cnx.close()

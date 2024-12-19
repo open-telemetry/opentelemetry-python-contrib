@@ -51,6 +51,7 @@ the query with contextual information.
 
     cnx = MySQLdb.connect(database="MySQL_Database")
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
     cnx.commit()
     cursor.close()
@@ -73,6 +74,7 @@ the query with contextual information.
         }
     )
     cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
     instrumented_cnx.commit()
     cursor.close()

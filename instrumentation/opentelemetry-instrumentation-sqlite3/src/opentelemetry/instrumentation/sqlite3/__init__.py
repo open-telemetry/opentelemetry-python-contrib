@@ -32,7 +32,7 @@ Usage
 
     cnx = sqlite3.connect(':memory:')
     cursor = cnx.cursor()
-    cursor.execute("CREATE TABLE test (testField INTEGER)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
@@ -46,7 +46,7 @@ Usage
     conn = sqlite3.connect(":memory:")
     instrumented_connection = SQLite3Instrumentor().instrument_connection(conn)
     cursor = instrumented_connection.cursor()
-    cursor.execute("CREATE TABLE test (testField INTEGER)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.execute("SELECT * FROM test")
     cursor.close()

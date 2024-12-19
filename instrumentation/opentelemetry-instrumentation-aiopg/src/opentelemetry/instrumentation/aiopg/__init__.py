@@ -30,6 +30,7 @@ Usage
 
     cnx = await aiopg.connect(database='Database')
     cursor = await cnx.cursor()
+    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
@@ -38,6 +39,7 @@ Usage
 
     cnx = await pool.acquire()
     cursor = await cnx.cursor()
+    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
@@ -51,6 +53,7 @@ Usage
     cnx = await aiopg.connect(database='Database')
     instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
     cursor = await instrumented_cnx.cursor()
+    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     instrumented_cnx.close()
