@@ -76,12 +76,7 @@ def set_attributes_from_context(span, context):
 
         attribute_name = None
 
-        # Celery 4.0 uses `origin` instead of `hostname`; this change preserves
-        # the same name for the tag despite Celery version
-        if key == "origin":
-            key = "hostname"
-
-        elif key == "delivery_info":
+        if key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
 
