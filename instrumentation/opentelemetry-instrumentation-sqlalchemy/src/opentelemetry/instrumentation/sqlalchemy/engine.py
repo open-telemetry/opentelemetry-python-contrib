@@ -249,6 +249,13 @@ class EngineTracer:
         }
         return commenter_data
 
+    def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
+        """Uses statement and attrs to set attributes of provided Otel span"""
+        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+        for key, value in attrs.items():
+            span.set_attribute(key, value)
+
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
@@ -267,39 +274,27 @@ class EngineTracer:
                     commenter_data = self._get_commenter_data(conn)
 
                     if self.enable_attribute_commenter:
-                        # sqlcomment in executed query and span attribute
+                        # sqlcomment is added to executed query and db.statement span attribute
                         statement = _add_sql_comment(
                             statement, **commenter_data
                         )
-                        span.set_attribute(
-                            SpanAttributes.DB_STATEMENT, statement
+                        self._set_db_client_span_attributes(
+                            span, statement, attrs
                         )
-                        span.set_attribute(
-                            SpanAttributes.DB_SYSTEM, self.vendor
-                        )
-                        for key, value in attrs.items():
-                            span.set_attribute(key, value)
 
                     else:
-                        # sqlcomment in executed query only
-                        span.set_attribute(
-                            SpanAttributes.DB_STATEMENT, statement
+                        # sqlcomment is only added to executed query
+                        # so db.statement is set before add_sql_comment
+                        self._set_db_client_span_attributes(
+                            span, statement, attrs
                         )
-                        span.set_attribute(
-                            SpanAttributes.DB_SYSTEM, self.vendor
-                        )
-                        for key, value in attrs.items():
-                            span.set_attribute(key, value)
                         statement = _add_sql_comment(
                             statement, **commenter_data
                         )
 
                 else:
-                    # no sqlcomment
-                    span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-                    span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
-                    for key, value in attrs.items():
-                        span.set_attribute(key, value)
+                    # no sqlcomment anywhere
+                    self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
 
