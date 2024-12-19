@@ -88,14 +88,30 @@ Usage
     import psycopg
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
-
+    # Call instrument() to wrap all database connections
     PsycopgInstrumentor().instrument()
 
     cnx = psycopg.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg.connect(database='Database')
+    instrumented_cnx = PsycopgInstrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -196,6 +212,18 @@ class PsycopgInstrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(connection, tracer_provider=None):
+        """Enable instrumentation in a psycopg connection.
+
+        Args:
+            connection: psycopg.Connection
+                The psycopg connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not provided,
+                the global TracerProvider will be used.
+
+        Returns:
+            An instrumented psycopg connection object.
+        """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 
