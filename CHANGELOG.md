@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3121](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3121))
 
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
