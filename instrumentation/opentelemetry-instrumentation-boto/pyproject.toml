@@ -25,8 +25,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-semantic-conventions == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.51b0.dev",
+  "opentelemetry-semantic-conventions == 0.51b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +39,7 @@ boto = "opentelemetry.instrumentation.boto:BotoInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-boto"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/boto/version.py"

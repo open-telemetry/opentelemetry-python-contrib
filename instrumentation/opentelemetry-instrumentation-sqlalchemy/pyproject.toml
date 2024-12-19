@@ -26,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-semantic-conventions == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.51b0.dev",
+  "opentelemetry-semantic-conventions == 0.51b0.dev",
   "packaging >= 21.0",
   "wrapt >= 1.11.2",
 ]
@@ -42,6 +42,7 @@ sqlalchemy = "opentelemetry.instrumentation.sqlalchemy:SQLAlchemyInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-sqlalchemy"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/sqlalchemy/version.py"
