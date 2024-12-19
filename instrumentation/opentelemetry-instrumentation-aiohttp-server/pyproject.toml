@@ -42,6 +42,7 @@ aiohttp-server = "opentelemetry.instrumentation.aiohttp_server:AioHttpServerInst
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-aiohttp-server"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/aiohttp_server/version.py"
