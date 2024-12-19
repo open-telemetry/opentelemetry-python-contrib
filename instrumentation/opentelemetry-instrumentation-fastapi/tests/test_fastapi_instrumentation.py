@@ -233,8 +233,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         for span in spans:
-            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
-            self.assertIn("GET /sub", span.name)
+            self.assertIn("GET /sub/home", span.name)
 
         # We now want to specifically test all spans including the
         # - HTTP_TARGET
