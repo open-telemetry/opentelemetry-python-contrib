@@ -63,7 +63,7 @@ You can run `tox` with the following arguments:
 
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
-* `tox -e docs` to regenerate the API docs
+* `tox -e docs` to regenerate all docs
 * `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
@@ -89,7 +89,9 @@ for more detail on available tox commands.
 
 ### Troubleshooting
 
-> Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
+
+For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
 ### Benchmarks
 
@@ -277,6 +279,20 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - When adding a new instrumentation remember to add an entry in `docs/instrumentation/` named `<instrumentation>/<instrumentation>.rst` to have the instrumentation documentation referenced from the index. You can use the entry template available [here](./_template/autodoc_entry.rst)
 - Testing
   - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
+
+### Update supported instrumentation package versions
+
+- Navigate to the **instrumentation package directory:**
+  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+- At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+If you're adding support for a new version of the instrumentation package, follow these additional steps:
+
+- At the **instrumentation package directory:** Add new test-requirements.txt file with the respective package version required for testing
+- At the **root of the project directory**: Add a new test environment entry for the package version in [tox.ini](./tox.ini) and run `tox -e generate-workflows` to regenerate new workflows accordingly. In the same [tox.ini](./tox.ini) file, search for `opentelemetry-instrumentation-{package}/test-requirements` and add a new line to point to the new test-requirements.txt you created in the previous step so tox can install the correct requirements.
+
+Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976), [#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845)
 
 ## Guideline for GenAI instrumentations
 
