@@ -43,6 +43,7 @@ flask = "opentelemetry.instrumentation.flask:FlaskInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-flask"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/flask/version.py"
