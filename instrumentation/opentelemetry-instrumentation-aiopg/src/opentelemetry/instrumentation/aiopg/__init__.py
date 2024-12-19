@@ -25,7 +25,7 @@ Usage
 
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
-
+    # Call instrument() to wrap all database connections
     AiopgInstrumentor().instrument()
 
     cnx = await aiopg.connect(database='Database')
@@ -35,11 +35,25 @@ Usage
     cnx.close()
 
     pool = await aiopg.create_pool(database='Database')
+
     cnx = await pool.acquire()
     cursor = await cnx.cursor()
     await cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import aiopg
+    from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = await aiopg.connect(database='Database')
+    instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
+    cursor = await instrumented_cnx.cursor()
+    await cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
