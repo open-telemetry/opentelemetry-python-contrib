@@ -184,9 +184,9 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.types import (
@@ -360,7 +360,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
     _instrumented_fastapi_apps = set()
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
