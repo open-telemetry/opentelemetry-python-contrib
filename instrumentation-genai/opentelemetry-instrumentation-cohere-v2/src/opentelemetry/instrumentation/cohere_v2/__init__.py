@@ -90,4 +90,4 @@ class CohereInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         import cohere  # pylint: disable=import-outside-toplevel
 
-        unwrap(cohere.client_v2.ClientV2, "chat")
+        unwrap("cohere.client_v2.ClientV2", "chat")

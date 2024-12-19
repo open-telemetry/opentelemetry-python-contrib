@@ -167,7 +167,7 @@ def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
     return bool(value) and value != NOT_GIVEN
 
 
-def get_llm_request_attributes(
+def get_genai_request_attributes(
     kwargs,
     client_instance,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,

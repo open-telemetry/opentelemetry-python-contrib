@@ -29,7 +29,7 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 
 from .utils import (
     choice_to_event,
-    get_llm_request_attributes,
+    get_genai_request_attributes,
     is_streaming,
     message_to_event,
     set_span_attribute,
@@ -42,7 +42,7 @@ def chat_completions_create(
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {**get_genai_request_attributes(kwargs, instance)}
 
         span_name = get_span_name(span_attributes)
         with tracer.start_as_current_span(
@@ -84,7 +84,7 @@ def async_chat_completions_create(
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {**get_genai_request_attributes(kwargs, instance)}
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(

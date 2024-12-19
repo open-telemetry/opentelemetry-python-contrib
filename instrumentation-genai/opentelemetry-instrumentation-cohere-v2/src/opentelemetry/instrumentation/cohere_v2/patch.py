@@ -20,7 +20,7 @@ from opentelemetry.instrumentation.genai_utils import (
 )
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from .utils import (
-    get_llm_request_attributes,
+    get_genai_request_attributes,
     message_to_event,
     set_response_attributes,
     set_server_address_and_port,
@@ -36,7 +36,7 @@ def client_chat(
         if not is_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {**get_genai_request_attributes(kwargs, instance)}
         set_server_address_and_port(instance, span_attributes)
         span_name = get_span_name(span_attributes)
 

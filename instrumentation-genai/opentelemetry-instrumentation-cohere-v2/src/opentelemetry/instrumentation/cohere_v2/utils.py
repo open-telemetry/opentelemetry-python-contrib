@@ -82,7 +82,7 @@ def set_server_address_and_port(client_instance: cohere.client_v2.V2Client, attr
         attributes[ServerAttributes.SERVER_PORT] = port
 
 
-def get_llm_request_attributes(
+def get_genai_request_attributes(
     kwargs,
     client_instance: cohere.client_v2.V2Client,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
@@ -92,7 +92,7 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.COHERE.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
         GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
-        GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
+        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: kwargs.get(
             "stop_sequences"
         ),
         GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
