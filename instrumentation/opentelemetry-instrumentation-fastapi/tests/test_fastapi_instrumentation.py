@@ -1403,17 +1403,17 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
+            "http.request.header.regex-test-header-1": ("Regex Test Value 1",),
+            "http.request.header.regex-test-header-2": (
                 "RegexTestValue2,RegexTestValue3",
             ),
-            "http.request.header.my_secret_header": ("[REDACTED]",),
+            "http.request.header.my-secret-header": ("[REDACTED]",),
         }
         resp = self.client.get(
             "/foobar",
@@ -1437,7 +1437,7 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
+            "http.request.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -1464,19 +1464,19 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
-            "http.response.header.my_custom_regex_header_1": (
+            "http.response.header.my-custom-regex-header-1": (
                 "my-custom-regex-value-1,my-custom-regex-value-2",
             ),
-            "http.response.header.my_custom_regex_header_2": (
+            "http.response.header.my-custom-regex-header-2": (
                 "my-custom-regex-value-3,my-custom-regex-value-4",
             ),
-            "http.response.header.my_secret_header": ("[REDACTED]",),
+            "http.response.header.my-secret-header": ("[REDACTED]",),
         }
         resp = self.client.get("/foobar")
         self.assertEqual(200, resp.status_code)
@@ -1490,7 +1490,7 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -1569,7 +1569,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
             "http.request.header.apple": ("red",),
             # same with banana because it starts with b,
             # redacted because it contains "secret"
-            "http.request.header.banana_secret": ("[REDACTED]",),
+            "http.request.header.banana-secret": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(server_span, expected)
         self.assertNotIn("http.request.header.fig", server_span.attributes)
@@ -1599,7 +1599,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
             "http.request.header.apple": ("red",),
             # same with banana because it starts with b,
             # redacted because it contains "secret"
-            "http.request.header.banana_secret": ("[REDACTED]",),
+            "http.request.header.banana-secret": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(server_span, expected)
         self.assertNotIn("http.request.header.fig", server_span.attributes)
@@ -1618,7 +1618,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
 
         expected = {
             "http.response.header.carrot": ("bar",),
-            "http.response.header.date_secret": ("[REDACTED]",),
+            "http.response.header.date-secret": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(server_span, expected)
         self.assertNotIn("http.response.header.egg", server_span.attributes)
@@ -1638,7 +1638,7 @@ class TestHTTPAppWithCustomHeadersParameters(TestBase):
 
         expected = {
             "http.response.header.carrot": ("bar",),
-            "http.response.header.date_secret": ("[REDACTED]",),
+            "http.response.header.date-secret": ("[REDACTED]",),
         }
         self.assertSpanHasAttributes(server_span, expected)
         self.assertNotIn("http.response.header.egg", server_span.attributes)
@@ -1696,10 +1696,10 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
     def test_web_socket_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
+            "http.request.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.request.header.custom_test_header_2": (
+            "http.request.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
         }
@@ -1732,7 +1732,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
     )
     def test_web_socket_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
+            "http.request.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
@@ -1759,10 +1759,10 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
     def test_web_socket_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
+            "http.response.header.custom-test-header-1": (
                 "test-header-value-1",
             ),
-            "http.response.header.custom_test_header_2": (
+            "http.response.header.custom-test-header-2": (
                 "test-header-value-2",
             ),
         }
@@ -1782,7 +1782,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
     def test_web_socket_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
+            "http.response.header.custom-test-header-3": (
                 "test-header-value-3",
             ),
         }
