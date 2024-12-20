@@ -88,14 +88,30 @@ Usage
     import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
     cnx = psycopg2.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -165,6 +181,18 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
     ):
+        """Enable instrumentation in a psycopg2 connection.
+
+        Args:
+            connection: psycopg2.extensions.connection
+                The psycopg2 connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not specified,
+                the global TracerProvider will be used.
+
+        Returns:
+            An instrumented psycopg2 connection object.
+        """
         if self._is_instrumented_by_opentelemetry:
             # _instrument (via BaseInstrumentor) or instrument_connection (this)
             # was already called
