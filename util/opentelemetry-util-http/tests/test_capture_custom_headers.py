@@ -104,8 +104,8 @@ class TestCaptureCustomHeaders(unittest.TestCase):
 
     def test_normalise_request_header_name(self):
         key = normalise_request_header_name("Test-Header")
-        self.assertEqual(key, "http.request.header.test_header")
+        self.assertEqual(key, "http.request.header.test-header")
 
     def test_normalise_response_header_name(self):
         key = normalise_response_header_name("Test-Header")
-        self.assertEqual(key, "http.response.header.test_header")
+        self.assertEqual(key, "http.response.header.test-header")
