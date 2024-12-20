@@ -278,9 +278,9 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
-RequestHook = Callable[[trace.Span, WSGIEnvironment], None]
+RequestHook = Callable[[trace.Span, "WSGIEnvironment"], None]
 ResponseHook = Callable[
-    [trace.Span, WSGIEnvironment, str, list[tuple[str, str]]], None
+    [trace.Span, "WSGIEnvironment", str, list[tuple[str, str]]], None
 ]
 
 _HTTP_VERSION_PREFIX = "HTTP/"
