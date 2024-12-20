@@ -13,6 +13,7 @@ dependencies = [
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-urllib",
@@ -35,6 +36,7 @@ opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
@@ -50,6 +52,7 @@ members = [
   "instrumentation/opentelemetry-instrumentation-dbapi",
   "instrumentation/opentelemetry-instrumentation-fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-sqlalchemy",
   "instrumentation/opentelemetry-instrumentation-sqlite3",
   "instrumentation/opentelemetry-instrumentation-system-metrics",
   "instrumentation/opentelemetry-instrumentation-urllib",
