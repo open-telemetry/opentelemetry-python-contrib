@@ -12,6 +12,7 @@ dependencies = [
   "opentelemetry-instrumentation-asgi[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-util-http",
@@ -31,6 +32,7 @@ opentelemetry-instrumentation = { workspace = true }
 opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-util-http = { workspace = true }
@@ -43,6 +45,7 @@ members = [
   "instrumentation/opentelemetry-instrumentation-asgi",
   "instrumentation/opentelemetry-instrumentation-fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-system-metrics",
   "instrumentation/opentelemetry-instrumentation-urllib",
   "instrumentation/opentelemetry-instrumentation-urllib3",
   "util/opentelemetry-util-http",
