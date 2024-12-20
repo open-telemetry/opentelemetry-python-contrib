@@ -220,7 +220,6 @@ import functools
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
 from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar, cast
-from wsgiref.types import StartResponse
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -274,7 +273,7 @@ from opentelemetry.util.http import (
 )
 
 if TYPE_CHECKING:
-    from wsgiref.types import WSGIApplication, WSGIEnvironment
+    from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
 
 
 T = TypeVar("T")
