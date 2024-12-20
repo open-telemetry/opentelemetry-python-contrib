@@ -12,6 +12,7 @@ dependencies = [
   "opentelemetry-instrumentation-asgi[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-util-http",
 ]
 
@@ -29,6 +30,7 @@ opentelemetry-instrumentation = { workspace = true }
 opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
@@ -39,6 +41,7 @@ members = [
   "instrumentation/opentelemetry-instrumentation-asgi",
   "instrumentation/opentelemetry-instrumentation-fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-urllib3",
   "util/opentelemetry-util-http",
 ]
 
