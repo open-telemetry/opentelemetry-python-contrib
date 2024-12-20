@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-_instruments = tuple()
+_instruments: tuple[str, ...] = tuple()
 
 _supports_metrics = True
 
