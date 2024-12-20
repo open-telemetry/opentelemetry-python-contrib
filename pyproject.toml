@@ -13,6 +13,7 @@ dependencies = [
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-jinja2[instruments]",
   "opentelemetry-instrumentation-pymongo[instruments]",
   "opentelemetry-instrumentation-pyramid[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
@@ -39,6 +40,7 @@ opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-jinja2 = { workspace = true }
 opentelemetry-instrumentation-pymongo = { workspace = true }
 opentelemetry-instrumentation-pyramid = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
@@ -58,6 +60,7 @@ members = [
   "instrumentation/opentelemetry-instrumentation-dbapi",
   "instrumentation/opentelemetry-instrumentation-fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-jinja2",
   "instrumentation/opentelemetry-instrumentation-pymongo",
   "instrumentation/opentelemetry-instrumentation-pyramid",
   "instrumentation/opentelemetry-instrumentation-sqlalchemy",
