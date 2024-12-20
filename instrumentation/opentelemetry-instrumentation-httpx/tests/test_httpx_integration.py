@@ -14,6 +14,8 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 import abc
 import asyncio
 import typing
@@ -593,10 +595,10 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: typing.Union[
-                SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
-            ] = None,
-            **kwargs,
+            transport: SyncOpenTelemetryTransport
+            | AsyncOpenTelemetryTransport
+            | None = None,
+            **kwargs: typing.Any,
         ):
             pass
 
@@ -730,9 +732,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: typing.Union[
-                SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
-            ] = None,
+            transport: SyncOpenTelemetryTransport
+            | AsyncOpenTelemetryTransport
+            | None = None,
             **kwargs,
         ):
             pass
@@ -923,6 +925,17 @@ class BaseTestCases:
             client = self.create_client()
             HTTPXClientInstrumentor.instrument_client(client)
             result = self.perform_request(self.URL, client=client)
+            self.assertEqual(result.text, "Hello!")
+            self.assert_span(num_spans=1)
+
+        def test_instrument_multiple_clients_with_the_same_transport(self):
+            client1 = self.create_client()
+            client2 = self.create_client(transport=client1._transport)
+
+            HTTPXClientInstrumentor().instrument_client(client1)
+            HTTPXClientInstrumentor().instrument_client(client2)
+
+            result = self.perform_request(self.URL, client=client1)
             self.assertEqual(result.text, "Hello!")
             self.assert_span(num_spans=1)
 
@@ -1210,7 +1223,7 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         transport: typing.Optional[SyncOpenTelemetryTransport] = None,
         **kwargs,
     ):
-        return httpx.Client(**kwargs)
+        return httpx.Client(transport=transport, **kwargs)
 
     def perform_request(
         self,
@@ -1260,7 +1273,7 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
         **kwargs,
     ):
-        return httpx.AsyncClient(**kwargs)
+        return httpx.AsyncClient(transport=transport, **kwargs)
 
     def perform_request(
         self,
