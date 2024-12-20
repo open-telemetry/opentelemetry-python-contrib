@@ -1,0 +1,5 @@
+google-cloud-aiplatform>=1.64
+
+opentelemetry-sdk~=1.29.0
+opentelemetry-exporter-otlp-proto-grpc~=1.29.0
+opentelemetry-instrumentation-vertexai~=2.0b0
