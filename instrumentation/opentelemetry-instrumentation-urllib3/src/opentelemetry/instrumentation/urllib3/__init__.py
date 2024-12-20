@@ -83,15 +83,19 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import collections.abc
 import io
 import typing
 from dataclasses import dataclass
 from timeit import default_timer
-from typing import Collection
+from typing import Any, Callable, Collection, Mapping, Optional
 
 import urllib3.connectionpool
 import wrapt
+from urllib3.connectionpool import HTTPConnectionPool
+from urllib3.response import HTTPResponse
 
 from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_new,
@@ -142,41 +146,23 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 _excluded_urls_from_env = get_excluded_urls("URLLIB3")
 
 
-@dataclass
+@dataclass(slots=True)
 class RequestInfo:
     """Arguments that were passed to the ``urlopen()`` call."""
-
-    __slots__ = ("method", "url", "headers", "body")
 
     # The type annotations here come from ``HTTPConnectionPool.urlopen()``.
     method: str
     url: str
-    headers: typing.Optional[typing.Mapping[str, str]]
-    body: typing.Union[
-        bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None
-    ]
+    headers: Mapping[str, str] | None
+    body: bytes | typing.IO[typing.Any] | typing.Iterable[bytes] | str | None
 
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_RequestHookT = typing.Optional[
-    typing.Callable[
-        [
-            Span,
-            urllib3.connectionpool.HTTPConnectionPool,
-            RequestInfo,
-        ],
-        None,
-    ]
+_UrlFilterT = Optional[Callable[[str], str]]
+_RequestHookT = Optional[
+    Callable[[Span, HTTPConnectionPool, RequestInfo], None]
 ]
-_ResponseHookT = typing.Optional[
-    typing.Callable[
-        [
-            Span,
-            urllib3.connectionpool.HTTPConnectionPool,
-            urllib3.response.HTTPResponse,
-        ],
-        None,
-    ]
+_ResponseHookT = Optional[
+    Callable[[Span, HTTPConnectionPool, HTTPResponse], None]
 ]
 
 _URL_OPEN_ARG_TO_INDEX_MAPPING = {
@@ -190,7 +176,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instruments the urllib3 module
 
         Args:
@@ -286,7 +272,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         _uninstrument()
 
 
@@ -308,10 +294,15 @@ def _instrument(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
-    excluded_urls: ExcludeList = None,
+    excluded_urls: ExcludeList | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
-    def instrumented_urlopen(wrapped, instance, args, kwargs):
+    def instrumented_urlopen(
+        wrapped: Callable[..., HTTPResponse],
+        instance: HTTPConnectionPool,
+        args: list[Any],
+        kwargs: dict[str, Any],
+    ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
@@ -397,7 +388,9 @@ def _instrument(
     )
 
 
-def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
+def _get_url_open_arg(
+    name: str, args: list[Any], kwargs: typing.Mapping[str, Any]
+):
     arg_idx = _URL_OPEN_ARG_TO_INDEX_MAPPING.get(name)
     if arg_idx is not None:
         try:
@@ -408,9 +401,9 @@ def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
 
 
 def _get_url(
-    instance: urllib3.connectionpool.HTTPConnectionPool,
-    args: typing.List,
-    kwargs: typing.Mapping,
+    instance: HTTPConnectionPool,
+    args: list[Any],
+    kwargs: typing.Mapping[str, Any],
     url_filter: _UrlFilterT,
 ) -> str:
     url_or_path = _get_url_open_arg("url", args, kwargs)
@@ -427,7 +420,7 @@ def _get_url(
     return url
 
 
-def _get_body_size(body: object) -> typing.Optional[int]:
+def _get_body_size(body: object) -> int | None:
     if body is None:
         return 0
     if isinstance(body, collections.abc.Sized):
@@ -437,7 +430,7 @@ def _get_body_size(body: object) -> typing.Optional[int]:
     return None
 
 
-def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
+def _should_append_port(scheme: str, port: int | None) -> bool:
     if not port:
         return False
     if scheme == "http" and port == 80:
@@ -447,7 +440,7 @@ def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
     return True
 
 
-def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
+def _prepare_headers(urlopen_kwargs: dict[str, Any]) -> dict[str, Any]:
     headers = urlopen_kwargs.get("headers")
 
     # avoid modifying original headers on inject
@@ -460,7 +453,7 @@ def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
 def _set_status_code_attribute(
     span: Span,
     status_code: int,
-    metric_attributes: dict = None,
+    metric_attributes: dict[str, Any] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     status_code_str = str(status_code)
@@ -483,9 +476,9 @@ def _set_status_code_attribute(
 
 
 def _set_metric_attributes(
-    metric_attributes: dict,
-    instance: urllib3.connectionpool.HTTPConnectionPool,
-    response: urllib3.response.HTTPResponse,
+    metric_attributes: dict[str, Any],
+    instance: HTTPConnectionPool,
+    response: HTTPResponse,
     method: str,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
@@ -515,9 +508,9 @@ def _set_metric_attributes(
 
 
 def _filter_attributes_semconv(
-    metric_attributes,
+    metric_attributes: dict[str, object],
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-):
+) -> tuple[dict[str, object] | None, dict[str, object] | None]:
     duration_attrs_old = None
     duration_attrs_new = None
     if _report_old(sem_conv_opt_in_mode):
@@ -539,7 +532,7 @@ def _filter_attributes_semconv(
 
 
 def _record_metrics(
-    metric_attributes: dict,
+    metric_attributes: dict[str, object],
     duration_histogram_old: Histogram,
     duration_histogram_new: Histogram,
     request_size_histogram_old: Histogram,
