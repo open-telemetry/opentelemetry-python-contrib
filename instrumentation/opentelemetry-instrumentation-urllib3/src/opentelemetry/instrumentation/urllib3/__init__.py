@@ -146,9 +146,11 @@ from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 _excluded_urls_from_env = get_excluded_urls("URLLIB3")
 
 
-@dataclass(slots=True)
+@dataclass
 class RequestInfo:
     """Arguments that were passed to the ``urlopen()`` call."""
+
+    __slots__ = ("method", "url", "headers", "body")
 
     # The type annotations here come from ``HTTPConnectionPool.urlopen()``.
     method: str
