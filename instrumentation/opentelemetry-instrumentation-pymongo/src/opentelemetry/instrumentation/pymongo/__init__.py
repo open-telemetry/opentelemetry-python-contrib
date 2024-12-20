@@ -75,6 +75,8 @@ for example:
 
 """
 
+from __future__ import annotations
+
 from logging import getLogger
 from typing import Any, Callable, Collection, TypeVar
 
