@@ -23,6 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Typing :: Typed",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = ["Jinja2", "tox"]
 
