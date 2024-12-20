@@ -5,8 +5,10 @@ requires-python = ">=3.8"
 members = [
     "opentelemetry-instrumentation",
     "opentelemetry-instrumentation-asgi",
+    "opentelemetry-instrumentation-dbapi",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-sqlite3",
     "opentelemetry-instrumentation-system-metrics",
     "opentelemetry-instrumentation-urllib",
     "opentelemetry-instrumentation-urllib3",
@@ -211,6 +213,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "opentelemetry-instrumentation-dbapi"
+version = "0.51b0.dev0"
+source = { editable = "instrumentation/opentelemetry-instrumentation-dbapi" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "wrapt" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-fastapi"
 version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-fastapi" }
@@ -262,6 +283,23 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+]
+
+[[package]]
+name = "opentelemetry-instrumentation-sqlite3"
+version = "0.51b0.dev0"
+source = { editable = "instrumentation/opentelemetry-instrumentation-sqlite3" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-dbapi" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
 ]
 
 [[package]]
@@ -341,8 +379,10 @@ dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-fastapi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-sqlite3" },
     { name = "opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extra = ["instruments"] },
@@ -357,8 +397,10 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-asgi" },
+    { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-fastapi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
+    { name = "opentelemetry-instrumentation-sqlite3", editable = "instrumentation/opentelemetry-instrumentation-sqlite3" },
     { name = "opentelemetry-instrumentation-system-metrics", editable = "instrumentation/opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-urllib", editable = "instrumentation/opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-urllib3" },
