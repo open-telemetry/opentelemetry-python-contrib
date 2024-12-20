@@ -7,6 +7,7 @@ members = [
     "opentelemetry-instrumentation-asgi",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-urllib",
     "opentelemetry-instrumentation-urllib3",
     "opentelemetry-python-contrib",
     "opentelemetry-util-http",
@@ -263,6 +264,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "opentelemetry-instrumentation-urllib"
+version = "0.51b0.dev0"
+source = { editable = "instrumentation/opentelemetry-instrumentation-urllib" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-http" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-urllib3"
 version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-urllib3" }
@@ -299,6 +319,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-asgi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-fastapi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extra = ["instruments"] },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
@@ -313,6 +334,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-asgi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-asgi" },
     { name = "opentelemetry-instrumentation-fastapi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
+    { name = "opentelemetry-instrumentation-urllib", editable = "instrumentation/opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-urllib3" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
