@@ -67,7 +67,7 @@ Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd9
 
 SQLComment in span attribute
 ****************************
-If sqlcommenter is enabled, you can optionally configure SQLAlchemy instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+If sqlcommenter is enabled, you can further configure SQLAlchemy instrumentation to append sqlcomment to the `db.statement` span attribute for convenience of your platform.
 
 .. code:: python
 
