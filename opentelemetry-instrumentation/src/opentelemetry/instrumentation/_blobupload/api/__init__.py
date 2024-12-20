@@ -1,3 +1,5 @@
+"""Exposes API methods to callers from the package name."""
+
 from opentelemetry.instrumentation._blobupload.api.constants import NOT_UPLOADED
 from opentelemetry.instrumentation._blobupload.api.blob import Blob
 from opentelemetry.instrumentation._blobupload.api.blob_uploader import BlobUploader
