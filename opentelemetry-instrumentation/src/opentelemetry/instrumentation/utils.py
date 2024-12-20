@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
