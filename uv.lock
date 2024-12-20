@@ -25,6 +25,18 @@ wheels = [
 ]
 
 [[package]]
+name = "asgiref"
+version = "3.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/38/b3395cc9ad1b56d2ddac9970bc8f4141312dbaec28bc7c218b0dfafd0f42/asgiref-3.8.1.tar.gz", hash = "sha256:c343bd80a0bec947a9860adb4c432ffa7db769836c64238fc34bdc3fec84d590", size = 35186 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/e3/893e8757be2612e6c266d9bb58ad2e3651524b5b40cf56761e985a28b13e/asgiref-3.8.1-py3-none-any.whl", hash = "sha256:3e1e3ecc849832fe52ccf2cb6686b7a55f82bb1d6aee72a58826471390335e47", size = 23828 },
+]
+
+[[package]]
 name = "certifi"
 version = "2024.12.14"
 source = { registry = "https://pypi.org/simple" }
@@ -177,6 +189,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments"] },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-test-utils" },
     { name = "opentelemetry-util-http" },
 ]
 
@@ -187,6 +200,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-test-utils", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
 ]
 
@@ -207,6 +221,16 @@ source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdire
 dependencies = [
     { name = "deprecated" },
     { name = "opentelemetry-api" },
+]
+
+[[package]]
+name = "opentelemetry-test-utils"
+version = "0.51b0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main#9e94fd2650a1567f1f3a3d72247d0bf1525c4a17" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
 ]
 
 [[package]]

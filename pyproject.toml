@@ -7,6 +7,7 @@ dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
+  "opentelemetry-test-utils",
   "opentelemetry-instrumentation",
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-util-http",
@@ -21,6 +22,7 @@ package = false  # https://docs.astral.sh/uv/reference/settings/#package
 opentelemetry-api = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-api" }
 opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-sdk" }
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
+opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
 opentelemetry-instrumentation = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
 opentelemetry-util-http = { workspace = true }
