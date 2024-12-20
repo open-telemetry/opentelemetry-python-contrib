@@ -72,6 +72,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import types
 from timeit import default_timer
