@@ -13,11 +13,13 @@ dependencies = [
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-pyramid[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
+  "opentelemetry-instrumentation-wsgi",
   "opentelemetry-util-http",
 ]
 
@@ -36,11 +38,13 @@ opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-pyramid = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
+opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
@@ -52,11 +56,13 @@ members = [
   "instrumentation/opentelemetry-instrumentation-dbapi",
   "instrumentation/opentelemetry-instrumentation-fastapi",
   "instrumentation/opentelemetry-instrumentation-httpx",
+  "instrumentation/opentelemetry-instrumentation-pyramid",
   "instrumentation/opentelemetry-instrumentation-sqlalchemy",
   "instrumentation/opentelemetry-instrumentation-sqlite3",
   "instrumentation/opentelemetry-instrumentation-system-metrics",
   "instrumentation/opentelemetry-instrumentation-urllib",
   "instrumentation/opentelemetry-instrumentation-urllib3",
+  "instrumentation/opentelemetry-instrumentation-wsgi",
   "util/opentelemetry-util-http",
 ]
 
