@@ -9,13 +9,15 @@ dependencies = [
   "opentelemetry-semantic-conventions",
   "opentelemetry-test-utils",
   "opentelemetry-instrumentation",
+  "opentelemetry-instrumentation-asgi[instruments]",
+  "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-util-http",
 ]
 
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
-package = false  # https://docs.astral.sh/uv/reference/settings/#package
+package = false # https://docs.astral.sh/uv/reference/settings/#package
 
 # https://docs.astral.sh/uv/reference/settings/#sources
 [tool.uv.sources]
@@ -24,12 +26,21 @@ opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-pyt
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
 opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
 opentelemetry-instrumentation = { workspace = true }
+opentelemetry-instrumentation-asgi = { workspace = true }
+opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
-members = ["opentelemetry-instrumentation", "instrumentation/opentelemetry-instrumentation-httpx", "util/opentelemetry-util-http"]
+members = [
+  "opentelemetry-instrumentation",
+  # TODO: When all instrumentation packages are moved to the workspace, we can replace the below with `instrumentation/*`.
+  "instrumentation/opentelemetry-instrumentation-asgi",
+  "instrumentation/opentelemetry-instrumentation-fastapi",
+  "instrumentation/opentelemetry-instrumentation-httpx",
+  "util/opentelemetry-util-http",
+]
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
