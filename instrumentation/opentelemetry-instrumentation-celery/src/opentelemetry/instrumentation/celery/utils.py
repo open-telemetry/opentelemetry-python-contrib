@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
-from typing import ContextManager, Optional, Tuple
+from contextlib import AbstractContextManager
+from typing import Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -123,7 +126,7 @@ def attach_context(
     task: Optional[Task],
     task_id: str,
     span: Span,
-    activation: ContextManager[Span],
+    activation: AbstractContextManager[Span],
     token: Optional[object],
     is_publish: bool = False,
 ) -> None:
@@ -171,7 +174,7 @@ def detach_context(task, task_id, is_publish=False) -> None:
 
 def retrieve_context(
     task, task_id, is_publish=False
-) -> Optional[Tuple[Span, ContextManager[Span], Optional[object]]]:
+) -> Optional[Tuple[Span, AbstractContextManager[Span], Optional[object]]]:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """
