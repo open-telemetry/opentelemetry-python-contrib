@@ -43,10 +43,8 @@ Instrumenting single clients
 ****************************
 
 If you only want to instrument requests for specific client instances, you can
-use the `instrument_client`_ method.
+use the `HTTPXClientInstrumentor.instrument_client` method.
 
-
-.. _instrument_client: #opentelemetry.instrumentation.httpx.HTTPXClientInstrumentor.instrument_client
 
 .. code-block:: python
 
