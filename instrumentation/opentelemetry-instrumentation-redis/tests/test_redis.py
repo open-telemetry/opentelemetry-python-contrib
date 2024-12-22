@@ -19,7 +19,6 @@ import fakeredis
 import pytest
 import redis
 import redis.asyncio
-from fakeredis.aioredis import FakeRedis
 from redis.exceptions import ConnectionError as redis_ConnectionError
 from redis.exceptions import WatchError
 
@@ -360,7 +359,7 @@ class TestRedis(TestBase):
     def test_watch_error_sync(self):
         def redis_operations():
             with pytest.raises(WatchError):
-                redis_client = fakeredis.FakeStrictRedis()
+                redis_client = redis.Redis()
                 pipe = redis_client.pipeline(transaction=True)
                 pipe.watch("a")
                 redis_client.set("a", "bad")  # This will cause the WatchError
@@ -389,25 +388,123 @@ class TestRedis(TestBase):
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self.instrumentor = RedisInstrumentor()
+        self.client = redis.asyncio.Redis()
 
     def tearDown(self):
         super().tearDown()
         RedisInstrumentor().uninstrument()
 
+    async def _redis_operations(self, client):
+        with pytest.raises(WatchError):
+            async with client.pipeline(transaction=False) as pipe:
+                await pipe.watch("a")
+                await client.set("a", "bad")
+                pipe.multi()
+                await pipe.set("a", "1")
+                await pipe.execute()
+
     @pytest.mark.asyncio
     async def test_watch_error_async(self):
-        async def redis_operations():
-            with pytest.raises(WatchError):
-                redis_client = FakeRedis()
-                async with redis_client.pipeline(transaction=False) as pipe:
-                    await pipe.watch("a")
-                    await redis_client.set("a", "bad")
-                    pipe.multi()
-                    await pipe.set("a", "1")
-                    await pipe.execute()
+        self.instrumentor.instrument(tracer_provider=self.tracer_provider)
+        redis_client = redis.asyncio.Redis()
 
-        await redis_operations()
+        await self._redis_operations(redis_client)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+    @pytest.mark.asyncio
+    async def test_watch_error_async_only_client(self):
+        self.instrumentor.instrument(
+            tracer_provider=self.tracer_provider, client=self.client
+        )
+        redis_client = redis.asyncio.Redis()
+        await self._redis_operations(redis_client)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 0)
+
+        # now with the instrumented client we should get proper spans
+        await self._redis_operations(self.client)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        # there should be 3 tests, we start watch operation and have 2 set operation on same key
+        self.assertEqual(len(spans), 3)
+
+        self.assertEqual(spans[0].attributes.get("db.statement"), "WATCH ?")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
+        for span in spans[1:]:
+            self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
+            self.assertEqual(span.kind, SpanKind.CLIENT)
+            self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+
+class TestRedisInstance(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.client = redis.Redis()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, client=self.client
+        )
+
+    def tearDown(self):
+        super().tearDown()
+        print("SHOULD TEARDOWN")
+
+    def test_only_client_instrumented(self):
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        # now use the test client
+        with mock.patch.object(self.client, "connection"):
+            self.client.get("key")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET")
+        self.assertEqual(span.kind, SpanKind.CLIENT)
+
+    @staticmethod
+    def redis_operations(client):
+        with pytest.raises(WatchError):
+            pipe = client.pipeline(transaction=True)
+            pipe.watch("a")
+            client.set("a", "bad")  # This will cause the WatchError
+            pipe.multi()
+            pipe.set("a", "1")
+            pipe.execute()
+
+    def test_watch_error_sync_only_client(self):
+        redis_client = redis.Redis()
+
+        self.redis_operations(redis_client)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        self.redis_operations(self.client)
 
         spans = self.memory_exporter.get_finished_spans()
 

@@ -184,6 +184,62 @@ def _build_span_name(
     return name
 
 
+def _add_create_attributes(span: Span, args: tuple[Any, ...]):
+    _set_span_attribute_if_value(
+        span, "redis.create_index.index", _value_or_none(args, 1)
+    )
+    # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
+    try:
+        schema_index = args.index("SCHEMA")
+    except ValueError:
+        return
+    schema = args[schema_index:]
+    field_attribute = ""
+    # Schema in format:
+    # [first_field_name, first_field_type, first_field_some_attribute1, first_field_some_attribute2, second_field_name, ...]
+    field_attribute = "".join(
+        f"Field(name: {schema[index - 1]}, type: {schema[index]});"
+        for index in range(1, len(schema))
+        if schema[index] in _FIELD_TYPES
+    )
+    _set_span_attribute_if_value(
+        span,
+        "redis.create_index.fields",
+        field_attribute,
+    )
+
+
+def _add_search_attributes(span: Span, response, args):
+    _set_span_attribute_if_value(
+        span, "redis.search.index", _value_or_none(args, 1)
+    )
+    _set_span_attribute_if_value(
+        span, "redis.search.query", _value_or_none(args, 2)
+    )
+    # Parse response from search
+    # https://redis.io/docs/latest/commands/ft.search/
+    # Response in format:
+    # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
+    # Returned documents in array format:
+    # [first_field_name, first_field_value, second_field_name, second_field_value ...]
+    number_of_returned_documents = _value_or_none(response, 0)
+    _set_span_attribute_if_value(
+        span, "redis.search.total", number_of_returned_documents
+    )
+    if "NOCONTENT" in args or not number_of_returned_documents:
+        return
+    for document_number in range(number_of_returned_documents):
+        document_index = _value_or_none(response, 1 + 2 * document_number)
+        if document_index:
+            document = response[2 + 2 * document_number]
+            for attribute_name_index in range(0, len(document), 2):
+                _set_span_attribute_if_value(
+                    span,
+                    f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}",
+                    document[attribute_name_index + 1],
+                )
+
+
 def _build_span_meta_data_for_pipeline(
     instance: PipelineInstance | AsyncPipelineInstance,
 ) -> tuple[list[Any], str, str]:
@@ -214,11 +270,10 @@ def _build_span_meta_data_for_pipeline(
     return command_stack, resource, span_name
 
 
-# pylint: disable=R0915
-def _instrument(
-    tracer: Tracer,
-    request_hook: _RequestHookT | None = None,
-    response_hook: _ResponseHookT | None = None,
+def _traced_execute_factory(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
 ):
     def _traced_execute_command(
         func: Callable[..., R],
@@ -247,6 +302,14 @@ def _instrument(
                 response_hook(span, instance, response)
             return response
 
+    return _traced_execute_command
+
+
+def _traced_execute_pipeline_factory(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
     def _traced_execute_pipeline(
         func: Callable[..., R],
         instance: PipelineInstance,
@@ -284,90 +347,14 @@ def _instrument(
 
         return response
 
-    def _add_create_attributes(span: Span, args: tuple[Any, ...]):
-        _set_span_attribute_if_value(
-            span, "redis.create_index.index", _value_or_none(args, 1)
-        )
-        # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
-        try:
-            schema_index = args.index("SCHEMA")
-        except ValueError:
-            return
-        schema = args[schema_index:]
-        field_attribute = ""
-        # Schema in format:
-        # [first_field_name, first_field_type, first_field_some_attribute1, first_field_some_attribute2, second_field_name, ...]
-        field_attribute = "".join(
-            f"Field(name: {schema[index - 1]}, type: {schema[index]});"
-            for index in range(1, len(schema))
-            if schema[index] in _FIELD_TYPES
-        )
-        _set_span_attribute_if_value(
-            span,
-            "redis.create_index.fields",
-            field_attribute,
-        )
+    return _traced_execute_pipeline
 
-    def _add_search_attributes(span: Span, response, args):
-        _set_span_attribute_if_value(
-            span, "redis.search.index", _value_or_none(args, 1)
-        )
-        _set_span_attribute_if_value(
-            span, "redis.search.query", _value_or_none(args, 2)
-        )
-        # Parse response from search
-        # https://redis.io/docs/latest/commands/ft.search/
-        # Response in format:
-        # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
-        # Returned documents in array format:
-        # [first_field_name, first_field_value, second_field_name, second_field_value ...]
-        number_of_returned_documents = _value_or_none(response, 0)
-        _set_span_attribute_if_value(
-            span, "redis.search.total", number_of_returned_documents
-        )
-        if "NOCONTENT" in args or not number_of_returned_documents:
-            return
-        for document_number in range(number_of_returned_documents):
-            document_index = _value_or_none(response, 1 + 2 * document_number)
-            if document_index:
-                document = response[2 + 2 * document_number]
-                for attribute_name_index in range(0, len(document), 2):
-                    _set_span_attribute_if_value(
-                        span,
-                        f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}",
-                        document[attribute_name_index + 1],
-                    )
 
-    pipeline_class = (
-        "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
-    )
-    redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
-
-    wrap_function_wrapper(
-        "redis", f"{redis_class}.execute_command", _traced_execute_command
-    )
-    wrap_function_wrapper(
-        "redis.client",
-        f"{pipeline_class}.execute",
-        _traced_execute_pipeline,
-    )
-    wrap_function_wrapper(
-        "redis.client",
-        f"{pipeline_class}.immediate_execute_command",
-        _traced_execute_command,
-    )
-    if redis.VERSION >= _REDIS_CLUSTER_VERSION:
-        wrap_function_wrapper(
-            "redis.cluster",
-            "RedisCluster.execute_command",
-            _traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "redis.cluster",
-            "ClusterPipeline.execute",
-            _traced_execute_pipeline,
-        )
-
+def _async_traced_execute_factory(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
         instance: AsyncRedisInstance,
@@ -391,6 +378,14 @@ def _instrument(
                 response_hook(span, instance, response)
             return response
 
+    return _async_traced_execute_command
+
+
+def _async_traced_execute_pipeline_factory(
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
     async def _async_traced_execute_pipeline(
         func: Callable[..., Awaitable[R]],
         instance: AsyncPipelineInstance,
@@ -430,6 +425,57 @@ def _instrument(
 
         return response
 
+    return _async_traced_execute_pipeline
+
+
+# pylint: disable=R0915
+def _instrument(
+    tracer: Tracer,
+    request_hook: _RequestHookT | None = None,
+    response_hook: _ResponseHookT | None = None,
+):
+    _traced_execute_command = _traced_execute_factory(
+        tracer, request_hook, response_hook
+    )
+    _traced_execute_pipeline = _traced_execute_pipeline_factory(
+        tracer, request_hook, response_hook
+    )
+    pipeline_class = (
+        "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
+    )
+    redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
+
+    wrap_function_wrapper(
+        "redis", f"{redis_class}.execute_command", _traced_execute_command
+    )
+    wrap_function_wrapper(
+        "redis.client",
+        f"{pipeline_class}.execute",
+        _traced_execute_pipeline,
+    )
+    wrap_function_wrapper(
+        "redis.client",
+        f"{pipeline_class}.immediate_execute_command",
+        _traced_execute_command,
+    )
+    if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+        wrap_function_wrapper(
+            "redis.cluster",
+            "RedisCluster.execute_command",
+            _traced_execute_command,
+        )
+        wrap_function_wrapper(
+            "redis.cluster",
+            "ClusterPipeline.execute",
+            _traced_execute_pipeline,
+        )
+
+    _async_traced_execute_command = _async_traced_execute_factory(
+        tracer, request_hook, response_hook
+    )
+    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
+        tracer, request_hook, response_hook
+    )
     if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
         wrap_function_wrapper(
             "redis.asyncio",
@@ -459,6 +505,94 @@ def _instrument(
         )
 
 
+def _instrument_client(
+    client,
+    tracer,
+    request_hook: _RequestHookT = None,
+    response_hook: _ResponseHookT = None,
+):
+    # first, handle async clients
+    _async_traced_execute_command = _async_traced_execute_factory(
+        tracer, request_hook, response_hook
+    )
+    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
+        tracer, request_hook, response_hook
+    )
+
+    def _async_pipeline_wrapper(func, instance, args, kwargs):
+        result = func(*args, **kwargs)
+        wrap_function_wrapper(
+            result, "execute", _async_traced_execute_pipeline
+        )
+        wrap_function_wrapper(
+            result, "immediate_execute_command", _async_traced_execute_command
+        )
+        return result
+
+    if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+        client_type = (
+            redis.asyncio.StrictRedis
+            if redis.VERSION < (3, 0, 0)
+            else redis.asyncio.Redis
+        )
+
+        if isinstance(client, client_type):
+            wrap_function_wrapper(
+                client, "execute_command", _async_traced_execute_command
+            )
+            wrap_function_wrapper(client, "pipeline", _async_pipeline_wrapper)
+            return
+
+    def _async_cluster_pipeline_wrapper(func, instance, args, kwargs):
+        result = func(*args, **kwargs)
+        wrap_function_wrapper(
+            result, "execute", _async_traced_execute_pipeline
+        )
+        return result
+
+    # handle
+    if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION and isinstance(
+        client, redis.asyncio.RedisCluster
+    ):
+        wrap_function_wrapper(
+            client, "execute_command", _async_traced_execute_command
+        )
+        wrap_function_wrapper(
+            client, "pipeline", _async_cluster_pipeline_wrapper
+        )
+        return
+    # for redis.client.Redis, redis.Cluster and v3.0.0 redis.client.StrictRedis
+    # the wrappers are the same
+    # client_type = (
+    #     redis.client.StrictRedis if redis.VERSION < (3, 0, 0) else redis.client.Redis
+    # )
+    _traced_execute_command = _traced_execute_factory(
+        tracer, request_hook, response_hook
+    )
+    _traced_execute_pipeline = _traced_execute_pipeline_factory(
+        tracer, request_hook, response_hook
+    )
+
+    def _pipeline_wrapper(func, instance, args, kwargs):
+        result = func(*args, **kwargs)
+        wrap_function_wrapper(result, "execute", _traced_execute_pipeline)
+        wrap_function_wrapper(
+            result, "immediate_execute_command", _traced_execute_command
+        )
+        return result
+
+    wrap_function_wrapper(
+        client,
+        "execute_command",
+        _traced_execute_command,
+    )
+    wrap_function_wrapper(
+        client,
+        "pipeline",
+        _pipeline_wrapper,
+    )
+
+
 class RedisInstrumentor(BaseInstrumentor):
     """An instrumentor for Redis.
 
@@ -483,11 +617,20 @@ class RedisInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        _instrument(
-            tracer,
-            request_hook=kwargs.get("request_hook"),
-            response_hook=kwargs.get("response_hook"),
-        )
+        redis_client = kwargs.get("client")
+        if redis_client:
+            _instrument_client(
+                redis_client,
+                tracer,
+                request_hook=kwargs.get("request_hook"),
+                response_hook=kwargs.get("response_hook"),
+            )
+        else:
+            _instrument(
+                tracer,
+                request_hook=kwargs.get("request_hook"),
+                response_hook=kwargs.get("response_hook"),
+            )
 
     def _uninstrument(self, **kwargs: Any):
         if redis.VERSION < (3, 0, 0):
