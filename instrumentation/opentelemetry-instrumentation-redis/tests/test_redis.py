@@ -436,7 +436,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
 
     @pytest.mark.asyncio
     async def test_watch_error_async_only_client(self):
-        self.instrumentor.instrument_connection(
+        self.instrumentor.instrument_client(
             tracer_provider=self.tracer_provider, client=self.client
         )
         redis_client = FakeRedis()
@@ -463,7 +463,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
             self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
-        RedisInstrumentor().uninstrument_connection(self.client)
+        RedisInstrumentor().uninstrument_client(self.client)
 
     @pytest.mark.asyncio
     async def test_request_response_hooks(self):
@@ -505,7 +505,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
             if span and span.is_recording():
                 span.set_attribute(response_attr, args)
 
-        self.instrumentor.instrument_connection(
+        self.instrumentor.instrument_client(
             client=self.client,
             tracer_provider=self.tracer_provider,
             request_hook=request_hook,
@@ -523,7 +523,7 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         self.memory_exporter.clear()
         await fresh_client.set("key", "value")
         self.assert_span_count(0)
-        self.instrumentor.uninstrument_connection(self.client)
+        self.instrumentor.uninstrument_client(self.client)
         # after un-instrumenting the query should not be recorder
         await self.client.set("key", "value")
         spans = self.assert_span_count(0)
@@ -533,13 +533,13 @@ class TestRedisInstance(TestBase):
     def setUp(self):
         super().setUp()
         self.client = fakeredis.FakeStrictRedis()
-        RedisInstrumentor().instrument_connection(
+        RedisInstrumentor().instrument_client(
             client=self.client, tracer_provider=self.tracer_provider
         )
 
     def tearDown(self):
         super().tearDown()
-        RedisInstrumentor().uninstrument_connection(self.client)
+        RedisInstrumentor().uninstrument_client(self.client)
 
     def test_only_client_instrumented(self):
         redis_client = redis.Redis()

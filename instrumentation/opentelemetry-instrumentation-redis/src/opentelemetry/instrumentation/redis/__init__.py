@@ -15,15 +15,14 @@
 """
 Instrument `redis`_ to report Redis queries.
 
-There are two options for instrumenting code. The first option is to use the
-``opentelemetry-instrument`` executable which will automatically
-instrument your Redis client. The second is to programmatically enable
-instrumentation via the following code:
-
 .. _redis: https://pypi.org/project/redis/
 
-Usage
------
+
+Instrument All Clients
+----------------------
+
+The easiest way to instrument all redis client instances is by
+``RedisInstrumentor().instrument()``:
 
 .. code:: python
 
@@ -38,7 +37,7 @@ Usage
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
-Async Redis clients (i.e. redis.asyncio.Redis) are also instrumented in the same way:
+Async Redis clients (i.e. ``redis.asyncio.Redis``) are also instrumented in the same way:
 
 .. code:: python
 
@@ -54,19 +53,44 @@ Async Redis clients (i.e. redis.asyncio.Redis) are also instrumented in the same
         client = redis.asyncio.Redis(host="localhost", port=6379)
         await client.get("my-key")
 
-The `instrument` method accepts the following keyword args:
+.. note::
+    Calling the ``instrument`` method will instrument the client classes, so any client
+    created after the ``instrument`` call will be instrumented. To instrument only a
+    single client, use :func:`RedisInstrumentor.instrument_client` method.
 
-tracer_provider (TracerProvider) - an optional tracer provider
+Instrument Single Client
+------------------------
 
-request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
-this function signature is:  def request_hook(span: Span, instance: redis.connection.Connection, args, kwargs) -> None
+The :func:`RedisInstrumentor.instrument_client` can instrument a connection instance. This is useful when there are multiple clients with a different redis database index.
+Or, you might have a different connection pool used for an application function you
+don't want instrumented.
 
-response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
-this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
+.. code:: python
 
-for example:
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    import redis
 
-.. code: python
+    instrumented_client = redis.Redis()
+    not_instrumented_client = redis.Redis()
+
+    # Instrument redis
+    RedisInstrumentor.instrument_client(client=instrumented_client)
+
+    # This will report a span with the default settings
+    instrumented_client.get("my-key")
+
+    # This will not have a span
+    not_instrumented_client.get("my-key")
+
+.. warning::
+    All client instances created after calling ``RedisInstrumentor().instrument`` will
+    be instrumented. To avoid instrumenting all clients, use
+    :func:`RedisInstrumentor.instrument_client` .
+
+Request/Response Hooks
+----------------------
+
+.. code:: python
 
     from opentelemetry.instrumentation.redis import RedisInstrumentor
     import redis
@@ -85,7 +109,6 @@ for example:
     # This will report a span with the default settings and the custom attributes added from the hooks
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
-
 
 API
 ---
@@ -111,7 +134,13 @@ from opentelemetry.instrumentation.redis.util import (
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, StatusCode, Tracer
+from opentelemetry.trace import (
+    Span,
+    StatusCode,
+    Tracer,
+    TracerProvider,
+    get_tracer,
+)
 
 if TYPE_CHECKING:
     from typing import Awaitable, TypeVar
@@ -122,10 +151,10 @@ if TYPE_CHECKING:
     import redis.cluster
     import redis.connection
 
-    _RequestHookT = Callable[
+    RequestHook = Callable[
         [Span, redis.connection.Connection, list[Any], dict[str, Any]], None
     ]
-    _ResponseHookT = Callable[[Span, redis.connection.Connection, Any], None]
+    ResponseHook = Callable[[Span, redis.connection.Connection, Any], None]
 
     AsyncPipelineInstance = TypeVar(
         "AsyncPipelineInstance",
@@ -148,6 +177,7 @@ if TYPE_CHECKING:
 
 _DEFAULT_SERVICE = "redis"
 _logger = logging.getLogger(__name__)
+assert hasattr(redis, "VERSION")
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
@@ -281,9 +311,9 @@ def _build_span_meta_data_for_pipeline(
 
 
 def _traced_execute_factory(
-    tracer,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     def _traced_execute_command(
         func: Callable[..., R],
@@ -316,9 +346,9 @@ def _traced_execute_factory(
 
 
 def _traced_execute_pipeline_factory(
-    tracer,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     def _traced_execute_pipeline(
         func: Callable[..., R],
@@ -361,9 +391,9 @@ def _traced_execute_pipeline_factory(
 
 
 def _async_traced_execute_factory(
-    tracer,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
@@ -392,9 +422,9 @@ def _async_traced_execute_factory(
 
 
 def _async_traced_execute_pipeline_factory(
-    tracer,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     async def _async_traced_execute_pipeline(
         func: Callable[..., Awaitable[R]],
@@ -441,8 +471,8 @@ def _async_traced_execute_pipeline_factory(
 # pylint: disable=R0915
 def _instrument(
     tracer: Tracer,
-    request_hook: _RequestHookT | None = None,
-    response_hook: _ResponseHookT | None = None,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     _traced_execute_command = _traced_execute_factory(
         tracer, request_hook, response_hook
@@ -513,11 +543,11 @@ def _instrument(
         )
 
 
-def _instrument_connection(
+def _instrument_client(
     client,
-    tracer,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     # first, handle async clients and cluster clients
     _async_traced_execute = _async_traced_execute_factory(
@@ -589,23 +619,48 @@ def _instrument_connection(
 
 
 class RedisInstrumentor(BaseInstrumentor):
-    """An instrumentor for Redis.
-
-    See `BaseInstrumentor`
-    """
-
     @staticmethod
     def _get_tracer(**kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        return trace.get_tracer(
+        return get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
-    def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+    def instrument(
+        self,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: RequestHook | None = None,
+        response_hook: ResponseHook | None = None,
+        **kwargs,
+    ):
+        """Instruments all Redis/StrictRedis/RedisCluster and async client instances.
+
+        Args:
+            tracer_provider: A TracerProvider, defaults to global.
+            request_hook:
+                a function with extra user-defined logic to run before performing the request.
+
+                The ``args`` is a tuple, where items are
+                command arguments. For example ``client.set("mykey", "value", ex=5)`` would
+                have ``args`` as ``('SET', 'mykey', 'value', 'EX', 5)``.
+
+                The ``kwargs`` represents occasional ``options`` passed by redis. For example,
+                if you use ``client.set("mykey", "value", get=True)``, the ``kwargs`` would be
+                ``{'get': True}``.
+            response_hook:
+                a function with extra user-defined logic to run after the request is complete.
+
+                The ``args`` represents the response.
+        """
+        super().instrument(
+            tracer_provider=tracer_provider,
+            request_hook=request_hook,
+            response_hook=response_hook,
+            **kwargs,
+        )
 
     def _instrument(self, **kwargs: Any):
         """Instruments the redis module
@@ -652,13 +707,42 @@ class RedisInstrumentor(BaseInstrumentor):
             unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
 
     @staticmethod
-    def instrument_connection(
-        client, tracer_provider: None, request_hook=None, response_hook=None
+    def instrument_client(
+        client: redis.StrictRedis
+        | redis.Redis
+        | redis.asyncio.Redis
+        | redis.cluster.RedisCluster
+        | redis.asyncio.cluster.RedisCluster,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: RequestHook | None = None,
+        response_hook: ResponseHook | None = None,
     ):
+        """Instrument the provided Redis Client. The client can be sync or async.
+        Cluster client is also supported.
+
+        Args:
+            client: The redis client.
+            tracer_provider: A TracerProvider, defaults to global.
+            request_hook: a function with extra user-defined logic to run before
+                performing the request.
+
+                The ``args`` is a tuple, where items are
+                command arguments. For example ``client.set("mykey", "value", ex=5)`` would
+                have ``args`` as ``('SET', 'mykey', 'value', 'EX', 5)``.
+
+                The ``kwargs`` represents occasional ``options`` passed by redis. For example,
+                if you use ``client.set("mykey", "value", get=True)``, the ``kwargs`` would be
+                ``{'get': True}``.
+
+            response_hook: a function with extra user-defined logic to run after
+                the request is complete.
+
+                The ``args`` represents the response.
+        """
         if not hasattr(client, INSTRUMENTATION_ATTR):
             setattr(client, INSTRUMENTATION_ATTR, False)
         if not getattr(client, INSTRUMENTATION_ATTR):
-            _instrument_connection(
+            _instrument_client(
                 client,
                 RedisInstrumentor._get_tracer(tracer_provider=tracer_provider),
                 request_hook=request_hook,
@@ -671,7 +755,18 @@ class RedisInstrumentor(BaseInstrumentor):
             )
 
     @staticmethod
-    def uninstrument_connection(client):
+    def uninstrument_client(
+        client: redis.StrictRedis
+        | redis.Redis
+        | redis.asyncio.Redis
+        | redis.cluster.RedisCluster
+        | redis.asyncio.cluster.RedisCluster,
+    ):
+        """Disables instrumentation for the given client instance
+
+        Args:
+            client: The redis client
+        """
         if getattr(client, INSTRUMENTATION_ATTR):
             # for all clients we need to unwrap execute_command and pipeline functions
             unwrap(client, "execute_command")
@@ -685,3 +780,7 @@ class RedisInstrumentor(BaseInstrumentor):
                 "Attempting to un-instrument Redis connection that wasn't instrumented"
             )
             return
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        """Return a list of python packages with versions that the will be instrumented."""
+        return _instruments
