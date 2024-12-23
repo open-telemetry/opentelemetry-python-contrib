@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
 - `opentelemetry-instrumentation-click`: new instrumentation to trace click commands
   ([#2994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2994))
+- `opentelemetry-instrumentation-falcon` Implement new HTTP semantic convention opt-in for Falcon
+  ([#2790](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2790))
 
 ### Fixed
 
