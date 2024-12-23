@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
