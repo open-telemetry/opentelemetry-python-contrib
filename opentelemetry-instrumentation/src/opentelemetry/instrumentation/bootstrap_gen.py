@@ -93,7 +93,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.51b0.dev",
     },
     {
-        "library": "falcon >= 1.4.1, < 3.1.2",
+        "library": "falcon >= 1.4.1, < 5.0.0",
         "instrumentation": "opentelemetry-instrumentation-falcon==0.51b0.dev",
     },
     {

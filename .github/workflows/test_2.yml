@@ -16,6 +16,186 @@ env:
 
 jobs:
 
+  py38-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-confluent-kafka -- -ra
+
+  py39-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-confluent-kafka -- -ra
+
+  py310-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-confluent-kafka -- -ra
+
+  py311-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-confluent-kafka -- -ra
+
+  py312-test-instrumentation-confluent-kafka_ubuntu-latest:
+    name: instrumentation-confluent-kafka 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-confluent-kafka -- -ra
+
+  py38-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-asyncio -- -ra
+
+  py39-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-asyncio -- -ra
+
+  py310-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-asyncio -- -ra
+
+  py311-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-asyncio -- -ra
+
+  py312-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-asyncio -- -ra
+
   py38-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.8 Ubuntu
     runs-on: ubuntu-latest
