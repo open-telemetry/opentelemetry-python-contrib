@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+- `opentelemetry-instrumentation-falcon` add support version to v4
+  ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
+
 
 ### Fixed
 
@@ -67,8 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
 - `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
   ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
-- `opentelemetry-instrumentation-falcon`: expand supported version to v4
-  ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
 
 ### Breaking changes
 
