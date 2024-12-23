@@ -78,6 +78,13 @@ class TestFalconBase(TestBase):
         )
         self.app = make_app()
 
+    @property
+    def _has_fixed_http_target(self):
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        return _parsed_falcon_version < package_version.parse("3.1.2")
+
     def client(self):
         return testing.TestClient(self.app)
 
@@ -139,15 +146,11 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
-        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
-        if _parsed_falcon_version < package_version.parse("3.1.2"):
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
-        else:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_TARGET], "/hello"
-            )
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/" if self._has_fixed_http_target else "/hello",
+        )
+
         self.memory_exporter.clear()
 
     def test_404(self):
@@ -177,15 +180,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
-        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
-        if _parsed_falcon_version < package_version.parse("3.1.2"):
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
-        else:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_TARGET], "/does-not-exist"
-            )
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/" if self._has_fixed_http_target else "/does-not-exist",
+        )
 
     def test_500(self):
         try:
@@ -222,15 +220,11 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
-        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
-        if _parsed_falcon_version < package_version.parse("3.1.2"):
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
-        else:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_TARGET], "/error"
-            )
+
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/" if self._has_fixed_http_target else "/error",
+        )
 
     def test_url_template(self):
         self.client().simulate_get("/user/123")
@@ -257,15 +251,11 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
         )
-        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
-        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
-        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
-        if _parsed_falcon_version < package_version.parse("3.1.2"):
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_TARGET], "/")
-        else:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_TARGET], "/user/123"
-            )
+
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_TARGET],
+            "/" if self._has_fixed_http_target else "/user/123",
+        )
 
     def test_uninstrument(self):
         self.client().simulate_get(path="/hello")
