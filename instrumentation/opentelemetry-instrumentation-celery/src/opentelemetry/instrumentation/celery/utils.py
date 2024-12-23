@@ -15,14 +15,16 @@
 from __future__ import annotations
 
 import logging
-from contextlib import AbstractContextManager
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
 
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
+
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
 
 logger = logging.getLogger(__name__)
 
