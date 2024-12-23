@@ -41,6 +41,7 @@ confluent_kafka = "opentelemetry.instrumentation.confluent_kafka:ConfluentKafkaI
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-confluent-kafka"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/confluent_kafka/version.py"

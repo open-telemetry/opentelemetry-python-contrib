@@ -14,6 +14,7 @@
 
 import json
 import logging
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
@@ -27,39 +28,47 @@ logger = logging.getLogger(__name__)
 
 _AWS_METADATA_TOKEN_HEADER = "X-aws-ec2-metadata-token"
 _GET_METHOD = "GET"
+_AWS_METADATA_HOST = "169.254.169.254"
 
 
-def _aws_http_request(method, path, headers):
+def _aws_http_request(method, path, headers, timeout=None):
+    if timeout is None:
+        timeout = 5
     with urlopen(
         Request(
-            "http://169.254.169.254" + path, headers=headers, method=method
+            "http://" + _AWS_METADATA_HOST + path,
+            headers=headers,
+            method=method,
         ),
-        timeout=5,
+        timeout=timeout,
     ) as response:
         return response.read().decode("utf-8")
 
 
-def _get_token():
+def _get_token(timeout=None):
     return _aws_http_request(
         "PUT",
         "/latest/api/token",
         {"X-aws-ec2-metadata-token-ttl-seconds": "60"},
+        timeout,
     )
 
 
-def _get_identity(token):
+def _get_identity(token, timeout=None):
     return _aws_http_request(
         _GET_METHOD,
         "/latest/dynamic/instance-identity/document",
         {_AWS_METADATA_TOKEN_HEADER: token},
+        timeout,
     )
 
 
-def _get_host(token):
+def _get_host(token, timeout=None):
     return _aws_http_request(
         _GET_METHOD,
         "/latest/meta-data/hostname",
         {_AWS_METADATA_TOKEN_HEADER: token},
+        timeout,
     )
 
 
@@ -72,7 +81,17 @@ class AwsEc2ResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            token = _get_token()
+            # If can't get a token quick assume we are not on ec2
+            try:
+                token = _get_token(timeout=1)
+            except URLError as exception:
+                logger.debug(
+                    "%s failed to get token: %s",
+                    self.__class__.__name__,
+                    exception,
+                )
+                return Resource.get_empty()
+
             identity_dict = json.loads(_get_identity(token))
             hostname = _get_host(token)
 

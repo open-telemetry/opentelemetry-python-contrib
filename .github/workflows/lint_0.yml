@@ -34,6 +34,24 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-openai-v2
 
+  lint-instrumentation-vertexai:
+    name: instrumentation-vertexai
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-vertexai
+
   lint-resource-detector-container:
     name: resource-detector-container
     runs-on: ubuntu-latest
