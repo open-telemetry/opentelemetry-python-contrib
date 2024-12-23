@@ -84,7 +84,12 @@ class AwsEc2ResourceDetector(ResourceDetector):
             # If can't get a token quick assume we are not on ec2
             try:
                 token = _get_token(timeout=1)
-            except URLError:
+            except URLError as exception:
+                logger.debug(
+                    "%s failed to get token: %s",
+                    self.__class__.__name__,
+                    exception,
+                )
                 return Resource.get_empty()
 
             identity_dict = json.loads(_get_identity(token))
