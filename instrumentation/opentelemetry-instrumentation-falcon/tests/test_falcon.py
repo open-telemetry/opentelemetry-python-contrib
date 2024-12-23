@@ -133,6 +133,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/hello",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "HelloWorldResource",
@@ -146,11 +149,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_TARGET],
-            "/" if self._has_fixed_http_target else "/hello",
-        )
-
         self.memory_exporter.clear()
 
     def test_404(self):
@@ -168,6 +166,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/does-not-exist",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
@@ -180,10 +181,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_TARGET],
-            "/" if self._has_fixed_http_target else "/does-not-exist",
-        )
 
     def test_500(self):
         try:
@@ -208,6 +205,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/error",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
@@ -220,11 +220,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
-
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_TARGET],
-            "/" if self._has_fixed_http_target else "/error",
-        )
 
     def test_url_template(self):
         self.client().simulate_get("/user/123")
@@ -245,16 +240,14 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/user/123",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
             },
-        )
-
-        self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_TARGET],
-            "/" if self._has_fixed_http_target else "/user/123",
         )
 
     def test_uninstrument(self):
