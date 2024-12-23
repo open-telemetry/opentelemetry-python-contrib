@@ -205,7 +205,6 @@ from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -225,6 +224,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_url,
     _set_http_user_agent,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.asgi.types import (
     ClientRequestHook,
@@ -324,7 +324,7 @@ asgi_setter = ASGISetter()
 
 # pylint: disable=too-many-branches
 def collect_request_attributes(
-    scope, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    scope, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
@@ -356,7 +356,7 @@ def collect_request_attributes(
             _set_http_url(
                 result,
                 remove_url_credentials(http_url),
-                _HTTPStabilityMode.DEFAULT,
+                _StabilityMode.DEFAULT,
             )
     http_method = scope.get("method", "")
     if http_method:
@@ -439,7 +439,7 @@ def set_status_code(
     span,
     status_code,
     metric_attributes=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     """Adds HTTP response attributes to span using the status_code argument."""
     status_code_str = str(status_code)
@@ -755,12 +755,12 @@ class OpenTelemetryMiddleware:
                     )
                 duration_s = default_timer() - start
                 duration_attrs_old = _parse_duration_attrs(
-                    attributes, _HTTPStabilityMode.DEFAULT
+                    attributes, _StabilityMode.DEFAULT
                 )
                 if target:
                     duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(
-                    attributes, _HTTPStabilityMode.HTTP
+                    attributes, _StabilityMode.HTTP
                 )
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
@@ -960,7 +960,7 @@ class OpenTelemetryMiddleware:
 
 
 def _parse_duration_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
@@ -971,7 +971,7 @@ def _parse_duration_attrs(
 
 
 def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_active_request_count_attr(
         req_attrs,

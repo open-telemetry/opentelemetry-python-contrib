@@ -14,6 +14,7 @@
 
 import json
 import logging
+import os
 import ssl
 from urllib.request import Request, urlopen
 
@@ -29,6 +30,9 @@ logger = logging.getLogger(__name__)
 _CONTAINER_ID_LENGTH = 64
 _GET_METHOD = "GET"
 
+_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+_CERT_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
 
 def _aws_http_request(method, path, cred_value):
     with urlopen(
@@ -39,7 +43,7 @@ def _aws_http_request(method, path, cred_value):
         ),
         timeout=5,
         context=ssl.create_default_context(
-            cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            cafile=_CERT_PATH,
         ),
     ) as response:
         return response.read().decode("utf-8")
@@ -47,10 +51,7 @@ def _aws_http_request(method, path, cred_value):
 
 def _get_k8s_cred_value():
     try:
-        with open(
-            "/var/run/secrets/kubernetes.io/serviceaccount/token",
-            encoding="utf8",
-        ) as token_file:
+        with open(_TOKEN_PATH, encoding="utf8") as token_file:
             return "Bearer " + token_file.read()
     # pylint: disable=broad-except
     except Exception as exception:
@@ -97,6 +98,10 @@ def _get_container_id():
     return container_id
 
 
+def _is_k8s() -> bool:
+    return os.path.exists(_TOKEN_PATH) and os.path.exists(_CERT_PATH)
+
+
 class AwsEksResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
     Elastic Kubernetes Service (EKS) and returns them in a Resource.
@@ -106,6 +111,10 @@ class AwsEksResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
+            # if we are not running on eks exit early without warnings
+            if not _is_k8s():
+                return Resource.get_empty()
+
             cred_value = _get_k8s_cred_value()
 
             if not _is_eks(cred_value):
