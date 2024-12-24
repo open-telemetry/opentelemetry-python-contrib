@@ -126,6 +126,26 @@ For example,
 ::
 Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can optionally configure MySQLClient instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
+
+    MySQLClientInstrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+
+For example,
+::
+
+    Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
+    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
+
 API
 ---
 """
@@ -159,6 +179,9 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
 
         dbapi.wrap_connect(
             __name__,
@@ -170,6 +193,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -182,6 +206,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         tracer_provider=None,
         enable_commenter=None,
         commenter_options=None,
+        enable_attribute_commenter=None,
     ):
         """Enable instrumentation in a mysqlclient connection.
 
@@ -220,6 +245,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=MySQLdb,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     @staticmethod
