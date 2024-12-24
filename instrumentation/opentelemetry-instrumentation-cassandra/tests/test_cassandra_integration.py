@@ -42,9 +42,11 @@ class TestCassandraIntegration(TestBase):
         super().tearDown()
         with self.disable_logging():
             CassandraInstrumentor().uninstrument()
+
     @property
     def _mocked_session(self):
         return cassandra.cluster.Session(cluster=mock.Mock(), hosts=[])
+
     def test_instrument_uninstrument(self):
         instrumentation = CassandraInstrumentor()
         instrumentation.instrument()
