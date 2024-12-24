@@ -8,20 +8,59 @@ dependencies = [
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
   "opentelemetry-test-utils",
+  "opentelemetry-exporter-prometheus-remote-write",
+  "opentelemetry-exporter-richconsole",
   "opentelemetry-instrumentation",
+  "opentelemetry-instrumentation-aio-pika[instruments]",
+  "opentelemetry-instrumentation-aiohttp-client[instruments]",
+  "opentelemetry-instrumentation-aiohttp-server[instruments]",
+  "opentelemetry-instrumentation-aiokafka[instruments]",
+  "opentelemetry-instrumentation-aiopg[instruments]",
   "opentelemetry-instrumentation-asgi[instruments]",
+  "opentelemetry-instrumentation-asyncio",
+  "opentelemetry-instrumentation-asyncpg[instruments]",
+  "opentelemetry-instrumentation-aws-lambda[instruments]",
+  "opentelemetry-instrumentation-boto[instruments]",
+  "opentelemetry-instrumentation-boto3sqs[instruments]",
+  "opentelemetry-instrumentation-botocore[instruments]",
+  "opentelemetry-instrumentation-cassandra[instruments]",
+  "opentelemetry-instrumentation-celery[instruments]",
+  "opentelemetry-instrumentation-click[instruments]",
+  "opentelemetry-instrumentation-confluent-kafka[instruments]",
   "opentelemetry-instrumentation-dbapi",
+  "opentelemetry-instrumentation-django[instruments]",
+  "opentelemetry-instrumentation-elasticsearch[instruments]",
+  "opentelemetry-instrumentation-falcon",  # TODO: Add `instruments` when integration supports falcon >= 4.0.
   "opentelemetry-instrumentation-fastapi[instruments]",
+  "opentelemetry-instrumentation-flask[instruments]",
+  "opentelemetry-instrumentation-grpc[instruments]",
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-instrumentation-jinja2[instruments]",
+  "opentelemetry-instrumentation-kafka-python[instruments]",
+  "opentelemetry-instrumentation-logging",
+  "opentelemetry-instrumentation-mysql[instruments]",
+  "opentelemetry-instrumentation-mysqlclient[instruments]",
+  "opentelemetry-instrumentation-pika[instruments]",
+  "opentelemetry-instrumentation-psycopg[instruments]",
+  "opentelemetry-instrumentation-psycopg2[instruments]",
+  "opentelemetry-instrumentation-pymemcache[instruments]",
   "opentelemetry-instrumentation-pymongo[instruments]",
+  "opentelemetry-instrumentation-pymysql[instruments]",
   "opentelemetry-instrumentation-pyramid[instruments]",
+  "opentelemetry-instrumentation-redis[instruments]",
+  "opentelemetry-instrumentation-remoulade[instruments]",
+  "opentelemetry-instrumentation-requests[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
   "opentelemetry-instrumentation-system-metrics",
+  "opentelemetry-instrumentation-threading",
+  "opentelemetry-instrumentation-tornado",
+  "opentelemetry-instrumentation-tortoiseorm",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-instrumentation-wsgi",
+  "opentelemetry-propagator-aws-xray",
+  "opentelemetry-propagator-ot-trace",
   "opentelemetry-util-http",
 ]
 
@@ -35,40 +74,68 @@ opentelemetry-api = { git = "https://github.com/open-telemetry/opentelemetry-pyt
 opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-sdk" }
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
 opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
+opentelemetry-exporter-prometheus-remote-write = { workspace = true }
+opentelemetry-exporter-richconsole = { workspace = true }
 opentelemetry-instrumentation = { workspace = true }
+opentelemetry-instrumentation-aio-pika = { workspace = true }
+opentelemetry-instrumentation-aiohttp-client = { workspace = true }
+opentelemetry-instrumentation-aiohttp-server = { workspace = true }
+opentelemetry-instrumentation-aiokafka = { workspace = true }
+opentelemetry-instrumentation-aiopg = { workspace = true }
 opentelemetry-instrumentation-asgi = { workspace = true }
+opentelemetry-instrumentation-asyncio = { workspace = true }
+opentelemetry-instrumentation-asyncpg = { workspace = true }
+opentelemetry-instrumentation-aws-lambda = { workspace = true }
+opentelemetry-instrumentation-boto = { workspace = true }
+opentelemetry-instrumentation-boto3sqs = { workspace = true }
+opentelemetry-instrumentation-botocore = { workspace = true }
+opentelemetry-instrumentation-cassandra = { workspace = true }
+opentelemetry-instrumentation-celery = { workspace = true }
+opentelemetry-instrumentation-click = { workspace = true }
+opentelemetry-instrumentation-confluent-kafka = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
+opentelemetry-instrumentation-django = { workspace = true }
+opentelemetry-instrumentation-elasticsearch = { workspace = true }
+opentelemetry-instrumentation-falcon = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
+opentelemetry-instrumentation-flask = { workspace = true }
+opentelemetry-instrumentation-grpc = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }
 opentelemetry-instrumentation-jinja2 = { workspace = true }
+opentelemetry-instrumentation-kafka-python = { workspace = true }
+opentelemetry-instrumentation-logging = { workspace = true }
+opentelemetry-instrumentation-mysql = { workspace = true }
+opentelemetry-instrumentation-mysqlclient = { workspace = true }
+opentelemetry-instrumentation-pika = { workspace = true }
+opentelemetry-instrumentation-psycopg = { workspace = true }
+opentelemetry-instrumentation-psycopg2 = { workspace = true }
+opentelemetry-instrumentation-pymemcache = { workspace = true }
 opentelemetry-instrumentation-pymongo = { workspace = true }
+opentelemetry-instrumentation-pymysql = { workspace = true }
 opentelemetry-instrumentation-pyramid = { workspace = true }
+opentelemetry-instrumentation-redis = { workspace = true }
+opentelemetry-instrumentation-remoulade = { workspace = true }
+opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
+opentelemetry-instrumentation-threading = { workspace = true }
+opentelemetry-instrumentation-tornado = { workspace = true }
+opentelemetry-instrumentation-tortoiseorm = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
+opentelemetry-propagator-aws-xray = { workspace = true }
+opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
 members = [
+  "instrumentation/*",
+  "exporter/*",
   "opentelemetry-instrumentation",
-  # TODO: When all instrumentation packages are moved to the workspace, we can replace the below with `instrumentation/*`.
-  "instrumentation/opentelemetry-instrumentation-asgi",
-  "instrumentation/opentelemetry-instrumentation-dbapi",
-  "instrumentation/opentelemetry-instrumentation-fastapi",
-  "instrumentation/opentelemetry-instrumentation-httpx",
-  "instrumentation/opentelemetry-instrumentation-jinja2",
-  "instrumentation/opentelemetry-instrumentation-pymongo",
-  "instrumentation/opentelemetry-instrumentation-pyramid",
-  "instrumentation/opentelemetry-instrumentation-sqlalchemy",
-  "instrumentation/opentelemetry-instrumentation-sqlite3",
-  "instrumentation/opentelemetry-instrumentation-system-metrics",
-  "instrumentation/opentelemetry-instrumentation-urllib",
-  "instrumentation/opentelemetry-instrumentation-urllib3",
-  "instrumentation/opentelemetry-instrumentation-wsgi",
+  "propagator/*",
   "util/opentelemetry-util-http",
 ]
 
