@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: adapt tests from OpenLLMetry here along with tests from
+# instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/test_chat_completions.py
 
-_instruments = ("falcon >= 1.4.1, < 5.0.0",)
 
-_supports_metrics = True
+def test_placeholder():
+    assert True

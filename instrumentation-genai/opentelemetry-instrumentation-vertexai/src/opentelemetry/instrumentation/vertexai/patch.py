@@ -11,8 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-_instruments = ("falcon >= 1.4.1, < 5.0.0",)
-
-_supports_metrics = True

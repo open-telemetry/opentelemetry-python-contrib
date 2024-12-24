@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = ("falcon >= 1.4.1, < 5.0.0",)
-
-_supports_metrics = True
+__version__ = "2.1b0.dev"
