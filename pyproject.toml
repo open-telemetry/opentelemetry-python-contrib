@@ -30,7 +30,7 @@ dependencies = [
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-django[instruments]",
   "opentelemetry-instrumentation-elasticsearch[instruments]",
-  "opentelemetry-instrumentation-falcon",  # TODO: Add `instruments` when integration supports falcon >= 4.0.
+  "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
   "opentelemetry-instrumentation-grpc[instruments]",

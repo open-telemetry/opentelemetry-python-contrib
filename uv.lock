@@ -97,7 +97,8 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohappyeyeballs" },
     { name = "aiosignal" },
-    { name = "async-timeout", marker = "python_full_version < '3.11'" },
+    { name = "async-timeout", version = "4.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9' and python_full_version < '3.11'" },
+    { name = "async-timeout", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "attrs" },
     { name = "frozenlist" },
     { name = "multidict" },
@@ -202,7 +203,8 @@ name = "aiokafka"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "async-timeout" },
+    { name = "async-timeout", version = "4.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "async-timeout", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "packaging" },
     { name = "typing-extensions" },
 ]
@@ -242,11 +244,31 @@ wheels = [
 
 [[package]]
 name = "aiopg"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+]
+dependencies = [
+    { name = "psycopg2-binary", marker = "python_full_version < '3.9'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/5e/a7a555e0040cac077fbbf540f4c778d46bf5211edfff19ac8c68002a5427/aiopg-1.1.0.tar.gz", hash = "sha256:7583b2a5477072c41e83ffb252f27ec3188abf281dfa88645d389be4cd0aa098", size = 33307 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/10/f15fc544c022afaf377d0e28f0d750c8eb7ac441d2a044e34c6d4d235db7/aiopg-1.1.0-py3-none-any.whl", hash = "sha256:c154475eedf04d39030bd07d686c1728c804d3f714f50061551b85aaf49da109", size = 33050 },
+]
+
+[[package]]
+name = "aiopg"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version == '3.9.*'",
+    "python_full_version >= '3.10' and python_full_version < '3.13'",
+    "python_full_version >= '3.13'",
+]
 dependencies = [
-    { name = "async-timeout" },
-    { name = "psycopg2-binary" },
+    { name = "async-timeout", version = "4.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "psycopg2-binary", marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b0/0a/aba75a9ffcb1704b98c39986344230eaa70c40ac28e5ca635df231db912f/aiopg-1.4.0.tar.gz", hash = "sha256:116253bef86b4d954116716d181e9a0294037f266718b2e1c9766af995639d71", size = 35593 }
 wheels = [
@@ -333,9 +355,26 @@ wheels = [
 name = "async-timeout"
 version = "4.0.3"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version == '3.9.*'",
+    "python_full_version >= '3.10' and python_full_version < '3.13'",
+    "python_full_version >= '3.13'",
+]
 sdist = { url = "https://files.pythonhosted.org/packages/87/d6/21b30a550dafea84b1b8eee21b5e23fa16d010ae006011221f33dcd8d7f8/async-timeout-4.0.3.tar.gz", hash = "sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f", size = 8345 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/fa/e01228c2938de91d47b307831c62ab9e4001e747789d0b05baf779a6488c/async_timeout-4.0.3-py3-none-any.whl", hash = "sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028", size = 5721 },
+]
+
+[[package]]
+name = "async-timeout"
+version = "5.0.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a5/ae/136395dfbfe00dfc94da3f3e136d0b13f394cba8f4841120e34226265780/async_timeout-5.0.1.tar.gz", hash = "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3", size = 9274 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/ba/e2081de779ca30d473f21f5b30e0e737c438205440784c7dfc81efc2b029/async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c", size = 6233 },
 ]
 
 [[package]]
@@ -343,7 +382,8 @@ name = "asyncpg"
 version = "0.30.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "async-timeout", marker = "python_full_version < '3.11'" },
+    { name = "async-timeout", version = "4.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9' and python_full_version < '3.11'" },
+    { name = "async-timeout", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2f/4c/7c991e080e106d854809030d8584e15b2e996e26f16aee6d757e387bc17d/asyncpg-0.30.0.tar.gz", hash = "sha256:c551e9928ab6707602f44811817f82ba3c446e018bfe1d3abecc8ba5f3eac851", size = 957746 }
 wheels = [
@@ -453,12 +493,34 @@ wheels = [
 
 [[package]]
 name = "boto3"
+version = "1.7.84"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+    "python_full_version == '3.9.*'",
+]
+dependencies = [
+    { name = "botocore", version = "1.10.84", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "jmespath", marker = "python_full_version < '3.10'" },
+    { name = "s3transfer", version = "0.1.13", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2f/2b/7010a5189859eec725c36081b1d1c8e721000ebdf81a1682ec6b64e1c373/boto3-1.7.84.tar.gz", hash = "sha256:64496f2c814e454e26c024df86bd08fb4643770d0e2b7a8fd70055fc6683eb9d", size = 93151 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/6e/faf7c6c3ae59641c75023fb5dcc8a02c33752ac8ccadf9931e8d8364f2fe/boto3-1.7.84-py2.py3-none-any.whl", hash = "sha256:0ed4b107c3b4550547aaec3c9bb17df068ff92d1f6f4781205800e2cb8a66de5", size = 128502 },
+]
+
+[[package]]
+name = "boto3"
 version = "1.35.87"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.10' and python_full_version < '3.13'",
+    "python_full_version >= '3.13'",
+]
 dependencies = [
-    { name = "botocore" },
-    { name = "jmespath" },
-    { name = "s3transfer" },
+    { name = "botocore", version = "1.35.87", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "jmespath", marker = "python_full_version >= '3.10'" },
+    { name = "s3transfer", version = "0.10.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/80/08/cf2a60bcb6d49764379d78e87f29310458257eb413bb7aa85ebe3d8cd0cc/boto3-1.35.87.tar.gz", hash = "sha256:341c58602889078a4a25dc4331b832b5b600a33acd73471d2532c6f01b16fbb4", size = 111027 }
 wheels = [
@@ -467,13 +529,34 @@ wheels = [
 
 [[package]]
 name = "botocore"
+version = "1.10.84"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+    "python_full_version == '3.9.*'",
+]
+dependencies = [
+    { name = "docutils", marker = "python_full_version < '3.10'" },
+    { name = "jmespath", marker = "python_full_version < '3.10'" },
+    { name = "python-dateutil", marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/01/43759329a6f7036aa739e86d446b908fa207222e224e537cd3d66fdb4c29/botocore-1.10.84.tar.gz", hash = "sha256:d3e4b5a2c903ea30d19d41ea2f65d0e51dce54f4f4c4dfd6ecd7b04f240844a8", size = 4612644 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/b7/cb08cd1af2bb0d0dfb393101a93b6ab6fb80f109ab7b37f2f34386c11351/botocore-1.10.84-py2.py3-none-any.whl", hash = "sha256:380852e1adb9ba4ba9ff096af61f88a6888197b86e580e1bd786f04ebe6f9c0c", size = 4478913 },
+]
+
+[[package]]
+name = "botocore"
 version = "1.35.87"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.10' and python_full_version < '3.13'",
+    "python_full_version >= '3.13'",
+]
 dependencies = [
-    { name = "jmespath" },
-    { name = "python-dateutil" },
-    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "jmespath", marker = "python_full_version >= '3.10'" },
+    { name = "python-dateutil", marker = "python_full_version >= '3.10'" },
+    { name = "urllib3", marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/98/8d/2e49e7a99944cbeef4c1182f59af282fcb164feef35dfa420500c4e0ccb3/botocore-1.35.87.tar.gz", hash = "sha256:3062d073ce4170a994099270f469864169dc1a1b8b3d4a21c14ce0ae995e0f89", size = 13493385 }
 wheels = [
@@ -880,13 +963,21 @@ wheels = [
 ]
 
 [[package]]
+name = "docutils"
+version = "0.20.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/53/a5da4f2c5739cf66290fac1431ee52aff6851c7c8ffd8264f13affd7bcdd/docutils-0.20.1.tar.gz", hash = "sha256:f08a4e276c3a1583a86dce3e34aba3fe04d02bba2dd51ed16106244e8a923e3b", size = 2058365 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/87/f238c0670b94533ac0353a4e2a1a771a0cc73277b88bff23d3ae35a256c1/docutils-0.20.1-py3-none-any.whl", hash = "sha256:96f387a2c5562db4476f09f13bbab2192e764cac08ebbf3a34a95d9b1e4a59d6", size = 572666 },
+]
+
+[[package]]
 name = "elastic-transport"
 version = "8.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
-    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6c/8a/54608571bf0a6686b9f49ccb3acf86e20bc50039ce87e368ebb11faebbc8/elastic_transport-8.15.1.tar.gz", hash = "sha256:9cac4ab5cf9402668cf305ae0b7d93ddc0c7b61461d6d1027850db6da9cc5742", size = 72726 }
 wheels = [
@@ -1307,23 +1398,23 @@ wheels = [
 
 [[package]]
 name = "jinja2"
-version = "3.1.4"
+version = "3.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markupsafe" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/55/39036716d19cab0747a5020fc7e907f362fbf48c984b14e62127f7e68e5d/jinja2-3.1.4.tar.gz", hash = "sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369", size = 240245 }
+sdist = { url = "https://files.pythonhosted.org/packages/af/92/b3130cbbf5591acf9ade8708c365f3238046ac7cb8ccba6e81abccb0ccff/jinja2-3.1.5.tar.gz", hash = "sha256:8fefff8dc3034e27bb80d67c671eb8a9bc424c0ef4c0826edbff304cceff43bb", size = 244674 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/80/3a54838c3fb461f6fec263ebf3a3a41771bd05190238de3486aae8540c36/jinja2-3.1.4-py3-none-any.whl", hash = "sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d", size = 133271 },
+    { url = "https://files.pythonhosted.org/packages/bd/0f/2ba5fbcd631e3e88689309dbe978c5769e883e4b84ebfe7da30b43275c5a/jinja2-3.1.5-py3-none-any.whl", hash = "sha256:aba0f4dc9ed8013c424088f68a5c226f7d6097ed89b246d7749c2ec4175c6adb", size = 134596 },
 ]
 
 [[package]]
 name = "jmespath"
-version = "1.0.1"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/00/2a/e867e8531cf3e36b41201936b7fa7ba7b5702dbef42922193f05c8976cd6/jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe", size = 25843 }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/56/3f325b1eef9791759784aa5046a8f6a1aff8f7c898a2e34506771d3b99d8/jmespath-0.10.0.tar.gz", hash = "sha256:b85d0567b8666149a93172712e68920734333c0ce7e89b78b3e987f71e5ed4f9", size = 21607 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980", size = 20256 },
+    { url = "https://files.pythonhosted.org/packages/07/cb/5f001272b6faeb23c1c9e0acc04d48eaaf5c862c17709d20e3469c6e0139/jmespath-0.10.0-py2.py3-none-any.whl", hash = "sha256:cdf6525904cc597730141d61b36f2e4b8ecc257c420fa2f4549bac2c2d0cb72f", size = 24489 },
 ]
 
 [[package]]
@@ -1601,7 +1692,7 @@ wheels = [
 [[package]]
 name = "opentelemetry-api"
 version = "1.30.0.dev0"
-source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main#9e94fd2650a1567f1f3a3d72247d0bf1525c4a17" }
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main#92f221c7fcb6573195673df935b179597cfb4b6e" }
 dependencies = [
     { name = "deprecated" },
     { name = "importlib-metadata" },
@@ -1779,7 +1870,8 @@ dependencies = [
 
 [package.optional-dependencies]
 instruments = [
-    { name = "aiopg" },
+    { name = "aiopg", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "aiopg", version = "1.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 
 [package.metadata]
@@ -1913,7 +2005,8 @@ dependencies = [
 
 [package.optional-dependencies]
 instruments = [
-    { name = "boto3" },
+    { name = "boto3", version = "1.7.84", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "boto3", version = "1.35.87", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 
 [package.metadata]
@@ -1938,7 +2031,8 @@ dependencies = [
 
 [package.optional-dependencies]
 instruments = [
-    { name = "botocore" },
+    { name = "botocore", version = "1.10.84", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "botocore", version = "1.35.87", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 
 [package.metadata]
@@ -2805,8 +2899,7 @@ dependencies = [
 
 [package.optional-dependencies]
 instruments = [
-    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
@@ -2892,7 +2985,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-django", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-elasticsearch", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-falcon" },
+    { name = "opentelemetry-instrumentation-falcon", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-fastapi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-flask", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-grpc", extra = ["instruments"] },
@@ -2954,7 +3047,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-django", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-django" },
     { name = "opentelemetry-instrumentation-elasticsearch", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-elasticsearch" },
-    { name = "opentelemetry-instrumentation-falcon", editable = "instrumentation/opentelemetry-instrumentation-falcon" },
+    { name = "opentelemetry-instrumentation-falcon", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-falcon" },
     { name = "opentelemetry-instrumentation-fastapi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-flask", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-flask" },
     { name = "opentelemetry-instrumentation-grpc", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-grpc" },
@@ -2994,7 +3087,7 @@ requires-dist = [
 [[package]]
 name = "opentelemetry-sdk"
 version = "1.30.0.dev0"
-source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main#9e94fd2650a1567f1f3a3d72247d0bf1525c4a17" }
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main#92f221c7fcb6573195673df935b179597cfb4b6e" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-semantic-conventions" },
@@ -3004,7 +3097,7 @@ dependencies = [
 [[package]]
 name = "opentelemetry-semantic-conventions"
 version = "0.51b0.dev0"
-source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main#9e94fd2650a1567f1f3a3d72247d0bf1525c4a17" }
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main#92f221c7fcb6573195673df935b179597cfb4b6e" }
 dependencies = [
     { name = "deprecated" },
     { name = "opentelemetry-api" },
@@ -3013,7 +3106,7 @@ dependencies = [
 [[package]]
 name = "opentelemetry-test-utils"
 version = "0.51b0.dev0"
-source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main#9e94fd2650a1567f1f3a3d72247d0bf1525c4a17" }
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main#92f221c7fcb6573195673df935b179597cfb4b6e" }
 dependencies = [
     { name = "asgiref" },
     { name = "opentelemetry-api" },
@@ -3616,7 +3709,8 @@ name = "redis"
 version = "5.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
+    { name = "async-timeout", version = "4.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9' and python_full_version < '3.11.3'" },
+    { name = "async-timeout", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/47/da/d283a37303a995cd36f8b92db85135153dc4f7a8e4441aa827721b442cfb/redis-5.2.1.tar.gz", hash = "sha256:16f2e22dff21d5125e8481515e386711a34cbec50f0e44413dd7d9c060a54e0f", size = 4608355 }
 wheels = [
@@ -3647,8 +3741,7 @@ dependencies = [
     { name = "certifi" },
     { name = "charset-normalizer" },
     { name = "idna" },
-    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/63/70/2bf7780ad2d390a8d301ad0b550f1581eadbd9a20f896afe06353c2a2913/requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760", size = 131218 }
 wheels = [
@@ -3671,10 +3764,30 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
+version = "0.1.13"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+    "python_full_version == '3.9.*'",
+]
+dependencies = [
+    { name = "botocore", version = "1.10.84", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9a/66/c6a5ae4dbbaf253bd662921b805e4972451a6d214d0dc9fb3300cb642320/s3transfer-0.1.13.tar.gz", hash = "sha256:90dc18e028989c609146e241ea153250be451e05ecc0c2832565231dacdf59c1", size = 103335 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d7/14/2a0004d487464d120c9fb85313a75cd3d71a7506955be458eebfe19a6b1d/s3transfer-0.1.13-py2.py3-none-any.whl", hash = "sha256:c7a9ec356982d5e9ab2d4b46391a7d6a950e2b04c472419f5fdec70cc0ada72f", size = 59642 },
+]
+
+[[package]]
+name = "s3transfer"
 version = "0.10.4"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.10' and python_full_version < '3.13'",
+    "python_full_version >= '3.13'",
+]
 dependencies = [
-    { name = "botocore" },
+    { name = "botocore", version = "1.35.87", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/0a/1cdbabf9edd0ea7747efdf6c9ab4e7061b085aa7f9bfc36bb1601563b069/s3transfer-0.10.4.tar.gz", hash = "sha256:29edc09801743c21eb5ecbc617a152df41d3c287f67b615f73e5f750583666a7", size = 145287 }
 wheels = [
@@ -3894,25 +4007,8 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "1.26.20"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.9'",
-    "python_full_version == '3.9.*'",
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/e8/6ff5e6bc22095cfc59b6ea711b687e2b7ed4bdb373f7eeec370a97d7392f/urllib3-1.26.20.tar.gz", hash = "sha256:40c2dc0c681e47eb8f90e7e27bf6ff7df2e677421fd46756da1161c39ca70d32", size = 307380 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/cf/8435d5a7159e2a9c83a95896ed596f68cf798005fe107cc655b5c5c14704/urllib3-1.26.20-py2.py3-none-any.whl", hash = "sha256:0ed14ccfbf1c30a9072c7ca157e4319b70d65f623e91e7b32fadb2853431016e", size = 144225 },
-]
-
-[[package]]
-name = "urllib3"
 version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.10' and python_full_version < '3.13'",
-    "python_full_version >= '3.13'",
-]
 sdist = { url = "https://files.pythonhosted.org/packages/ed/63/22ba4ebfe7430b76388e7cd448d5478814d3032121827c12a2cc287e2260/urllib3-2.2.3.tar.gz", hash = "sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9", size = 300677 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/d9/5f4c13cecde62396b0d3fe530a50ccea91e7dfc1ccf0e09c228841bb5ba8/urllib3-2.2.3-py3-none-any.whl", hash = "sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac", size = 126338 },
