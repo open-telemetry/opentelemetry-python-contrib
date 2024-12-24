@@ -111,8 +111,9 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
         AsyncPGInstrumentor().instrument(
             tracer_provider=trace_api.NoOpTracerProvider()
-        )  # Mock out all interaction with postgres
+        )
 
+        # Mock out all interaction with postgres
         async def bind_mock(*args, **kwargs):
             return []
 
