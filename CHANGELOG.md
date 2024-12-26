@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
 - `opentelemetry-instrumentation-falcon` add support version to v4
   ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
-- add python 3.13 to tox
+- add support to Python 3.13
   ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
 
 ### Fixed
