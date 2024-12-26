@@ -3,7 +3,7 @@ Deprecated==1.2.14
 iniconfig==2.0.0
 packaging==24.0
 pluggy==1.5.0
-psycopg==3.1.18
+psycopg==3.2.2
 py-cpuinfo==9.0.0
 pytest==7.4.4
 tomli==2.0.1
