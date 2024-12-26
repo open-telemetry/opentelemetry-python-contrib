@@ -784,12 +784,13 @@ class TestWsgiAttributes(unittest.TestCase):
         mock_span.is_recording.return_value = False
 
         attrs = {}
-        otel_wsgi.add_response_attributes(mock_span, "404 Not Found", {}, duration_attrs=attrs)
+        otel_wsgi.add_response_attributes(
+            mock_span, "404 Not Found", {}, duration_attrs=attrs
+        )
 
         self.assertEqual(mock_span.set_attribute.call_count, 0)
         self.assertEqual(mock_span.is_recording.call_count, 2)
         self.assertEqual(attrs[SpanAttributes.HTTP_STATUS_CODE], 404)
-
 
     def test_credential_removal(self):
         self.environ["HTTP_HOST"] = "username:password@mock"
