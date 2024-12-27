@@ -12,14 +12,16 @@ output-format = "concise"
 # https://docs.astral.sh/ruff/linter/#rule-selection
 # pylint: https://github.com/astral-sh/ruff/issues/970
 select = [
-  "I",   # isort
-  "F",   # pyflakes
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "PLC", # pylint convention
-  "PLE", # pylint error
-  "Q",   # flake8-quotes
-  "A",   # flake8-builtins
+  "I",   # https://docs.astral.sh/ruff/rules/#isort-i
+  "F",   # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "E",   # https://docs.astral.sh/ruff/rules/#error-e
+  "W",   # https://docs.astral.sh/ruff/rules/#warning-w
+  "PLC", # https://docs.astral.sh/ruff/rules/#convention-c
+  "PLE", # https://docs.astral.sh/ruff/rules/#error-e_1
+  "Q",   # https://docs.astral.sh/ruff/rules/#flake8-quotes-q
+  "A",   # https://docs.astral.sh/ruff/rules/#flake8-builtins-a
+  "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+  "FA"   # https://docs.astral.sh/ruff/rules/#flake8-future-annotations-fa
 ]
 ignore = [
   "E501", # line-too-long
