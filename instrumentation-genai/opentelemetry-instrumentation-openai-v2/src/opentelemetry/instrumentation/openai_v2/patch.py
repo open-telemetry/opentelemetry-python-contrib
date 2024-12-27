@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from typing import Optional
+from __future__ import annotations
 
 from openai import Stream
 
@@ -201,12 +199,12 @@ class ChoiceBuffer:
 
 class StreamWrapper:
     span: Span
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
+    response_id: str | None = None
+    response_model: str | None = None
+    service_tier: str | None = None
     finish_reasons: list = []
-    prompt_tokens: Optional[int] = 0
-    completion_tokens: Optional[int] = 0
+    prompt_tokens: int | None = 0
+    completion_tokens: int | None = 0
 
     def __init__(
         self,

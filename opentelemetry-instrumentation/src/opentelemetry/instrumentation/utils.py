@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Dict, Iterable, Sequence, Union
+from typing import Iterable, Sequence
 
 from wrapt import ObjectProxy
 
@@ -44,8 +46,8 @@ _SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
 
 
 def extract_attributes_from_object(
-    obj: any, attributes: Sequence[str], existing: Dict[str, str] = None
-) -> Dict[str, str]:
+    obj: any, attributes: Sequence[str], existing: dict[str, str] = None
+) -> dict[str, str]:
     extracted = {}
     if existing:
         extracted.update(existing)
@@ -81,7 +83,7 @@ def http_status_to_status_code(
     return StatusCode.ERROR
 
 
-def unwrap(obj: Union[object, str], attr: str):
+def unwrap(obj: object | str, attr: str):
     """Given a function that was wrapped by wrapt.wrap_function_wrapper, unwrap it
 
     The object containing the function to unwrap may be passed as dotted module path string.

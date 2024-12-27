@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict
 
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
@@ -46,7 +47,7 @@ class _AwsSdkCallContext:
         span_kind: the kind used to create the span.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(self, client: _BotoClientT, args: tuple[str, dict[str, Any]]):
         operation = args[0]
         try:
             params = args[1]
@@ -64,12 +65,12 @@ class _AwsSdkCallContext:
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should
         # usually exist unless some future botocore version moved things.
-        self.region: Optional[str] = self._get_attr(boto_meta, "region_name")
-        self.endpoint_url: Optional[str] = self._get_attr(
+        self.region: str | None = self._get_attr(boto_meta, "region_name")
+        self.endpoint_url: str | None = self._get_attr(
             boto_meta, "endpoint_url"
         )
 
-        self.api_version: Optional[str] = self._get_attr(
+        self.api_version: str | None = self._get_attr(
             service_model, "api_version"
         )
         # name of the service in proper casing

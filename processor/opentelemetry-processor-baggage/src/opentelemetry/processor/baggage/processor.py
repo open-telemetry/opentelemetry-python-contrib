@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
@@ -54,7 +56,7 @@ class BaggageSpanProcessor(SpanProcessor):
         self._baggage_key_predicate = baggage_key_predicate
 
     def on_start(
-        self, span: "Span", parent_context: Optional[Context] = None
+        self, span: Span, parent_context: Context | None = None
     ) -> None:
         baggage = get_all_baggage(parent_context)
         for key, value in baggage.items():

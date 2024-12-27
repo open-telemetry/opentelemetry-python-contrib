@@ -76,13 +76,15 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import gc
 import logging
 import os
 import sys
 import threading
 from platform import python_implementation
-from typing import Collection, Dict, Iterable, List, Optional
+from typing import Collection, Iterable
 
 import psutil
 
@@ -129,8 +131,8 @@ if sys.platform == "darwin":
 class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
-        labels: Optional[Dict[str, str]] = None,
-        config: Optional[Dict[str, List[str]]] = None,
+        labels: dict[str, str] | None = None,
+        config: dict[str, list[str]] | None = None,
     ):
         super().__init__()
         if config is None:

@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from importlib import import_module, reload
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 from unittest import mock
 
 from opentelemetry import propagate
@@ -185,7 +187,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         class TestCase:
             name: str
             custom_extractor: Callable[[Any], None]
-            context: Dict
+            context: dict
             expected_traceid: int
             expected_parentid: int
             xray_traceid: str

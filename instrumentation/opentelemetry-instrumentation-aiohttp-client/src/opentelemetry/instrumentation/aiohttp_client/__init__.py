@@ -80,6 +80,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import types
 import typing
 from typing import Collection
@@ -323,9 +325,7 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    trace_configs: typing.Optional[
-        typing.Sequence[aiohttp.TraceConfig]
-    ] = None,
+    trace_configs: typing.Sequence[aiohttp.TraceConfig] | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all ClientSessions

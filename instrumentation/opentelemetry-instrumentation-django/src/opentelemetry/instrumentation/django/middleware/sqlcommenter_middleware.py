@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from contextlib import ExitStack
 from logging import getLogger
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 # pylint: disable=no-name-in-module
 from django import conf, get_version
@@ -58,7 +60,7 @@ class _QueryWrapper:
     def __init__(self, request) -> None:
         self.request = request
 
-    def __call__(self, execute: Type[T], sql, params, many, context) -> T:
+    def __call__(self, execute: type[T], sql, params, many, context) -> T:
         # pylint: disable-msg=too-many-locals
         with_framework = getattr(
             conf.settings, "SQLCOMMENTER_WITH_FRAMEWORK", True

@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import uuid
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Sequence
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 from aiokafka import (
@@ -57,7 +58,7 @@ class TestAIOKafkaInstrumentor(TestCase):
 class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     @staticmethod
     def consumer_record_factory(
-        number: int, headers: Tuple[Tuple[str, bytes], ...]
+        number: int, headers: tuple[tuple[str, bytes], ...]
     ) -> ConsumerRecord:
         return ConsumerRecord(
             f"topic_{number}",
@@ -309,7 +310,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         async_produce_hook_mock.assert_awaited_once()
 
     def _compare_spans(
-        self, spans: Sequence[ReadableSpan], expected_spans: List[dict]
+        self, spans: Sequence[ReadableSpan], expected_spans: list[dict]
     ) -> None:
         self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):

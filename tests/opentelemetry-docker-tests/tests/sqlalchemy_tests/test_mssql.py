@@ -41,8 +41,9 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
     VENDOR = "mssql"
     SQL_DB = "opentelemetry-tests"
     ENGINE_ARGS = {
-        "url": "mssql+pyodbc://%(user)s:%(password)s@%(host)s:%(port)s/%(database)s?driver=%(driver)s&TrustServerCertificate=%(trusted_connection)s"
-        % MSSQL_CONFIG
+        "url": "mssql+pyodbc://{user}:{password}@{host}:{port}/{database}?driver={driver}&TrustServerCertificate={trusted_connection}".format(
+            **MSSQL_CONFIG
+        )
     }
 
     def check_meta(self, span):
