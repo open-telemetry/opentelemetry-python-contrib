@@ -1,0 +1,93 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '170'
+      Content-Type:
+      - !!binary |
+        YXBwbGljYXRpb24vanNvbg==
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
+        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
+        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      X-Amz-Date:
+      - !!binary |
+        MjAyNDEyMzFUMTAwMjI1Wg==
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - !!binary |
+        Um9vdD0xLTg5Y2FhMmUwLTUzY2NiZTE0MzQ0MGE4MWRjMTgyYzUwNjtQYXJlbnQ9ODdiZTZmMGI4
+        YjlhNzQxZDtTYW1wbGVkPTE=
+      amz-sdk-invocation-id:
+      - !!binary |
+        YjE5MzViZmEtOGI3Ni00ODMwLTkzNDktMjZhODJjNTQ3Mjg0
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.eu-central-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse
+  response:
+    body:
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 527
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": ""
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "end_turn",
+          "usage": {
+            "inputTokens": 8,
+            "outputTokens": 5,
+            "totalTokens": 13
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '179'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 31 Dec 2024 10:02:26 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-RequestId:
+      - 8e183234-2be0-4d6f-8a0e-ff065d47ea60
+    status:
+      code: 200
+      message: OK
+version: 1
