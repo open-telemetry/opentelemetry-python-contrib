@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.1.0 (2024-12-24)
+
 - Make ec2 resource detector silent when loaded outside AWS
   ([#3120](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3120))
 - Make ecs and beanstalk resource detector silent when loaded outside AWS
