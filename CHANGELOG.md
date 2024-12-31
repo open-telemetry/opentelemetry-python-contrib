@@ -13,6 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
+  ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
+- Add support to database stability opt-in in `_semconv` utilities and add tests
+  ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+- `opentelemetry-instrumentation-falcon` add support version to v4
+  ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
+
+
+### Fixed
+
+- `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
+  ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+
+
+## Version 1.29.0/0.50b0 (2024-12-11)
+
+### Added
+
 - `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
   ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
 - `opentelemetry-distro` default to OTLP log exporter.
@@ -52,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2816](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2816))
 - `opentelemetry-instrumentation-sqlalchemy`: Fix a remaining memory leak in EngineTracer
   ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
+- `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
+  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
 
 ### Breaking changes
 

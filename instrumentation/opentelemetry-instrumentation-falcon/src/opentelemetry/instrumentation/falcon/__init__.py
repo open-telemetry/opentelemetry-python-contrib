@@ -195,12 +195,12 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
@@ -254,7 +254,7 @@ def set_status_code(
     span,
     status_code,
     metric_attributes=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     """Adds HTTP response attributes to span using the status_code argument."""
     status_code_str = str(status_code)
@@ -440,14 +440,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             duration_s = default_timer() - start
             if self.duration_histogram_old:
                 duration_attrs = otel_wsgi._parse_duration_attrs(
-                    attributes, _HTTPStabilityMode.DEFAULT
+                    attributes, _StabilityMode.DEFAULT
                 )
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs
                 )
             if self.duration_histogram_new:
                 duration_attrs = otel_wsgi._parse_duration_attrs(
-                    attributes, _HTTPStabilityMode.HTTP
+                    attributes, _StabilityMode.HTTP
                 )
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs
@@ -475,7 +475,7 @@ class _TraceMiddleware:
         traced_request_attrs=None,
         request_hook=None,
         response_hook=None,
-        sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         self.tracer = tracer
         self._traced_request_attrs = traced_request_attrs
@@ -612,7 +612,7 @@ class FalconInstrumentor(BaseInstrumentor):
                     for x in app._middlewares_list
                     if not isinstance(x, _TraceMiddleware)
                 ]
-                # pylint: disable=c-extension-no-member
+                # pylint: disable=no-member
                 app._middleware = falcon.api_helpers.prepare_middleware(
                     app._middlewares_list,
                     independent_middleware=app._independent_middleware,
