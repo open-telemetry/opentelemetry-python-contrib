@@ -75,43 +75,9 @@ class AwsEcsResourceDetector(ResourceDetector):
             if not metadata_v4_endpoint:
                 return base_resource
 
-            # Returns https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html#task-metadata-endpoint-v4-response
-            metadata_container = json.loads(_http_get(metadata_v4_endpoint))
-            metadata_task = json.loads(
-                _http_get(f"{metadata_v4_endpoint}/task")
-            )
+            v4_resource = _get_v4_resource(metadata_v4_endpoint)
 
-            task_arn = metadata_task["TaskARN"]
-            base_arn = task_arn[0 : task_arn.rindex(":")]  # noqa
-            cluster: str = metadata_task["Cluster"]
-            cluster_arn = (
-                cluster
-                if cluster.startswith("arn:")
-                else f"{base_arn}:cluster/{cluster}"
-            )
-
-            logs_resource = _get_logs_resource(metadata_container)
-
-            return base_resource.merge(logs_resource).merge(
-                Resource(
-                    {
-                        ResourceAttributes.AWS_ECS_CONTAINER_ARN: metadata_container[
-                            "ContainerARN"
-                        ],
-                        ResourceAttributes.AWS_ECS_CLUSTER_ARN: cluster_arn,
-                        ResourceAttributes.AWS_ECS_LAUNCHTYPE: metadata_task[
-                            "LaunchType"
-                        ].lower(),
-                        ResourceAttributes.AWS_ECS_TASK_ARN: task_arn,
-                        ResourceAttributes.AWS_ECS_TASK_FAMILY: metadata_task[
-                            "Family"
-                        ],
-                        ResourceAttributes.AWS_ECS_TASK_REVISION: metadata_task[
-                            "Revision"
-                        ],
-                    }
-                )
-            )
+            return base_resource.merge(v4_resource)
         # pylint: disable=broad-except
         except Exception as exception:
             if self.raise_on_error:
@@ -119,6 +85,50 @@ class AwsEcsResourceDetector(ResourceDetector):
 
             logger.warning("%s failed: %s", self.__class__.__name__, exception)
             return Resource.get_empty()
+
+
+def _get_v4_resource(metadata_v4_endpoint):
+    # Returns https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html#task-metadata-endpoint-v4-response
+    metadata_container = json.loads(_http_get(metadata_v4_endpoint))
+    metadata_task = json.loads(_http_get(f"{metadata_v4_endpoint}/task"))
+
+    task_arn = metadata_task["TaskARN"]
+    base_arn = task_arn[0 : task_arn.rindex(":")]  # noqa
+    cluster: str = metadata_task["Cluster"]
+    cluster_arn = (
+        cluster
+        if cluster.startswith("arn:")
+        else f"{base_arn}:cluster/{cluster}"
+    )
+
+    region, account_id = task_arn.split(":")[3:5]
+
+    logs_resource = _get_logs_resource(metadata_container)
+
+    return Resource(
+        {
+            ResourceAttributes.CLOUD_ACCOUNT_ID: account_id,
+            ResourceAttributes.CLOUD_AVAILABILITY_ZONE: metadata_task[
+                "AvailabilityZone"
+            ].lower(),
+            ResourceAttributes.CLOUD_REGION: region,
+            ResourceAttributes.CLOUD_RESOURCE_ID: metadata_container[
+                "ContainerARN"
+            ],
+            ResourceAttributes.AWS_ECS_CONTAINER_ARN: metadata_container[
+                "ContainerARN"
+            ],
+            ResourceAttributes.AWS_ECS_CLUSTER_ARN: cluster_arn,
+            ResourceAttributes.AWS_ECS_LAUNCHTYPE: metadata_task[
+                "LaunchType"
+            ].lower(),
+            ResourceAttributes.AWS_ECS_TASK_ARN: task_arn,
+            ResourceAttributes.AWS_ECS_TASK_FAMILY: metadata_task["Family"],
+            ResourceAttributes.AWS_ECS_TASK_REVISION: metadata_task[
+                "Revision"
+            ],
+        }
+    ).merge(logs_resource)
 
 
 def _get_logs_resource(metadata_container):
