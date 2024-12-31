@@ -53,8 +53,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     Amazon Bedrock Runtime</a>.
     """
 
+    _HANDLED_OPERATIONS = {"Converse"}
+
     def extract_attributes(self, attributes: _AttributeMapT):
         attributes[GEN_AI_SYSTEM] = GenAiSystemValues.AWS_BEDROCK.value
+
+        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+            return
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if model_id:
@@ -97,6 +102,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes[key] = value
 
     def before_service_call(self, span: Span):
+        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+            return
+
         if not span.is_recording():
             return
 
@@ -107,6 +115,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             span.update_name(f"{operation_name} {request_model}")
 
     def on_success(self, span: Span, result: dict[str, Any]):
+        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+            return
+
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
 
         if not model_id:
