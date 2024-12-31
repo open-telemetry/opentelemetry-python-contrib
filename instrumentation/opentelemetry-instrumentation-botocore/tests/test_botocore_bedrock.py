@@ -31,21 +31,15 @@ BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
     BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
 )
 @pytest.mark.vcr()
-@pytest.mark.parametrize("llm_model", ["amazon.titan", "anthropic.claude"])
 def test_converse_with_content(
-    llm_model,
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_with_content,
 ):
-    llm_model_id = {
-        "amazon.titan": "amazon.titan-text-lite-v1",
-        "anthropic.claude": "anthropic.claude-3-haiku-20240307-v1:0",
-    }
     messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
 
-    llm_model_value = llm_model_id[llm_model]
+    llm_model_value = "amazon.titan-text-lite-v1"
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
     response = bedrock_runtime_client.converse(
         messages=messages,

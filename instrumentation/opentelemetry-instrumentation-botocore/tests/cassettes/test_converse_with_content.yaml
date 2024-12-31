@@ -34,16 +34,16 @@ interactions:
         aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
       X-Amz-Date:
       - !!binary |
-        MjAyNDEyMzFUMTAwMjI1Wg==
+        MjAyNDEyMzFUMTMyMDQxWg==
       X-Amz-Security-Token:
       - test_aws_security_token
       X-Amzn-Trace-Id:
       - !!binary |
-        Um9vdD0xLTg5Y2FhMmUwLTUzY2NiZTE0MzQ0MGE4MWRjMTgyYzUwNjtQYXJlbnQ9ODdiZTZmMGI4
-        YjlhNzQxZDtTYW1wbGVkPTE=
+        Um9vdD0xLWY1MWY4NGM1LTNiZjk4YzY0YWMyNmJhNTk1OWJjODgxNjtQYXJlbnQ9YjNmOGZhM2Mz
+        MDc1NGEzZjtTYW1wbGVkPTE=
       amz-sdk-invocation-id:
       - !!binary |
-        YjE5MzViZmEtOGI3Ni00ODMwLTkzNDktMjZhODJjNTQ3Mjg0
+        OTIyMjczMzItY2I5ZS00NGM1LTliZGUtYjU0NmJmODkxYmEy
       amz-sdk-request:
       - !!binary |
         YXR0ZW1wdD0x
@@ -56,37 +56,37 @@ interactions:
       string: |-
         {
           "metrics": {
-            "latencyMs": 527
+            "latencyMs": 811
           },
           "output": {
             "message": {
               "content": [
                 {
-                  "text": ""
+                  "text": "I am happy to assist you today"
                 }
               ],
               "role": "assistant"
             }
           },
-          "stopReason": "end_turn",
+          "stopReason": "max_tokens",
           "usage": {
             "inputTokens": 8,
-            "outputTokens": 5,
-            "totalTokens": 13
+            "outputTokens": 10,
+            "totalTokens": 18
           }
         }
     headers:
       Connection:
       - keep-alive
       Content-Length:
-      - '179'
+      - '212'
       Content-Type:
       - application/json
       Date:
-      - Tue, 31 Dec 2024 10:02:26 GMT
+      - Tue, 31 Dec 2024 13:20:42 GMT
       Set-Cookie: test_set_cookie
       x-amzn-RequestId:
-      - 8e183234-2be0-4d6f-8a0e-ff065d47ea60
+      - 63dfbcb2-3536-4906-b10d-e5b126b3c0ae
     status:
       code: 200
       message: OK

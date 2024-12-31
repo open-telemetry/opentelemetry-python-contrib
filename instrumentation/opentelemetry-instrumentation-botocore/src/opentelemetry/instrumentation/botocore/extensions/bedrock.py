@@ -66,7 +66,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes[GEN_AI_REQUEST_MODEL] = model_id
 
             # FIXME: add other model patterns
-            text_model_patterns = ["amazon.titan-text", "anthropic.claude"]
+            text_model_patterns = [
+                "amazon.titan-text",
+                "anthropic.claude",
+                "meta.llama",
+            ]
             if any(pattern in model_id for pattern in text_model_patterns):
                 attributes[GEN_AI_OPERATION_NAME] = (
                     GenAiOperationNameValues.CHAT.value
