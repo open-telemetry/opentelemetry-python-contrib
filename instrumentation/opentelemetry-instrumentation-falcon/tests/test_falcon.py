@@ -211,7 +211,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             SpanAttributes.HTTP_HOST: "falconframework.org",
             SpanAttributes.HTTP_TARGET: "/"
             if self._has_fixed_http_target
-            else "/error",
+            else "/hello",
             SpanAttributes.NET_PEER_PORT: 65133,
             SpanAttributes.HTTP_FLAVOR: "1.1",
             "falcon.resource": "HelloWorldResource",
@@ -223,7 +223,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             SpanAttributes.SERVER_ADDRESS: "falconframework.org",
             SpanAttributes.URL_SCHEME: "http",
             SpanAttributes.SERVER_PORT: 80,
-            SpanAttributes.URL_PATH: "/",
+            SpanAttributes.URL_PATH: "/"
+            if self._has_fixed_http_target
+            else "/hello",
             SpanAttributes.CLIENT_PORT: 65133,
             SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
             "falcon.resource": "HelloWorldResource",
@@ -344,7 +346,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.SERVER_ADDRESS: "falconframework.org",
                 SpanAttributes.URL_SCHEME: "http",
                 SpanAttributes.SERVER_PORT: 80,
-                SpanAttributes.URL_PATH: "/",
+                SpanAttributes.URL_PATH: "/"
+                if self._has_fixed_http_target
+                else "/user/123",
                 SpanAttributes.CLIENT_PORT: 65133,
                 SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
                 "falcon.resource": "UserResource",
