@@ -15,15 +15,34 @@
 import logging
 from typing import Optional
 from unittest import mock
+from collections import namedtuple
 
 import pytest
+
+
+from unittest.mock import MagicMock, patch
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
+    OTLPLogExporter,
+)
+
+
+from opentelemetry.semconv.trace import SpanAttributes
 
 from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
+from opentelemetry.trace import (
+    NoOpTracerProvider,
+    ProxyTracer,
+    get_tracer,
+    get_current_span,
+)
+
+from handlers.opentelemetry_loguru.src.exporter import LoguruHandler, _STD_TO_OTEL
+
+from opentelemetry._logs import get_logger_provider
 
 
 class FakeTracerProvider:
@@ -99,9 +118,7 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(
-                span_id, trace_id, trace_sampled
-            )
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
 
     def test_trace_context_injection_without_span(self):
         self.assert_trace_context_injected("0", "0", False)
@@ -185,9 +202,7 @@ class TestLoggingInstrumentor(TestBase):
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
             trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(
-                span_id, trace_id, trace_sampled
-            )
+            self.assert_trace_context_injected(span_id, trace_id, trace_sampled)
 
         LoggingInstrumentor().uninstrument()
 
@@ -205,6 +220,155 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+
+class TimestampRecord:
+    def __init__(self, data):
+        self.timestam = data
+
+    def timestamp(self):
+        return self.timestam
+
+
+class TestLoguruHandler(TestBase):
+    def setUp(self):
+        self.default_provider = get_logger_provider()
+        self.custom_provider = MagicMock()
+
+        RecordFile = namedtuple("RecordFile", ["path", "name"])
+        file_record = RecordFile(path="test_file.py", name="test_file.py")
+
+        RecordProcess = namedtuple("RecordProcess", ["name", "id"])
+        process_record = RecordProcess(name="MainProcess", id=1)
+
+        RecordThread = namedtuple("RecordThread", ["name", "id"])
+        thread_record = RecordThread(name="MainThread", id=1)
+
+        timeRec = TimestampRecord(data=2.38763786)
+
+        self.record = {
+            "time": timeRec,
+            "level": MagicMock(name="ERROR", no=40),
+            "message": "Test message",
+            "file": file_record,
+            "process": process_record,
+            "thread": thread_record,
+            "function": "test_function",
+            "line": 123,
+            "exception": None,
+        }
+
+        self.span_context = get_current_span().get_span_context()
+        self.current_span = MagicMock()
+        self.current_span.get_span_context.return_value = self.span_context
+
+    def test_attributes_extraction_without_exception(self):
+        handler = LoguruHandler(
+            service_name="flask-loguru-demo",
+            server_hostname="instance-1",
+            exporter=OTLPLogExporter(insecure=True),
+        )
+
+        attrs = handler._get_attributes(self.record)
+
+        expected_attrs = {
+            SpanAttributes.CODE_FILEPATH: "test_file.py",
+            SpanAttributes.CODE_FUNCTION: "test_function",
+            SpanAttributes.CODE_LINENO: 123,
+        }
+
+        self.assertEqual(
+            attrs[SpanAttributes.CODE_FILEPATH],
+            expected_attrs[SpanAttributes.CODE_FILEPATH],
+        )
+        self.assertEqual(
+            attrs[SpanAttributes.CODE_FUNCTION],
+            expected_attrs[SpanAttributes.CODE_FUNCTION],
+        )
+        self.assertEqual(
+            attrs[SpanAttributes.CODE_LINENO],
+            expected_attrs[SpanAttributes.CODE_LINENO],
+        )
+
+    @patch("traceback.format_exception")
+    def test_attributes_extraction_with_exception(self, mock_format_exception):
+        mock_format_exception.return_value = "Exception traceback"
+        exception = Exception("Test exception")
+
+        ExceptionRecord = namedtuple("ExceptionRecord", ["type", "value", "traceback"])
+
+        # Example usage:
+        exception_record = ExceptionRecord(
+            type=type(exception).__name__,
+            value=str(exception),
+            traceback=mock_format_exception(exception),
+        )
+        self.record["exception"] = exception_record
+
+        handler = LoguruHandler(
+            service_name="flask-loguru-demo",
+            server_hostname="instance-1",
+            exporter=OTLPLogExporter(insecure=True),
+        )
+
+        attrs = handler._get_attributes(self.record)
+
+        expected_attrs = {
+            SpanAttributes.CODE_FILEPATH: "test_file.py",
+            SpanAttributes.CODE_FUNCTION: "test_function",
+            SpanAttributes.CODE_LINENO: 123,
+            SpanAttributes.EXCEPTION_TYPE: "Exception",
+            SpanAttributes.EXCEPTION_MESSAGE: "Test exception",
+            SpanAttributes.EXCEPTION_STACKTRACE: "Exception traceback",
+        }
+
+        self.assertEqual(
+            attrs[SpanAttributes.EXCEPTION_TYPE],
+            expected_attrs[SpanAttributes.EXCEPTION_TYPE],
+        )
+        self.assertEqual(
+            attrs[SpanAttributes.EXCEPTION_MESSAGE],
+            expected_attrs[SpanAttributes.EXCEPTION_MESSAGE],
+        )
+        self.assertEqual(
+            attrs[SpanAttributes.EXCEPTION_STACKTRACE],
+            expected_attrs[SpanAttributes.EXCEPTION_STACKTRACE],
+        )
+
+    @patch("opentelemetry.trace.get_current_span")
+    def test_translation(self, mock_get_current_span):
+        mock_get_current_span.return_value = self.current_span
+
+        handler = LoguruHandler(
+            service_name="flask-loguru-demo",
+            server_hostname="instance-1",
+            exporter=OTLPLogExporter(insecure=True),
+        )
+
+        log_record = handler._translate(self.record)
+        self.assertEqual(log_record.trace_id, self.span_context.trace_id)
+        self.assertEqual(log_record.span_id, self.span_context.span_id)
+        self.assertEqual(log_record.trace_flags, self.span_context.trace_flags)
+        self.assertEqual(
+            log_record.severity_number, _STD_TO_OTEL[self.record["level"].no]
+        )
+        self.assertEqual(log_record.body, self.record["message"])
+
+    @patch("opentelemetry._logs.Logger.emit")
+    @patch("opentelemetry.trace.get_current_span")
+    def test_sink(self, mock_get_current_span, mock_emit):
+        mock_get_current_span.return_value = self.current_span
+
+        handler = LoguruHandler(
+            service_name="flask-loguru-demo",
+            server_hostname="instance-1",
+            exporter=OTLPLogExporter(insecure=True),
+        )
+
+        MessageRecord = namedtuple("MessageRecord", ["record"])
+        message = MessageRecord(record=self.record)
+
+        handler.sink(message)
 
     def test_no_op_tracer_provider(self):
         LoggingInstrumentor().uninstrument()
