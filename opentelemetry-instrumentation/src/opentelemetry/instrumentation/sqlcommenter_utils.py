@@ -22,6 +22,8 @@ def _add_sql_comment(sql, **meta) -> str:
     """
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
+    # converting to str to handle any type errors
+    sql = str(sql)
     sql = sql.rstrip()
     if sql[-1] == ";":
         sql = sql[:-1] + comment + ";"
