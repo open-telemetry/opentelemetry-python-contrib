@@ -76,7 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-sqlalchemy`: Fix a remaining memory leak in EngineTracer
   ([#3053](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3053))
 - `opentelemetry-instrumentation-sqlite3`: Update documentation on explicit cursor support of tracing
-  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))
+  ([#3088](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3088))'
+- `opentelemetry-instrumentation-psycopg2`: fix AttributeError at `instrument_connection`
+  ([#3043](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3043))
 
 ### Breaking changes
 
