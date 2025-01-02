@@ -404,6 +404,8 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             that is called right before the span ends
     """
 
+    _is_instrumented_by_opentelemetry = True
+
     def __init__(
         self,
         transport: httpx.BaseTransport,
@@ -528,6 +530,8 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
     """
+
+    _is_instrumented_by_opentelemetry = True
 
     def __init__(
         self,
@@ -897,6 +901,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 "Attempting to instrument Httpx client while already instrumented"
             )
             return
+        if getattr(
+            client._transport, "is_instrumented_by_opentelemetry", False
+        ):
+            return
 
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -948,6 +956,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             response_hook=response_hook,
                         ),
                     )
+            client._transport._is_instrumented_by_opentelemetry = True
             client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
@@ -974,6 +983,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             async_response_hook=async_response_hook,
                         ),
                     )
+            client._transport._is_instrumented_by_opentelemetry = True
             client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
@@ -989,9 +999,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             unwrap(client._transport, "handle_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_request")
+            client._transport._is_instrumented_by_opentelemetry = False
             client._is_instrumented_by_opentelemetry = False
         elif hasattr(client._transport, "handle_async_request"):
             unwrap(client._transport, "handle_async_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_async_request")
+            client._transport._is_instrumented_by_opentelemetry = False
             client._is_instrumented_by_opentelemetry = False

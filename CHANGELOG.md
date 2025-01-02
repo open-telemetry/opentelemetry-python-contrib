@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
   ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+- `opentelemetry-instrumentation-httpx` Add the `is_instrumented` flag to the transport
+  ([#3106](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3106))
 
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
