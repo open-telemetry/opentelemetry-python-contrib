@@ -46,15 +46,39 @@ the query with contextual information.
     import MySQLdb
     from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-
+    # Call instrument() to wrap all database connections
     MySQLClientInstrumentor().instrument(enable_commenter=True, commenter_options={})
 
     cnx = MySQLdb.connect(database="MySQL_Database")
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)"
     cnx.commit()
     cursor.close()
     cnx.close()
+
+.. code:: python
+
+    import MySQLdb
+    from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = MySQLdb.connect(database="MySQL_Database")
+    instrumented_cnx = MySQLClientInstrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+        commenter_options={
+            "db_driver": True,
+            "mysql_client_version": True,
+            "driver_paramstyle": False
+        }
+    )
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    instrumented_cnx.commit()
+    cursor.close()
+    instrumented_cnx.close()
 
 For example,
 ::
@@ -187,12 +211,28 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         """Enable instrumentation in a mysqlclient connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: The optional tracer provider to use. If omitted
-                the current globally configured one is used.
+            connection:
+                The MySQL connection instance to instrument. This connection is typically
+                created using `MySQLdb.connect()` and needs to be wrapped to collect telemetry.
+            tracer_provider:
+                A custom `TracerProvider` instance to be used for tracing. If not specified,
+                the globally configured tracer provider will be used.
+            enable_commenter:
+                A flag to enable the OpenTelemetry SQLCommenter feature. If set to `True`,
+                SQL queries will be enriched with contextual information (e.g., database client details).
+                Default is `None`.
+            commenter_options:
+                A dictionary of configuration options for SQLCommenter. All options are enabled (True) by default.
+                This allows you to customize metadata appended to queries. Possible options include:
 
+                    - `db_driver`: Adds the database driver name and version.
+                    - `dbapi_threadsafety`: Adds threadsafety information.
+                    - `dbapi_level`: Adds the DB-API version.
+                    - `mysql_client_version`: Adds the MySQL client version.
+                    - `driver_paramstyle`: Adds the parameter style.
+                    - `opentelemetry_values`: Includes traceparent values.
         Returns:
-            An instrumented connection.
+            An instrumented MySQL connection with OpenTelemetry support enabled.
         """
 
         return dbapi.instrument_connection(
