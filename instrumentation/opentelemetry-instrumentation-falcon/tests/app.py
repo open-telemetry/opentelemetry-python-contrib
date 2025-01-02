@@ -4,12 +4,14 @@ from packaging import version as package_version
 # pylint:disable=R0201,W0613,E0602
 
 
+_parsed_falcon_version = package_version.parse(falcon.__version__)
+
+
 class HelloWorldResource:
     def _handle_request(self, _, resp):
         # pylint: disable=no-member
         resp.status = falcon.HTTP_201
 
-        _parsed_falcon_version = package_version.parse(falcon.__version__)
         if _parsed_falcon_version < package_version.parse("3.0.0"):
             # Falcon 1 and Falcon 2
             resp.body = "Hello World"
@@ -65,11 +67,15 @@ class UserResource:
     def on_get(self, req, resp, user_id):
         # pylint: disable=no-member
         resp.status = falcon.HTTP_200
-        resp.body = f"Hello user {user_id}"
+
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            # Falcon 1 and Falcon 2
+            resp.body = f"Hello user {user_id}"
+        else:
+            resp.text = f"Hello user {user_id}"
 
 
 def make_app():
-    _parsed_falcon_version = package_version.parse(falcon.__version__)
     if _parsed_falcon_version < package_version.parse("3.0.0"):
         # Falcon 1 and Falcon 2
         app = falcon.API()
