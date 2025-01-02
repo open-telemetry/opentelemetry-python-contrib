@@ -222,7 +222,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         We don't patch RequestHandler._execute as it causes some issues with contextvars based context.
         Mainly the context fails to detach from within RequestHandler.on_finish() if it is attached inside
         RequestHandler._execute. Same issue plagues RequestHandler.initialize. RequestHandler.prepare works
-        perfectly on the other hand as it executes in the same context as on_finish and log_exection which
+        perfectly on the other hand as it executes in the same context as on_finish and log_execution which
         are patched to finish a span after a request is served.
 
         However, we cannot just patch RequestHandler's prepare method because it is supposed to be overridden
