@@ -584,7 +584,7 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
         self.assertIs(original, should_be_original)
 
 
-class TestConditonalServerSpanCreation(TestStarletteManualInstrumentation):
+class TestConditionalServerSpanCreation(TestStarletteManualInstrumentation):
     def test_mark_span_internal_in_presence_of_another_span(self):
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span(
