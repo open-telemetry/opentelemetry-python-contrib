@@ -571,6 +571,8 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         duration_s = default_timer() - start
 
         metrics_list = self.memory_metrics_reader.get_metrics_data()
+
+        # pylint: disable=too-many-nested-blocks
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
