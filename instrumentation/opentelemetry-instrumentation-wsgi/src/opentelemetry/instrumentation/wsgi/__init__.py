@@ -273,15 +273,14 @@ from opentelemetry.util.http import (
 )
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
     from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
 
 
 T = TypeVar("T")
 RequestHook = Callable[[trace.Span, "WSGIEnvironment"], None]
-ResponseHook: TypeAlias = (
-    "Callable[[trace.Span, WSGIEnvironment, str, list[tuple[str, str]]], None]"
-)
+ResponseHook = Callable[
+    [trace.Span, "WSGIEnvironment", str, "list[tuple[str, str]]"], None
+]
 
 _HTTP_VERSION_PREFIX = "HTTP/"
 _CARRIER_KEY_PREFIX = "HTTP_"
