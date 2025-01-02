@@ -434,7 +434,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         callback = mock.Mock()
 
-        def make_shortlived_engine():
+        def make_short_lived_engine():
             engine = create_engine("sqlite:///:memory:")
             # Callback will be called if engine is deallocated during garbage
             # collection
@@ -443,7 +443,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 conn.execute(text("SELECT 1 + 1;")).fetchall()
 
         for _ in range(0, 5):
-            make_shortlived_engine()
+            make_short_lived_engine()
 
         gc.collect()
         assert callback.call_count == 5
