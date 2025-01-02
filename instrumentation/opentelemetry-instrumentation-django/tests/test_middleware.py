@@ -164,9 +164,9 @@ class TestMiddleware(WsgiTestBase):
         else:
             middleware = conf.settings.MIDDLEWARE_CLASSES
         # adding two dummy middlewares
-        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
-        middleware.append(temprory_middelware)
-        middleware.append(temprory_middelware)
+        temprory_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middleware)
+        middleware.append(temprory_middleware)
 
         middleware_position = 1
         _django_instrumentor.instrument(
@@ -184,8 +184,8 @@ class TestMiddleware(WsgiTestBase):
         else:
             middleware = conf.settings.MIDDLEWARE_CLASSES
         # adding middleware
-        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
-        middleware.append(temprory_middelware)
+        temprory_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middleware)
         middleware_position = (
             756  # wrong position out of bound of middleware length
         )
