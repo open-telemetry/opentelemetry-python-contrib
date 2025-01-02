@@ -88,14 +88,30 @@ Usage
     import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
     cnx = psycopg2.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -162,7 +178,6 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(psycopg2, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    @staticmethod
     def instrument_connection(
         connection: pg_connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
@@ -172,14 +187,18 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         """Enable instrumentation of a Psycopg2 connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: Optional tracer provider to use. If omitted
-                the current globally configured one is used.
-            enable_commenter: Optional flag to enable/disable sqlcommenter (default disabled).
-            commenter_options: Optional configurations for tags to be appended at the sql query.
+            connection: psycopg2.extensions.connection
+                The psycopg2 connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not provided,
+                the global TracerProvider will be used.
+            enable_commenter: bool, optional
+                Optional flag to enable/disable sqlcommenter (default False).
+            commenter_options: dict, optional
+                Optional configurations for tags to be appended at the sql query.
 
         Returns:
-            An instrumented connection.
+            An instrumented psycopg2 connection object.
         """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False

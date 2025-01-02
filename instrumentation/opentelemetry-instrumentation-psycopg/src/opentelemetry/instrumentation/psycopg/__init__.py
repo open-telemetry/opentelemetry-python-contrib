@@ -88,14 +88,30 @@ Usage
     import psycopg
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
-
+    # Call instrument() to wrap all database connections
     PsycopgInstrumentor().instrument()
 
     cnx = psycopg.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg.connect(database='Database')
+    instrumented_cnx = PsycopgInstrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -205,14 +221,18 @@ class PsycopgInstrumentor(BaseInstrumentor):
         """Enable instrumentation of a Psycopg connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: Optional tracer provider to use. If omitted
-                the current globally configured one is used.
-            enable_commenter: Optional flag to enable/disable sqlcommenter (default disabled).
-            commenter_options: Optional configurations for tags to be appended at the sql query.
+            connection: psycopg.Connection
+                The psycopg connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not provided,
+                the global TracerProvider will be used.
+            enable_commenter: bool, optional
+                Optional flag to enable/disable sqlcommenter (default False).
+            commenter_options: dict, optional
+                Optional configurations for tags to be appended at the sql query.
 
         Returns:
-            An instrumented connection.
+            An instrumented psycopg connection object.
         """
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
