@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from timeit import default_timer
 from unittest.mock import Mock, patch
 
 import pytest
@@ -39,6 +40,24 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_PATH,
+    URL_SCHEME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -219,17 +238,15 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             SpanAttributes.HTTP_ROUTE: "/hello",
         }
         expected_attributes_new = {
-            SpanAttributes.HTTP_REQUEST_METHOD: method,
-            SpanAttributes.SERVER_ADDRESS: "falconframework.org",
-            SpanAttributes.URL_SCHEME: "http",
-            SpanAttributes.SERVER_PORT: 80,
-            SpanAttributes.URL_PATH: "/"
-            if self._has_fixed_http_target
-            else "/hello",
-            SpanAttributes.CLIENT_PORT: 65133,
-            SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_REQUEST_METHOD: method,
+            SERVER_ADDRESS: "falconframework.org",
+            URL_SCHEME: "http",
+            SERVER_PORT: 80,
+            URL_PATH: "/" if self._has_fixed_http_target else "/hello",
+            CLIENT_PORT: 65133,
+            NETWORK_PROTOCOL_VERSION: "1.1",
             "falcon.resource": "HelloWorldResource",
-            SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 201,
+            HTTP_RESPONSE_STATUS_CODE: 201,
             SpanAttributes.HTTP_ROUTE: "/hello",
         }
 
@@ -342,17 +359,15 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-                SpanAttributes.SERVER_ADDRESS: "falconframework.org",
-                SpanAttributes.URL_SCHEME: "http",
-                SpanAttributes.SERVER_PORT: 80,
-                SpanAttributes.URL_PATH: "/"
-                if self._has_fixed_http_target
-                else "/user/123",
-                SpanAttributes.CLIENT_PORT: 65133,
-                SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
+                HTTP_REQUEST_METHOD: "GET",
+                SERVER_ADDRESS: "falconframework.org",
+                URL_SCHEME: "http",
+                SERVER_PORT: 80,
+                URL_PATH: "/" if self._has_fixed_http_target else "/user/123",
+                CLIENT_PORT: 65133,
+                NETWORK_PROTOCOL_VERSION: "1.1",
                 "falcon.resource": "UserResource",
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+                HTTP_RESPONSE_STATUS_CODE: 200,
                 SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
             },
         )
@@ -519,7 +534,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
+        start = default_timer()
         self.client().simulate_get("/hello/756")
+        duration = max(default_timer() - start, 0)
+
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
@@ -530,6 +548,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
                             histogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)
                             number_data_point_seen = True
@@ -545,7 +566,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
+        start = default_timer()
         self.client().simulate_get("/hello/756")
+        duration_s = default_timer() - start
+
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
@@ -565,6 +589,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                     for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
+                            if metric.unit == "ms":
+                                self.assertAlmostEqual(
+                                    max(round(duration_s * 1000), 0),
+                                    point.sum,
+                                    delta=10,
+                                )
+                            elif metric.unit == "s":
+                                self.assertAlmostEqual(
+                                    max(duration_s, 0), point.sum, delta=10
+                                )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)
@@ -580,7 +614,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
+        start = default_timer()
         self.client().simulate_get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
@@ -591,6 +628,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
                             histogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)
                             number_data_point_seen = True
