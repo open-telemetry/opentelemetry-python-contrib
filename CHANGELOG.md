@@ -509,7 +509,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1879](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1879))
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
-- `opentelemetry-instrumentation-django` - Add option to add Opentelemetry middleware at specific position in middleware chain
+- `opentelemetry-instrumentation-django` - Add option to add OpenTelemetry middleware at specific position in middleware chain
   ([#2912]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2912)
 
 ### Added
@@ -626,7 +626,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1575](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1575))
 - Fix SQLAlchemy uninstrumentation
   ([#1581](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1581))
-- `opentelemetry-instrumentation-grpc` Fix code()/details() of \_OpentelemetryServicerContext.
+- `opentelemetry-instrumentation-grpc` Fix code()/details() of \_OpenTelemetryServicerContext.
   ([#1578](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1578))
 - Fix aiopg instrumentation to work with aiopg < 2.0.0
   ([#1473](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1473))
@@ -1115,7 +1115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
 - `opentelemetry-instrumentation-urllib3`, `opentelemetry-instrumentation-requests`
   The `net.peer.ip` attribute is set to the IP of the connected HTTP server or proxy
-  using a new instrumentor in `opententelemetry-util-http`
+  using a new instrumentor in `opentelemetry-util-http`
   ([#661](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/661))
 - `opentelemetry-instrumentation-pymongo` Add check for suppression key in PyMongo.
   ([#736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/736))
@@ -1171,7 +1171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
   ([#586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/586))
-- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `openetelemetry-instrumentation-fastapi`,
+- `opentelemetry-instrumentation-asgi`, `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-fastapi`,
   `opentelemetry-instrumentation-starlette`, `opentelemetry-instrumentation-urllib`, `opentelemetry-instrumentation-urllib3` Added `request_hook` and `response_hook` callbacks
   ([#576](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/576))
 - `opentelemetry-instrumentation-pika` added RabbitMQ's pika module instrumentation.
@@ -1223,7 +1223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#566](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/566))
 - Include Flask 2.0 as compatible with existing flask instrumentation
   ([#545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/545))
-- `openelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
+- `opentelemetry-sdk-extension-aws` Take a dependency on `opentelemetry-sdk`
   ([#558](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/558))
 - Change `opentelemetry-instrumentation-httpx` to replace `client` classes with instrumented versions.
   ([#577](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/577))
