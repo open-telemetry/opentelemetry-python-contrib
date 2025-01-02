@@ -421,7 +421,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
-    def test_no_memory_leakage_if_engine_diposed(self):
+    def test_no_memory_leakage_if_engine_disposed(self):
         SQLAlchemyInstrumentor().instrument()
         import gc
         import weakref
