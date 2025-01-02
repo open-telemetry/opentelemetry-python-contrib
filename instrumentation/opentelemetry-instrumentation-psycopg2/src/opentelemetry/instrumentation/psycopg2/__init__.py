@@ -178,6 +178,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(psycopg2, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
+    @staticmethod
     def instrument_connection(
         connection: pg_connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
