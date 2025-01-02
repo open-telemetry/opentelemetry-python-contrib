@@ -37,17 +37,17 @@ class TestASGIGetter(TestCase):
         self.assertEqual(
             getter.get(carrier, "Test-Key"),
             expected_val,
-            "Should be case insensitive",
+            "Should be case-insensitive",
         )
         self.assertEqual(
             getter.get(carrier, "test-key"),
             expected_val,
-            "Should be case insensitive",
+            "Should be case-insensitive",
         )
         self.assertEqual(
             getter.get(carrier, "TEST-KEY"),
             expected_val,
-            "Should be case insensitive",
+            "Should be case-insensitive",
         )
 
     def test_keys_empty_carrier(self):

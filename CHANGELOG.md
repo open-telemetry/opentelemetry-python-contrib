@@ -736,7 +736,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1377))
 - `opentelemetry-instrumentation-asgi` Fix keys() in class ASGIGetter so it decodes the keys before returning them.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
-- `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case insensitive manner.
+- `opentelemetry-instrumentation-asgi` Make ASGIGetter.get() compare all keys in a case-insensitive manner.
   ([#1333](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1333))
 - Use resp.text instead of resp.body for Falcon 3 to avoid a deprecation warning.
   ([#1412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1412))
@@ -1397,7 +1397,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove `component` span attribute in instrumentations.
   `opentelemetry-instrumentation-aiopg`, `opentelemetry-instrumentation-dbapi` Remove unused `database_type` parameter from `trace_integration` function.
   ([#301](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/301))
-- `opentelemetry-instrumentation-asgi` Return header values using case insensitive keys
+- `opentelemetry-instrumentation-asgi` Return header values using case-insensitive keys
   ([#308](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/308))
 - Remove metrics from all instrumentations
   ([#312](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/312))
