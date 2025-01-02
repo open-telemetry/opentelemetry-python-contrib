@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
 - `opentelemetry-instrumentation-falcon` Implement new HTTP semantic convention opt-in for Falcon
   ([#2790](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2790))
-
+- add support to Python 3.13
+  ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
 
 ### Fixed
 
