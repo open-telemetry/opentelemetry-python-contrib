@@ -60,7 +60,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
 
-    def test_exluded_urls_explicit(self):
+    def test_excluded_urls_explicit(self):
         FlaskInstrumentor().uninstrument()
         FlaskInstrumentor().instrument(excluded_urls="/hello/456")
 
