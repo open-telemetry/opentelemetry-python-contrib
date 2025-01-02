@@ -219,7 +219,7 @@ from __future__ import annotations
 import functools
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
-from typing import TYPE_CHECKING, Any, Callable, Iterable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -287,7 +287,7 @@ _CARRIER_KEY_PREFIX = "HTTP_"
 _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
-class WSGIGetter(Getter[dict[str, Any]]):
+class WSGIGetter(Getter[Dict[str, Any]]):
     def get(self, carrier: dict[str, Any], key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the
              PEP3333-conforming WSGI environ
