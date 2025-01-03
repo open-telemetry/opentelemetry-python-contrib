@@ -242,7 +242,7 @@ class TestStarletteManualInstrumentation(TestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_for_uninstrment_app_method(self):
+    def test_metric_for_uninstrument_app_method(self):
         self._client.get("/foobar")
         # uninstrumenting the existing client app
         self._instrumentor.uninstrument_app(self._app)

@@ -903,7 +903,7 @@ class TestMiddleware(WsgiTestBase):
                             )
         self.assertTrue(histogram_data_point_seen and number_data_point_seen)
 
-    def test_wsgi_metrics_unistrument(self):
+    def test_wsgi_metrics_uninstrument(self):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
         Client().get("/span_name/1234/")
