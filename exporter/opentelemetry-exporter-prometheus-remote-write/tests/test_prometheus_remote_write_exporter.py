@@ -314,18 +314,18 @@ def test_invalid_export(prom_rw):
 @patch("requests.post")
 def test_valid_send_message(mock_post, prom_rw):
     mock_post.return_value.configure_mock(**{"ok": True})
-    result = prom_rw._send_message(bytes(), {})
+    result = prom_rw._send_message(b"", {})
     assert mock_post.call_count == 1
     assert result == MetricExportResult.SUCCESS
 
 
 def test_invalid_send_message(prom_rw):
-    result = prom_rw._send_message(bytes(), {})
+    result = prom_rw._send_message(b"", {})
     assert result == MetricExportResult.FAILURE
 
 
 # Verifies that build_message calls snappy.compress and returns SerializedString
-@patch("snappy.compress", return_value=bytes())
+@patch("snappy.compress", return_value=b"")
 def test_build_message(mock_compress, prom_rw):
     message = prom_rw._build_message([TimeSeries()])
     assert mock_compress.call_count == 1

@@ -17,11 +17,12 @@ This library provides functionality to enrich HTTP client spans with IPs. It doe
 not create spans on its own.
 """
 
+from __future__ import annotations
+
 import contextlib
 import http.client
 import logging
 import socket  # pylint:disable=unused-import # Used for typing
-import typing
 from typing import Collection
 
 import wrapt
@@ -49,7 +50,7 @@ class HttpClientInstrumentor(BaseInstrumentor):
         _uninstrument()
 
 
-def _remove_nonrecording(spanlist: typing.List[Span]):
+def _remove_nonrecording(spanlist: list[Span]):
     idx = len(spanlist) - 1
     while idx >= 0:
         if not spanlist[idx].is_recording():
@@ -78,7 +79,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
     state = _getstate()
     if not state:
         return True
-    spanlist: typing.List[Span] = state.get("need_ip")
+    spanlist: list[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -88,7 +89,7 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
 
     sock = "<property not accessed>"
     try:
-        sock: typing.Optional[socket.socket] = conn.sock
+        sock: socket.socket | None = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False
@@ -147,7 +148,7 @@ def _instrument():
     # No need to instrument HTTPSConnection, as it calls super().connect()
 
 
-def _getstate() -> typing.Optional[dict]:
+def _getstate() -> dict | None:
     return context.get_value(_STATE_KEY)
 
 
@@ -163,7 +164,7 @@ def set_ip_on_next_http_connection(span: Span):
         finally:
             context.detach(token)
     else:
-        spans: typing.List[Span] = state["need_ip"]
+        spans: list[Span] = state["need_ip"]
         spans.append(span)
         try:
             yield

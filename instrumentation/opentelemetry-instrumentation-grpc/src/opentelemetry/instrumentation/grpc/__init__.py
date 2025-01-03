@@ -274,8 +274,10 @@ services ``GRPCTestServer`` and ``GRPCHealthServer``.
 
 """
 
+from __future__ import annotations
+
 import os
-from typing import Callable, Collection, List, Union
+from typing import Callable, Collection
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
@@ -688,7 +690,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     )
 
 
-def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
+def _excluded_service_filter() -> Callable[[object], bool] | None:
     services = _parse_services(
         os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
     )
@@ -698,7 +700,7 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
     return negate(any_of(*filters))
 
 
-def _parse_services(excluded_services: str) -> List[str]:
+def _parse_services(excluded_services: str) -> list[str]:
     if excluded_services != "":
         excluded_service_list = [
             s.strip() for s in excluded_services.split(",")

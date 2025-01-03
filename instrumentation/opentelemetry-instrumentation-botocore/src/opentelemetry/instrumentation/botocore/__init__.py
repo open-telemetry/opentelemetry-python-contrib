@@ -78,8 +78,10 @@ for example:
     ec2.describe_instances()
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from typing import Any, Callable, Collection
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -267,8 +269,8 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
-) -> Optional[_AwsSdkCallContext]:
+    client: BaseClient, args: tuple[str, dict[str, Any]]
+) -> _AwsSdkCallContext | None:
     try:
         call_context = _AwsSdkCallContext(client, args)
 

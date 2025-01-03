@@ -406,12 +406,10 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL):
             self.assertEqual(
                 len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics
                 ),
                 3,
             )
@@ -453,12 +451,10 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL):
             self.assertEqual(
                 len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics
                 ),
                 3,
             )
@@ -502,12 +498,10 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL):
             self.assertEqual(
                 len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
+                    self.memory_metrics_reader.get_metrics_data()
+                    .resource_metrics[0]
+                    .scope_metrics[0]
+                    .metrics
                 ),
                 3,
             )

@@ -18,7 +18,7 @@ import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Any, Dict, Generator, Sequence
+from typing import Any, Generator, Sequence
 
 from wrapt import ObjectProxy
 
@@ -46,8 +46,8 @@ _SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
 
 
 def extract_attributes_from_object(
-    obj: Any, attributes: Sequence[str], existing: Dict[str, str] | None = None
-) -> Dict[str, str]:
+    obj: Any, attributes: Sequence[str], existing: dict[str, str] | None = None
+) -> dict[str, str]:
     extracted: dict[str, str] = {}
     if existing:
         extracted.update(existing)

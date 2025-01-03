@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import abc
 import inspect
@@ -35,15 +36,15 @@ _AttributePathT = Union[str, Tuple[str]]
 # converter functions
 
 
-def _conv_val_to_single_attr_tuple(value: str) -> Tuple[str]:
+def _conv_val_to_single_attr_tuple(value: str) -> tuple[str]:
     return None if value is None else (value,)
 
 
-def _conv_dict_to_key_tuple(value: Dict[str, Any]) -> Optional[Tuple[str]]:
+def _conv_dict_to_key_tuple(value: dict[str, Any]) -> tuple[str] | None:
     return tuple(value.keys()) if isinstance(value, Dict) else None
 
 
-def _conv_list_to_json_list(value: List) -> Optional[List[str]]:
+def _conv_list_to_json_list(value: list) -> list[str] | None:
     return (
         [json.dumps(item) for item in value]
         if isinstance(value, List)
@@ -51,15 +52,15 @@ def _conv_list_to_json_list(value: List) -> Optional[List[str]]:
     )
 
 
-def _conv_val_to_single_json_tuple(value: str) -> Optional[Tuple[str]]:
+def _conv_val_to_single_json_tuple(value: str) -> tuple[str] | None:
     return (json.dumps(value),) if value is not None else None
 
 
-def _conv_dict_to_json_str(value: Dict) -> Optional[str]:
+def _conv_dict_to_json_str(value: dict) -> str | None:
     return json.dumps(value) if isinstance(value, Dict) else None
 
 
-def _conv_val_to_len(value) -> Optional[int]:
+def _conv_val_to_len(value) -> int | None:
     return len(value) if value is not None else None
 
 
@@ -393,8 +394,8 @@ class _DynamoDbExtension(_AwsSdkExtension):
 
     def _add_attributes(
         self,
-        provider: Dict[str, Any],
-        attributes: Dict[str, _AttrSpecT],
+        provider: dict[str, Any],
+        attributes: dict[str, _AttrSpecT],
         setter: Callable[[str, AttributeValue], None],
     ):
         if attributes is None:
@@ -412,7 +413,7 @@ class _DynamoDbExtension(_AwsSdkExtension):
             setter(attr_key, value)
 
     @staticmethod
-    def _get_attr_value(provider: Dict[str, Any], attr_path: _AttributePathT):
+    def _get_attr_value(provider: dict[str, Any], attr_path: _AttributePathT):
         if isinstance(attr_path, str):
             return provider.get(attr_path)
 

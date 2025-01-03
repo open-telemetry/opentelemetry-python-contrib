@@ -74,12 +74,14 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import types
 import typing
 from http import client
 from timeit import default_timer
-from typing import Collection, Dict
+from typing import Collection
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -205,7 +207,7 @@ class URLLibInstrumentor(BaseInstrumentor):
 # pylint: disable=too-many-statements
 def _instrument(
     tracer,
-    histograms: Dict[str, Histogram],
+    histograms: dict[str, Histogram],
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList = None,
@@ -395,7 +397,7 @@ def _set_status_code_attribute(
 
 def _create_client_histograms(
     meter, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-) -> Dict[str, Histogram]:
+) -> dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
         histograms[MetricInstruments.HTTP_CLIENT_DURATION] = (
@@ -436,7 +438,7 @@ def _create_client_histograms(
 
 
 def _record_histograms(
-    histograms: Dict[str, Histogram],
+    histograms: dict[str, Histogram],
     metric_attributes_old: dict,
     metric_attributes_new: dict,
     request_size: int,

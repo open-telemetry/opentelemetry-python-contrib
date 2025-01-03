@@ -207,8 +207,9 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
-import typing
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
 
@@ -268,9 +269,7 @@ _CARRIER_KEY_PREFIX_LEN = len(_CARRIER_KEY_PREFIX)
 
 
 class WSGIGetter(Getter[dict]):
-    def get(
-        self, carrier: dict, key: str
-    ) -> typing.Optional[typing.List[str]]:
+    def get(self, carrier: dict, key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the
              PEP3333-conforming WSGI environ
 

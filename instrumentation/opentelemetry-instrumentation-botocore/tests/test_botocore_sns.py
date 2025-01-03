@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import contextlib
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import botocore.session
@@ -83,7 +85,7 @@ class TestSnsExtension(TestBase):
 
         return span
 
-    def assert_injected_span(self, message_attrs: Dict[str, Any], span: Span):
+    def assert_injected_span(self, message_attrs: dict[str, Any], span: Span):
         # traceparent: <ver>-<trace-id>-<span-id>-<flags>
         trace_parent = message_attrs["traceparent"]["StringValue"].split("-")
         span_context = span.get_span_context()

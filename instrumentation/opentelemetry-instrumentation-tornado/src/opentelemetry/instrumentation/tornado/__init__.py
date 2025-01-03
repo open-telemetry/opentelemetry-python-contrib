@@ -152,12 +152,14 @@ API
 ---
 """
 
+from __future__ import annotations
+
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Collection, Dict
+from typing import Collection
 
 import tornado.web
 import wrapt
@@ -290,7 +292,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         self.patched_handlers = []
 
 
-def _create_server_histograms(meter) -> Dict[str, Histogram]:
+def _create_server_histograms(meter) -> dict[str, Histogram]:
     histograms = {
         MetricInstruments.HTTP_SERVER_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -317,7 +319,7 @@ def _create_server_histograms(meter) -> Dict[str, Histogram]:
     return histograms
 
 
-def _create_client_histograms(meter) -> Dict[str, Histogram]:
+def _create_client_histograms(meter) -> dict[str, Histogram]:
     histograms = {
         MetricInstruments.HTTP_CLIENT_DURATION: meter.create_histogram(
             name=MetricInstruments.HTTP_CLIENT_DURATION,

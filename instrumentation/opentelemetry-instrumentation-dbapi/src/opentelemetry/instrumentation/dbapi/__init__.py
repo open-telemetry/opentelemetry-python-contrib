@@ -37,6 +37,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import logging
 import re
@@ -66,8 +68,8 @@ def trace_integration(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
-    tracer_provider: typing.Optional[TracerProvider] = None,
+    connection_attributes: dict = None,
+    tracer_provider: TracerProvider | None = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
@@ -108,9 +110,9 @@ def wrap_connect(
     connect_module: typing.Callable[..., typing.Any],
     connect_method_name: str,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: dict = None,
     version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
+    tracer_provider: TracerProvider | None = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     db_api_integration_factory=None,
@@ -143,8 +145,8 @@ def wrap_connect(
     def wrap_connect_(
         wrapped: typing.Callable[..., typing.Any],
         instance: typing.Any,
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         db_integration = db_api_integration_factory(
             name,
@@ -184,9 +186,9 @@ def instrument_connection(
     name: str,
     connection,
     database_system: str,
-    connection_attributes: typing.Dict = None,
+    connection_attributes: dict = None,
     version: str = "",
-    tracer_provider: typing.Optional[TracerProvider] = None,
+    tracer_provider: TracerProvider | None = None,
     capture_parameters: bool = False,
     enable_commenter: bool = False,
     commenter_options: dict = None,
@@ -252,7 +254,7 @@ class DatabaseApiIntegration:
         database_system: str,
         connection_attributes=None,
         version: str = "",
-        tracer_provider: typing.Optional[TracerProvider] = None,
+        tracer_provider: TracerProvider | None = None,
         capture_parameters: bool = False,
         enable_commenter: bool = False,
         commenter_options: dict = None,
@@ -351,8 +353,8 @@ class DatabaseApiIntegration:
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         connection = connect_method(*args, **kwargs)
@@ -441,7 +443,7 @@ class CursorTracer:
         self,
         span: trace_api.Span,
         cursor,
-        *args: typing.Tuple[typing.Any, typing.Any],
+        *args: tuple[typing.Any, typing.Any],
     ):
         if not span.is_recording():
             return
@@ -481,8 +483,8 @@ class CursorTracer:
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
-        *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any],
+        *args: tuple[typing.Any, typing.Any],
+        **kwargs: dict[typing.Any, typing.Any],
     ):
         name = self.get_operation_name(cursor, args)
         if not name:

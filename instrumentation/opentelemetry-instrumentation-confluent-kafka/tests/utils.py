@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from confluent_kafka import Consumer, Producer
 
@@ -26,8 +26,8 @@ class MockedMessage:
         partition: int,
         offset: int,
         headers,
-        key: Optional[str] = None,
-        value: Optional[str] = None,
+        key: str | None = None,
+        value: str | None = None,
     ):
         self._topic = topic
         self._partition = partition

@@ -117,6 +117,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import typing
 from typing import Collection
@@ -256,8 +258,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
     def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -274,8 +276,8 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
     async def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)

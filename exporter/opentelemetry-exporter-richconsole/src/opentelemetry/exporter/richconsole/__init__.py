@@ -50,11 +50,12 @@ API
 .. _Rich: https://rich.readthedocs.io/
 .. _OpenTelemetry: https://github.com/open-telemetry/opentelemetry-python/
 """
+
 # pylint: disable=import-error
+from __future__ import annotations
 
 import datetime
 import typing
-from typing import Dict, Optional
 
 from rich.console import Console
 from rich.syntax import Syntax
@@ -150,7 +151,7 @@ class RichConsoleSpanExporter(SpanExporter):
 
     def __init__(
         self,
-        service_name: Optional[str] = None,
+        service_name: str | None = None,
     ):
         self.service_name = service_name
         self.console = Console()
@@ -165,7 +166,7 @@ class RichConsoleSpanExporter(SpanExporter):
         return SpanExportResult.SUCCESS
 
     @staticmethod
-    def spans_to_tree(spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
+    def spans_to_tree(spans: typing.Sequence[ReadableSpan]) -> dict[str, Tree]:
         trees = {}
         parents = {}
         spans = list(spans)

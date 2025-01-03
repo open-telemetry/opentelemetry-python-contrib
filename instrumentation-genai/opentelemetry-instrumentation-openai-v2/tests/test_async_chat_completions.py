@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint: disable=too-many-locals
-
-from typing import Optional
+from __future__ import annotations
 
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, NotFoundError
@@ -802,8 +801,8 @@ def assert_all_attributes(
     request_model: str,
     response_id: str = None,
     response_model: str = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
     operation_name: str = "chat",
     server_address: str = "api.openai.com",
 ):
