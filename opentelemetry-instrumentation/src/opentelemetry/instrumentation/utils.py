@@ -18,7 +18,7 @@ import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Any, Dict, Generator, Sequence
+from typing import Any, Generator, Sequence
 
 from wrapt import ObjectProxy
 
