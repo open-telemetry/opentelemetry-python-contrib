@@ -514,7 +514,7 @@ class _TraceMiddleware:
 
         status = resp.status
         if resource is None:
-            status = "404"
+            status = falcon.HTTP_404
         else:
             exc_type, exc = None, None
             if _ENVIRON_EXC in req.env:
@@ -523,37 +523,39 @@ class _TraceMiddleware:
 
             if exc_type and not req_succeeded:
                 if "HTTPNotFound" in exc_type.__name__:
-                    status = "404"
+                    status = falcon.HTTP_404
                 elif isinstance(exc, (falcon.HTTPError, falcon.HTTPStatus)):
                     try:
-                        status = exc.title.split(" ")[0]
+                        if _falcon_version > 2:
+                            status = falcon.code_to_http_status(exc.status)
+                        else:
+                            status = exc.status
                     except ValueError:
-                        status = "500"
+                        status = falcon.HTTP_500
                 else:
-                    status = "500"
+                    status = falcon.HTTP_500
 
-        status_code = status.split(" ")[0]
+        # Falcon 1 does not support response headers. So
+        # send an empty dict.
+        response_headers = {}
+        if _falcon_version > 1:
+            response_headers = resp.headers
+
+        otel_wsgi.add_response_attributes(
+            span,
+            status,
+            response_headers,
+            req_attrs,
+            self._sem_conv_opt_in_mode,
+        )
+
+        if (
+            _report_new(self._sem_conv_opt_in_mode)
+            and req.uri_template
+            and req_attrs is not None
+        ):
+            req_attrs[HTTP_ROUTE] = req.uri_template
         try:
-            set_status_code(
-                span,
-                status_code,
-                req_attrs,
-                sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
-            )
-
-            if (
-                _report_new(self._sem_conv_opt_in_mode)
-                and req.uri_template
-                and req_attrs is not None
-            ):
-                req_attrs[HTTP_ROUTE] = req.uri_template
-
-            # Falcon 1 does not support response headers. So
-            # send an empty dict.
-            response_headers = {}
-            if _falcon_version > 1:
-                response_headers = resp.headers
-
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 # Check if low-cardinality route is available as per semantic-conventions
                 if req.uri_template:
