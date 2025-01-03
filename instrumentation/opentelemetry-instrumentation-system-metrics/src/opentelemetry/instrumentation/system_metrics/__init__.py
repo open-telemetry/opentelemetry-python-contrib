@@ -85,11 +85,10 @@ import sys
 import threading
 from platform import python_implementation
 from typing import Collection, Iterable
+from typing import Any, Collection, Iterable
 
 import psutil
 
-# FIXME Remove this pylint disabling line when Github issue is cleared
-# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
@@ -98,7 +97,7 @@ from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 _logger = logging.getLogger(__name__)
 
 
-_DEFAULT_CONFIG = {
+_DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "system.cpu.time": ["idle", "user", "system", "irq"],
     "system.cpu.utilization": ["idle", "user", "system", "irq"],
     "system.memory.usage": ["used", "free", "cached"],
@@ -132,7 +131,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
         labels: dict[str, str] | None = None,
-        config: dict[str, list[str]] | None = None,
+        config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
         if config is None:
@@ -178,7 +177,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         # pylint: disable=too-many-branches
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
@@ -410,7 +409,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 description="Number of file descriptors in use by the process.",
             )
 
-    def _uninstrument(self, **__):
+    def _uninstrument(self, **kwargs: Any):
         pass
 
     def _get_open_file_descriptors(

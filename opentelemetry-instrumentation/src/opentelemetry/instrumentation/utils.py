@@ -18,7 +18,7 @@ import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
-from typing import Iterable, Sequence
+from typing import Any, Dict, Generator, Sequence
 
 from wrapt import ObjectProxy
 
@@ -46,9 +46,9 @@ _SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
 
 
 def extract_attributes_from_object(
-    obj: any, attributes: Sequence[str], existing: dict[str, str] = None
+    obj: Any, attributes: Sequence[str], existing: dict[str, str] | None = None
 ) -> dict[str, str]:
-    extracted = {}
+    extracted: dict[str, str] = {}
     if existing:
         extracted.update(existing)
     for attr in attributes:
@@ -83,7 +83,7 @@ def http_status_to_status_code(
     return StatusCode.ERROR
 
 
-def unwrap(obj: object | str, attr: str):
+def unwrap(obj: object, attr: str):
     """Given a function that was wrapped by wrapt.wrap_function_wrapper, unwrap it
 
     The object containing the function to unwrap may be passed as dotted module path string.
@@ -154,7 +154,7 @@ def _start_internal_or_server_span(
     return span, token
 
 
-def _url_quote(s) -> str:  # pylint: disable=invalid-name
+def _url_quote(s: Any) -> str:  # pylint: disable=invalid-name
     if not isinstance(s, (str, bytes)):
         return s
     quoted = urllib.parse.quote(s)
@@ -165,13 +165,13 @@ def _url_quote(s) -> str:  # pylint: disable=invalid-name
     return quoted.replace("%", "%%")
 
 
-def _get_opentelemetry_values() -> dict:
+def _get_opentelemetry_values() -> dict[str, Any]:
     """
     Return the OpenTelemetry Trace and Span IDs if Span ID is set in the
     OpenTelemetry execution context.
     """
     # Insert the W3C TraceContext generated
-    _headers = {}
+    _headers: dict[str, Any] = {}
     propagator.inject(_headers)
     return _headers
 
@@ -198,7 +198,7 @@ def is_http_instrumentation_enabled() -> bool:
 
 
 @contextmanager
-def _suppress_instrumentation(*keys: str) -> Iterable[None]:
+def _suppress_instrumentation(*keys: str) -> Generator[None]:
     """Suppress instrumentation within the context."""
     ctx = context.get_current()
     for key in keys:
@@ -211,7 +211,7 @@ def _suppress_instrumentation(*keys: str) -> Iterable[None]:
 
 
 @contextmanager
-def suppress_instrumentation() -> Iterable[None]:
+def suppress_instrumentation() -> Generator[None]:
     """Suppress instrumentation within the context."""
     with _suppress_instrumentation(
         _SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN
@@ -220,7 +220,7 @@ def suppress_instrumentation() -> Iterable[None]:
 
 
 @contextmanager
-def suppress_http_instrumentation() -> Iterable[None]:
+def suppress_http_instrumentation() -> Generator[None]:
     """Suppress instrumentation within the context."""
     with _suppress_instrumentation(_SUPPRESS_HTTP_INSTRUMENTATION_KEY):
         yield
