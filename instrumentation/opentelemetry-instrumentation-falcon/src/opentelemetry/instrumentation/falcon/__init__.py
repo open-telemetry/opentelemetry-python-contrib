@@ -199,7 +199,6 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_status,
     _StabilityMode,
 )
 from opentelemetry.instrumentation.falcon.package import _instruments
@@ -248,31 +247,6 @@ else:
     # Falcon 1
     _instrument_app = "API"
     _falcon_version = 1
-
-
-def set_status_code(
-    span,
-    status_code,
-    metric_attributes=None,
-    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
-):
-    """Adds HTTP response attributes to span using the status_code argument."""
-    status_code_str = str(status_code)
-
-    try:
-        status_code = int(status_code)
-    except ValueError:
-        status_code = -1
-    if metric_attributes is None:
-        metric_attributes = {}
-    _set_status(
-        span,
-        metric_attributes,
-        status_code,
-        status_code_str,
-        server_span=True,
-        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-    )
 
 
 class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
