@@ -296,7 +296,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             raise TypeError(f"Unsupported string type: {type_}")
 
         # Remove consecutive underscores
-        # TODO: Unfortunately this clobbbers __name__
+        # TODO: Unfortunately this clobbers __name__
         # sanitized = UNDERSCORE_REGEX.sub("_",sanitized)
 
         return sanitized
