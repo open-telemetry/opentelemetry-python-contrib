@@ -737,7 +737,7 @@ class TestMiddleware(WsgiTestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
-        histrogram_data_point_seen = False
+        histogram_data_point_seen = False
 
         self.assertTrue(len(metrics_list.resource_metrics) != 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -751,7 +751,7 @@ class TestMiddleware(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
+                            histogram_data_point_seen = True
                             self.assertAlmostEqual(
                                 duration, point.sum, delta=100
                             )
@@ -766,7 +766,7 @@ class TestMiddleware(WsgiTestBase):
                                 expected_requests_count_attributes,
                                 dict(point.attributes),
                             )
-        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+        self.assertTrue(histogram_data_point_seen and number_data_point_seen)
 
     # pylint: disable=too-many-locals
     def test_wsgi_metrics_new_semconv(self):
@@ -792,7 +792,7 @@ class TestMiddleware(WsgiTestBase):
         duration_s = default_timer() - start
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
-        histrogram_data_point_seen = False
+        histogram_data_point_seen = False
 
         self.assertTrue(len(metrics_list.resource_metrics) != 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -806,7 +806,7 @@ class TestMiddleware(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
+                            histogram_data_point_seen = True
                             self.assertAlmostEqual(
                                 duration_s, point.sum, places=1
                             )
@@ -821,7 +821,7 @@ class TestMiddleware(WsgiTestBase):
                                 expected_requests_count_attributes,
                                 dict(point.attributes),
                             )
-        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+        self.assertTrue(histogram_data_point_seen and number_data_point_seen)
 
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-nested-blocks
@@ -863,7 +863,7 @@ class TestMiddleware(WsgiTestBase):
         duration = max(round(duration_s * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
-        histrogram_data_point_seen = False
+        histogram_data_point_seen = False
 
         self.assertTrue(len(metrics_list.resource_metrics) != 0)
         for resource_metric in metrics_list.resource_metrics:
@@ -877,7 +877,7 @@ class TestMiddleware(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
+                            histogram_data_point_seen = True
                             if metric.name == "http.server.request.duration":
                                 self.assertAlmostEqual(
                                     duration_s, point.sum, places=1
@@ -901,7 +901,7 @@ class TestMiddleware(WsgiTestBase):
                                 expected_requests_count_attributes,
                                 dict(point.attributes),
                             )
-        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+        self.assertTrue(histogram_data_point_seen and number_data_point_seen)
 
     def test_wsgi_metrics_unistrument(self):
         Client().get("/span_name/1234/")
