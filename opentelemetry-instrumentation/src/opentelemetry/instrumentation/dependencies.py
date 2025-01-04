@@ -47,13 +47,14 @@ def get_dist_dependency_conflicts(
     extra = "extra"
     instruments = "instruments"
     instruments_marker = {extra: instruments}
-    for dep in dist.requires:
-        if extra not in dep or instruments not in dep:
-            continue
+    if dist.requires:
+        for dep in dist.requires:
+            if extra not in dep or instruments not in dep:
+                continue
 
-        req = Requirement(dep)
-        if req.marker.evaluate(instruments_marker):
-            instrumentation_deps.append(req)
+            req = Requirement(dep)
+            if req.marker.evaluate(instruments_marker):
+                instrumentation_deps.append(req)
 
     return get_dependency_conflicts(instrumentation_deps)
 
