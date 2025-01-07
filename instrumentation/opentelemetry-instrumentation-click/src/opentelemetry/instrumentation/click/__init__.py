@@ -47,6 +47,12 @@ from typing import Collection
 import click
 from wrapt import wrap_function_wrapper
 
+try:
+    from flask.cli import ScriptInfo as FlaskScriptInfo
+except ImportError:
+    FlaskScripInfo = None
+
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.click.package import _instruments
 from opentelemetry.instrumentation.click.version import __version__
@@ -66,6 +72,20 @@ from opentelemetry.trace.status import StatusCode
 _logger = getLogger(__name__)
 
 
+def _skip_servers(ctx: click.Context):
+    # flask run
+    if (
+        ctx.info_name == "run"
+        and FlaskScriptInfo
+        and isinstance(ctx.obj, FlaskScriptInfo)
+    ):
+        return True
+    # uvicorn
+    if ctx.info_name == "uvicorn":
+        return True
+    return False
+
+
 def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
     # Subclasses of Command include groups and CLI runners, but
     # we only want to instrument the actual commands which are
@@ -74,6 +94,12 @@ def _command_invoke_wrapper(wrapped, instance, args, kwargs, tracer):
         return wrapped(*args, **kwargs)
 
     ctx = args[0]
+
+    # we don't want to create a root span for long running processes like servers
+    # otherwise all requests would have the same trace id
+    if _skip_servers(ctx):
+        return wrapped(*args, **kwargs)
+
     span_name = ctx.info_name
     span_attributes = {
         PROCESS_COMMAND_ARGS: sys.argv,
