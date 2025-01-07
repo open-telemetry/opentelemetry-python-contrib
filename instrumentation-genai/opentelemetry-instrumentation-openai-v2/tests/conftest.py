@@ -17,6 +17,10 @@ from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
     SimpleLogRecordProcessor,
 )
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    InMemoryMetricReader,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -36,6 +40,12 @@ def fixture_log_exporter():
     yield exporter
 
 
+@pytest.fixture(scope="function", name="metric_reader")
+def fixture_metric_reader():
+    exporter = InMemoryMetricReader()
+    yield exporter
+
+
 @pytest.fixture(scope="function", name="tracer_provider")
 def fixture_tracer_provider(span_exporter):
     provider = TracerProvider()
@@ -50,6 +60,13 @@ def fixture_event_logger_provider(log_exporter):
     event_logger_provider = EventLoggerProvider(provider)
 
     return event_logger_provider
+
+
+@pytest.fixture(scope="function", name="meter_provider")
+def fixture_meter_provider(metric_reader):
+    meter_provider = MeterProvider(metric_readers=[metric_reader])
+
+    return meter_provider
 
 
 @pytest.fixture(autouse=True)
@@ -100,7 +117,9 @@ def instrument_no_content(tracer_provider, event_logger_provider):
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(tracer_provider, event_logger_provider):
+def instrument_with_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
@@ -108,6 +127,7 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
     )
 
     yield instrumentor

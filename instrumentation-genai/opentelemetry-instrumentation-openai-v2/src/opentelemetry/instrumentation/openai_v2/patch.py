@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from timeit import default_timer
 from typing import Optional
 
 from openai import Stream
@@ -23,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 
+from .meters import Meters  # Import the Meters class
 from .utils import (
     choice_to_event,
     get_llm_request_attributes,
@@ -34,7 +36,10 @@ from .utils import (
 
 
 def chat_completions_create(
-    tracer: Tracer, event_logger: EventLogger, capture_content: bool
+    tracer: Tracer,
+    event_logger: EventLogger,
+    meters: Meters,
+    capture_content: bool,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
@@ -54,6 +59,8 @@ def chat_completions_create(
                         message_to_event(message, capture_content)
                     )
 
+            start = default_timer()
+            result = None
             try:
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
@@ -71,12 +78,23 @@ def chat_completions_create(
             except Exception as error:
                 handle_span_exception(span, error)
                 raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_metrics(
+                    meters,
+                    duration,
+                    result,
+                    span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL],
+                )
 
     return traced_method
 
 
 def async_chat_completions_create(
-    tracer: Tracer, event_logger: EventLogger, capture_content: bool
+    tracer: Tracer,
+    event_logger: EventLogger,
+    meters: Meters,
+    capture_content: bool,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
@@ -96,6 +114,8 @@ def async_chat_completions_create(
                         message_to_event(message, capture_content)
                     )
 
+            start = default_timer()
+            result = None
             try:
                 result = await wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
@@ -113,8 +133,53 @@ def async_chat_completions_create(
             except Exception as error:
                 handle_span_exception(span, error)
                 raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_metrics(
+                    meters,
+                    duration,
+                    result,
+                    span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL],
+                )
 
     return traced_method
+
+
+def _record_metrics(
+    meters: Meters, duration: float, result, request_model: str
+):
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_model,
+    }
+
+    if result and getattr(result, "model", None):
+        common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
+
+    meters.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+    if result and getattr(result, "usage", None):
+        input_attributes = {
+            **common_attributes,
+            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+        }
+        meters.token_usage_histogram.record(
+            result.usage.prompt_tokens,
+            attributes=input_attributes,
+        )
+
+        completion_attributes = {
+            **common_attributes,
+            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+        }
+        meters.token_usage_histogram.record(
+            result.usage.completion_tokens,
+            attributes=completion_attributes,
+        )
 
 
 def _set_response_attributes(

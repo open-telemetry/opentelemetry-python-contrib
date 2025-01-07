@@ -880,3 +880,90 @@ def get_current_weather_tool_definition():
             },
         },
     }
+
+
+def assert_all_metric_attributes(data_point):
+    assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        == GenAIAttributes.GenAiOperationNameValues.CHAT.value
+    )
+    assert GenAIAttributes.GEN_AI_SYSTEM in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        == GenAIAttributes.GenAiSystemValues.OPENAI.value
+    )
+    assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        == "gpt-4o-mini"
+    )
+    assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
+        == "gpt-4o-mini-2024-07-18"
+    )
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
+async def test_async_chat_completion_metrics(
+    metric_reader, async_openai_client, instrument_with_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    await async_openai_client.chat.completions.create(
+        messages=messages_value, model=llm_model_value, stream=False
+    )
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+    assert len(metric_data) == 2
+
+    duration_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == "gen_ai.client.operation.duration"
+        ),
+        None,
+    )
+    assert duration_metric is not None
+    assert duration_metric.data.data_points[0].sum > 0
+    assert_all_metric_attributes(duration_metric.data.data_points[0])
+
+    token_usage_metric = next(
+        (m for m in metric_data if m.name == "gen_ai.client.token.usage"), None
+    )
+    assert token_usage_metric is not None
+
+    input_token_usage = next(
+        (
+            d
+            for d in token_usage_metric.data.data_points
+            if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+            == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
+        ),
+        None,
+    )
+
+    assert input_token_usage is not None
+    assert input_token_usage.sum == 12
+    assert_all_metric_attributes(input_token_usage)
+
+    output_token_usage = next(
+        (
+            d
+            for d in token_usage_metric.data.data_points
+            if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+            == GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value
+        ),
+        None,
+    )
+
+    assert output_token_usage is not None
+    assert output_token_usage.sum == 12
+    assert_all_metric_attributes(output_token_usage)
