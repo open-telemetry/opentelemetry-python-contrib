@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
   ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+- `opentelemetry-instrumentation` Fix `get_dist_dependency_conflicts` if no distribution requires
+  ([#3168](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3168))
 
 ### Breaking changes
 
