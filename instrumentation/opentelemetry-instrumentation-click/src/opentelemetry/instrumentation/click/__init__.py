@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """
-Instrument `click`_ CLI applications.
+Instrument `click`_ CLI applications. The instrumentor will avoid instrumenting
+well-known servers (e.g. *flask run* and *uvicorn*) to avoid unexpected effects
+like every request having the same Trace ID.
 
 .. _click: https://pypi.org/project/click/
 
