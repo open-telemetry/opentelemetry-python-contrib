@@ -583,6 +583,11 @@ class OpenTelemetryMiddleware:
             unit="{request}",
             description="Number of active HTTP server requests.",
         )
+        self.response_counter = self.meter.create_counter(
+            name="wsgi_response_count",
+            unit="responses",
+            description="Counter for responses per endpoint",
+        )
         self.request_hook = request_hook
         self.response_hook = response_hook
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
@@ -594,9 +599,12 @@ class OpenTelemetryMiddleware:
         response_hook,
         duration_attrs,
         sem_conv_opt_in_mode,
+        response_counter,
+        endpoint_name
     ):
         @functools.wraps(start_response)
         def _start_response(status, response_headers, *args, **kwargs):
+            response_counter.add(1, {"status_code": status, "view": endpoint_name})
             add_response_attributes(
                 span,
                 status,
@@ -658,12 +666,15 @@ class OpenTelemetryMiddleware:
         self.active_requests_counter.add(1, active_requests_count_attrs)
         try:
             with trace.use_span(span):
+                endpoint_name = environ.get("PATH_INFO")
                 start_response = self._create_start_response(
                     span,
                     start_response,
                     response_hook,
                     req_attrs,
                     self._sem_conv_opt_in_mode,
+                    self.response_counter,
+                    endpoint_name
                 )
                 iterable = self.wsgi(environ, start_response)
                 return _end_span_after_iterating(iterable, span, token)
