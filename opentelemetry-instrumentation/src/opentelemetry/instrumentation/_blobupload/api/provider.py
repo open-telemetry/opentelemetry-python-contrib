@@ -1,11 +1,11 @@
-from typing import Optional
-
 import abc
 import logging
+from typing import Optional
 
 from opentelemetry.instrumentation._blobupload.api.blob import Blob
-from opentelemetry.instrumentation._blobupload.api.blob_uploader import BlobUploader
-
+from opentelemetry.instrumentation._blobupload.api.blob_uploader import (
+    BlobUploader,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class BlobUploaderProvider(abc.ABC):
 
     def get_blob_uploader(self, use_case: Optional[str]) -> BlobUploader:
         """Returns a BlobUploader for the specified use case.
-        
+
         Args:
           use_case: An optional use case that describes what the uploader is for. This could
             name a particular package, class, or instrumentation. It is intended to allow
@@ -38,10 +38,14 @@ class _DefaultBlobUploaderProvider(BlobUploaderProvider):
     """Default provider used when none has been configured."""
 
     def get_blob_uploader(self, use_case: Optional[str]) -> BlobUploader:
-        use_case_formatted = '(None)'
+        use_case_formatted = "(None)"
         if use_case:
             use_case_formatted = use_case
-        _logger.warning('No BlobUploaderProvider configured; returning a no-op for use case {}'.format(use_case_formatted))
+        _logger.warning(
+            "No BlobUploaderProvider configured; returning a no-op for use case {}".format(
+                use_case_formatted
+            )
+        )
         return _NoOpBlobUploader()
 
 

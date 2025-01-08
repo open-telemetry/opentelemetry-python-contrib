@@ -1,10 +1,10 @@
+import base64
 from typing import Dict, Optional
 
-import base64
 
 class Blob(object):
     """Represents an opaque binary object and associated metadata.
-    
+
     This object conteptually has the following properties:
 
       - raw_bytes: the actual data (payload) of the Blob
@@ -13,9 +13,14 @@ class Blob(object):
          the object such as {"trace_id": "...", "span_id": "...", "filename": ...}
     """
 
-    def __init__(self, raw_bytes: bytes, content_type: Optional[str]=None, labels: Optional[Dict[str, str]]=None):
+    def __init__(
+        self,
+        raw_bytes: bytes,
+        content_type: Optional[str] = None,
+        labels: Optional[Dict[str, str]] = None,
+    ):
         """Initialize the blob with an explicit set of properties.
-        
+
         Args:
           raw_bytes: the required payload
           content_type: the MIME type describing the type of data in the payload
@@ -26,31 +31,41 @@ class Blob(object):
         self._labels = labels or {}
 
     @staticmethod
-    def from_data_uri(cls, uri: str, labels: Optional[dict]=None) -> 'Blob':
+    def from_data_uri(cls, uri: str, labels: Optional[dict] = None) -> "Blob":
         """Instantiate a blob from a 'data:...' URI.
 
-        Args:        
+        Args:
             uri: A URI in the 'data:' format. Supports a subset of 'data:' URIs
               that encode the data with the 'base64' extension and that include
               a content type. Should work with any normal 'image/jpeg', 'image/png',
               'application/pdf', 'audio/aac', and many others. DOES NOT SUPPORT
               encoding data as percent-encoded text (no "base64").
-    
+
             labels: Additional key/value data to include in the constructed Blob.
         """
-        if not uri.startswith('data:'):
-            raise ValueError('Invalid "uri"; expected "data:" prefix. Found: "{}"'.format(uri))
-        if not ';base64,' in uri:
-            raise ValueError('Invalid "uri"; expected ";base64," section. Found: "{}"'.format(uri))
-        data_prefix_len = len('data:')
+        if not uri.startswith("data:"):
+            raise ValueError(
+                'Invalid "uri"; expected "data:" prefix. Found: "{}"'.format(
+                    uri
+                )
+            )
+        if ";base64," not in uri:
+            raise ValueError(
+                'Invalid "uri"; expected ";base64," section. Found: "{}"'.format(
+                    uri
+                )
+            )
+        data_prefix_len = len("data:")
         after_data_prefix = uri[data_prefix_len:]
-        if ';' not in after_data_prefix:
-            raise ValueError('Invalid "uri"; expected ";" in URI. Found: "{}"'.format(uri))
-        content_type, remaining = after_data_prefix.split(';', 1)
-        while not remaining.startswith('base64,'):
-            _, remaining = remaining.split(';', 1)
-        assert remaining.startswith('base64,')
-        base64_len = len('base64,')
+        if ";" not in after_data_prefix:
+            raise ValueError(
+                'Invalid "uri"; expected ";" in URI. Found: "{}"'.format(uri)
+            )
+        content_type, remaining = after_data_prefix.split(";", 1)
+        while not remaining.startswith("base64,"):
+            _, remaining = remaining.split(";", 1)
+        assert remaining.startswith("base64,")
+        base64_len = len("base64,")
         base64_encoded_content = remaining[base64_len:]
         try:
             raw_bytes = base64.standard_b64decode(base64_encoded_content)
