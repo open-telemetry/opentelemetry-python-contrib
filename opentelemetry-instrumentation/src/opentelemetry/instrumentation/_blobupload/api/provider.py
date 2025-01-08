@@ -1,7 +1,10 @@
+from typing import Optional
+
 import abc
 import logging
 
-from opentelemetry.instrumentation._blobupload.api import BlobUploader
+from opentelemetry.instrumentation._blobupload.api.blob import Blob
+from opentelemetry.instrumentation._blobupload.api.blob_uploader import BlobUploader
 
 
 _logger = logging.getLogger(__name__)

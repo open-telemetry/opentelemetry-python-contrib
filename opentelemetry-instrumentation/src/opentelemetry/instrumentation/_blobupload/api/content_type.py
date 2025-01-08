@@ -5,7 +5,7 @@
 class _FallBackModule(object):
     """Class that is shaped like the portion of 'magic' we need."""
 
-    def from_buffer(self, raw_bytes):
+    def from_buffer(self, raw_bytes, mime=True):
         """Fallback, subpar implementation of 'from_buffer'."""
         return 'application/octet-stream'
 
@@ -21,4 +21,4 @@ except ImportError:
 
 def detect_content_type(raw_bytes: bytes) -> str:
     """Attempts to infer the content type of the specified data."""
-    return _module.from_buffer(raw_bytes)
+    return _module.from_buffer(raw_bytes, mime=True)

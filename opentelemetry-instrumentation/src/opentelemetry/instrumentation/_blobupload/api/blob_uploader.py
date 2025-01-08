@@ -5,6 +5,7 @@ import abc
 from opentelemetry.instrumentation._blobupload.api.constants import NOT_UPLOADED
 from opentelemetry.instrumentation._blobupload.api.blob import Blob
 
+
 class BlobUploader(abc.ABC):
     """Pure abstract base class representing a component that does blob uploading."""
     

@@ -1,6 +1,6 @@
 """Provides utilities for providing basic identifying labels for blobs."""
 
-def generate_labels_for_span(trace_id, span_id) -> dict:
+def generate_labels_for_span(trace_id: str, span_id: str) -> dict:
     """Returns metadata for a span."""
     return {
         'otel_type': 'span',
@@ -9,7 +9,7 @@ def generate_labels_for_span(trace_id, span_id) -> dict:
     }
 
 
-def generate_labels_for_event(trace_id, span_id, event_name) -> dict:
+def generate_labels_for_event(trace_id: str, span_id: str, event_name: str) -> dict:
     """Returns metadata for an event."""
     result = generate_labels_for_span(trace_id, span_id)
     result.update({
@@ -19,7 +19,7 @@ def generate_labels_for_event(trace_id, span_id, event_name) -> dict:
     return result
 
 
-def generate_labels_for_span_event(trace_id, span_id, event_name, event_index) -> dict:
+def generate_labels_for_span_event(trace_id: str, span_id: str, event_name: str, event_index: int) -> dict:
     """Returns metadata for a span event."""
     result = generate_labels_for_event(trace_id, span_id, event_name)
     result.update({

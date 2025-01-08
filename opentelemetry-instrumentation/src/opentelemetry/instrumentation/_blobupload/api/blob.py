@@ -1,3 +1,5 @@
+from typing import Dict, Optional
+
 import base64
 
 class Blob(object):
@@ -11,7 +13,7 @@ class Blob(object):
          the object such as {"trace_id": "...", "span_id": "...", "filename": ...}
     """
 
-    def __init__(self, raw_bytes: bytes, content_type: Optional[str]=None, labels: Optional[dict]=None):
+    def __init__(self, raw_bytes: bytes, content_type: Optional[str]=None, labels: Optional[Dict[str, str]]=None):
         """Initialize the blob with an explicit set of properties.
         
         Args:
@@ -24,7 +26,7 @@ class Blob(object):
         self._labels = labels or {}
 
     @staticmethod
-    def from_data_uri(cls, uri: str, labels: Optional[dict]=None) -> Blob:
+    def from_data_uri(cls, uri: str, labels: Optional[dict]=None) -> 'Blob':
         """Instantiate a blob from a 'data:...' URI.
 
         Args:        
@@ -67,6 +69,6 @@ class Blob(object):
         return self._content_type
 
     @property
-    def labels(self) -> dict:
+    def labels(self) -> Dict[str, str]:
         """Returns the key/value metadata of this Blob."""
         return _frozendict(self._labels)
