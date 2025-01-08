@@ -50,7 +50,7 @@ from wrapt import wrap_function_wrapper
 try:
     from flask.cli import ScriptInfo as FlaskScriptInfo
 except ImportError:
-    FlaskScripInfo = None
+    FlaskScriptInfo = None
 
 
 from opentelemetry import trace
