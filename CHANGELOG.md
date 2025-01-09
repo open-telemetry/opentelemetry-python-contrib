@@ -34,6 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
   ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+- `opentelemetry-instrumentation-click` Disable tracing of well-known server click commands
+  ([#3174](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3174))
+- `opentelemetry-instrumentation` Fix `get_dist_dependency_conflicts` if no distribution requires
+  ([#3168](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3168))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-sqlalchemy` including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3112))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
 
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
