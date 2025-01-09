@@ -1,5 +1,8 @@
 import base64
-from typing import Dict, Optional
+import json
+
+from types import MappingProxyType as _frozendict
+from typing import Mapping, Dict, Optional
 
 
 class Blob(object):
@@ -17,7 +20,7 @@ class Blob(object):
         self,
         raw_bytes: bytes,
         content_type: Optional[str] = None,
-        labels: Optional[Dict[str, str]] = None,
+        labels: Optional[Mapping[str, str]] = None,
     ):
         """Initialize the blob with an explicit set of properties.
 
@@ -26,12 +29,18 @@ class Blob(object):
           content_type: the MIME type describing the type of data in the payload
           labels: additional key/value data about the Blob
         """
-        self._raw_bytes = _raw_bytes
+        self._raw_bytes = raw_bytes
         self._content_type = content_type
-        self._labels = labels or {}
+        self._labels = {}
+        if labels is not None:
+            if isinstance(labels, dict):
+                self._labels.update(labels)
+            else:
+                for k in labels:
+                    self._labels[k] = labels[k]
 
     @staticmethod
-    def from_data_uri(cls, uri: str, labels: Optional[dict] = None) -> "Blob":
+    def from_data_uri(uri: str, labels: Optional[dict] = None) -> "Blob":
         """Instantiate a blob from a 'data:...' URI.
 
         Args:
@@ -67,10 +76,7 @@ class Blob(object):
         assert remaining.startswith("base64,")
         base64_len = len("base64,")
         base64_encoded_content = remaining[base64_len:]
-        try:
-            raw_bytes = base64.standard_b64decode(base64_encoded_content)
-        except ValueError:
-            raw_bytes = base64.urlsafe_b64decode(base64_encoded_content)
+        raw_bytes = base64.b64decode(base64_encoded_content)
         return Blob(raw_bytes, content_type=content_type, labels=labels)
 
     @property
@@ -84,6 +90,23 @@ class Blob(object):
         return self._content_type
 
     @property
-    def labels(self) -> Dict[str, str]:
+    def labels(self) -> Mapping[str, str]:
         """Returns the key/value metadata of this Blob."""
         return _frozendict(self._labels)
+
+    def __eq__(self, o):
+        return (
+            (isinstance(o, Blob)) and
+            (self.raw_bytes == o.raw_bytes) and
+            (self.content_type == o.content_type) and
+            (self.labels == o.labels)
+        )
+
+    def __repr__(self):
+        params = [repr(self._raw_bytes)]
+        if self._content_type is not None:
+            params.append('content_type={}'.format(repr(self._content_type)))
+        if self._labels:
+            params.append('labels={}'.format(json.dumps(self._labels, sort_keys=True)))
+        params_string = ', '.join(params)
+        return 'Blob({})'.format(params_string)

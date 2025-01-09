@@ -1,11 +1,14 @@
 """Defines a simple, synchronous interface for providing a backend implementation."""
 
+import abc
 
-class SimpleBlobUploader(ABC):
+from opentelemetry.instrumentation._blobupload.api import Blob
+
+class SimpleBlobUploader(abc.ABC):
     """Pure abstract base class of a backend implementation that is synchronous."""
 
-   @abstractmethod
-   def generate_destination_uri(self, blob: Blob) -> str:
+    @abc.abstractmethod
+    def generate_destination_uri(self, blob: Blob) -> str:
        """Generates a URI of where the blob will get written.
        
        Args:
@@ -16,8 +19,8 @@ class SimpleBlobUploader(ABC):
        """
        raise NotImplementedError('SimpleBlobUploader.generate_destination_uri')
 
-   @abstractmethod
-   def upload_sync(self, uri: str, blob: Blob):
+    @abc.abstractmethod
+    def upload_sync(self, uri: str, blob: Blob):
        """Synchronously writes the blob to the specified destination URI.
 
        Args:

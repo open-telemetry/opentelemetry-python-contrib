@@ -1,11 +1,17 @@
 import atexit
+import logging
 
-from concurrent.futures import Executor, ProcessPoolExecutor
+from typing import Optional
+from concurrent.futures import Executor, ThreadPoolExecutor
 
-from opentelemetry.instrumentation._blobupload.api import Blob
-from opentelemetry.instrumentation._blobupload.api import BlobUploader
-from opentelemetry.instrumentation._blobupload.api import detect_content_type
+from opentelemetry.instrumentation._blobupload.api import (
+    Blob,
+    BlobUploader,
+    detect_content_type)
 from opentelemetry.instrumentation._blobupload.utils.simple_blob_uploader import SimpleBlobUploader
+
+
+_logger = logging.getLogger(__name__)
 
 
 def _with_content_type(blob: Blob) -> Blob:
@@ -16,7 +22,7 @@ def _with_content_type(blob: Blob) -> Blob:
     return Blob(blob.raw_bytes, content_type=content_type, labels=blob.labels)
 
 
-def _UploadAction(object):
+class _UploadAction(object):
     """Represents the work to be done in the background to upload a blob."""
 
     def __init__(self, simple_uploader, uri, blob):
@@ -25,7 +31,11 @@ def _UploadAction(object):
         self._blob = blob
     
     def __call__(self):
-        self._simple_uploader.upload_sync(self._uri, self._blob)
+        _logger.debug('Uploading blob to "{}".'.format(self._uri))
+        try:
+            self._simple_uploader.upload_sync(self._uri, self._blob)
+        except:
+            _logger.error('Failed to upload blob to "{}".'.format(self._uri))
 
 
 def _create_default_executor_no_cleanup():
@@ -37,7 +47,8 @@ def _create_default_executor_no_cleanup():
     # It is because of this potential future enhancement, that we
     # have moved this logic into a separate function despite it
     # being currently logically quite simple.
-    return ProcessPoolExecutor()
+    _logger.debug('Creating thread pool executor')
+    return ThreadPoolExecutor()
 
 
 def _create_default_executor():
@@ -45,6 +56,7 @@ def _create_default_executor():
     result = _create_default_executor_no_cleanup()
     def _cleanup():
         result.shutdown()
+    _logger.debug('Registering cleanup for the pool')
     atexit.register(_cleanup)
     return result
 
@@ -58,7 +70,10 @@ def _get_or_create_default_executor():
     """Return or lazily instantiate a shared default executor."""
     global _default_executor
     if _default_executor is None:
+        _logger.debug('No existing executor found; creating one lazily.')
         _default_executor = _create_default_executor()
+    else:
+        _logger.debug('Reusing existing executor.')
     return _default_executor
 
 
@@ -79,6 +94,7 @@ class _SimpleBlobUploaderAdaptor(BlobUploader):
         return uri
 
     def _do_in_background(self, action):
+        _logger.debug('Scheduling background upload.')
         self._executor.submit(action)
 
 

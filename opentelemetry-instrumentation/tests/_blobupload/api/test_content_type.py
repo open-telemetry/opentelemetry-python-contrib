@@ -2,7 +2,6 @@
 
 if __name__ == "__main__":
     import sys
-
     sys.path.append("../../../src")
 
 import io
@@ -25,6 +24,12 @@ def create_test_image(format):
 
 
 class TestContentType(unittest.TestCase):
+
+    def test_handles_empty_correctly(self):
+        input = bytes()
+        output = detect_content_type(input)
+        self.assertEqual(output, "application/octet-stream")
+
     def test_detects_plaintext(self):
         input = "this is just regular text"
         output = detect_content_type(input.encode())

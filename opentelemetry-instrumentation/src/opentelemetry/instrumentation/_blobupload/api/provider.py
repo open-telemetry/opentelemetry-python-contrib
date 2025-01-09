@@ -6,6 +6,8 @@ from opentelemetry.instrumentation._blobupload.api.blob import Blob
 from opentelemetry.instrumentation._blobupload.api.blob_uploader import (
     BlobUploader,
 )
+from opentelemetry.instrumentation._blobupload.api.constants import NOT_UPLOADED
+
 
 _logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class _DefaultBlobUploaderProvider(BlobUploaderProvider):
         if use_case:
             use_case_formatted = use_case
         _logger.warning(
-            "No BlobUploaderProvider configured; returning a no-op for use case {}".format(
+            "No BlobUploaderProvider configured; returning a no-op for use case \"{}\". Use 'set_blob_uploader_provider()' to configure.".format(
                 use_case_formatted
             )
         )
@@ -52,10 +54,12 @@ class _DefaultBlobUploaderProvider(BlobUploaderProvider):
 _blob_uploader_provider = _DefaultBlobUploaderProvider()
 
 
-def set_blob_uploader_provider(provider: BlobUploaderProvider):
+def set_blob_uploader_provider(provider: BlobUploaderProvider) -> BlobUploaderProvider:
     """Allows configuring the behavior of 'get_blob_uploader."""
     global _blob_uploader_provider
+    old_provider = _blob_uploader_provider
     _blob_uploader_provider = provider
+    return old_provider
 
 
 def get_blob_uploader(use_case: Optional[str] = None) -> BlobUploader:

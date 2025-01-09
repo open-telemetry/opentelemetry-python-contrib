@@ -23,4 +23,6 @@ except ImportError:
 
 def detect_content_type(raw_bytes: bytes) -> str:
     """Attempts to infer the content type of the specified data."""
+    if not raw_bytes:
+        return 'application/octet-stream'
     return _module.from_buffer(raw_bytes, mime=True)
