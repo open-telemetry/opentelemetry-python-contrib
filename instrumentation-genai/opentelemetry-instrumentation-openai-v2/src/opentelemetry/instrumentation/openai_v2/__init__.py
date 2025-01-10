@@ -58,6 +58,9 @@ from .patch import async_chat_completions_create, chat_completions_create
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
+    def __init__(self):
+        self._meter = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 

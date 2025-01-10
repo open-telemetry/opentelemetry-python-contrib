@@ -71,7 +71,7 @@ def fixture_event_logger_provider(log_exporter):
 
 @pytest.fixture(scope="function", name="meter_provider")
 def fixture_meter_provider(metric_reader):
-    TokenUsageHistogramView = View(
+    token_usage_histogram_view = View(
         instrument_type=Histogram,
         instrument_name="gen_ai.client.token.usage",
         aggregation=ExplicitBucketHistogramAggregation(
@@ -94,7 +94,7 @@ def fixture_meter_provider(metric_reader):
         ),
     )
 
-    DurationHistogramView = View(
+    duration_histogram_view = View(
         instrument_type=Histogram,
         instrument_name="gen_ai.client.operation.duration",
         aggregation=ExplicitBucketHistogramAggregation(
@@ -119,7 +119,7 @@ def fixture_meter_provider(metric_reader):
 
     meter_provider = MeterProvider(
         metric_readers=[metric_reader],
-        views=[TokenUsageHistogramView, DurationHistogramView],
+        views=[token_usage_histogram_view, duration_histogram_view],
     )
 
     return meter_provider
