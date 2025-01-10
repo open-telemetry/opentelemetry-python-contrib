@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Breaking Changes
+
+- `opentelemetry-util-http` Don't normalize headers with "hyphen -> underscore"
+  ([#3104](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3104))
+
 ### Added
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
@@ -54,7 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
-
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
 

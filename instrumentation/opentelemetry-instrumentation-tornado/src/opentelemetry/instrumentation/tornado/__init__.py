@@ -117,11 +117,11 @@ will extract ``content-type`` and ``custom_request_header`` from request headers
 It is recommended that you should give the correct names of the headers to be captured in the environment variable.
 Request header names in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase).
 The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom-request-header = ["<value1>,<value2>"]``
 
 Response headers
 ****************
@@ -139,11 +139,11 @@ will extract ``content-type`` and ``custom_response_header`` from response heade
 It is recommended that you should give the correct names of the headers to be captured in the environment variable.
 Response header names captured in tornado are case insensitive. So, giving header name as ``CUStomHeader`` in environment variable will be able capture header with name ``customheader``.
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase, with - characters replaced by _ ).
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>`` being the normalized HTTP header name (lowercase).
 The value of the attribute will be single item list containing all the header values.
 
 Example of the added span attribute,
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom-response-header = ["<value1>,<value2>"]``
 
 Note:
     Environment variable names to capture http headers are still experimental, and thus are subject to change.
