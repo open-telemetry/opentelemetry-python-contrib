@@ -55,6 +55,7 @@ for example:
 .. code:: python
 
     from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
+    from opentelemetry.propagate import get_global_textmap
 
     def custom_event_context_extractor(lambda_event):
         # If the `TraceContextTextMapPropagator` is the global propagator, we

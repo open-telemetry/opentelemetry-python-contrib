@@ -540,7 +540,7 @@ class FalconInstrumentor(BaseInstrumentor):
                     for x in app._middlewares_list
                     if not isinstance(x, _TraceMiddleware)
                 ]
-                # pylint: disable=c-extension-no-member
+                # pylint: disable=no-member
                 app._middleware = falcon.api_helpers.prepare_middleware(
                     app._middlewares_list,
                     independent_middleware=app._independent_middleware,

@@ -26,13 +26,29 @@ Usage
     import mysql.connector
     from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 
+    # Call instrument() to wrap all database connections
     MySQLInstrumentor().instrument()
 
     cnx = mysql.connector.connect(database="MySQL_Database")
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code:: python
+
+    import mysql.connector
+    from opentelemetry.instrumentation.mysql import MySQLInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = mysql.connector.connect(database="MySQL_Database")
+    instrumented_cnx = MySQLInstrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -86,12 +102,16 @@ class MySQLInstrumentor(BaseInstrumentor):
         """Enable instrumentation in a MySQL connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: The optional tracer provider to use. If omitted
-                the current globally configured one is used.
+            connection:
+                The existing MySQL connection instance to instrument. This connection is typically
+                obtained through `mysql.connector.connect()` and is instrumented to collect telemetry
+                data about database interactions.
+            tracer_provider:
+                An optional `TracerProvider` instance to use for tracing. If not provided, the globally
+                configured tracer provider will be automatically used.
 
         Returns:
-            An instrumented connection.
+            An instrumented MySQL connection with OpenTelemetry tracing enabled.
         """
         return dbapi.instrument_connection(
             __name__,
