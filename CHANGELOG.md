@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+- `opentelemetry-opentelemetry-pymongo` Add `py.typed` file to enable PEP 561
+  ([#3136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3136))
+- `opentelemetry-opentelemetry-requests` Add `py.typed` file to enable PEP 561
+  ([#3135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3135))
 - `opentelemetry-instrumentation-system-metrics` Add `py.typed` file to enable PEP 561
   ([#3132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3132))
 - `opentelemetry-opentelemetry-sqlite3` Add `py.typed` file to enable PEP 561
@@ -27,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3148](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3148))
 - add support to Python 3.13
   ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
+- `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
+  ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
 
 ### Fixed
 
@@ -36,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3174](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3174))
 - `opentelemetry-instrumentation` Fix `get_dist_dependency_conflicts` if no distribution requires
   ([#3168](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3168))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-sqlalchemy` including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3112))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
 
 
 ### Breaking changes
