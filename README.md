@@ -48,6 +48,7 @@ The Python auto-instrumentation libraries for [OpenTelemetry](https://openteleme
 * [Installation](#installation)
 * [Releasing](#releasing)
   * [Releasing a package as `1.0` stable](#releasing-a-package-as-10-stable)
+* [Semantic Convention status of instrumentations](#semantic-convention-status-of-instrumentations)
 * [Contributing](#contributing)
 * [Thanks to all the people who already contributed](#thanks-to-all-the-people-who-already-contributed)
 
@@ -100,7 +101,7 @@ To release a package as `1.0` stable, the package:
 
 ## Semantic Convention status of instrumentations
 
-In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the [semantic convention migration plan](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/migration-guide.md) for several instrumentations. Currently this plan is only being adopted for HTTP-related instrumentations, but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `experimental`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
+In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the semantic convention migration plan for several instrumentations. Currently this plan is only being adopted for [HTTP-related instrumentations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md), but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `experimental`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
 
 ## Contributing
 

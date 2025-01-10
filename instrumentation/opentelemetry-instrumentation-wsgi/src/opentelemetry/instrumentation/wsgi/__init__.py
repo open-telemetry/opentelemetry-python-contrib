@@ -495,11 +495,7 @@ def add_response_attributes(
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
     """
-    if not span.is_recording():
-        return
     status_code_str, _ = start_response_status.split(" ", 1)
-
-    status_code = 0
     try:
         status_code = int(status_code_str)
     except ValueError:
