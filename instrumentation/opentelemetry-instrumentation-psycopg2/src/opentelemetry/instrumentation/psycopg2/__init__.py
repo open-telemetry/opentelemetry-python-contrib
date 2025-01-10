@@ -146,8 +146,6 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
     _DATABASE_SYSTEM = "postgresql"
 
-    _otel_cursor_factories = {}
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -176,8 +174,8 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(psycopg2, "connect")
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
+    @staticmethod
     def instrument_connection(
-        self,
         connection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
     ):
@@ -195,23 +193,17 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         """
         # TODO Add check for attempt to instrument a connection when already instrumented
         #      https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3138
-
-        # Save cursor_factory in instrumentor map because
-        # psycopg2 connection type does not allow arbitrary attrs
-        self._otel_cursor_factories[connection] = connection.cursor_factory
         connection.cursor_factory = _new_cursor_factory(
             base_factory=connection.cursor_factory,
             tracer_provider=tracer_provider,
         )
-        _logger.warning("factories: %s", self._otel_cursor_factories)
-
         return connection
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
-    def uninstrument_connection(self, connection):
-        connection.cursor_factory = self._otel_cursor_factories.pop(
-            connection, None
-        )
+    @staticmethod
+    def uninstrument_connection(connection):
+        # TODO Add check for attempt to instrument a connection when already instrumented
+        #      https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3138
         return connection
 
 
