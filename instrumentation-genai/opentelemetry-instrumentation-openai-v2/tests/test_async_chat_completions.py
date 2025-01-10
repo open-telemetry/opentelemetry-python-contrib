@@ -32,6 +32,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 
 
 @pytest.mark.vcr()
@@ -927,7 +928,7 @@ async def test_async_chat_completion_metrics(
         (
             m
             for m in metric_data
-            if m.name == "gen_ai.client.operation.duration"
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
         ),
         None,
     )
@@ -936,7 +937,12 @@ async def test_async_chat_completion_metrics(
     assert_all_metric_attributes(duration_metric.data.data_points[0])
 
     token_usage_metric = next(
-        (m for m in metric_data if m.name == "gen_ai.client.token.usage"), None
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE
+        ),
+        None,
     )
     assert token_usage_metric is not None
 
