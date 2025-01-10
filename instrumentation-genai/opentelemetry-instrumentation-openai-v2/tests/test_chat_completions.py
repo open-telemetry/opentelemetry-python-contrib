@@ -927,6 +927,8 @@ def test_chat_completion_metrics(
     )
     assert input_token_usage is not None
     assert input_token_usage.sum == 12
+    # assert against buckets [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]
+    assert input_token_usage.bucket_counts[2] == 1
     assert_all_metric_attributes(input_token_usage)
 
     output_token_usage = next(
@@ -940,4 +942,6 @@ def test_chat_completion_metrics(
     )
     assert output_token_usage is not None
     assert output_token_usage.sum == 5
+    # assert against buckets [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]
+    assert output_token_usage.bucket_counts[2] == 1
     assert_all_metric_attributes(output_token_usage)
