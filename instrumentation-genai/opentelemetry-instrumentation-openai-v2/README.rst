@@ -7,7 +7,8 @@ OpenTelemetry OpenAI Instrumentation
    :target: https://pypi.org/project/opentelemetry-instrumentation-openai-v2/
 
 This library allows tracing LLM requests and logging of messages made by the
-`OpenAI Python API library <https://pypi.org/project/openai/>`_.
+`OpenAI Python API library <https://pypi.org/project/openai/>`_. It also captures
+the duration of the operations and the number of tokens used as metrics.
 
 
 Installation
