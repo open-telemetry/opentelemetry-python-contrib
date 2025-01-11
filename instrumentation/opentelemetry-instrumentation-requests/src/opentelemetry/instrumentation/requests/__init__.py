@@ -72,10 +72,12 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import types
 from timeit import default_timer
-from typing import Callable, Collection, Optional
+from typing import Any, Callable, Collection, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -87,7 +89,6 @@ from opentelemetry.instrumentation._semconv import (
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -100,6 +101,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
@@ -146,8 +148,8 @@ def _instrument(
     duration_histogram_new: Histogram,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    excluded_urls: ExcludeList | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -164,7 +166,9 @@ def _instrument(
 
     # pylint: disable-msg=too-many-locals,too-many-branches
     @functools.wraps(wrapped_send)
-    def instrumented_send(self, request, **kwargs):
+    def instrumented_send(
+        self: Session, request: PreparedRequest, **kwargs: Any
+    ):
         if excluded_urls and excluded_urls.url_disabled(request.url):
             return wrapped_send(self, request, **kwargs)
 
@@ -312,7 +316,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.DEFAULT,
+                    _StabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
@@ -323,7 +327,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.HTTP,
+                    _StabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
@@ -345,7 +349,7 @@ def _uninstrument():
     _uninstrument_from(Session)
 
 
-def _uninstrument_from(instr_root, restore_as_bound_func=False):
+def _uninstrument_from(instr_root, restore_as_bound_func: bool = False):
     for instr_func_name in ("request", "send"):
         instr_func = getattr(instr_root, instr_func_name)
         if not getattr(
@@ -361,7 +365,7 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
         setattr(instr_root, instr_func_name, original)
 
 
-def get_default_span_name(method):
+def get_default_span_name(method: str) -> str:
     """
     Default implementation for name_callback, returns HTTP {method_name}.
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
@@ -385,7 +389,7 @@ class RequestsInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instruments requests module
 
         Args:
@@ -443,10 +447,10 @@ class RequestsInstrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode=semconv_opt_in_mode,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         _uninstrument()
 
     @staticmethod
-    def uninstrument_session(session):
+    def uninstrument_session(session: Session):
         """Disables instrumentation on the session object."""
         _uninstrument_from(session, restore_as_bound_func=True)

@@ -217,7 +217,6 @@ from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -237,6 +236,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_target,
     _set_http_user_agent,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.instrumentation.wsgi.version import __version__
@@ -308,7 +308,7 @@ def setifnotnone(dic, key, value):
 
 def collect_request_attributes(
     environ,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     """Collects HTTP request attributes from the PEP3333-conforming
     WSGI environ and returns a dictionary to be used as span creation attributes.
@@ -449,7 +449,7 @@ def _parse_status_code(resp_status):
 
 
 def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
@@ -460,7 +460,7 @@ def _parse_active_request_count_attrs(
 
 
 def _parse_duration_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
@@ -475,16 +475,12 @@ def add_response_attributes(
     start_response_status,
     response_headers,
     duration_attrs=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):  # pylint: disable=unused-argument
     """Adds HTTP response attributes to span using the arguments
     passed to a PEP3333-conforming start_response callable.
     """
-    if not span.is_recording():
-        return
     status_code_str, _ = start_response_status.split(" ", 1)
-
-    status_code = 0
     try:
         status_code = int(status_code_str)
     except ValueError:
@@ -685,14 +681,14 @@ class OpenTelemetryMiddleware:
             duration_s = default_timer() - start
             if self.duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
-                    req_attrs, _HTTPStabilityMode.DEFAULT
+                    req_attrs, _StabilityMode.DEFAULT
                 )
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self.duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
-                    req_attrs, _HTTPStabilityMode.HTTP
+                    req_attrs, _StabilityMode.HTTP
                 )
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new

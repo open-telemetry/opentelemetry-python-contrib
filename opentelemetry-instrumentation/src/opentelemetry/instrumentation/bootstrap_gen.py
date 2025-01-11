@@ -21,6 +21,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-openai-v2==2.1b0.dev",
     },
     {
+        "library": "google-cloud-aiplatform >= 1.64",
+        "instrumentation": "opentelemetry-instrumentation-vertexai==2.1b0.dev",
+    },
+    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.51b0.dev",
     },
@@ -77,7 +81,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-click==0.51b0.dev",
     },
     {
-        "library": "confluent-kafka >= 1.8.2, <= 2.4.0",
+        "library": "confluent-kafka >= 1.8.2, <= 2.7.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.51b0.dev",
     },
     {
@@ -89,7 +93,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.51b0.dev",
     },
     {
-        "library": "falcon >= 1.4.1, < 3.1.2",
+        "library": "falcon >= 1.4.1, < 5.0.0",
         "instrumentation": "opentelemetry-instrumentation-falcon==0.51b0.dev",
     },
     {
