@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3148](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3148))
 - add support to Python 3.13
   ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
+- `opentelemetry-opentelemetry-wsgi` Add `py.typed` file to enable PEP 561
+  ([#3129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3129))
 - `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
 
