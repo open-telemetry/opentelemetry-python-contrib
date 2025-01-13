@@ -44,6 +44,7 @@ known-third-party = [
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
+pythonVersion = "3.8"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
