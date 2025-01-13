@@ -1,21 +1,41 @@
 """Unit tests configuration module."""
 
 import json
+import os
+import re
+from typing import Any, Mapping, MutableMapping
 
 import pytest
+import vertexai
 import yaml
+from google.auth.credentials import AnonymousCredentials
+from vcr import VCR
+from vcr.record_mode import RecordMode
+from vcr.request import Request
 
+from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+from opentelemetry.instrumentation.vertexai.utils import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
     SimpleLogRecordProcessor,
 )
+from opentelemetry.sdk.metrics import (
+    MeterProvider,
+)
+from opentelemetry.sdk.metrics.export import (
+    InMemoryMetricReader,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+
+FAKE_PROJECT = "fake-project"
 
 
 @pytest.fixture(scope="function", name="span_exporter")
@@ -27,6 +47,12 @@ def fixture_span_exporter():
 @pytest.fixture(scope="function", name="log_exporter")
 def fixture_log_exporter():
     exporter = InMemoryLogExporter()
+    yield exporter
+
+
+@pytest.fixture(scope="function", name="metric_reader")
+def fixture_metric_reader():
+    exporter = InMemoryMetricReader()
     yield exporter
 
 
@@ -46,17 +72,105 @@ def fixture_event_logger_provider(log_exporter):
     return event_logger_provider
 
 
+@pytest.fixture(scope="function", name="meter_provider")
+def fixture_meter_provider(metric_reader):
+    return MeterProvider(
+        metric_readers=[metric_reader],
+    )
+
+
+@pytest.fixture(autouse=True)
+def vertexai_init(vcr: VCR) -> None:
+    # Unfortunately I couldn't find a nice way to globally reset the global_config for each
+    # test because different vertex submodules reference the global instance directly
+    # https://github.com/googleapis/python-aiplatform/blob/v1.74.0/google/cloud/aiplatform/initializer.py#L687
+    # so this config will leak if we don't call init() for each test.
+
+    # When not recording (in CI), don't do any auth. That prevents trying to read application
+    # default credentials from the filesystem or metadata server and oauth token exchange. This
+    # is not the interesting part of our instrumentation to test.
+    vertex_init_kwargs = {"api_transport": "rest"}
+    if vcr.record_mode == RecordMode.NONE:
+        vertex_init_kwargs["credentials"] = AnonymousCredentials()
+        vertex_init_kwargs["project"] = FAKE_PROJECT
+    vertexai.init(**vertex_init_kwargs)
+
+
+@pytest.fixture
+def instrument_no_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+    )
+
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    instrumentor.uninstrument()
+
+
+@pytest.fixture
+def instrument_with_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+    )
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    instrumentor.uninstrument()
+
+
 @pytest.fixture(scope="module")
 def vcr_config():
+    filter_header_regexes = [
+        r"X-.*",
+        "Server",
+        "Date",
+        "Expires",
+        "Authorization",
+    ]
+
+    def filter_headers(headers: Mapping[str, str]) -> Mapping[str, str]:
+        return {
+            key: val
+            for key, val in headers.items()
+            if not any(
+                re.match(filter_re, key, re.IGNORECASE)
+                for filter_re in filter_header_regexes
+            )
+        }
+
+    def before_record_cb(request: Request):
+        request.headers = filter_headers(request.headers)
+        request.uri = re.sub(
+            r"/projects/[^/]+/", "/projects/fake-project/", request.uri
+        )
+        return request
+
+    def before_response_cb(response: MutableMapping[str, Any]):
+        response["headers"] = filter_headers(response["headers"])
+        return response
+
     return {
-        "filter_headers": [
-            ("cookie", "test_cookie"),
-            ("authorization", "Bearer test_vertexai_api_key"),
-            ("vertexai-organization", "test_vertexai_org_id"),
-            ("vertexai-project", "test_vertexai_project_id"),
-        ],
         "decode_compressed_response": True,
-        "before_record_response": scrub_response_headers,
+        "before_record_request": before_record_cb,
+        "before_record_response": before_response_cb,
+        "ignore_hosts": ["oauth2.googleapis.com"],
     }
 
 
@@ -125,12 +239,3 @@ class PrettyPrintJSONBody:
 def fixture_vcr(vcr):
     vcr.register_serializer("yaml", PrettyPrintJSONBody)
     return vcr
-
-
-def scrub_response_headers(response):
-    """
-    This scrubs sensitive response headers. Note they are case-sensitive!
-    """
-    response["headers"]["vertexai-organization"] = "test_vertexai_org_id"
-    response["headers"]["Set-Cookie"] = "test_set_cookie"
-    return response

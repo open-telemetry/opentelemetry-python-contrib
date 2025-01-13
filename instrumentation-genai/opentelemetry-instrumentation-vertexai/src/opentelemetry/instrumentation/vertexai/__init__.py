@@ -41,9 +41,17 @@ API
 
 from typing import Any, Collection
 
+from wrapt import (
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+)
+
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.vertexai.package import _instruments
+from opentelemetry.instrumentation.vertexai.patch import (
+    generate_content_create,
+)
+from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
@@ -55,20 +63,29 @@ class VertexAIInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
-        _tracer = get_tracer(
+        tracer = get_tracer(
             __name__,
             "",
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
         event_logger_provider = kwargs.get("event_logger_provider")
-        _event_logger = get_event_logger(
+        event_logger = get_event_logger(
             __name__,
             "",
             schema_url=Schemas.V1_28_0.value,
             event_logger_provider=event_logger_provider,
         )
-        # TODO: implemented in later PR
+
+        wrap_function_wrapper(
+            module="vertexai.generative_models._generative_models",
+            # Patching this base class also instruments the vertexai.preview.generative_models
+            # package
+            name="_GenerativeModel.generate_content",
+            wrapper=generate_content_create(
+                tracer, event_logger, is_content_enabled()
+            ),
+        )
 
     def _uninstrument(self, **kwargs: Any) -> None:
         """TODO: implemented in later PR"""
