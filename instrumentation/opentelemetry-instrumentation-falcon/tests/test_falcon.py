@@ -471,7 +471,6 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             metrics_list = self.memory_metrics_reader.get_metrics_data()
             self.assertTrue(len(metrics_list.resource_metrics) != 0)
 
-            metrics_list = self.memory_metrics_reader.get_metrics_data()
             for resource_metric in metrics_list.resource_metrics:
                 for scope_metric in resource_metric.scope_metrics:
                     for metric in scope_metric.metrics:
@@ -544,7 +543,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 for metric in scope_metric.metrics:
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
-                    for point in list(metric.data.data_points):
+                    for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
                             histogram_data_point_seen = True
@@ -588,7 +587,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                         )
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
-                    for point in list(metric.data.data_points):
+                    for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
                             if metric.unit == "ms":
