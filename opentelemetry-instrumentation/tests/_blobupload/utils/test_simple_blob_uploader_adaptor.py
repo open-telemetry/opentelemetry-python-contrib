@@ -5,6 +5,7 @@ if __name__ == "__main__":
     sys.path.append("../../../src")
 
 import abc
+import logging
 import unittest
 from multiprocessing import Queue
 
@@ -92,4 +93,5 @@ class TestBlob(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

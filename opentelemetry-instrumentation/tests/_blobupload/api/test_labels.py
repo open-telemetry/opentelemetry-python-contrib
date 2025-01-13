@@ -4,6 +4,7 @@ if __name__ == "__main__":
     import sys
     sys.path.append("../../../src")
 
+import logging
 import unittest
 
 from opentelemetry.instrumentation._blobupload.api import (
@@ -68,4 +69,5 @@ class TestLabels(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

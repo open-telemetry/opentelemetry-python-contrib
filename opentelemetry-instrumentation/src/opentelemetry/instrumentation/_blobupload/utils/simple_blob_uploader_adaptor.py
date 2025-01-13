@@ -35,7 +35,7 @@ class _UploadAction(object):
         try:
             self._simple_uploader.upload_sync(self._uri, self._blob)
         except:
-            _logger.error('Failed to upload blob to "{}".'.format(self._uri))
+            _logger.exception('Failed to upload blob to "{}".'.format(self._uri))
 
 
 def _create_default_executor_no_cleanup():

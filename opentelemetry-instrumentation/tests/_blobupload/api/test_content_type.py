@@ -5,6 +5,7 @@ if __name__ == "__main__":
     sys.path.append("../../../src")
 
 import io
+import logging
 import unittest
 
 from PIL import Image
@@ -56,4 +57,5 @@ class TestContentType(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

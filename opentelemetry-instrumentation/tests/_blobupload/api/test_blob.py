@@ -5,6 +5,7 @@ if __name__ == "__main__":
     sys.path.append("../../../src")
 
 import base64
+import logging
 import unittest
 
 
@@ -105,4 +106,5 @@ class TestBlob(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()

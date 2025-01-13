@@ -1,13 +1,42 @@
 import io
 import uuid
+import logging
 
-from google.cloud.storage import Client as GcsClient
-from google.cloud.storage import Blob as GcsBlob
+from typing import Optional, TypeAlias
 
 from opentelemetry.instrumentation._blobupload.api import Blob
 from opentelemetry.instrumentation._blobupload.api import BlobUploader
 from opentelemetry.instrumentation._blobupload.utils import SimpleBlobUploader
 from opentelemetry.instrumentation._blobupload.utils import blob_uploader_from_simple_blob_uploader
+from opentelemetry.instrumentation._blobupload.backend.google.gcs import _gcs_client_wrapper
+
+_logger = logging.getLogger(__name__)
+
+GcsClient: TypeAlias = _gcs_client_wrapper.GcsClientType
+
+
+def _path_for_span(trace_id, span_id):
+    if not trace_id or not span_id:
+        return ''
+    return 'traces/{}/spans/{}'.format(trace_id, span_id)
+
+
+def _path_for_event(trace_id, span_id, event_name):
+    if not event_name:
+        return ''
+    span_path = _path_for_span(trace_id, span_id)
+    if not span_path:
+        return ''
+    return '{}/events/{}'.format(span_path, event_name)
+
+
+def _path_for_span_event(trace_id, span_id, event_index):
+    if event_index is None:
+        return ''
+    span_path = _path_for_span(trace_id, span_id)
+    if not span_path:
+        return ''
+    return '{}/events/{}'.format(span_path, event_index)
 
 
 def _path_segment_from_labels(labels):
@@ -22,24 +51,19 @@ def _path_segment_from_labels(labels):
     ...depending on the particular type of signal source.
 
     """
-    segments = []
-    target_segments = [
-        ('traces', 'trace_id', 'unknown'),
-        ('spans', 'span_id', 'unknown'),
-        ('events', 'event_index', None),
-    ]
-    for segment_prefix, label_key, default_val in target_segments:
-        label_value = labels.get(label_key) or default_val
-        if label_value:
-            segments.append(segment_prefix)
-            segments.append(label_value)
-    if ((labels.get('otel_type') in ['event', 'span_event']) and 
-        ('events' not in segments)):
-        event_name = labels.get('event_name') or 'unknown'
-        segments.append('events')
-        segments.append(event_name)
-    return '/'.join(segments)
-
+    signal_type = labels.get('otel_type')
+    if not signal_type or signal_type not in ['span', 'event', 'span_event']:
+        return ''
+    trace_id = labels.get('trace_id')
+    span_id = labels.get('span_id')
+    event_name = labels.get('event_name')
+    event_index = labels.get('event_index')
+    if signal_type == 'span':
+        return _path_for_span(trace_id, span_id)
+    elif signal_type == 'event':
+        return _path_for_event(trace_id, span_id, event_name)
+    elif signal_type == 'span_event':
+        return _path_for_span_event(trace_id, span_id, event_index)
 
 
 class _SimpleGcsBlobUploader(SimpleBlobUploader):
@@ -52,15 +76,18 @@ class _SimpleGcsBlobUploader(SimpleBlobUploader):
         if not prefix.endswith('/'):
             prefix = '{}/'.format(prefix)
         self._prefix = prefix
-        self._client = client or GcsClient()
+        self._client = client or _gcs_client_wrapper.create_gcs_client()
 
     def generate_destination_uri(self, blob: Blob) -> str:
         origin_path = _path_segment_from_labels(blob.labels)
+        if origin_path and not origin_path.endswith('/'):
+            origin_path = '{}/'.format(origin_path)
         upload_id = uuid.uuid4().hex
-        return '{}{}/uploads/{}'.format(self._prefix, origin_path, upload_id)
+        return '{}{}uploads/{}'.format(self._prefix, origin_path, upload_id)
 
     def upload_sync(self, uri: str, blob: Blob):
-        gcs_blob = GcsBlob.from_string(uri, client=self._client)
+        _logger.debug('Uploading blob: size: {} -> "{}"'.format(len(blob.raw_bytes), uri))
+        gcs_blob = _gcs_client_wrapper.blob_from_uri(uri, client=self._client)
         gcs_blob.upload_from_file(
             io.BytesIO(blob.raw_bytes),
             content_type=blob.content_type)
@@ -69,9 +96,12 @@ class _SimpleGcsBlobUploader(SimpleBlobUploader):
         gcs_blob.metadata = metadata
 
 
+
 class GcsBlobUploader(BlobUploader):
 
     def __init__(self, prefix: str, client:Optional[GcsClient]=None):
+        if not _gcs_client_wrapper.is_gcs_initialized():
+            raise NotImplementedError("GcsBlobUploader implementation unavailable without 'google-cloud-storage' optional dependency.")
         simple_uploader = _SimpleGcsBlobUploader(prefix, client)
         self._delegate = blob_uploader_from_simple_blob_uploader(simple_uploader)
 
