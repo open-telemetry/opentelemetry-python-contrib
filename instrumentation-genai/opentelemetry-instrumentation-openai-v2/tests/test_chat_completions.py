@@ -881,6 +881,25 @@ def assert_all_metric_attributes(data_point):
         data_point.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
         == "gpt-4o-mini-2024-07-18"
     )
+    assert "gen_ai.openai.response.system_fingerprint" in data_point.attributes
+    assert (
+        data_point.attributes["gen_ai.openai.response.system_fingerprint"]
+        == "fp_0ba0d124f1"
+    )
+    assert (
+        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+        in data_point.attributes
+    )
+    assert (
+        data_point.attributes[
+            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+        ]
+        == "default"
+    )
+    assert (
+        data_point.attributes[ServerAttributes.SERVER_ADDRESS]
+        == "api.openai.com"
+    )
 
 
 @pytest.mark.vcr()

@@ -66,6 +66,7 @@ interactions:
               "finish_reason": "stop"
             }
           ],
+          "service_tier": "default",
           "usage": {
             "prompt_tokens": 12,
             "completion_tokens": 5,
