@@ -13,11 +13,11 @@ from PIL import Image
 from opentelemetry.instrumentation._blobupload.api import detect_content_type
 
 
-def create_test_image(format):
+def create_test_image(image_format):
     """Helper for creating a PIL Image for verifying image format support."""
     test_img = Image.new("RGB", (2, 2))
     output_buffer = io.BytesIO()
-    test_img.save(output_buffer, format)
+    test_img.save(output_buffer, image_format)
     result = output_buffer.getvalue()
     output_buffer.close()
     test_img.close()
@@ -27,33 +27,33 @@ def create_test_image(format):
 class TestContentType(unittest.TestCase):
 
     def test_handles_empty_correctly(self):
-        input = bytes()
-        output = detect_content_type(input)
-        self.assertEqual(output, "application/octet-stream")
+        data = bytes()
+        content_type = detect_content_type(data)
+        self.assertEqual(content_type, "application/octet-stream")
 
     def test_detects_plaintext(self):
-        input = "this is just regular text"
-        output = detect_content_type(input.encode())
-        self.assertEqual(output, "text/plain")
+        data = "this is just regular text"
+        content_type = detect_content_type(data.encode())
+        self.assertEqual(content_type, "text/plain")
 
     def test_detects_json(self):
-        input = """{
+        data = """{
             "this": {
                 "contains": "json"
             }
         }"""
-        output = detect_content_type(input.encode())
-        self.assertEqual(output, "application/json")
+        content_type = detect_content_type(data.encode())
+        self.assertEqual(content_type, "application/json")
 
     def test_detects_jpeg(self):
-        input = create_test_image("jpeg")
-        output = detect_content_type(input)
-        self.assertEqual(output, "image/jpeg")
+        data = create_test_image("jpeg")
+        content_type = detect_content_type(data)
+        self.assertEqual(content_type, "image/jpeg")
 
     def test_detects_png(self):
-        input = create_test_image("png")
-        output = detect_content_type(input)
-        self.assertEqual(output, "image/png")
+        data = create_test_image("png")
+        content_type = detect_content_type(data)
+        self.assertEqual(content_type, "image/png")
 
 
 if __name__ == "__main__":

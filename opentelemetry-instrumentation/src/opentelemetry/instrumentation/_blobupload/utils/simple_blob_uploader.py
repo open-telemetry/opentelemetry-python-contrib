@@ -25,7 +25,7 @@ class SimpleBlobUploader(abc.ABC):
     @abc.abstractmethod
     def generate_destination_uri(self, blob: Blob) -> str:
        """Generates a URI of where the blob will get written.
-       
+
        Args:
          blob: the blob which will be uploaded.
 

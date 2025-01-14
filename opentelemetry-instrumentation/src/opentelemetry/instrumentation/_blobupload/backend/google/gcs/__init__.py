@@ -17,5 +17,5 @@ from opentelemetry.instrumentation._blobupload.backend.google.gcs._gcs_impl impo
 )
 
 __all__ = [
-    GcsBlobUploader
+    "GcsBlobUploader"
 ]

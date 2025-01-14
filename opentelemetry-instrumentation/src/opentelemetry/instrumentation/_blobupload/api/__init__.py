@@ -36,14 +36,14 @@ from opentelemetry.instrumentation._blobupload.api.provider import (
 )
 
 __all__ = [
-    Blob,
-    BlobUploader,
-    NOT_UPLOADED,
-    detect_content_type,
-    generate_labels_for_event,
-    generate_labels_for_span,
-    generate_labels_for_span_event,
-    BlobUploaderProvider,
-    get_blob_uploader,
-    set_blob_uploader_provider,
+    "Blob",
+    "BlobUploader",
+    "NOT_UPLOADED",
+    "detect_content_type",
+    "generate_labels_for_event",
+    "generate_labels_for_span",
+    "generate_labels_for_span_event",
+    "BlobUploaderProvider",
+    "get_blob_uploader",
+    "set_blob_uploader_provider",
 ]

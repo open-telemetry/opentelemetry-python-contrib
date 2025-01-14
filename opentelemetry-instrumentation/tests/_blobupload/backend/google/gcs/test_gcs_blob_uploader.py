@@ -33,32 +33,32 @@ class FakeGcs(object):
     def reset(self):
         self._storage = {}
 
-    def get(self, id):
-        while id not in self._done:
+    def get(self, gcs_blob_id):
+        while gcs_blob_id not in self._done:
             self._queue.get()
-        return self._storage.get(id)
+        return self._storage.get(gcs_blob_id)
 
-    def upload_from_file(self, id, data, content_type):
+    def upload_from_file(self, gcs_blob_id, data, content_type):
         b = Blob(data.read(), content_type=content_type)
-        self._storage[id] = b
+        self._storage[gcs_blob_id] = b
 
-    def update_metadata(self, id, new_metadata):
-        old = self._storage[id]
+    def update_metadata(self, gcs_blob_id, new_metadata):
+        old = self._storage[gcs_blob_id]
         b = Blob(old.raw_bytes, content_type=old.content_type, labels=new_metadata)
-        self._storage[id] = b
-        self._done.add(id)
-        self._queue.put(id)
+        self._storage[gcs_blob_id] = b
+        self._done.add(gcs_blob_id)
+        self._queue.put(gcs_blob_id)
 
 
 class FakeGcsBlob(object):
 
-    def __init__(self, id, fake_gcs):
-        self._id = id
+    def __init__(self, gcs_blob_id, fake_gcs):
+        self._gcs_blob_id = gcs_blob_id
         self._fake_gcs = fake_gcs
         self._metadata = {}
 
     def upload_from_file(self, iodata, content_type):
-        self._fake_gcs.upload_from_file(self._id, iodata, content_type)
+        self._fake_gcs.upload_from_file(self._gcs_blob_id, iodata, content_type)
 
     @property
     def metadata(self):
@@ -67,7 +67,7 @@ class FakeGcsBlob(object):
     @metadata.setter
     def metadata(self, m):
         self._metadata = m
-        self._fake_gcs.update_metadata(self._id, self._metadata)
+        self._fake_gcs.update_metadata(self._gcs_blob_id, self._metadata)
 
 
 def mocked_blob_from_uri(fake_gcs):
@@ -81,8 +81,8 @@ _gcs_client_wrapper.set_gcs_client_factory(FakeGcs, lambda: _gcs_mock)
 _gcs_client_wrapper.set_gcs_blob_from_uri(mocked_blob_from_uri(_gcs_mock))
 
 
-def get_from_fake_gcs(id):
-    return _gcs_mock.get(id)
+def get_from_fake_gcs(gcs_blob_id):
+    return _gcs_mock.get(gcs_blob_id)
 
 
 class GcsBlobUploaderTestCase(unittest.TestCase):
@@ -92,7 +92,7 @@ class GcsBlobUploaderTestCase(unittest.TestCase):
 
     def test_constructor_throws_if_prefix_not_uri(self):
         with self.assertRaises(ValueError):
-            GcsBlobUploader("not a valid URI")
+            GcsBlobUploader("not a valgcs_blob_id URI")
 
     def test_constructor_throws_if_prefix_not_gs_protocol(self):
         with self.assertRaises(ValueError):

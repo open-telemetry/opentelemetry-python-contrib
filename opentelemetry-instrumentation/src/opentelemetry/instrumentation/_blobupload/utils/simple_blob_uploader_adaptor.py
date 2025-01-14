@@ -60,7 +60,7 @@ class _UploadAction:
         _logger.debug('Uploading blob to "{}".'.format(self._uri))
         try:
             self._simple_uploader.upload_sync(self._uri, self._blob)
-        except:
+        except Exception:
             _logger.exception('Failed to upload blob to "{}".'.format(self._uri))
 
 
@@ -105,7 +105,7 @@ def _get_or_create_default_executor():
 
 class _SimpleBlobUploaderAdaptor(BlobUploader):
     """Implementation of 'BlobUploader' wrapping a 'SimpleBlobUploader'.
-    
+
     This implements the core of the function 'blob_uploader_from_simple_blob_uploader'.
     """
 
@@ -127,7 +127,7 @@ class _SimpleBlobUploaderAdaptor(BlobUploader):
 
 def blob_uploader_from_simple_blob_uploader(simple_uploader: SimpleBlobUploader) -> BlobUploader:
     """Implements a 'BlobUploader' using the supplied 'SimpleBlobUploader'.
-    
+
     The purpose of this function is to allow backend implementations/vendors to be able to
     implement their logic much more simply, using synchronous uploading interfaces.
 

@@ -59,7 +59,7 @@ def _path_for_span_event(trace_id, span_id, event_index):
 
 def _path_segment_from_labels(labels):
     """Returns a path segment based on blob label metadata.
-    
+
     This aims to return paths like:
 
        'traces/12345/spans/56789'
@@ -120,7 +120,7 @@ class GcsBlobUploader(BlobUploader):
 
     def __init__(self, prefix: str, client:Optional[GcsClient]=None):
         """Intialize the GcsBlobUploader class.
-        
+
         Args:
          - prefix: a string beginning with "gs://" that includes
            the Google Cloud Storage bucket to which to write as
@@ -132,7 +132,7 @@ class GcsBlobUploader(BlobUploader):
            Credentials). Supply your own instance if you'd like to
            use non-default configuration (e.g. to use an explicit
            credential other than the one in the environment).
-        
+
         Known Failure Modes:
           - Missing 'google-cloud-storage' library dependency.
           - Failure to construct the client (e.g. absence of a valid
@@ -145,7 +145,7 @@ class GcsBlobUploader(BlobUploader):
 
     def upload_async(self, blob: Blob) -> str:
         """Upload the specified blob in the background.
-        
+
         Generates a URI from the blob, based on the prefix supplied
         to the constructor as well as the labels of the Blob (may
         also include entropy or other random components). Immediately

@@ -22,6 +22,6 @@ from opentelemetry.instrumentation._blobupload.utils.simple_blob_uploader_adapto
 )
 
 __all__ = [
-    blob_uploader_from_simple_blob_uploader,
-    SimpleBlobUploader,
+    "blob_uploader_from_simple_blob_uploader",
+    "SimpleBlobUploader",
 ]
