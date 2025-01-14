@@ -37,7 +37,7 @@ _STATE_KEY = "httpbase_instrumentation_state"
 
 logger = logging.getLogger(__name__)
 
-R = typing.TypeVar("R")
+R = TypeVar("R")
 
 
 class HttpClientInstrumentor(BaseInstrumentor):
