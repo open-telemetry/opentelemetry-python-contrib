@@ -1,3 +1,19 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Provides the 'GcsBlobUploader' class."""
+
 import io
 import uuid
 import logging
@@ -98,12 +114,40 @@ class _SimpleGcsBlobUploader(SimpleBlobUploader):
 
 
 class GcsBlobUploader(BlobUploader):
+    """A BlobUploader that writes to Google Cloud Storage."""
 
     def __init__(self, prefix: str, client:Optional[GcsClient]=None):
+        """Intialize the GcsBlobUploader class.
+        
+        Args:
+         - prefix: a string beginning with "gs://" that includes
+           the Google Cloud Storage bucket to which to write as
+           well as an optional path prefix to use.
+
+         - client: an optional Google Cloud Storage client. If not
+           provided, this class will create a Google Cloud Storage
+           client using the environment (i.e. Application Default
+           Credentials). Supply your own instance if you'd like to
+           use non-default configuration (e.g. to use an explicit
+           credential other than the one in the environment).
+        
+        Known Failure Modes:
+          - Missing 'google-cloud-storage' library dependency.
+          - Failure to construct the client (e.g. absence of a valid
+            Google Application Default credential in the enviroment).
+        """
         if not _gcs_client_wrapper.is_gcs_initialized():
             raise NotImplementedError("GcsBlobUploader implementation unavailable without 'google-cloud-storage' optional dependency.")
         simple_uploader = _SimpleGcsBlobUploader(prefix, client)
         self._delegate = blob_uploader_from_simple_blob_uploader(simple_uploader)
 
     def upload_async(self, blob: Blob) -> str:
+        """Upload the specified blob in the background.
+        
+        Generates a URI from the blob, based on the prefix supplied
+        to the constructor as well as the labels of the Blob (may
+        also include entropy or other random components). Immediately
+        returns the "gs://" URI representing where the Blob will be
+        written, and schedules background uploading of the blob there.
+        """
         return self._delegate.upload_async(blob)
