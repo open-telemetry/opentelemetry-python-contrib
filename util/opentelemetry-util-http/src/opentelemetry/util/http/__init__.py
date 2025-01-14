@@ -19,7 +19,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable
+from typing import Callable, Iterable, overload
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -189,6 +189,14 @@ def normalise_request_header_name(header: str) -> str:
 def normalise_response_header_name(header: str) -> str:
     key = header.lower().replace("-", "_")
     return f"http.response.header.{key}"
+
+
+@overload
+def sanitize_method(method: str) -> str: ...
+
+
+@overload
+def sanitize_method(method: None) -> None: ...
 
 
 def sanitize_method(method: str | None) -> str | None:
