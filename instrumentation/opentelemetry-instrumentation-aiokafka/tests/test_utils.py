@@ -42,7 +42,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         carrier_list = [("key1", b"val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = AIOKafkaContextSetter()

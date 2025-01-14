@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import List
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
@@ -25,7 +25,7 @@ class TestThreading(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        self._mock_span_contexts: List[trace.SpanContext] = []
+        self._mock_span_contexts: list[trace.SpanContext] = []
         ThreadingInstrumentor().instrument()
 
     def tearDown(self):
@@ -61,7 +61,7 @@ class TestThreading(TestBase):
         max_workers = 10
         executor = ThreadPoolExecutor(max_workers=max_workers)
 
-        expected_span_contexts: List[trace.SpanContext] = []
+        expected_span_contexts: list[trace.SpanContext] = []
         futures_list = []
         for num in range(max_workers):
             with self._tracer.start_as_current_span(f"trace_{num}") as span:

@@ -83,6 +83,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import collections.abc
 import io
 import typing
@@ -151,10 +153,8 @@ class RequestInfo:
     # The type annotations here come from ``HTTPConnectionPool.urlopen()``.
     method: str
     url: str
-    headers: typing.Optional[typing.Mapping[str, str]]
-    body: typing.Union[
-        bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None
-    ]
+    headers: typing.Mapping[str, str] | None
+    body: bytes | typing.IO[typing.Any] | typing.Iterable[bytes] | str | None
 
 
 _UrlFilterT = typing.Optional[typing.Callable[[str], str]]
@@ -397,7 +397,7 @@ def _instrument(
     )
 
 
-def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
+def _get_url_open_arg(name: str, args: list, kwargs: typing.Mapping):
     arg_idx = _URL_OPEN_ARG_TO_INDEX_MAPPING.get(name)
     if arg_idx is not None:
         try:
@@ -409,7 +409,7 @@ def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
 
 def _get_url(
     instance: urllib3.connectionpool.HTTPConnectionPool,
-    args: typing.List,
+    args: list,
     kwargs: typing.Mapping,
     url_filter: _UrlFilterT,
 ) -> str:
@@ -427,7 +427,7 @@ def _get_url(
     return url
 
 
-def _get_body_size(body: object) -> typing.Optional[int]:
+def _get_body_size(body: object) -> int | None:
     if body is None:
         return 0
     if isinstance(body, collections.abc.Sized):
@@ -437,7 +437,7 @@ def _get_body_size(body: object) -> typing.Optional[int]:
     return None
 
 
-def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
+def _should_append_port(scheme: str, port: int | None) -> bool:
     if not port:
         return False
     if scheme == "http" and port == 80:
@@ -447,7 +447,7 @@ def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
     return True
 
 
-def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
+def _prepare_headers(urlopen_kwargs: dict) -> dict:
     headers = urlopen_kwargs.get("headers")
 
     # avoid modifying original headers on inject
@@ -547,7 +547,7 @@ def _record_metrics(
     response_size_histogram_old: Histogram,
     response_size_histogram_new: Histogram,
     duration_s: float,
-    request_size: typing.Optional[int],
+    request_size: int | None,
     response_size: int,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):

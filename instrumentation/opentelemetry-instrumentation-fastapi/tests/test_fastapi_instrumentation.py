@@ -140,7 +140,7 @@ class TestBaseFastAPI(TestBase):
                 f"{cls.__name__} is an abstract base class"
             )
 
-        super(TestBaseFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def setUp(self):
         super().setUp()
@@ -218,7 +218,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
                 f"{cls.__name__} is an abstract base class"
             )
 
-        super(TestBaseManualFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def test_sub_app_fastapi_call(self):
         """
@@ -271,7 +271,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
                 f"{cls.__name__} is an abstract base class"
             )
 
-        super(TestBaseAutoFastAPI, cls).setUpClass()
+        super().setUpClass()
 
     def test_sub_app_fastapi_call(self):
         """

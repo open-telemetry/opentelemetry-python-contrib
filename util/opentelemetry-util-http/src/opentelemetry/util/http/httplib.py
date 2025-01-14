@@ -23,8 +23,7 @@ import contextlib
 import http.client
 import logging
 import socket  # pylint:disable=unused-import # Used for typing
-import typing
-from typing import Any, Callable, Collection, TypedDict, cast
+from typing import Any, Callable, Collection, TypedDict, TypeVar, cast
 
 import wrapt
 
@@ -38,7 +37,7 @@ _STATE_KEY = "httpbase_instrumentation_state"
 
 logger = logging.getLogger(__name__)
 
-R = typing.TypeVar("R")
+R = TypeVar("R")
 
 
 class HttpClientInstrumentor(BaseInstrumentor):
@@ -84,7 +83,7 @@ def trysetip(
     state = _getstate()
     if not state:
         return True
-    spanlist: typing.List[Span] = state.get("need_ip")
+    spanlist: list[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -94,7 +93,7 @@ def trysetip(
 
     sock = "<property not accessed>"
     try:
-        sock: typing.Optional[socket.socket] = conn.sock
+        sock: socket.socket | None = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False

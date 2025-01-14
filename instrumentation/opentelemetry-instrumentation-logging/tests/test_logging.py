@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import logging
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -30,8 +30,8 @@ class FakeTracerProvider:
     def get_tracer(  # pylint: disable=no-self-use
         self,
         instrumenting_module_name: str,
-        instrumenting_library_version: Optional[str] = None,
-        schema_url: Optional[str] = None,
+        instrumenting_library_version: str | None = None,
+        schema_url: str | None = None,
     ) -> ProxyTracer:
         return ProxyTracer(
             instrumenting_module_name,

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -125,11 +125,11 @@ def set_attributes_from_context(span, context):
 
 
 def attach_context(
-    task: Optional[Task],
+    task: Task | None,
     task_id: str,
     span: Span,
     activation: AbstractContextManager[Span],
-    token: Optional[object],
+    token: object | None,
     is_publish: bool = False,
 ) -> None:
     """Helper to propagate a `Span`, `ContextManager` and context token
@@ -176,7 +176,7 @@ def detach_context(task, task_id, is_publish=False) -> None:
 
 def retrieve_context(
     task, task_id, is_publish=False
-) -> Optional[Tuple[Span, AbstractContextManager[Span], Optional[object]]]:
+) -> tuple[Span, AbstractContextManager[Span], object | None] | None:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """

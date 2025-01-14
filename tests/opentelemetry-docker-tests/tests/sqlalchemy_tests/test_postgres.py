@@ -40,8 +40,9 @@ class PostgresTestCase(SQLAlchemyTestMixin):
     VENDOR = "postgresql"
     SQL_DB = "opentelemetry-tests"
     ENGINE_ARGS = {
-        "url": "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s"
-        % POSTGRES_CONFIG
+        "url": "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
+            **POSTGRES_CONFIG
+        )
     }
 
     def check_meta(self, span):
@@ -103,8 +104,9 @@ class PostgresMetricsTestCase(PostgresTestCase):
     VENDOR = "postgresql"
     SQL_DB = "opentelemetry-tests"
     ENGINE_ARGS = {
-        "url": "postgresql://%(user)s:%(password)s@%(host)s:%(port)s/%(dbname)s"
-        % POSTGRES_CONFIG
+        "url": "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
+            **POSTGRES_CONFIG
+        )
     }
 
     def test_metrics_pool_name(self):

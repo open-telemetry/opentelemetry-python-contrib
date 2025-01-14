@@ -253,17 +253,15 @@ class RequestInfo(typing.NamedTuple):
     method: bytes
     url: httpx.URL
     headers: httpx.Headers | None
-    stream: typing.Optional[
-        typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]
-    ]
-    extensions: typing.Optional[dict]
+    stream: httpx.SyncByteStream | httpx.AsyncByteStream | None
+    extensions: dict | None
 
 
 class ResponseInfo(typing.NamedTuple):
     status_code: int
     headers: httpx.Headers | None
     stream: typing.Iterable[bytes]
-    extensions: typing.Optional[dict]
+    extensions: dict | None
 
 
 def _get_default_span_name(method: str) -> str:
@@ -274,7 +272,7 @@ def _get_default_span_name(method: str) -> str:
     return method
 
 
-def _prepare_headers(headers: typing.Optional[Headers]) -> httpx.Headers:
+def _prepare_headers(headers: Headers | None) -> httpx.Headers:
     return httpx.Headers(headers)
 
 
@@ -311,10 +309,8 @@ def _inject_propagation_headers(headers, args, kwargs):
 
 
 def _extract_response(
-    response: typing.Union[
-        httpx.Response, typing.Tuple[int, Headers, httpx.SyncByteStream, dict]
-    ],
-) -> typing.Tuple[int, Headers, httpx.SyncByteStream, dict, str]:
+    response: httpx.Response | tuple[int, Headers, httpx.SyncByteStream, dict],
+) -> tuple[int, Headers, httpx.SyncByteStream, dict, str]:
     if isinstance(response, httpx.Response):
         status_code = response.status_code
         headers = response.headers
@@ -332,7 +328,7 @@ def _extract_response(
 
 def _apply_request_client_attributes_to_span(
     span_attributes: dict,
-    url: typing.Union[str, URL, httpx.URL],
+    url: str | URL | httpx.URL,
     method_original: str,
     semconv: _StabilityMode,
 ):
@@ -407,9 +403,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
     def __init__(
         self,
         transport: httpx.BaseTransport,
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[RequestHook] = None,
-        response_hook: typing.Optional[ResponseHook] = None,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: RequestHook | None = None,
+        response_hook: ResponseHook | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -426,15 +422,15 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    def __enter__(self) -> "SyncOpenTelemetryTransport":
+    def __enter__(self) -> SyncOpenTelemetryTransport:
         self._transport.__enter__()
         return self
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]] = None,
-        exc_value: typing.Optional[BaseException] = None,
-        traceback: typing.Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         self._transport.__exit__(exc_type, exc_value, traceback)
 
@@ -443,10 +439,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         self,
         *args,
         **kwargs,
-    ) -> typing.Union[
-        typing.Tuple[int, "Headers", httpx.SyncByteStream, dict],
-        httpx.Response,
-    ]:
+    ) -> tuple[int, Headers, httpx.SyncByteStream, dict] | httpx.Response:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
@@ -532,9 +525,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     def __init__(
         self,
         transport: httpx.AsyncBaseTransport,
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[AsyncRequestHook] = None,
-        response_hook: typing.Optional[AsyncResponseHook] = None,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: AsyncRequestHook | None = None,
+        response_hook: AsyncResponseHook | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -551,25 +544,22 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
+    async def __aenter__(self) -> AsyncOpenTelemetryTransport:
         await self._transport.__aenter__()
         return self
 
     async def __aexit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]] = None,
-        exc_value: typing.Optional[BaseException] = None,
-        traceback: typing.Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
     # pylint: disable=R0914
     async def handle_async_request(
         self, *args, **kwargs
-    ) -> typing.Union[
-        typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict],
-        httpx.Response,
-    ]:
+    ) -> tuple[int, Headers, httpx.AsyncByteStream, dict] | httpx.Response:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
@@ -872,14 +862,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
     @classmethod
     def instrument_client(
         cls,
-        client: typing.Union[httpx.Client, httpx.AsyncClient],
+        client: httpx.Client | httpx.AsyncClient,
         tracer_provider: TracerProvider = None,
-        request_hook: typing.Union[
-            typing.Optional[RequestHook], typing.Optional[AsyncRequestHook]
-        ] = None,
-        response_hook: typing.Union[
-            typing.Optional[ResponseHook], typing.Optional[AsyncResponseHook]
-        ] = None,
+        request_hook: RequestHook | AsyncRequestHook | None = None,
+        response_hook: ResponseHook | AsyncResponseHook | None = None,
     ) -> None:
         """Instrument httpx Client or AsyncClient
 
@@ -978,7 +964,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_client(
-        client: typing.Union[httpx.Client, httpx.AsyncClient],
+        client: httpx.Client | httpx.AsyncClient,
     ):
         """Disables instrumentation for the given client instance
 
