@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+- `opentelemetry-instrumentation-urllib` Add `py.typed` file to enable PEP 561
+  ([#3131](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3131))
 - `opentelemetry-opentelemetry-pymongo` Add `py.typed` file to enable PEP 561
   ([#3136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3136))
 - `opentelemetry-opentelemetry-requests` Add `py.typed` file to enable PEP 561
@@ -27,10 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3133](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3133))
 - `opentelemetry-instrumentation-falcon` add support version to v4
   ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
+- `opentelemetry-instrumentation-falcon` Implement new HTTP semantic convention opt-in for Falcon
+  ([#2790](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2790))
 - `opentelemetry-instrumentation-wsgi` always record span status code to have it available in metrics
   ([#3148](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3148))
 - add support to Python 3.13
   ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
+- `opentelemetry-opentelemetry-wsgi` Add `py.typed` file to enable PEP 561
+  ([#3129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3129))
 - `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
 
