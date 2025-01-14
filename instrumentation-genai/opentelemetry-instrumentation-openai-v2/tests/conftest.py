@@ -156,7 +156,9 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(tracer_provider, event_logger_provider):
+def instrument_no_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
     )
@@ -165,6 +167,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
     )
 
     yield instrumentor

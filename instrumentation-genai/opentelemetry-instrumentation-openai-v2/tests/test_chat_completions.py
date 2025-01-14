@@ -95,7 +95,9 @@ def test_chat_completion_no_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
-def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
+def test_chat_completion_bad_endpoint(
+    span_exporter, metric_reader, instrument_no_content
+):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -117,10 +119,31 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
         "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
     )
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+    duration_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
+        ),
+        None,
+    )
+    assert duration_metric is not None
+    assert duration_metric.data.data_points[0].sum > 0
+    assert (
+        duration_metric.data.data_points[0].attributes[
+            ErrorAttributes.ERROR_TYPE
+        ]
+        == "APIConnectionError"
+    )
+
 
 @pytest.mark.vcr()
 def test_chat_completion_404(
-    span_exporter, openai_client, instrument_no_content
+    span_exporter, openai_client, metric_reader, instrument_no_content
 ):
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -135,6 +158,27 @@ def test_chat_completion_404(
 
     assert_all_attributes(spans[0], llm_model_value)
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+    duration_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
+        ),
+        None,
+    )
+    assert duration_metric is not None
+    assert duration_metric.data.data_points[0].sum > 0
+    assert (
+        duration_metric.data.data_points[0].attributes[
+            ErrorAttributes.ERROR_TYPE
+        ]
+        == "NotFoundError"
+    )
 
 
 @pytest.mark.vcr()
