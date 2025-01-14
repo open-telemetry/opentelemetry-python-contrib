@@ -25,6 +25,14 @@ class KafkaPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
+    def has_headers_in_args(args):
+        return len(args) > 3
+
+    @staticmethod
+    def replace_headers_in_args(args, new_headers) -> tuple:
+        return *args[:3], new_headers, *args[4:]
+
+    @staticmethod
     def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
         return KafkaPropertiesExtractor._extract_argument(
@@ -143,7 +151,13 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
         headers = KafkaPropertiesExtractor.extract_send_headers(args, kwargs)
         if headers is None:
             headers = []
-            kwargs["headers"] = headers
+
+            if KafkaPropertiesExtractor.has_headers_in_args(args):
+                args = KafkaPropertiesExtractor.replace_headers_in_args(
+                    args, headers
+                )
+            else:
+                kwargs["headers"] = headers
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
         bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
