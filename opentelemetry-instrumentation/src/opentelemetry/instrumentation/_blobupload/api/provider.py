@@ -20,8 +20,9 @@ from opentelemetry.instrumentation._blobupload.api.blob import Blob
 from opentelemetry.instrumentation._blobupload.api.blob_uploader import (
     BlobUploader,
 )
-from opentelemetry.instrumentation._blobupload.api.constants import NOT_UPLOADED
-
+from opentelemetry.instrumentation._blobupload.api.constants import (
+    NOT_UPLOADED,
+)
 
 _logger = logging.getLogger(__name__)
 

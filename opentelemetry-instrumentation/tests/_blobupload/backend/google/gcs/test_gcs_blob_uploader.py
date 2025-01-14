@@ -4,7 +4,6 @@ if __name__ == "__main__":
     import sys
     sys.path.append("../../../../../src")
 
-import abc
 import logging
 import unittest
 from multiprocessing import Queue
@@ -16,10 +15,12 @@ from opentelemetry.instrumentation._blobupload.api import (
     generate_labels_for_span,
     generate_labels_for_span_event,
 )
-from opentelemetry.instrumentation._blobupload.backend.google.gcs import GcsBlobUploader
 
 # Internal implementation used for mocking
-from opentelemetry.instrumentation._blobupload.backend.google.gcs import _gcs_client_wrapper
+from opentelemetry.instrumentation._blobupload.backend.google.gcs import (
+    GcsBlobUploader,
+    _gcs_client_wrapper,
+)
 
 
 class FakeGcs(object):
@@ -36,11 +37,11 @@ class FakeGcs(object):
         while id not in self._done:
             self._queue.get()
         return self._storage.get(id)
-    
+
     def upload_from_file(self, id, data, content_type):
         b = Blob(data.read(), content_type=content_type)
         self._storage[id] = b
-    
+
     def update_metadata(self, id, new_metadata):
         old = self._storage[id]
         b = Blob(old.raw_bytes, content_type=old.content_type, labels=new_metadata)
@@ -58,7 +59,7 @@ class FakeGcsBlob(object):
 
     def upload_from_file(self, iodata, content_type):
         self._fake_gcs.upload_from_file(self._id, iodata, content_type)
-    
+
     @property
     def metadata(self):
         self._metadata
@@ -91,80 +92,80 @@ class GcsBlobUploaderTestCase(unittest.TestCase):
 
     def test_constructor_throws_if_prefix_not_uri(self):
         with self.assertRaises(ValueError):
-            GcsBlobUploader('not a valid URI')
+            GcsBlobUploader("not a valid URI")
 
     def test_constructor_throws_if_prefix_not_gs_protocol(self):
         with self.assertRaises(ValueError):
-            GcsBlobUploader('other://foo/bar')
+            GcsBlobUploader("other://foo/bar")
 
     def test_can_construct_gcs_uploader_with_bucket_uri(self):
-        uploader = GcsBlobUploader('gs://some-bucket')
+        uploader = GcsBlobUploader("gs://some-bucket")
         self.assertIsNotNone(uploader)
         self.assertIsInstance(uploader, BlobUploader)
 
     def test_can_construct_gcs_uploader_with_bucket_uri_and_trailing_slash(self):
-        uploader = GcsBlobUploader('gs://some-bucket/')
+        uploader = GcsBlobUploader("gs://some-bucket/")
         self.assertIsNotNone(uploader)
         self.assertIsInstance(uploader, BlobUploader)
 
     def test_can_construct_gcs_uploader_with_bucket_and_path_uri(self):
-        uploader = GcsBlobUploader('gs://some-bucket/some/path')
+        uploader = GcsBlobUploader("gs://some-bucket/some/path")
         self.assertIsNotNone(uploader)
         self.assertIsInstance(uploader, BlobUploader)
 
     def test_can_construct_gcs_uploader_with_bucket_and_path_uri_with_trailing_slash(self):
-        uploader = GcsBlobUploader('gs://some-bucket/some/path/')
+        uploader = GcsBlobUploader("gs://some-bucket/some/path/")
         self.assertIsNotNone(uploader)
         self.assertIsInstance(uploader, BlobUploader)
 
     def test_uploads_blob_from_span(self):
-        trace_id = 'test-trace-id'
-        span_id = 'test-span-id'
+        trace_id = "test-trace-id"
+        span_id = "test-span-id"
         labels = generate_labels_for_span(trace_id, span_id)
-        blob = Blob('some data'.encode(), content_type='text/plain', labels=labels)
-        uploader = GcsBlobUploader('gs://some-bucket/some/path')
+        blob = Blob("some data".encode(), content_type="text/plain", labels=labels)
+        uploader = GcsBlobUploader("gs://some-bucket/some/path")
         url = uploader.upload_async(blob)
         self.assertTrue(
-            url.startswith('gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/uploads/')
+            url.startswith("gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/uploads/")
         )
         uploaded_blob = get_from_fake_gcs(url)
         self.assertEqual(blob, uploaded_blob)
 
     def test_uploads_blob_from_event(self):
-        trace_id = 'test-trace-id'
-        span_id = 'test-span-id'
-        event_name = 'event-name'
+        trace_id = "test-trace-id"
+        span_id = "test-span-id"
+        event_name = "event-name"
         labels = generate_labels_for_event(trace_id, span_id, event_name)
-        blob = Blob('some data'.encode(), content_type='text/plain', labels=labels)
-        uploader = GcsBlobUploader('gs://some-bucket/some/path')
+        blob = Blob("some data".encode(), content_type="text/plain", labels=labels)
+        uploader = GcsBlobUploader("gs://some-bucket/some/path")
         url = uploader.upload_async(blob)
         self.assertTrue(
-            url.startswith('gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/events/event-name/uploads/')
+            url.startswith("gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/events/event-name/uploads/")
         )
         uploaded_blob = get_from_fake_gcs(url)
         self.assertEqual(blob, uploaded_blob)
 
     def test_uploads_blob_from_span_event(self):
-        trace_id = 'test-trace-id'
-        span_id = 'test-span-id'
-        event_name = 'event-name'
+        trace_id = "test-trace-id"
+        span_id = "test-span-id"
+        event_name = "event-name"
         event_index = 2
         labels = generate_labels_for_span_event(trace_id, span_id, event_name, event_index)
-        blob = Blob('some data'.encode(), content_type='text/plain', labels=labels)
-        uploader = GcsBlobUploader('gs://some-bucket/some/path')
+        blob = Blob("some data".encode(), content_type="text/plain", labels=labels)
+        uploader = GcsBlobUploader("gs://some-bucket/some/path")
         url = uploader.upload_async(blob)
         self.assertTrue(
-            url.startswith('gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/events/2/uploads/')
+            url.startswith("gs://some-bucket/some/path/traces/test-trace-id/spans/test-span-id/events/2/uploads/")
         )
         uploaded_blob = get_from_fake_gcs(url)
         self.assertEqual(blob, uploaded_blob)
 
     def test_uploads_blobs_missing_expected_labels(self):
-        blob = Blob('some data'.encode(), content_type='text/plain')
-        uploader = GcsBlobUploader('gs://some-bucket/some/path')
+        blob = Blob("some data".encode(), content_type="text/plain")
+        uploader = GcsBlobUploader("gs://some-bucket/some/path")
         url = uploader.upload_async(blob)
         self.assertTrue(
-            url.startswith('gs://some-bucket/some/path/uploads/'),
+            url.startswith("gs://some-bucket/some/path/uploads/"),
         )
         uploaded_blob = get_from_fake_gcs(url)
         self.assertEqual(blob, uploaded_blob)

@@ -13,18 +13,19 @@ from opentelemetry.instrumentation._blobupload.api import (
     BlobUploader,
     BlobUploaderProvider,
     get_blob_uploader,
-    set_blob_uploader_provider
+    set_blob_uploader_provider,
 )
+
 
 class TestProvider(unittest.TestCase):
 
     def test_default_provider(self):
-        uploader = get_blob_uploader('test')
+        uploader = get_blob_uploader("test")
         self.assertIsNotNone(uploader)
         blob = Blob(bytes())
         url = uploader.upload_async(blob)
         self.assertEqual(url, NOT_UPLOADED)
-    
+
     def test_custom_provider(self):
 
         class CustomUploader(BlobUploader):
@@ -36,7 +37,7 @@ class TestProvider(unittest.TestCase):
             def upload_async(self, blob):
                 self.captured_blob = blob
                 return self.upload_result
-        
+
         class CustomProvider(BlobUploaderProvider):
 
             def __init__(self, uploader):
@@ -47,15 +48,15 @@ class TestProvider(unittest.TestCase):
                 self.captured_use_case = use_case
                 return self.uploader
 
-        uploader = CustomUploader('foo')
+        uploader = CustomUploader("foo")
         provider = CustomProvider(uploader)
         old_provider = set_blob_uploader_provider(provider)
-        returned_uploader = get_blob_uploader('test')
-        self.assertEqual(provider.captured_use_case, 'test')
+        returned_uploader = get_blob_uploader("test")
+        self.assertEqual(provider.captured_use_case, "test")
         self.assertEqual(returned_uploader, uploader)
-        blob = Blob(bytes(), content_type='bar')
+        blob = Blob(bytes(), content_type="bar")
         url = returned_uploader.upload_async(blob)
-        self.assertEqual(url, 'foo')
+        self.assertEqual(url, "foo")
         self.assertEqual(uploader.captured_blob, blob)
         unset_provider = set_blob_uploader_provider(old_provider)
         self.assertEqual(unset_provider, provider)

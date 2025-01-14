@@ -14,9 +14,8 @@
 
 import base64
 import json
-
 from types import MappingProxyType as _frozendict
-from typing import Mapping, Dict, Optional
+from typing import Mapping, Optional
 
 
 class Blob:
@@ -119,8 +118,8 @@ class Blob:
     def __repr__(self):
         params = [repr(self._raw_bytes)]
         if self._content_type is not None:
-            params.append('content_type={}'.format(repr(self._content_type)))
+            params.append("content_type={}".format(repr(self._content_type)))
         if self._labels:
-            params.append('labels={}'.format(json.dumps(self._labels, sort_keys=True)))
-        params_string = ', '.join(params)
-        return 'Blob({})'.format(params_string)
+            params.append("labels={}".format(json.dumps(self._labels, sort_keys=True)))
+        params_string = ", ".join(params)
+        return "Blob({})".format(params_string)

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.instrumentation._blobupload.backend.google.gcs._gcs_impl import GcsBlobUploader
-
+from opentelemetry.instrumentation._blobupload.backend.google.gcs._gcs_impl import (
+    GcsBlobUploader,
+)
 
 __all__ = [
     GcsBlobUploader

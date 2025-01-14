@@ -18,6 +18,7 @@ import abc
 
 from opentelemetry.instrumentation._blobupload.api import Blob
 
+
 class SimpleBlobUploader(abc.ABC):
     """Pure abstract base class of a backend implementation that is synchronous."""
 
@@ -31,7 +32,7 @@ class SimpleBlobUploader(abc.ABC):
        Returns:
          A new, unique URI that represents the target destination of the data.
        """
-       raise NotImplementedError('SimpleBlobUploader.generate_destination_uri')
+       raise NotImplementedError("SimpleBlobUploader.generate_destination_uri")
 
     @abc.abstractmethod
     def upload_sync(self, uri: str, blob: Blob):
@@ -45,4 +46,4 @@ class SimpleBlobUploader(abc.ABC):
        Effects:
          Attempts to upload/write the Blob to the specified destination URI.
        """
-       raise NotImplementedError('SimpleBlobUploader.upload_sync')
+       raise NotImplementedError("SimpleBlobUploader.upload_sync")
