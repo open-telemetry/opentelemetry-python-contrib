@@ -40,7 +40,7 @@ class ResponseHook(abc.ABC):
     pass
 
 
-class FooInstrumentationLibrary(object):
+class FooInstrumentationLibrary:
 
   def __init__(self,
      # ...,

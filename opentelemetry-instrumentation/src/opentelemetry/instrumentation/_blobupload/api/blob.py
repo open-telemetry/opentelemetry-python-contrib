@@ -19,7 +19,7 @@ from types import MappingProxyType as _frozendict
 from typing import Mapping, Dict, Optional
 
 
-class Blob(object):
+class Blob:
     """Represents an opaque binary object and associated metadata.
 
     This object conteptually has the following properties:

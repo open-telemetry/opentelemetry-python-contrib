@@ -47,7 +47,7 @@ def _with_content_type(blob: Blob) -> Blob:
     return Blob(blob.raw_bytes, content_type=content_type, labels=blob.labels)
 
 
-class _UploadAction(object):
+class _UploadAction:
     """Represents the work to be done in the background to upload a blob."""
 
     def __init__(self, simple_uploader, uri, blob):

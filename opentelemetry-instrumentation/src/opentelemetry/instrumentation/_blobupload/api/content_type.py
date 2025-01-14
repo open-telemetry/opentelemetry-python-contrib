@@ -18,7 +18,7 @@
 
 # Helper used to handle the possibility of optional 'magic' dependency
 # being unavailable for guessing the MIME type of raw bytes.
-class _FallBackModule(object):
+class _FallBackModule:
     """Class that is shaped like the portion of 'magic' we need."""
 
     def from_buffer(self, raw_bytes, mime=True):
