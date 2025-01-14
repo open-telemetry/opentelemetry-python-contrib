@@ -139,8 +139,8 @@ API
 
 import logging
 import typing
-from typing import Collection
 from importlib.metadata import PackageNotFoundError, distribution
+from typing import Collection
 
 import psycopg2
 from psycopg2.extensions import (
@@ -150,7 +150,11 @@ from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.psycopg2.package import _instruments, _instruments_psycopg2, _instruments_psycopg2_binary
+from opentelemetry.instrumentation.psycopg2.package import (
+    _instruments,
+    _instruments_psycopg2,
+    _instruments_psycopg2_binary,
+)
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
