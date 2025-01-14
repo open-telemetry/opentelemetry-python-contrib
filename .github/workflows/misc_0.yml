@@ -29,7 +29,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e spellcheck
@@ -47,7 +47,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e docker-tests
@@ -67,7 +67,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e docs
@@ -85,7 +85,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e generate
@@ -109,7 +109,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e generate-workflows
@@ -130,7 +130,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e shellcheck
@@ -148,7 +148,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e ruff
@@ -166,7 +166,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e typecheck
