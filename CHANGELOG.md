@@ -17,16 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
+- `opentelemetry-opentelemetry-pymongo` Add `py.typed` file to enable PEP 561
+  ([#3136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3136))
+- `opentelemetry-opentelemetry-requests` Add `py.typed` file to enable PEP 561
+  ([#3135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3135))
 - `opentelemetry-instrumentation-system-metrics` Add `py.typed` file to enable PEP 561
   ([#3132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3132))
 - `opentelemetry-opentelemetry-sqlite3` Add `py.typed` file to enable PEP 561
   ([#3133](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3133))
 - `opentelemetry-instrumentation-falcon` add support version to v4
   ([#3086](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3086))
+- `opentelemetry-instrumentation-falcon` Implement new HTTP semantic convention opt-in for Falcon
+  ([#2790](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2790))
 - `opentelemetry-instrumentation-wsgi` always record span status code to have it available in metrics
   ([#3148](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3148))
 - add support to Python 3.13
   ([#3134](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3134))
+- `opentelemetry-opentelemetry-wsgi` Add `py.typed` file to enable PEP 561
+  ([#3129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3129))
 - `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
 
@@ -34,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-httpx` Fix `RequestInfo`/`ResponseInfo` type hints
   ([#3105](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3105))
+- `opentelemetry-instrumentation-dbapi` Move `TracedCursorProxy` and `TracedConnectionProxy` to the module level
+  ([#3068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3068))
 - `opentelemetry-instrumentation-click` Disable tracing of well-known server click commands
   ([#3174](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3174))
 - `opentelemetry-instrumentation` Fix `get_dist_dependency_conflicts` if no distribution requires
@@ -48,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
+
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: including sqlcomment in `db.statement` span attribute value is now opt-in
+  ([#3121](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3121))
 
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
