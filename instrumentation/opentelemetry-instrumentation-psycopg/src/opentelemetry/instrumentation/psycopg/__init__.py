@@ -243,6 +243,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
         commenter_options: dict = None,
+        enable_attribute_commenter=None,
     ):
         """Enable instrumentation of a Psycopg connection.
 
@@ -256,6 +257,8 @@ class PsycopgInstrumentor(BaseInstrumentor):
                 Optional flag to enable/disable sqlcommenter (default False).
             commenter_options: dict, optional
                 Optional configurations for tags to be appended at the sql query.
+            enable_attribute_commenter:
+                Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
 
         Returns:
             An instrumented psycopg connection object.
@@ -271,6 +274,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
                 tracer_provider=tracer_provider,
                 enable_commenter=enable_commenter,
                 commenter_options=commenter_options,
+                enable_attribute_commenter=enable_attribute_commenter,
             )
             connection._is_instrumented_by_opentelemetry = True
         else:
@@ -360,6 +364,7 @@ def _new_cursor_factory(
     tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
     enable_commenter: bool = False,
     commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
 ):
     if not db_api:
         db_api = DatabaseApiIntegration(
@@ -371,6 +376,7 @@ def _new_cursor_factory(
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=psycopg,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     base_factory = base_factory or pg_cursor
