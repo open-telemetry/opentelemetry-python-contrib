@@ -242,9 +242,12 @@ tox -e py312-test-instrumentation-aiopg
 
 ### Testing against a different Core repo branch/commit
 
-Some of the tox targets install packages from the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) via pip. The version of the packages installed defaults to the main branch in that repository when tox is run locally. It is possible to install packages tagged with a specific git commit hash by setting an environment variable before running tox as per the following example:
+Some of the tox targets install packages from the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) via pip.
+The version of the packages installed defaults to the main branch in that repository when tox is run locally.
+It is possible to install packages tagged with a specific git commit hash (optionally in a specific fork) by setting these environment variables before running tox as per the following example:
 
 ```sh
+CORE_REPO=check-spelling-sandbox/opentelemetry-python
 CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 ```
 
