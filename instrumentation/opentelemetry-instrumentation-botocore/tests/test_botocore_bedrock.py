@@ -14,15 +14,15 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import boto3
 import pytest
 
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
 )
+from opentelemetry.trace.status import StatusCode
+
+from .bedrock_utils import assert_completion_attributes
 
 BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
 
@@ -68,82 +68,35 @@ def test_converse_with_content(
     assert len(logs) == 0
 
 
-def assert_completion_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    response: dict[str, Any],
-    operation_name: str = "chat",
-    request_top_p: int | None = None,
-    request_temperature: int | None = None,
-    request_max_tokens: int | None = None,
-    request_stop_sequences: list[str] | None = None,
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
+)
+@pytest.mark.vcr()
+def test_converse_with_invalid_model(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
 ):
-    return assert_all_attributes(
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "does-not-exist"
+    with pytest.raises(bedrock_runtime_client.exceptions.ValidationException):
+        bedrock_runtime_client.converse(
+            messages=messages,
+            modelId=llm_model_value,
+        )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes(
         span,
-        request_model,
-        response["usage"]["inputTokens"],
-        response["usage"]["outputTokens"],
-        (response["stopReason"],),
-        operation_name,
-        request_top_p,
-        request_temperature,
-        request_max_tokens,
-        tuple(request_stop_sequences),
+        llm_model_value,
+        None,
+        "chat",
     )
 
+    assert span.status.status_code == StatusCode.ERROR
+    assert span.attributes[ERROR_TYPE] == "ValidationException"
 
-def assert_equal_or_not_present(value, attribute_name, span):
-    if value:
-        assert value == span.attributes[attribute_name]
-    else:
-        assert attribute_name not in span.attributes
-
-
-def assert_all_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    input_tokens: int | None = None,
-    output_tokens: int | None = None,
-    finish_reason: tuple[str] | None = None,
-    operation_name: str = "chat",
-    request_top_p: int | None = None,
-    request_temperature: int | None = None,
-    request_max_tokens: int | None = None,
-    request_stop_sequences: tuple[str] | None = None,
-):
-    assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    assert (
-        GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
-        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
-
-    assert_equal_or_not_present(
-        input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span
-    )
-    assert_equal_or_not_present(
-        output_tokens, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, span
-    )
-    assert_equal_or_not_present(
-        finish_reason, GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS, span
-    )
-    assert_equal_or_not_present(
-        request_top_p, GenAIAttributes.GEN_AI_REQUEST_TOP_P, span
-    )
-    assert_equal_or_not_present(
-        request_temperature, GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE, span
-    )
-    assert_equal_or_not_present(
-        request_max_tokens, GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS, span
-    )
-    assert_equal_or_not_present(
-        request_stop_sequences,
-        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES,
-        span,
-    )
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0

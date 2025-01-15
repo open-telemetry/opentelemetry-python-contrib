@@ -24,6 +24,10 @@ from typing import Any
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
+    _BotoClientErrorT,
+)
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_OPERATION_NAME,
@@ -40,6 +44,7 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GenAiSystemValues,
 )
 from opentelemetry.trace.span import Span
+from opentelemetry.trace.status import Status, StatusCode
 
 _logger = logging.getLogger(__name__)
 
@@ -56,25 +61,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     _HANDLED_OPERATIONS = {"Converse"}
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        attributes[GEN_AI_SYSTEM] = GenAiSystemValues.AWS_BEDROCK.value
-
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
+
+        attributes[GEN_AI_SYSTEM] = GenAiSystemValues.AWS_BEDROCK.value
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if model_id:
             attributes[GEN_AI_REQUEST_MODEL] = model_id
-
-            # FIXME: add other model patterns
-            text_model_patterns = [
-                "amazon.titan-text",
-                "anthropic.claude",
-                "meta.llama",
-            ]
-            if any(pattern in model_id for pattern in text_model_patterns):
-                attributes[GEN_AI_OPERATION_NAME] = (
-                    GenAiOperationNameValues.CHAT.value
-                )
+            attributes[GEN_AI_OPERATION_NAME] = (
+                GenAiOperationNameValues.CHAT.value
+            )
 
             if inference_config := self._call_context.params.get(
                 "inferenceConfig"
@@ -122,9 +119,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
-        model_id = self._call_context.params.get(_MODEL_ID_KEY)
-
-        if not model_id:
+        if not span.is_recording():
             return
 
         if usage := result.get("usage"):
@@ -144,3 +139,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS,
                 [stop_reason],
             )
+
+    def on_error(self, span: Span, exception: _BotoClientErrorT):
+        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+            return
+
+        span.set_status(Status(StatusCode.ERROR, str(exception)))
+        if span.is_recording():
+            span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
