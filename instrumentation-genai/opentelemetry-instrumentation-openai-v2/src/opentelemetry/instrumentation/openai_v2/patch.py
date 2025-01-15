@@ -80,7 +80,7 @@ def chat_completions_create(
                 return result
 
             except Exception as error:
-                error_type = type(error).__name__
+                error_type = type(error).__qualname__
                 handle_span_exception(span, error)
                 raise
             finally:
@@ -138,7 +138,7 @@ def async_chat_completions_create(
                 return result
 
             except Exception as error:
-                error_type = type(error).__name__
+                error_type = type(error).__qualname__
                 handle_span_exception(span, error)
                 raise
             finally:
