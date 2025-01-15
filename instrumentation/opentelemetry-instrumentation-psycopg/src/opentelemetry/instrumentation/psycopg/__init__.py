@@ -140,7 +140,7 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, Callable, Collection, Optional, TypeVar
 
 import psycopg  # pylint: disable=import-self
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
@@ -241,7 +241,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_connection(
         connection: psycopg.Connection,
-        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        tracer_provider: Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
         commenter_options: dict = None,
         enable_attribute_commenter: bool = False,
@@ -361,8 +361,8 @@ class CursorTracer(dbapi.CursorTracer):
 
 def _new_cursor_factory(
     db_api: dbapi.DatabaseApiIntegration = None,
-    base_factory: pg_cursor = None,
-    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    base_factory: psycopg.Cursor = None,
+    tracer_provider: Optional[trace_api.TracerProvider] = None,
     enable_commenter: bool = False,
     commenter_options: dict = None,
     enable_attribute_commenter: bool = False,
