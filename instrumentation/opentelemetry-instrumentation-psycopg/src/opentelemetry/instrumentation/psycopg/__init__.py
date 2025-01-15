@@ -137,17 +137,12 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
-import typing
-from typing import Collection
+from typing import Any, Callable, Collection, TypeVar
 
 import psycopg  # pylint: disable=import-self
-from psycopg import (
-    AsyncCursor as pg_async_cursor,  # pylint: disable=import-self,no-name-in-module
-)
-from psycopg import (
-    Cursor as pg_cursor,  # pylint: disable=no-name-in-module,import-self
-)
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace as trace_api
@@ -155,9 +150,15 @@ from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg.package import _instruments
 from opentelemetry.instrumentation.psycopg.version import __version__
+from opentelemetry.trace import TracerProvider
 
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
+
+ConnectionT = TypeVar(
+    "ConnectionT", psycopg.Connection, psycopg.AsyncConnection
+)
+CursorT = TypeVar("CursorT", psycopg.Cursor, psycopg.AsyncCursor)
 
 
 class PsycopgInstrumentor(BaseInstrumentor):
@@ -173,7 +174,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Integrate with PostgreSQL Psycopg library.
         Psycopg: https://www.psycopg.org/psycopg3/docs/
         """
@@ -224,7 +225,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             enable_attribute_commenter=enable_attribute_commenter,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         """ "Disable Psycopg instrumentation"""
         dbapi.unwrap_connect(psycopg, "connect")  # pylint: disable=no-member
         dbapi.unwrap_connect(
@@ -243,7 +244,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
         commenter_options: dict = None,
-        enable_attribute_commenter=None,
+        enable_attribute_commenter: bool = False,
     ):
         """Enable instrumentation of a Psycopg connection.
 
@@ -285,7 +286,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def uninstrument_connection(connection):
+    def uninstrument_connection(connection: ConnectionT) -> ConnectionT:
         connection.cursor_factory = getattr(
             connection, _OTEL_CURSOR_FACTORY_KEY, None
         )
@@ -297,9 +298,9 @@ class PsycopgInstrumentor(BaseInstrumentor):
 class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
     def wrapped_connection(
         self,
-        connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        connect_method: Callable[..., Any],
+        args: tuple[Any, Any],
+        kwargs: dict[Any, Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -315,9 +316,9 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
 class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
     async def wrapped_connection(
         self,
-        connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        connect_method: Callable[..., Any],
+        args: tuple[Any, Any],
+        kwargs: dict[Any, Any],
     ):
         """Add object proxy to connection object."""
         base_cursor_factory = kwargs.pop("cursor_factory", None)
@@ -333,7 +334,7 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
 
 
 class CursorTracer(dbapi.CursorTracer):
-    def get_operation_name(self, cursor, args):
+    def get_operation_name(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
             return ""
 
@@ -348,7 +349,7 @@ class CursorTracer(dbapi.CursorTracer):
 
         return ""
 
-    def get_statement(self, cursor, args):
+    def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
             return ""
 
@@ -379,21 +380,21 @@ def _new_cursor_factory(
             enable_attribute_commenter=enable_attribute_commenter,
         )
 
-    base_factory = base_factory or pg_cursor
+    base_factory = base_factory or psycopg.Cursor
     _cursor_tracer = CursorTracer(db_api)
 
     class TracedCursorFactory(base_factory):
-        def execute(self, *args, **kwargs):
+        def execute(self, *args: Any, **kwargs: Any):
             return _cursor_tracer.traced_execution(
                 self, super().execute, *args, **kwargs
             )
 
-        def executemany(self, *args, **kwargs):
+        def executemany(self, *args: Any, **kwargs: Any):
             return _cursor_tracer.traced_execution(
                 self, super().executemany, *args, **kwargs
             )
 
-        def callproc(self, *args, **kwargs):
+        def callproc(self, *args: Any, **kwargs: Any):
             return _cursor_tracer.traced_execution(
                 self, super().callproc, *args, **kwargs
             )
@@ -402,7 +403,9 @@ def _new_cursor_factory(
 
 
 def _new_cursor_async_factory(
-    db_api=None, base_factory=None, tracer_provider=None
+    db_api: DatabaseApiAsyncIntegration | None = None,
+    base_factory: type[psycopg.AsyncCursor] | None = None,
+    tracer_provider: TracerProvider | None = None,
 ):
     if not db_api:
         db_api = DatabaseApiAsyncIntegration(
@@ -412,21 +415,21 @@ def _new_cursor_async_factory(
             version=__version__,
             tracer_provider=tracer_provider,
         )
-    base_factory = base_factory or pg_async_cursor
+    base_factory = base_factory or psycopg.AsyncCursor
     _cursor_tracer = CursorTracer(db_api)
 
     class TracedCursorAsyncFactory(base_factory):
-        async def execute(self, *args, **kwargs):
+        async def execute(self, *args: Any, **kwargs: Any):
             return await _cursor_tracer.traced_execution(
                 self, super().execute, *args, **kwargs
             )
 
-        async def executemany(self, *args, **kwargs):
+        async def executemany(self, *args: Any, **kwargs: Any):
             return await _cursor_tracer.traced_execution(
                 self, super().executemany, *args, **kwargs
             )
 
-        async def callproc(self, *args, **kwargs):
+        async def callproc(self, *args: Any, **kwargs: Any):
             return await _cursor_tracer.traced_execution(
                 self, super().callproc, *args, **kwargs
             )
