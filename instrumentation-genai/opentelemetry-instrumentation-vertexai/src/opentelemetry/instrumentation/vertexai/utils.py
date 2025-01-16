@@ -29,11 +29,6 @@ from typing import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
-from opentelemetry.trace import Span
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
@@ -146,12 +141,3 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]):
     name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "")
     model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, "")
     return f"{name} {model}"
-
-
-def handle_span_exception(span: Span, error: Exception):
-    span.set_status(Status(StatusCode.ERROR, str(error)))
-    if span.is_recording():
-        span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-        )
-    span.end()

@@ -21,7 +21,6 @@ from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
     get_span_name,
-    handle_span_exception,
 )
 from opentelemetry.trace import SpanKind, Tracer
 
@@ -85,8 +84,7 @@ def generate_content_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-            end_on_exit=False,
-        ) as span:
+        ) as _span:
             # TODO: emit request events
             # if span.is_recording():
             #     for message in kwargs.get("messages", []):
@@ -94,24 +92,18 @@ def generate_content_create(
             #             message_to_event(message, capture_content)
             #         )
 
-            try:
-                result = wrapped(*args, **kwargs)
-                # TODO: handle streaming
-                # if is_streaming(kwargs):
-                #     return StreamWrapper(
-                #         result, span, event_logger, capture_content
-                #     )
+            result = wrapped(*args, **kwargs)
+            # TODO: handle streaming
+            # if is_streaming(kwargs):
+            #     return StreamWrapper(
+            #         result, span, event_logger, capture_content
+            #     )
 
-                # TODO: add response attributes and events
-                # if span.is_recording():
-                #     _set_response_attributes(
-                #         span, result, event_logger, capture_content
-                #     )
-                span.end()
-                return result
-
-            except Exception as error:
-                handle_span_exception(span, error)
-                raise
+            # TODO: add response attributes and events
+            # if span.is_recording():
+            #     _set_response_attributes(
+            #         span, result, event_logger, capture_content
+            #     )
+            return result
 
     return traced_method
