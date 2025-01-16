@@ -38,6 +38,31 @@ if TYPE_CHECKING:
     )
 
 
+# Use parameter signature from
+# https://github.com/googleapis/python-aiplatform/blob/v1.76.0/vertexai/generative_models/_generative_models.py#L595
+# to handle named vs positional args robustly
+def _extract_params(
+    contents: ContentsType,
+    *,
+    generation_config: Optional[GenerationConfigType] = None,
+    safety_settings: Optional[SafetySettingsType] = None,
+    tools: Optional[list[Tool]] = None,
+    tool_config: Optional[ToolConfig] = None,
+    labels: Optional[dict[str, str]] = None,
+    stream: bool = False,
+    **_kwargs: Any,
+) -> GenerateContentParams:
+    return GenerateContentParams(
+        contents=contents,
+        generation_config=generation_config,
+        safety_settings=safety_settings,
+        tools=tools,
+        tool_config=tool_config,
+        labels=labels,
+        stream=stream,
+    )
+
+
 def generate_content_create(
     tracer: Tracer, event_logger: EventLogger, capture_content: bool
 ):
@@ -51,32 +76,7 @@ def generate_content_create(
         args: Any,
         kwargs: Any,
     ):
-        # Use parameter signature from
-        # https://github.com/googleapis/python-aiplatform/blob/v1.76.0/vertexai/generative_models/_generative_models.py#L595
-        # to handle named vs positional args robustly
-        def extract_params(
-            contents: ContentsType,
-            *,
-            generation_config: Optional[GenerationConfigType] = None,
-            safety_settings: Optional[SafetySettingsType] = None,
-            tools: Optional[list[Tool]] = None,
-            tool_config: Optional[ToolConfig] = None,
-            labels: Optional[dict[str, str]] = None,
-            stream: bool = False,
-            **_kwargs: Any,
-        ) -> GenerateContentParams:
-            return GenerateContentParams(
-                contents=contents,
-                generation_config=generation_config,
-                safety_settings=safety_settings,
-                tools=tools,
-                tool_config=tool_config,
-                labels=labels,
-                stream=stream,
-            )
-
-        params = extract_params(*args, **kwargs)
-
+        params = _extract_params(*args, **kwargs)
         span_attributes = get_genai_request_attributes(instance, params)
 
         span_name = get_span_name(span_attributes)

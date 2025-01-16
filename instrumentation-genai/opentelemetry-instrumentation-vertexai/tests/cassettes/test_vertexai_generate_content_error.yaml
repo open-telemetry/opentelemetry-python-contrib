@@ -39,12 +39,7 @@ interactions:
             "code": 400,
             "message": "Unable to submit request because it has a temperature value of 1000 but the supported range is from 0 (inclusive) to 2.0001 (exclusive). Update the value and try again.",
             "status": "INVALID_ARGUMENT",
-            "details": [
-              {
-                "@type": "type.googleapis.com/google.rpc.DebugInfo",
-                "detail": "[ORIGINAL ERROR] generic::invalid_argument: Unable to submit request because it has a temperature value of 1000 but the supported range is from 0 (inclusive) to 2.0001 (exclusive). Update the value and try again. [google.rpc.error_details_ext] { message: \"Unable to submit request because it has a temperature value of 1000 but the supported range is from 0 (inclusive) to 2.0001 (exclusive). Update the value and try again.\" }"
-              }
-            ]
+            "details": []
           }
         }
     headers:
