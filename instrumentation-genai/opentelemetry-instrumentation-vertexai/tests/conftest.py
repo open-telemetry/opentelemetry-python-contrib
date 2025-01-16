@@ -81,19 +81,17 @@ def fixture_meter_provider(metric_reader):
 
 @pytest.fixture(autouse=True)
 def vertexai_init(vcr: VCR) -> None:
-    # Unfortunately I couldn't find a nice way to globally reset the global_config for each
-    # test because different vertex submodules reference the global instance directly
-    # https://github.com/googleapis/python-aiplatform/blob/v1.74.0/google/cloud/aiplatform/initializer.py#L687
-    # so this config will leak if we don't call init() for each test.
-
     # When not recording (in CI), don't do any auth. That prevents trying to read application
     # default credentials from the filesystem or metadata server and oauth token exchange. This
     # is not the interesting part of our instrumentation to test.
-    vertex_init_kwargs = {"api_transport": "rest"}
+    credentials = None
+    project = None
     if vcr.record_mode == RecordMode.NONE:
-        vertex_init_kwargs["credentials"] = AnonymousCredentials()
-        vertex_init_kwargs["project"] = FAKE_PROJECT
-    vertexai.init(**vertex_init_kwargs)
+        credentials = AnonymousCredentials()
+        project = FAKE_PROJECT
+    vertexai.init(
+        api_transport="rest", credentials=credentials, project=project
+    )
 
 
 @pytest.fixture

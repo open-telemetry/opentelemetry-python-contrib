@@ -70,7 +70,6 @@ class GenerationConfigDict(TypedDict, total=False):
 
 
 def get_genai_request_attributes(
-    # TODO: use types
     instance: _GenerativeModel,
     params: GenerateContentParams,
     operation_name: GenAIAttributes.GenAiOperationNameValues = GenAIAttributes.GenAiOperationNameValues.CHAT,
@@ -129,10 +128,6 @@ def _get_model_name(instance: _GenerativeModel) -> str:
         model_name = model_name[len(_RESOURCE_PREFIX) :]
     return model_name
 
-
-# TODO: Everything below here should be replaced with
-# opentelemetry.instrumentation.genai_utils instead once it is released.
-# https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3191
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"

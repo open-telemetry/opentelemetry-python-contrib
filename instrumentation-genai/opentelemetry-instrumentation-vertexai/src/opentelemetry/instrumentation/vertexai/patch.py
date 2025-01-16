@@ -52,7 +52,9 @@ def generate_content_create(
         args: Any,
         kwargs: Any,
     ):
-        # Use exact parameter signature to handle named vs positional args robustly
+        # Use parameter signature from
+        # https://github.com/googleapis/python-aiplatform/blob/v1.76.0/vertexai/generative_models/_generative_models.py#L595
+        # to handle named vs positional args robustly
         def extract_params(
             contents: ContentsType,
             *,
@@ -62,6 +64,7 @@ def generate_content_create(
             tool_config: Optional[ToolConfig] = None,
             labels: Optional[dict[str, str]] = None,
             stream: bool = False,
+            **_kwargs: Any,
         ) -> GenerateContentParams:
             return GenerateContentParams(
                 contents=contents,
