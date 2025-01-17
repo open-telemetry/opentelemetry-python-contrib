@@ -78,10 +78,15 @@ class VertexAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="vertexai.generative_models._generative_models",
-            # Patching this base class also instruments the vertexai.preview.generative_models
-            # package
-            name="_GenerativeModel.generate_content",
+            module="google.cloud.aiplatform_v1beta1.services.prediction_service.client",
+            name="PredictionServiceClient.generate_content",
+            wrapper=generate_content_create(
+                tracer, event_logger, is_content_enabled()
+            ),
+        )
+        wrap_function_wrapper(
+            module="google.cloud.aiplatform_v1.services.prediction_service.client",
+            name="PredictionServiceClient.generate_content",
             wrapper=generate_content_create(
                 tracer, event_logger, is_content_enabled()
             ),

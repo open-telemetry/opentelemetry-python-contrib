@@ -55,7 +55,7 @@ interactions:
                 ]
               },
               "finishReason": 2,
-              "avgLogprobs": -0.006723951548337936
+              "avgLogprobs": -0.006721805781126022
             }
           ],
           "usageMetadata": {

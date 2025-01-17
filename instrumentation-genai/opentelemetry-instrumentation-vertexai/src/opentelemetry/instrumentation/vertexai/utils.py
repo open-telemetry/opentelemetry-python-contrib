@@ -14,16 +14,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
-    Dict,
-    List,
     Mapping,
     Optional,
-    TypedDict,
-    cast,
+    Sequence,
 )
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -32,96 +30,77 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
-    from vertexai.generative_models import Tool, ToolConfig
-    from vertexai.generative_models._generative_models import (
-        ContentsType,
-        GenerationConfigType,
-        SafetySettingsType,
-        _GenerativeModel,
-    )
+    from google.cloud.aiplatform_v1.types import content, tool
 
 
 @dataclass(frozen=True)
 class GenerateContentParams:
-    contents: ContentsType
-    generation_config: Optional[GenerationConfigType]
-    safety_settings: Optional[SafetySettingsType]
-    tools: Optional[List["Tool"]]
-    tool_config: Optional["ToolConfig"]
-    labels: Optional[Dict[str, str]]
-    stream: bool
-
-
-class GenerationConfigDict(TypedDict, total=False):
-    temperature: Optional[float]
-    top_p: Optional[float]
-    top_k: Optional[int]
-    max_output_tokens: Optional[int]
-    stop_sequences: Optional[List[str]]
-    presence_penalty: Optional[float]
-    frequency_penalty: Optional[float]
-    seed: Optional[int]
-    # And more fields which aren't needed yet
+    model: str
+    contents: Optional[Sequence[content.Content]] = None
+    system_instruction: Optional[content.Content | None] = None
+    tools: Optional[Sequence[tool.Tool]] = None
+    tool_config: Optional[tool.ToolConfig] = None
+    labels: Optional[Mapping[str, str]] = None
+    safety_settings: Optional[Sequence[content.SafetySetting]] = None
+    generation_config: Optional[content.GenerationConfig] = None
 
 
 def get_genai_request_attributes(
-    instance: _GenerativeModel,
     params: GenerateContentParams,
     operation_name: GenAIAttributes.GenAiOperationNameValues = GenAIAttributes.GenAiOperationNameValues.CHAT,
 ):
-    model = _get_model_name(instance)
-    generation_config = _get_generation_config(instance, params)
-    attributes = {
+    model = _get_model_name(params.model)
+    generation_config = params.generation_config
+    attributes: dict[str, AttributeValue] = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.VERTEX_AI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: model,
-        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: generation_config.get(
-            "temperature"
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: generation_config.get("top_p"),
-        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: generation_config.get(
-            "max_output_tokens"
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: generation_config.get(
-            "presence_penalty"
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: generation_config.get(
-            "frequency_penalty"
-        ),
-        GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: generation_config.get(
-            "seed"
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: generation_config.get(
-            "stop_sequences"
-        ),
     }
 
-    # filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}
+    if not generation_config:
+        return attributes
+
+    # Check for optional fields
+    # https://proto-plus-python.readthedocs.io/en/stable/fields.html#optional-fields
+    if "temperature" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] = (
+            generation_config.temperature
+        )
+    if "top_p" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] = (
+            generation_config.top_p
+        )
+    if "max_output_tokens" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] = (
+            generation_config.max_output_tokens
+        )
+    if "presence_penalty" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY] = (
+            generation_config.presence_penalty
+        )
+    if "frequency_penalty" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
+            generation_config.frequency_penalty
+        )
+    if "seed" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED] = (
+            generation_config.seed
+        )
+    if "stop_sequences" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
+            generation_config.stop_sequences
+        )
+
+    return attributes
 
 
-def _get_generation_config(
-    instance: _GenerativeModel,
-    params: GenerateContentParams,
-) -> GenerationConfigDict:
-    generation_config = params.generation_config or instance._generation_config
-    if generation_config is None:
-        return {}
-    if isinstance(generation_config, dict):
-        return cast(GenerationConfigDict, generation_config)
-    return cast(GenerationConfigDict, generation_config.to_dict())
+_MODEL_STRIP_RE = re.compile(
+    r"^projects/(.*)/locations/(.*)/publishers/google/models/"
+)
 
 
-_RESOURCE_PREFIX = "publishers/google/models/"
-
-
-def _get_model_name(instance: _GenerativeModel) -> str:
-    model_name = instance._model_name
-
-    # Can use str.removeprefix() once 3.8 is dropped
-    if model_name.startswith(_RESOURCE_PREFIX):
-        model_name = model_name[len(_RESOURCE_PREFIX) :]
-    return model_name
+def _get_model_name(model: str) -> str:
+    return _MODEL_STRIP_RE.sub("", model)
 
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (

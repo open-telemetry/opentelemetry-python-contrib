@@ -14,7 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    MutableSequence,
+    Optional,
+    Union,
+)
 
 from opentelemetry._events import EventLogger
 from opentelemetry.instrumentation.vertexai.utils import (
@@ -25,41 +33,49 @@ from opentelemetry.instrumentation.vertexai.utils import (
 from opentelemetry.trace import SpanKind, Tracer
 
 if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1.types import (
+        content,
+        prediction_service,
+    )
     from vertexai.generative_models import (
         GenerationResponse,
-        Tool,
-        ToolConfig,
     )
     from vertexai.generative_models._generative_models import (
-        ContentsType,
-        GenerationConfigType,
-        SafetySettingsType,
         _GenerativeModel,
     )
 
 
 # Use parameter signature from
-# https://github.com/googleapis/python-aiplatform/blob/v1.76.0/vertexai/generative_models/_generative_models.py#L595
+# https://github.com/googleapis/python-aiplatform/blob/v1.76.0/google/cloud/aiplatform_v1/services/prediction_service/client.py#L2088
 # to handle named vs positional args robustly
 def _extract_params(
-    contents: ContentsType,
+    request: Optional[
+        Union[prediction_service.GenerateContentRequest, dict[Any, Any]]
+    ] = None,
     *,
-    generation_config: Optional[GenerationConfigType] = None,
-    safety_settings: Optional[SafetySettingsType] = None,
-    tools: Optional[list[Tool]] = None,
-    tool_config: Optional[ToolConfig] = None,
-    labels: Optional[dict[str, str]] = None,
-    stream: bool = False,
+    model: Optional[str] = None,
+    contents: Optional[MutableSequence[content.Content]] = None,
     **_kwargs: Any,
 ) -> GenerateContentParams:
+    # Request vs the named parameters are mututally exclusive or the RPC will fail
+    if not request:
+        return GenerateContentParams(
+            model=model or "",
+            contents=contents,
+        )
+
+    if isinstance(request, dict):
+        return GenerateContentParams(**request)
+
     return GenerateContentParams(
-        contents=contents,
-        generation_config=generation_config,
-        safety_settings=safety_settings,
-        tools=tools,
-        tool_config=tool_config,
-        labels=labels,
-        stream=stream,
+        model=request.model,
+        contents=request.contents,
+        system_instruction=request.system_instruction,
+        tools=request.tools,
+        tool_config=request.tool_config,
+        labels=request.labels,
+        safety_settings=request.safety_settings,
+        generation_config=request.generation_config,
     )
 
 
@@ -77,7 +93,7 @@ def generate_content_create(
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
-        span_attributes = get_genai_request_attributes(instance, params)
+        span_attributes = get_genai_request_attributes(params)
 
         span_name = get_span_name(span_attributes)
         with tracer.start_as_current_span(
