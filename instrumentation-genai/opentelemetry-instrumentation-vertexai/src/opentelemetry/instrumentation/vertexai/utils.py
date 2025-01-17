@@ -20,7 +20,6 @@ from os import environ
 from typing import (
     TYPE_CHECKING,
     Mapping,
-    Optional,
     Sequence,
 )
 
@@ -31,18 +30,32 @@ from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.types import content, tool
+    from google.cloud.aiplatform_v1beta1.types import (
+        content as content_v1beta1,
+    )
+    from google.cloud.aiplatform_v1beta1.types import (
+        tool as tool_v1beta1,
+    )
 
 
 @dataclass(frozen=True)
 class GenerateContentParams:
     model: str
-    contents: Optional[Sequence[content.Content]] = None
-    system_instruction: Optional[content.Content | None] = None
-    tools: Optional[Sequence[tool.Tool]] = None
-    tool_config: Optional[tool.ToolConfig] = None
-    labels: Optional[Mapping[str, str]] = None
-    safety_settings: Optional[Sequence[content.SafetySetting]] = None
-    generation_config: Optional[content.GenerationConfig] = None
+    contents: (
+        Sequence[content.Content] | Sequence[content_v1beta1.Content] | None
+    ) = None
+    system_instruction: content.Content | content_v1beta1.Content | None = None
+    tools: Sequence[tool.Tool] | Sequence[tool_v1beta1.Tool] | None = None
+    tool_config: tool.ToolConfig | tool_v1beta1.ToolConfig | None = None
+    labels: Mapping[str, str] | None = None
+    safety_settings: (
+        Sequence[content.SafetySetting]
+        | Sequence[content_v1beta1.SafetySetting]
+        | None
+    ) = None
+    generation_config: (
+        content.GenerationConfig | content_v1beta1.GenerationConfig | None
+    ) = None
 
 
 def get_genai_request_attributes(

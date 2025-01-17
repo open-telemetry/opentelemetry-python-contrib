@@ -18,10 +18,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterable,
     MutableSequence,
-    Optional,
-    Union,
 )
 
 from opentelemetry._events import EventLogger
@@ -33,15 +30,19 @@ from opentelemetry.instrumentation.vertexai.utils import (
 from opentelemetry.trace import SpanKind, Tracer
 
 if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1.services.prediction_service import client
     from google.cloud.aiplatform_v1.types import (
         content,
         prediction_service,
     )
-    from vertexai.generative_models import (
-        GenerationResponse,
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        client as client_v1beta1,
     )
-    from vertexai.generative_models._generative_models import (
-        _GenerativeModel,
+    from google.cloud.aiplatform_v1beta1.types import (
+        content as content_v1beta1,
+    )
+    from google.cloud.aiplatform_v1beta1.types import (
+        prediction_service as prediction_service_v1beta1,
     )
 
 
@@ -49,12 +50,15 @@ if TYPE_CHECKING:
 # https://github.com/googleapis/python-aiplatform/blob/v1.76.0/google/cloud/aiplatform_v1/services/prediction_service/client.py#L2088
 # to handle named vs positional args robustly
 def _extract_params(
-    request: Optional[
-        Union[prediction_service.GenerateContentRequest, dict[Any, Any]]
-    ] = None,
+    request: prediction_service.GenerateContentRequest
+    | prediction_service_v1beta1.GenerateContentRequest
+    | dict[Any, Any]
+    | None = None,
     *,
-    model: Optional[str] = None,
-    contents: Optional[MutableSequence[content.Content]] = None,
+    model: str | None = None,
+    contents: MutableSequence[content.Content]
+    | MutableSequence[content_v1beta1.Content]
+    | None = None,
     **_kwargs: Any,
 ) -> GenerateContentParams:
     # Request vs the named parameters are mututally exclusive or the RPC will fail
@@ -86,9 +90,12 @@ def generate_content_create(
 
     def traced_method(
         wrapped: Callable[
-            ..., GenerationResponse | Iterable[GenerationResponse]
+            ...,
+            prediction_service.GenerateContentResponse
+            | prediction_service_v1beta1.GenerateContentResponse,
         ],
-        instance: _GenerativeModel,
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
         args: Any,
         kwargs: Any,
     ):
