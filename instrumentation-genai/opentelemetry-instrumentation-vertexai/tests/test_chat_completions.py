@@ -95,7 +95,6 @@ def test_chat_completion_extra_params(span_exporter, instrument_no_content):
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert dict(spans[0].attributes) == {
-        "gen_ai.openai.request.seed": 12345,
         "gen_ai.operation.name": "chat",
         "gen_ai.request.frequency_penalty": 1.0,
         "gen_ai.request.max_tokens": 5,

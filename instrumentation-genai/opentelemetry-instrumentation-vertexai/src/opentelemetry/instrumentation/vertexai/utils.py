@@ -82,10 +82,12 @@ def get_genai_request_attributes(
         attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
             generation_config.frequency_penalty
         )
-    if "seed" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED] = (
-            generation_config.seed
-        )
+    # Uncomment once GEN_AI_REQUEST_SEED is released in 1.30
+    # https://github.com/open-telemetry/semantic-conventions/pull/1710
+    # if "seed" in generation_config:
+    #     attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+    #         generation_config.seed
+    #     )
     if "stop_sequences" in generation_config:
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
