@@ -39,7 +39,7 @@ API
 ---
 """
 
-from typing import Collection
+from typing import Any, Collection
 
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -52,7 +52,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
         tracer_provider = kwargs.get("tracer_provider")
         _tracer = get_tracer(
@@ -70,5 +70,5 @@ class VertexAIInstrumentor(BaseInstrumentor):
         )
         # TODO: implemented in later PR
 
-    def _uninstrument(self, **kwargs) -> None:
+    def _uninstrument(self, **kwargs: Any) -> None:
         """TODO: implemented in later PR"""
