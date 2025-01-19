@@ -251,6 +251,10 @@ class EngineTracer:
                         if self.commenter_options.get(k, True)
                     }
 
+                # Convert sql statement to string, handling  psycopg2.sql.Composable object
+                if hasattr(statement, "as_string"):
+                    statement = statement.as_string(conn)
+
                     statement = _add_sql_comment(statement, **commenter_data)
 
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)

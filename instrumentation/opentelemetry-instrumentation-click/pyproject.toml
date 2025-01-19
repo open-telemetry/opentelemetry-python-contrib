@@ -23,6 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
@@ -40,6 +41,7 @@ click = "opentelemetry.instrumentation.click:ClickInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/instrumentation/opentelemetry-instrumentation-click"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/click/version.py"

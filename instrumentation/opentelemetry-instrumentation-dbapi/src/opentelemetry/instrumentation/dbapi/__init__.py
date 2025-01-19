@@ -529,6 +529,11 @@ class CursorTracer:
                             for k, v in commenter_data.items()
                             if self._commenter_options.get(k, True)
                         }
+                        # Convert sql statement to string, handling  psycopg2.sql.Composable object
+                        if hasattr(args_list[0], "as_string"):
+                            args_list[0] = args_list[0].as_string(
+                                cursor.connection
+                            )
                         statement = _add_sql_comment(
                             args_list[0], **commenter_data
                         )
