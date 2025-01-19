@@ -49,13 +49,18 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
+from .instruments import Instruments
 from .patch import async_chat_completions_create, chat_completions_create
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
+    def __init__(self):
+        self._meter = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -75,12 +80,21 @@ class OpenAIInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_28_0.value,
             event_logger_provider=event_logger_provider,
         )
+        meter_provider = kwargs.get("meter_provider")
+        self._meter = get_meter(
+            __name__,
+            "",
+            meter_provider,
+            schema_url=Schemas.V1_28_0.value,
+        )
+
+        instruments = Instruments(self._meter)
 
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, event_logger, is_content_enabled()
+                tracer, event_logger, instruments, is_content_enabled()
             ),
         )
 
@@ -88,7 +102,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, event_logger, is_content_enabled()
+                tracer, event_logger, instruments, is_content_enabled()
             ),
         )
 
