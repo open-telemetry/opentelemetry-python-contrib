@@ -5,28 +5,17 @@ import os
 
 import pytest
 import yaml
-from openai import AsyncOpenAI, OpenAI
+from cohere import ClientV2
 
+from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
 from opentelemetry.instrumentation.genai_utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
-from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
     SimpleLogRecordProcessor,
-)
-from opentelemetry.sdk.metrics import (
-    Histogram,
-    MeterProvider,
-)
-from opentelemetry.sdk.metrics.export import (
-    InMemoryMetricReader,
-)
-from opentelemetry.sdk.metrics.view import (
-    ExplicitBucketHistogramAggregation,
-    View,
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -47,12 +36,6 @@ def fixture_log_exporter():
     yield exporter
 
 
-@pytest.fixture(scope="function", name="metric_reader")
-def fixture_metric_reader():
-    exporter = InMemoryMetricReader()
-    yield exporter
-
-
 @pytest.fixture(scope="function", name="tracer_provider")
 def fixture_tracer_provider(span_exporter):
     provider = TracerProvider()
@@ -69,76 +52,15 @@ def fixture_event_logger_provider(log_exporter):
     return event_logger_provider
 
 
-@pytest.fixture(scope="function", name="meter_provider")
-def fixture_meter_provider(metric_reader):
-    token_usage_histogram_view = View(
-        instrument_type=Histogram,
-        instrument_name="gen_ai.client.token.usage",
-        aggregation=ExplicitBucketHistogramAggregation(
-            boundaries=[
-                1,
-                4,
-                16,
-                64,
-                256,
-                1024,
-                4096,
-                16384,
-                65536,
-                262144,
-                1048576,
-                4194304,
-                16777216,
-                67108864,
-            ]
-        ),
-    )
-
-    duration_histogram_view = View(
-        instrument_type=Histogram,
-        instrument_name="gen_ai.client.operation.duration",
-        aggregation=ExplicitBucketHistogramAggregation(
-            boundaries=[
-                0.01,
-                0.02,
-                0.04,
-                0.08,
-                0.16,
-                0.32,
-                0.64,
-                1.28,
-                2.56,
-                5.12,
-                10.24,
-                20.48,
-                40.96,
-                81.92,
-            ]
-        ),
-    )
-
-    meter_provider = MeterProvider(
-        metric_readers=[metric_reader],
-        views=[token_usage_histogram_view, duration_histogram_view],
-    )
-
-    return meter_provider
-
-
 @pytest.fixture(autouse=True)
 def environment():
-    if not os.getenv("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
+    if not os.getenv("CO_API_KEY"):
+        os.environ["CO_API_KEY"] = "test_cohere_api_key"
 
 
 @pytest.fixture
-def openai_client():
-    return OpenAI()
-
-
-@pytest.fixture
-def async_openai_client():
-    return AsyncOpenAI()
+def cohere_client():
+    return ClientV2()
 
 
 @pytest.fixture(scope="module")
@@ -146,9 +68,7 @@ def vcr_config():
     return {
         "filter_headers": [
             ("cookie", "test_cookie"),
-            ("authorization", "Bearer test_openai_api_key"),
-            ("openai-organization", "test_openai_org_id"),
-            ("openai-project", "test_openai_project_id"),
+            ("authorization", "Bearer test_cohere_api_key"),
         ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
@@ -156,37 +76,26 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(
-    tracer_provider, event_logger_provider, meter_provider
-):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
-    )
-
-    instrumentor = OpenAIInstrumentor()
+def instrument_no_content(tracer_provider, event_logger_provider):
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
-        meter_provider=meter_provider,
     )
 
     yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(
-    tracer_provider, event_logger_provider, meter_provider
-):
+def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
-    instrumentor = OpenAIInstrumentor()
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
-        meter_provider=meter_provider,
     )
 
     yield instrumentor
@@ -265,6 +174,5 @@ def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!
     """
-    response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response
