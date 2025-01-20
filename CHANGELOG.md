@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
 - `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock Converse API
   ([#3161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3161))
+- `opentelemetry-instrumentation-pymssql` Add pymssql instrumentation
+  ([#394](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/394))
 
 ### Fixed
 
