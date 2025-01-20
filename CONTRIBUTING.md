@@ -59,6 +59,12 @@ To install `tox`, run:
 pip install tox
 ```
 
+You can also run tox with `uv` support. By default [tox.ini](./tox.ini) will automatically create a provisioned tox environment with `tox-uv`, but you can install it at host level:
+
+```sh
+pip install tox-uv
+```
+
 You can run `tox` with the following arguments:
 
 * `tox` to run all existing tox commands, including unit tests for all packages
@@ -89,7 +95,7 @@ for more detail on available tox commands.
 
 ### Troubleshooting
 
-Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
@@ -139,7 +145,7 @@ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python
 make sure you have all supported versions of Python installed, install `tox` only for the first time:
 
 ```sh
-pip install tox
+pip install tox tox-uv
 ```
 
 Run tests in the root of the repository (this will run all tox environments and may take some time):
