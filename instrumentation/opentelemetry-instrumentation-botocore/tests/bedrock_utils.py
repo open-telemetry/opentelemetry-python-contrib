@@ -14,12 +14,82 @@
 
 from __future__ import annotations
 
+import io
+import json
 from typing import Any
+
+from botocore.response import StreamingBody
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+
+
+def assert_completion_attributes_from_streaming_body(
+    span: ReadableSpan,
+    request_model: str,
+    response: StreamingBody | None,
+    operation_name: str = "chat",
+    request_top_p: int | None = None,
+    request_temperature: int | None = None,
+    request_max_tokens: int | None = None,
+    request_stop_sequences: list[str] | None = None,
+):
+    input_tokens = None
+    output_tokens = None
+    finish_reason = None
+    if response:
+        original_body = response["body"]
+        body_content = original_body.read()
+        stream = io.BytesIO(body_content)
+        telemetry_content = stream.read()
+        response = json.loads(telemetry_content.decode("utf-8"))
+
+        if "amazon.titan" in request_model:
+            input_tokens = response.get("inputTextTokenCount")
+            results = response.get("results")
+            if results:
+                first_result = results[0]
+                output_tokens = first_result.get("tokenCount")
+                finish_reason = (first_result["completionReason"],)
+        elif "amazon.nova" in request_model:
+            if usage := response.get("usage"):
+                input_tokens = usage["inputTokens"]
+                output_tokens = usage["outputTokens"]
+            else:
+                input_tokens, output_tokens = None, None
+
+            if "stopReason" in response:
+                finish_reason = (response["stopReason"],)
+            else:
+                finish_reason = None
+        elif "anthropic.claude" in request_model:
+            if usage := response.get("usage"):
+                input_tokens = usage["input_tokens"]
+                output_tokens = usage["output_tokens"]
+            else:
+                input_tokens, output_tokens = None, None
+
+            if "stop_reason" in response:
+                finish_reason = (response["stop_reason"],)
+            else:
+                finish_reason = None
+
+    return assert_all_attributes(
+        span,
+        request_model,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        operation_name,
+        request_top_p,
+        request_temperature,
+        request_max_tokens,
+        tuple(request_stop_sequences)
+        if request_stop_sequences is not None
+        else request_stop_sequences,
+    )
 
 
 def assert_completion_attributes(
@@ -38,7 +108,7 @@ def assert_completion_attributes(
     else:
         input_tokens, output_tokens = None, None
 
-    if response:
+    if response and "stopReason" in response:
         finish_reason = (response["stopReason"],)
     else:
         finish_reason = None
@@ -60,10 +130,10 @@ def assert_completion_attributes(
 
 
 def assert_equal_or_not_present(value, attribute_name, span):
-    if value:
+    if value is not None:
         assert value == span.attributes[attribute_name]
     else:
-        assert attribute_name not in span.attributes
+        assert attribute_name not in span.attributes, attribute_name
 
 
 def assert_all_attributes(
