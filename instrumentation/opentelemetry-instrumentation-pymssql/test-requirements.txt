@@ -1,0 +1,6 @@
+pymssql==2.3.2
+pytest==7.4.4
+typing_extensions==4.12.2
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-dbapi
+-e instrumentation/opentelemetry-instrumentation-pymssql

@@ -204,6 +204,7 @@ def instrument_connection(
     commenter_options: dict[str, Any] | None = None,
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
+    db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -228,7 +229,11 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_integration = DatabaseApiIntegration(
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
+
+    db_integration = db_api_integration_factory(
         name,
         database_system,
         connection_attributes=connection_attributes,
