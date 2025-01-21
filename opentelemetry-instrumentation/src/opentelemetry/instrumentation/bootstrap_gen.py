@@ -145,6 +145,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
     },
     {
+        "library": "psycopg2-binary >= 2.7.3.1",
+        "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
+    },
+    {
         "library": "pymemcache >= 1.3.5, < 5",
         "instrumentation": "opentelemetry-instrumentation-pymemcache==0.51b0.dev",
     },
