@@ -431,6 +431,11 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
         """
+
+        # Don't try if we are not running on AWS Lambda
+        if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+            return
+
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         if not lambda_handler:
             logger.warning(
