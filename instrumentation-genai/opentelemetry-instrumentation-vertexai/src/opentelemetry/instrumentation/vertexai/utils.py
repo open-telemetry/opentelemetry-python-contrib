@@ -134,4 +134,6 @@ def is_content_enabled() -> bool:
 def get_span_name(span_attributes: Mapping[str, AttributeValue]):
     name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
     model = span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+    if not model:
+        return name
     return f"{name} {model}"
