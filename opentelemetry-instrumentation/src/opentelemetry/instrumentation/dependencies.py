@@ -40,6 +40,14 @@ class DependencyConflict:
         return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
+class DependencyConflictError(Exception):
+    def __init__(self, conflict: DependencyConflict):
+        self.conflict = conflict
+
+    def __str__(self):
+        return str(self.conflict)
+
+
 def get_dist_dependency_conflicts(
     dist: Distribution,
 ) -> DependencyConflict | None:
