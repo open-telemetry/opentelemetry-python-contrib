@@ -95,8 +95,6 @@ def set_attributes_from_context(span, context):
                     SpanAttributes.MESSAGING_DESTINATION, routing_key
                 )
 
-            value = str(value)
-
         elif key == "id":
             attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
 
