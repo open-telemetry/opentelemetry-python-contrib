@@ -109,7 +109,7 @@ class _SimpleBlobUploaderAdaptor(BlobUploader):
     This implements the core of the function 'blob_uploader_from_simple_blob_uploader'.
     """
 
-    def __init__(self, simple_uploader: SimpleBlobUploader, executor: Optional[Executor]=None):
+    def __init__(self, simple_uploader: SimpleBlobUploader, executor: Optional[Executor] = None):
         self._simple_uploader = simple_uploader
         self._executor = executor or _get_or_create_default_executor()
 
@@ -119,7 +119,7 @@ class _SimpleBlobUploaderAdaptor(BlobUploader):
         self._do_in_background(_UploadAction(self._simple_uploader, uri, full_blob))
         return uri
 
-    def _do_in_background(self, action):
+    def _do_in_background(self, action: _UploadAction) -> None:
         _logger.debug("Scheduling background upload.")
         self._executor.submit(action)
 

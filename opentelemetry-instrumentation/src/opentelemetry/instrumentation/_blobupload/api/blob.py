@@ -53,7 +53,7 @@ class Blob:
                     self._labels[k] = labels[k]
 
     @staticmethod
-    def from_data_uri(uri: str, labels: Optional[dict] = None) -> "Blob":
+    def from_data_uri(uri: str, labels: Optional[Mapping[str, str]] = None) -> "Blob":
         """Instantiate a blob from a 'data:...' URI.
 
         Args:
@@ -107,7 +107,7 @@ class Blob:
         """Returns the key/value metadata of this Blob."""
         return _frozendict(self._labels)
 
-    def __eq__(self, o):
+    def __eq__(self, o: Any) -> bool:
         return (
             (isinstance(o, Blob)) and
             (self.raw_bytes == o.raw_bytes) and
@@ -115,10 +115,10 @@ class Blob:
             (self.labels == o.labels)
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         params = [repr(self._raw_bytes)]
         if self._content_type is not None:
-            params.append("content_type={}".format(repr(self._content_type)))
+            params.append(f"content_type={self._content_type!r}")
         if self._labels:
             params.append("labels={}".format(json.dumps(self._labels, sort_keys=True)))
         params_string = ", ".join(params)

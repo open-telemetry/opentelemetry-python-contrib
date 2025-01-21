@@ -33,13 +33,13 @@ _logger = logging.getLogger(__name__)
 GcsClient: TypeAlias = _gcs_client_wrapper.GcsClientType
 
 
-def _path_for_span(trace_id, span_id):
+def _path_for_span(trace_id: str, span_id: str) -> str:
     if not trace_id or not span_id:
         return ""
     return "traces/{}/spans/{}".format(trace_id, span_id)
 
 
-def _path_for_event(trace_id, span_id, event_name):
+def _path_for_event(trace_id: str, span_id: str, event_name: str) -> str:
     if not event_name:
         return ""
     span_path = _path_for_span(trace_id, span_id)
@@ -48,7 +48,7 @@ def _path_for_event(trace_id, span_id, event_name):
     return "{}/events/{}".format(span_path, event_name)
 
 
-def _path_for_span_event(trace_id, span_id, event_index):
+def _path_for_span_event(trace_id: str, span_id: str, event_index) -> str:
     if event_index is None:
         return ""
     span_path = _path_for_span(trace_id, span_id)
@@ -57,7 +57,7 @@ def _path_for_span_event(trace_id, span_id, event_index):
     return "{}/events/{}".format(span_path, event_index)
 
 
-def _path_segment_from_labels(labels):
+def _path_segment_from_labels(labels: Mapping[str, str]) -> str:
     """Returns a path segment based on blob label metadata.
 
     This aims to return paths like:
@@ -86,7 +86,7 @@ def _path_segment_from_labels(labels):
 
 class _SimpleGcsBlobUploader(SimpleBlobUploader):
 
-    def __init__(self, prefix: str, client:Optional[GcsClient]=None):
+    def __init__(self, prefix: str, client: Optional[GcsClient] = None):
         if not prefix:
             raise ValueError("Must supply a non-empty prefix.")
         if not prefix.startswith("gs://"):

@@ -21,7 +21,7 @@
 class _FallBackModule:
     """Class that is shaped like the portion of 'magic' we need."""
 
-    def from_buffer(self, raw_bytes, mime=True):
+    def from_buffer(self, raw_bytes: bytes, mime: bool = True):
         """Fallback, subpar implementation of 'from_buffer'."""
         return "application/octet-stream"
 
