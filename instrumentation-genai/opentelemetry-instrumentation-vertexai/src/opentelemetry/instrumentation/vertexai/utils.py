@@ -131,9 +131,9 @@ def is_content_enabled() -> bool:
     return capture_content.lower() == "true"
 
 
-def get_span_name(span_attributes: Mapping[str, AttributeValue]):
+def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
     name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
     model = span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     if not model:
-        return name
+        return f"{name}"
     return f"{name} {model}"
