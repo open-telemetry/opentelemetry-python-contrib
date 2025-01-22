@@ -115,6 +115,8 @@ def generate_content_create(
             #             message_to_event(message, capture_content)
             #         )
 
+            # TODO: set error.type attribute
+            # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
             result = wrapped(*args, **kwargs)
             # TODO: handle streaming
             # if is_streaming(kwargs):

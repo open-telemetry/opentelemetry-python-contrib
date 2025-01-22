@@ -164,6 +164,10 @@ def test_generate_content_extra_params(span_exporter, instrument_no_content):
 def assert_span_error(span: ReadableSpan) -> None:
     # Sets error status
     assert span.status.status_code == StatusCode.ERROR
+
+    # TODO: check thate error.type is set
+    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
+
     # Records exception event
     error_events = [e for e in span.events if e.name == "exception"]
     assert error_events != []
