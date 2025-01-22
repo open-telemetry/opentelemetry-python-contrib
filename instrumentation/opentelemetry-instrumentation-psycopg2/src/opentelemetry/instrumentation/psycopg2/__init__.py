@@ -139,6 +139,7 @@ API
 
 import logging
 import typing
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import psycopg2
@@ -153,7 +154,11 @@ from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.psycopg2.package import _instruments
+from opentelemetry.instrumentation.psycopg2.package import (
+    _instruments,
+    _instruments_psycopg2,
+    _instruments_psycopg2_binary,
+)
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
@@ -171,6 +176,21 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     _DATABASE_SYSTEM = "postgresql"
 
     def instrumentation_dependencies(self) -> Collection[str]:
+        # Determine which package of psycopg2 is installed
+        # Right now there are two packages, psycopg2 and psycopg2-binary
+        # The latter is a binary wheel package that does not require a compiler
+        try:
+            distribution("psycopg2")
+            return (_instruments_psycopg2,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("psycopg2-binary")
+            return (_instruments_psycopg2_binary,)
+        except PackageNotFoundError:
+            pass
+
         return _instruments
 
     def _instrument(self, **kwargs):

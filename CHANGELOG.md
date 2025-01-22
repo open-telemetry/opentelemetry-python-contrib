@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3129))
 - `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
+- `opentelemetry-instrumentation-psycopg2` Add support for psycopg2-binary
+  ([#3186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3186))
+- `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock Converse API
+  ([#3161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3161))
 
 ### Fixed
 
