@@ -64,7 +64,7 @@ def environment():
     if not os.getenv("AWS_SESSION_TOKEN"):
         os.environ["AWS_SESSION_TOKEN"] = "test_aws_session_token"
     if not os.getenv("AWS_DEFAULT_REGION"):
-        os.environ["AWS_DEFAULT_REGION"] = "eu-central-1"
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
 @pytest.fixture(scope="module")
