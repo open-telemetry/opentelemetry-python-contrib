@@ -26,6 +26,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 
+# pylint: disable=too-many-branches, too-many-locals
 def assert_completion_attributes_from_streaming_body(
     span: ReadableSpan,
     request_model: str,

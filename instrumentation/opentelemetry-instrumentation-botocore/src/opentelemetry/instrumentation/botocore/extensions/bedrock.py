@@ -198,14 +198,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if operation_name and request_model:
             span.update_name(f"{operation_name} {request_model}")
 
-    def on_success(self, span: Span, result: dict[str, Any]):
-        if self._call_context.operation not in self._HANDLED_OPERATIONS:
-            return
-
-        if not span.is_recording():
-            return
-
-        # Converse
+    # pylint: disable=no-self-use
+    def _converse_on_success(self, span: Span, result: dict[str, Any]):
         if usage := result.get("usage"):
             if input_tokens := usage.get("inputTokens"):
                 span.set_attribute(
@@ -224,40 +218,53 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 [stop_reason],
             )
 
+    def _invoke_model_on_success(
+        self, span: Span, result: dict[str, Any], model_id: str
+    ):
+        original_body = None
+        try:
+            original_body = result["body"]
+            body_content = original_body.read()
+
+            # Use one stream for telemetry
+            stream = io.BytesIO(body_content)
+            telemetry_content = stream.read()
+            response_body = json.loads(telemetry_content.decode("utf-8"))
+            if "amazon.titan" in model_id:
+                self._handle_amazon_titan_response(span, response_body)
+            elif "amazon.nova" in model_id:
+                self._handle_amazon_nova_response(span, response_body)
+            elif "anthropic.claude" in model_id:
+                self._handle_anthropic_claude_response(span, response_body)
+            # Replenish stream for downstream application use
+            new_stream = io.BytesIO(body_content)
+            result["body"] = StreamingBody(new_stream, len(body_content))
+
+        except json.JSONDecodeError:
+            _logger.debug("Error: Unable to parse the response body as JSON")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _logger.debug("Error processing response: %s", exc)
+        finally:
+            if original_body is not None:
+                original_body.close()
+
+    def on_success(self, span: Span, result: dict[str, Any]):
+        if self._call_context.operation not in self._HANDLED_OPERATIONS:
+            return
+
+        if not span.is_recording():
+            return
+
+        # Converse
+        self._converse_on_success(span, result)
+
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
             return
 
         # InvokeModel
         if "body" in result and isinstance(result["body"], StreamingBody):
-            original_body = None
-            try:
-                original_body = result["body"]
-                body_content = original_body.read()
-
-                # Use one stream for telemetry
-                stream = io.BytesIO(body_content)
-                telemetry_content = stream.read()
-                response_body = json.loads(telemetry_content.decode("utf-8"))
-                if "amazon.titan" in model_id:
-                    self._handle_amazon_titan_response(span, response_body)
-                elif "amazon.nova" in model_id:
-                    self._handle_amazon_nova_response(span, response_body)
-                elif "anthropic.claude" in model_id:
-                    self._handle_anthropic_claude_response(span, response_body)
-                # Replenish stream for downstream application use
-                new_stream = io.BytesIO(body_content)
-                result["body"] = StreamingBody(new_stream, len(body_content))
-
-            except json.JSONDecodeError:
-                _logger.debug(
-                    "Error: Unable to parse the response body as JSON"
-                )
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                _logger.debug("Error processing response: %s", exc)
-            finally:
-                if original_body is not None:
-                    original_body.close()
+            self._invoke_model_on_success(span, result, model_id)
 
     # pylint: disable=no-self-use
     def _handle_amazon_titan_response(
