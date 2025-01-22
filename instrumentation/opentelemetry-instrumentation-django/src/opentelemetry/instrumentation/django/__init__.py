@@ -243,6 +243,13 @@ from django import VERSION as django_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
@@ -253,7 +260,13 @@ from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    create_http_server_active_requests,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
@@ -270,6 +283,30 @@ def _get_django_middleware_setting() -> str:
     if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", None) is None:
         return "MIDDLEWARE_CLASSES"
     return "MIDDLEWARE"
+
+
+def _get_django_otel_middleware_position(
+    middleware_length, default_middleware_position=0
+):
+    otel_position = environ.get("OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION")
+    try:
+        middleware_position = int(otel_position)
+    except (ValueError, TypeError):
+        _logger.debug(
+            "Invalid OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION value: (%s). Using default position: %d.",
+            otel_position,
+            default_middleware_position,
+        )
+        middleware_position = default_middleware_position
+
+    if middleware_position < 0 or middleware_position > middleware_length:
+        _logger.debug(
+            "Middleware position %d is out of range (0-%d). Using 0 as the position",
+            middleware_position,
+            middleware_length,
+        )
+        middleware_position = 0
+    return middleware_position
 
 
 class DjangoInstrumentor(BaseInstrumentor):
@@ -293,6 +330,12 @@ class DjangoInstrumentor(BaseInstrumentor):
         if environ.get(OTEL_PYTHON_DJANGO_INSTRUMENT) == "False":
             return
 
+        # initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
         _excluded_urls = kwargs.get("excluded_urls")
@@ -300,14 +343,15 @@ class DjangoInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
         meter = get_meter(
             __name__,
             __version__,
             meter_provider=meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
+        _DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (
@@ -319,15 +363,22 @@ class DjangoInstrumentor(BaseInstrumentor):
         _DjangoMiddleware._otel_response_hook = kwargs.pop(
             "response_hook", None
         )
-        _DjangoMiddleware._duration_histogram = meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
-            description="Duration of HTTP client requests.",
-        )
-        _DjangoMiddleware._active_request_counter = meter.create_up_down_counter(
-            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests those are currently in flight",
+        _DjangoMiddleware._duration_histogram_old = None
+        if _report_old(sem_conv_opt_in_mode):
+            _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_DURATION,
+                unit="ms",
+                description="Measures the duration of inbound HTTP requests.",
+            )
+        _DjangoMiddleware._duration_histogram_new = None
+        if _report_new(sem_conv_opt_in_mode):
+            _DjangoMiddleware._duration_histogram_new = meter.create_histogram(
+                name=HTTP_SERVER_REQUEST_DURATION,
+                description="Duration of HTTP server requests.",
+                unit="s",
+            )
+        _DjangoMiddleware._active_request_counter = (
+            create_http_server_active_requests(meter)
         )
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
@@ -361,10 +412,18 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
 
-        if is_sql_commentor_enabled:
-            settings_middleware.insert(0, self._sql_commenter_middleware)
+        middleware_position = _get_django_otel_middleware_position(
+            len(settings_middleware), kwargs.pop("middleware_position", 0)
+        )
 
-        settings_middleware.insert(0, self._opentelemetry_middleware)
+        if is_sql_commentor_enabled:
+            settings_middleware.insert(
+                middleware_position, self._sql_commenter_middleware
+            )
+
+        settings_middleware.insert(
+            middleware_position, self._opentelemetry_middleware
+        )
 
         setattr(settings, _middleware_setting, settings_middleware)
 

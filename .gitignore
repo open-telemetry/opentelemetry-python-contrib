@@ -58,3 +58,6 @@ _build/
 # mypy
 .mypy_cache/
 target
+
+# Benchmark result files
+*-benchmark.json

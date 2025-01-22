@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Ensure consistently use of suppress_instrumentation utils
+  ([#2590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2590))
+- Update `opentelemetry-instrumentation` version to 0.44b0
+  ([#2961](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2961))
+
+## Version 0.1.5 (2024-05-16)
+
 - Ignore vm detector if already in other rps
   ([#2456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2456))
+- Implement functions resource detector
+  ([#2523](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2523))
 
 ## Version 0.1.4 (2024-04-05)
 

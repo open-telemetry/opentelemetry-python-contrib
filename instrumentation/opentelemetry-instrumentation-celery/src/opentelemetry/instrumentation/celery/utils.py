@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
+from celery.app.task import Task
 
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Span
+
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +89,12 @@ def set_attributes_from_context(span, context):
         elif key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
+
             if routing_key is not None:
                 span.set_attribute(
                     SpanAttributes.MESSAGING_DESTINATION, routing_key
                 )
+
             value = str(value)
 
         elif key == "id":
@@ -114,11 +124,18 @@ def set_attributes_from_context(span, context):
         span.set_attribute(attribute_name, value)
 
 
-def attach_span(task, task_id, span, is_publish=False):
-    """Helper to propagate a `Span` for the given `Task` instance. This
-    function uses a `dict` that stores the Span using the
-    `(task_id, is_publish)` as a key. This is useful when information must be
-    propagated from one Celery signal to another.
+def attach_context(
+    task: Optional[Task],
+    task_id: str,
+    span: Span,
+    activation: AbstractContextManager[Span],
+    token: Optional[object],
+    is_publish: bool = False,
+) -> None:
+    """Helper to propagate a `Span`, `ContextManager` and context token
+    for the given `Task` instance. This function uses a `dict` that stores
+    the Span using the `(task_id, is_publish)` as a key. This is useful
+    when information must be propagated from one Celery signal to another.
 
     We use (task_id, is_publish) for the key to ensure that publishing a
     task from within another task does not cause any conflicts.
@@ -134,36 +151,41 @@ def attach_span(task, task_id, span, is_publish=False):
     """
     if task is None:
         return
-    span_dict = getattr(task, CTX_KEY, None)
-    if span_dict is None:
-        span_dict = {}
-        setattr(task, CTX_KEY, span_dict)
 
-    span_dict[(task_id, is_publish)] = span
+    ctx_dict = getattr(task, CTX_KEY, None)
+
+    if ctx_dict is None:
+        ctx_dict = {}
+        setattr(task, CTX_KEY, ctx_dict)
+
+    ctx_dict[(task_id, is_publish)] = (span, activation, token)
 
 
-def detach_span(task, task_id, is_publish=False):
-    """Helper to remove a `Span` in a Celery task when it's propagated.
-    This function handles tasks where the `Span` is not attached.
+def detach_context(task, task_id, is_publish=False) -> None:
+    """Helper to remove  `Span`, `ContextManager` and context token in a
+    Celery task when it's propagated.
+    This function handles tasks where no values are attached to the `Task`.
     """
     span_dict = getattr(task, CTX_KEY, None)
     if span_dict is None:
         return
 
-    # See note in `attach_span` for key info
-    span_dict.pop((task_id, is_publish), (None, None))
+    # See note in `attach_context` for key info
+    span_dict.pop((task_id, is_publish), None)
 
 
-def retrieve_span(task, task_id, is_publish=False):
-    """Helper to retrieve an active `Span` stored in a `Task`
-    instance
+def retrieve_context(
+    task, task_id, is_publish=False
+) -> Optional[Tuple[Span, AbstractContextManager[Span], Optional[object]]]:
+    """Helper to retrieve an active `Span`, `ContextManager` and context token
+    stored in a `Task` instance
     """
     span_dict = getattr(task, CTX_KEY, None)
     if span_dict is None:
-        return (None, None)
+        return None
 
-    # See note in `attach_span` for key info
-    return span_dict.get((task_id, is_publish), (None, None))
+    # See note in `attach_context` for key info
+    return span_dict.get((task_id, is_publish), None)
 
 
 def retrieve_task(kwargs):

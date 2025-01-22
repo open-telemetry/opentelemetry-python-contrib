@@ -14,8 +14,8 @@
 
 # pylint: disable=protected-access
 
-import pkg_resources
 import pytest
+from packaging.requirements import Requirement
 
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
@@ -23,14 +23,29 @@ from opentelemetry.instrumentation.dependencies import (
     get_dist_dependency_conflicts,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import Distribution
 
 
 class TestDependencyConflicts(TestBase):
     def test_get_dependency_conflicts_empty(self):
         self.assertIsNone(get_dependency_conflicts([]))
 
+    def test_get_dependency_conflicts_no_conflict_requirement(self):
+        req = Requirement("pytest")
+        self.assertIsNone(get_dependency_conflicts([req]))
+
     def test_get_dependency_conflicts_no_conflict(self):
         self.assertIsNone(get_dependency_conflicts(["pytest"]))
+
+    def test_get_dependency_conflicts_not_installed_requirement(self):
+        req = Requirement("this-package-does-not-exist")
+        conflict = get_dependency_conflicts([req])
+        self.assertTrue(conflict is not None)
+        self.assertTrue(isinstance(conflict, DependencyConflict))
+        self.assertEqual(
+            str(conflict),
+            'DependencyConflict: requested: "this-package-does-not-exist" but found: "None"',
+        )
 
     def test_get_dependency_conflicts_not_installed(self):
         conflict = get_dependency_conflicts(["this-package-does-not-exist"])
@@ -51,24 +66,39 @@ class TestDependencyConflicts(TestBase):
         )
 
     def test_get_dist_dependency_conflicts(self):
-        def mock_requires(extras=()):
-            if "instruments" in extras:
-                return [
-                    pkg_resources.Requirement(
-                        'test-pkg ~= 1.0; extra == "instruments"'
-                    )
-                ]
-            return []
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
 
-        dist = pkg_resources.Distribution(
-            project_name="test-instrumentation", version="1.0"
-        )
-        dist.requires = mock_requires
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return ['test-pkg ~= 1.0; extra == "instruments"']
+
+        dist = MockDistribution()
 
         conflict = get_dist_dependency_conflicts(dist)
         self.assertTrue(conflict is not None)
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            'DependencyConflict: requested: "test-pkg~=1.0" but found: "None"',
+            'DependencyConflict: requested: "test-pkg~=1.0; extra == "instruments"" but found: "None"',
         )
+
+    def test_get_dist_dependency_conflicts_requires_none(self):
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
+
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return None
+
+        dist = MockDistribution()
+        conflict = get_dist_dependency_conflicts(dist)
+        self.assertTrue(conflict is None)

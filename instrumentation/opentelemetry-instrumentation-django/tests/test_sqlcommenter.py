@@ -73,6 +73,37 @@ class TestMiddleware(WsgiTestBase):
         )
 
     @patch(
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
+    )
+    def test_middleware_added_at_position(self, sqlcommenter_middleware):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+
+        # adding two dummy middlewares
+        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middelware)
+        middleware.append(temprory_middelware)
+
+        middleware_position = 1
+        _django_instrumentor.instrument(
+            is_sql_commentor_enabled=True,
+            middleware_position=middleware_position,
+        )
+        instance = sqlcommenter_middleware.return_value
+        instance.get_response = HttpResponse()
+        self.assertEqual(
+            middleware[middleware_position],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+        )
+        self.assertEqual(
+            middleware[middleware_position + 1],
+            "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter",
+        )
+
+    @patch(
         "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
     )
     def test_query_wrapper(self, trace_capture):

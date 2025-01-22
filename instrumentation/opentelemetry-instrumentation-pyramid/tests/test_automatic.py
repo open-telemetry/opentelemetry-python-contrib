@@ -121,6 +121,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 1)
         self.assertEqual(span_list[0].status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span_list[0].events), 0)
 
         PyramidInstrumentor().uninstrument()
 
@@ -223,8 +224,6 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.1",
             "http.server_name": "localhost",
-            "net.host.name": "localhost",
-            "net.host.port": 80,
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -245,7 +244,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt(self):
+    def test_metric_uninstrument(self):
         self.client.get("/hello/756")
         PyramidInstrumentor().uninstrument()
         self.config = Configurator()

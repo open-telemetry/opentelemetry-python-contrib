@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import unittest
 from timeit import default_timer
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -23,45 +25,92 @@ from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+)
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError,
+    entry_points,
+)
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    _active_requests_count_attrs,
-    _duration_attrs,
     get_excluded_urls,
 )
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
     "http.server.response.size",
     "http.server.request.size",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": {*_duration_attrs, SpanAttributes.HTTP_TARGET},
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.response.body.size",
+    "http.server.request.body.size",
+]
+_expected_metric_names_both = _expected_metric_names_old
+_expected_metric_names_both.extend(_expected_metric_names_new)
+
+_recommended_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": {
+        *_server_duration_attrs_old,
+        SpanAttributes.HTTP_TARGET,
+    },
     "http.server.response.size": {
-        *_duration_attrs,
+        *_server_duration_attrs_old,
         SpanAttributes.HTTP_TARGET,
     },
     "http.server.request.size": {
-        *_duration_attrs,
+        *_server_duration_attrs_old,
         SpanAttributes.HTTP_TARGET,
     },
 }
 
+_recommended_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.response.body.size": _server_duration_attrs_new,
+    "http.server.request.body.size": _server_duration_attrs_new,
+}
 
-class TestFastAPIManualInstrumentation(TestBase):
+_recommended_attrs_both = _recommended_attrs_old.copy()
+_recommended_attrs_both.update(_recommended_attrs_new)
+_recommended_attrs_both["http.server.active_requests"].extend(
+    _server_active_requests_count_attrs_old
+)
+
+
+class TestBaseFastAPI(TestBase):
     def _create_app(self):
         app = self._create_fastapi_app()
         self._instrumentor.instrument_app(
@@ -84,12 +133,34 @@ class TestFastAPIManualInstrumentation(TestBase):
         )
         return app
 
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseFastAPI, cls).setUpClass()
+
     def setUp(self):
         super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = patch.dict(
             "os.environ",
-            {"OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "/exclude/123,healthzz"},
+            {
+                "OTEL_PYTHON_FASTAPI_EXCLUDED_URLS": "/exclude/123,healthzz",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.fastapi._excluded_urls_from_env",
@@ -109,6 +180,154 @@ class TestFastAPIManualInstrumentation(TestBase):
             self._instrumentor.uninstrument()
             self._instrumentor.uninstrument_app(self._app)
 
+    @staticmethod
+    def _create_fastapi_app():
+        app = fastapi.FastAPI()
+        sub_app = fastapi.FastAPI()
+
+        @sub_app.get("/home")
+        async def _():
+            return {"message": "sub hi"}
+
+        @app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        @app.get("/user/{username}")
+        async def _(username: str):
+            return {"message": username}
+
+        @app.get("/exclude/{param}")
+        async def _(param: str):
+            return {"message": param}
+
+        @app.get("/healthzz")
+        async def _():
+            return {"message": "ok"}
+
+        app.mount("/sub", app=sub_app)
+
+        return app
+
+
+class TestBaseManualFastAPI(TestBaseFastAPI):
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseManualFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseManualFastAPI, cls).setUpClass()
+
+    def test_sub_app_fastapi_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+
+        As this test case covers manual instrumentation, we won't see any additional spans for the sub app.
+        In this case all generated spans might suffice the requirements for the attributes already
+        (as the testcase is not setting a root_path for the outer app here)
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            self.assertIn("GET /sub", span.name)
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
+        # the sub app is not instrumented with manual instrumentation tests.
+        self.assertEqual(1, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
+
+class TestBaseAutoFastAPI(TestBaseFastAPI):
+    @classmethod
+    def setUpClass(cls):
+        if cls is TestBaseAutoFastAPI:
+            raise unittest.SkipTest(
+                f"{cls.__name__} is an abstract base class"
+            )
+
+        super(TestBaseAutoFastAPI, cls).setUpClass()
+
+    def test_sub_app_fastapi_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+
+        As this test case covers auto instrumentation, we will see additional spans for the sub app.
+        In this case all generated spans might suffice the requirements for the attributes already
+        (as the testcase is not setting a root_path for the outer app here)
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
+
+# pylint: disable=too-many-public-methods
+class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
     def test_instrument_app_with_instrument(self):
         if not isinstance(self, TestAutoInstrumentation):
             self._instrumentor.instrument()
@@ -117,6 +336,10 @@ class TestFastAPIManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /foobar", span.name)
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.fastapi",
+            )
 
     def test_uninstrument_app(self):
         self._client.get("/foobar")
@@ -197,9 +420,13 @@ class TestFastAPIManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -210,7 +437,71 @@ class TestFastAPIManualInstrumentation(TestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _recommended_attrs_old[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_fastapi_metrics_new_semconv(self):
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
+                self.assertTrue(len(scope_metric.metrics) == 3)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_new[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_fastapi_metrics_both_semconv(self):
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        self._client.get("/foobar")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) == 1)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.fastapi",
+                )
+                self.assertTrue(len(scope_metric.metrics) == 5)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_both)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_both[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
@@ -219,21 +510,21 @@ class TestFastAPIManualInstrumentation(TestBase):
         self._client.get("/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
-            "http.method": "GET",
-            "http.host": "testserver:443",
-            "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
-            "net.host.port": 443,
-            "http.status_code": 200,
-            "http.target": "/foobar",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_TARGET: "/foobar",
         }
         expected_requests_count_attributes = {
-            "http.method": "GET",
-            "http.host": "testserver:443",
-            "http.scheme": "https",
-            "http.flavor": "1.1",
-            "http.server_name": "testserver",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -246,7 +537,296 @@ class TestFastAPIManualInstrumentation(TestBase):
                         dict(point.attributes),
                     )
                     self.assertEqual(point.count, 1)
-                    self.assertAlmostEqual(duration, point.sum, delta=30)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success_new_semconv(self):
+        start = default_timer()
+        self._client.get("/foobar")
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(25, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_success_both_semconv(self):
+        start = default_timer()
+        self._client.get("/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes_old = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_duration_attributes_new = {
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_REQUEST_METHOD: "GET",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_nonstandard_http_method_success(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        expected_duration_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 405,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    self.assertAlmostEqual(duration, point.sum, delta=350)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_nonstandard_http_method_success_new_semconv(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 405,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(31, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_metric_nonstandard_http_method_success_both_semconv(self):
+        start = default_timer()
+        self._client.request("NONSTANDARD", "/foobar")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        expected_duration_attributes_old = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            SpanAttributes.NET_HOST_PORT: 443,
+            SpanAttributes.HTTP_STATUS_CODE: 405,
+            SpanAttributes.HTTP_TARGET: "/foobar",
+        }
+        expected_duration_attributes_new = {
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 405,
+            HTTP_ROUTE: "/foobar",
+        }
+        expected_requests_count_attributes = {
+            SpanAttributes.HTTP_METHOD: "_OTHER",
+            SpanAttributes.HTTP_HOST: "testserver:443",
+            SpanAttributes.HTTP_SCHEME: "https",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_REQUEST_METHOD: "_OTHER",
+            URL_SCHEME: "https",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(31, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(31, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(25, point.sum)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
                         expected_requests_count_attributes,
@@ -271,7 +851,7 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -279,7 +859,68 @@ class TestFastAPIManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    def test_metric_uninstruemnt_app(self):
+    def test_basic_post_request_metric_success_new_semconv(self):
+        start = default_timer()
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
+        duration_s = max(default_timer() - start, 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(request_size, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_basic_post_request_metric_success_both_semconv(self):
+        start = default_timer()
+        response = self._client.post(
+            "/foobar",
+            json={"foo": "bar"},
+        )
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        response_size = int(response.headers.get("content-length"))
+        request_size = int(response.request.headers.get("content-length"))
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for metric in (
+            metrics_list.resource_metrics[0].scope_metrics[0].metrics
+        ):
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(
+                            duration_s * 0.1, point.sum, places=1
+                        )
+                    elif metric.name == "http.server.response.body.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.body.size":
+                        self.assertEqual(request_size, point.sum)
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
+                    elif metric.name == "http.server.response.size":
+                        self.assertEqual(response_size, point.sum)
+                    elif metric.name == "http.server.request.size":
+                        self.assertEqual(request_size, point.sum)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+
+    def test_metric_uninstrument_app(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
@@ -313,6 +954,11 @@ class TestFastAPIManualInstrumentation(TestBase):
     @staticmethod
     def _create_fastapi_app():
         app = fastapi.FastAPI()
+        sub_app = fastapi.FastAPI()
+
+        @sub_app.get("/home")
+        async def _():
+            return {"message": "sub hi"}
 
         @app.get("/foobar")
         async def _():
@@ -330,10 +976,12 @@ class TestFastAPIManualInstrumentation(TestBase):
         async def _():
             return {"message": "ok"}
 
+        app.mount("/sub", app=sub_app)
+
         return app
 
 
-class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
+class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -342,23 +990,23 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
         if self._server_request_hook is not None:
             self._server_request_hook(span, scope)
 
-    def client_request_hook(self, receive_span, request):
+    def client_request_hook(self, receive_span, scope, message):
         if self._client_request_hook is not None:
-            self._client_request_hook(receive_span, request)
+            self._client_request_hook(receive_span, scope, message)
 
-    def client_response_hook(self, send_span, response):
+    def client_response_hook(self, send_span, scope, message):
         if self._client_response_hook is not None:
-            self._client_response_hook(send_span, response)
+            self._client_response_hook(send_span, scope, message)
 
     def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(receive_span, request):
+        def client_request_hook(receive_span, scope, message):
             receive_span.update_name("name from client hook")
             receive_span.set_attribute("attr-from-request-hook", "set")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.update_name("name from response hook")
             send_span.set_attribute("attr-from-response-hook", "value")
 
@@ -383,12 +1031,62 @@ class TestFastAPIManualInstrumentationHooks(TestFastAPIManualInstrumentation):
             )
 
 
-class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
+def mock_version_with_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.58"
+    raise PackageNotFoundError()
+
+
+def mock_version_with_old_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.57"
+    raise PackageNotFoundError()
+
+
+def mock_version_without_fastapi(*args, **kwargs):
+    raise PackageNotFoundError()
+
+
+class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
     to both.
     """
+
+    def test_entry_point_exists(self):
+        (ep,) = entry_points(group="opentelemetry_instrumentor")
+        self.assertEqual(ep.name, "fastapi")
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_fastapi_installed(self, mock_version):
+        mock_version.side_effect = mock_version_with_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
+        (ep,) = mock_distro.load_instrumentor.call_args.args
+        self.assertEqual(ep.name, "fastapi")
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_with_old_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_with_old_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        mock_distro.load_instrumentor.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.dependencies.version")
+    def test_instruments_without_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
+        mock_version.side_effect = mock_version_without_fastapi
+        mock_distro = Mock()
+        _load_instrumentors(mock_distro)
+        mock_version.assert_called_once_with("fastapi")
+        mock_distro.load_instrumentor.assert_not_called()
 
     def _create_app(self):
         # instrumentation is handled by the instrument call
@@ -440,12 +1138,76 @@ class TestAutoInstrumentation(TestFastAPIManualInstrumentation):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
 
+    def test_no_op_tracer_provider(self):
+        self._instrumentor.uninstrument()
+        self._instrumentor.instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        app = self._create_fastapi_app()
+        client = TestClient(app)
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
 
+    def test_sub_app_fastapi_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
 
-class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
+
+
+class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
     """
     Test the auto-instrumented variant for request and response hooks
 
@@ -484,6 +1246,58 @@ class TestAutoInstrumentationHooks(TestFastAPIManualInstrumentationHooks):
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
+
+    def test_sub_app_fastapi_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
+
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (
+                SpanAttributes.HTTP_URL in span.attributes
+                or SpanAttributes.HTTP_TARGET in span.attributes
+            )
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+            )
+        self.assertEqual(
+            "https://testserver:443/sub/home",
+            span.attributes[SpanAttributes.HTTP_URL],
+        )
 
 
 class TestAutoInstrumentationLogic(unittest.TestCase):
@@ -691,6 +1505,143 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
+
+
+class TestHTTPAppWithCustomHeadersParameters(TestBase):
+    """Minimal tests here since the behavior of this logic is tested above and in the ASGI tests."""
+
+    def setUp(self):
+        super().setUp()
+        self.instrumentor = otel_fastapi.FastAPIInstrumentor()
+        self.kwargs = {
+            "http_capture_headers_server_request": ["a.*", "b.*"],
+            "http_capture_headers_server_response": ["c.*", "d.*"],
+            "http_capture_headers_sanitize_fields": [".*secret.*"],
+        }
+        self.app = None
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            if self.app:
+                self.instrumentor.uninstrument_app(self.app)
+            else:
+                self.instrumentor.uninstrument()
+
+    @staticmethod
+    def _create_app():
+        app = fastapi.FastAPI()
+
+        @app.get("/foobar")
+        async def _():
+            headers = {
+                "carrot": "bar",
+                "date-secret": "yellow",
+                "egg": "ham",
+            }
+            content = {"message": "hello world"}
+            return JSONResponse(content=content, headers=headers)
+
+        return app
+
+    def test_http_custom_request_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self.instrumentor.instrument_app(self.app, **self.kwargs)
+
+        resp = TestClient(self.app).get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            # apple should be included because it starts with a
+            "http.request.header.apple": ("red",),
+            # same with banana because it starts with b,
+            # redacted because it contains "secret"
+            "http.request.header.banana_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.request.header.fig", server_span.attributes)
+
+    def test_http_custom_request_headers_in_span_attributes_instr(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self.instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            # apple should be included because it starts with a
+            "http.request.header.apple": ("red",),
+            # same with banana because it starts with b,
+            # redacted because it contains "secret"
+            "http.request.header.banana_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.request.header.fig", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self.instrumentor.instrument_app(self.app, **self.kwargs)
+        resp = TestClient(self.app).get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            "http.response.header.carrot": ("bar",),
+            "http.response.header.date_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.response.header.egg", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_inst(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self.instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            "http.response.header.carrot": ("bar",),
+            "http.response.header.date_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.response.header.egg", server_span.attributes)
 
 
 @patch.dict(

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from collections import OrderedDict
+from os.path import dirname, join
 from unittest.mock import mock_open, patch
 
-from opentelemetry.sdk.extension.aws.resource.ecs import AwsEcsResourceDetector
+from opentelemetry.sdk.extension.aws.resource.ecs import (  # pylint: disable=no-name-in-module
+    AwsEcsResourceDetector,
+)
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
     CloudProviderValues,
@@ -33,8 +35,10 @@ MockEcsResourceAttributes = {
 
 
 def _read_file(filename: str) -> str:
-    with open(os.path.join(os.path.dirname(__file__), "ecs", filename)) as f:
-        return f.read()
+    with open(
+        join(dirname(__file__), "ecs", filename), encoding="utf-8"
+    ) as file:
+        return file.read()
 
 
 MetadataV4Uri = "mock-uri-4"
@@ -63,6 +67,7 @@ def _http_get_function_ec2(url: str, *args, **kwargs) -> str:
         return MetadataV4ContainerResponseEc2
     if url == f"{MetadataV4Uri}/task":
         return MetadataV4TaskResponseEc2
+    return None
 
 
 def _http_get_function_fargate(url: str, *args, **kwargs) -> str:
@@ -70,9 +75,15 @@ def _http_get_function_fargate(url: str, *args, **kwargs) -> str:
         return MetadataV4ContainerResponseFargate
     if url == f"{MetadataV4Uri}/task":
         return MetadataV4TaskResponseFargate
+    return None
 
 
 class AwsEcsResourceDetectorTest(unittest.TestCase):
+    @patch.dict("os.environ", {}, clear=True)
+    def test_not_on_ecs(self):
+        actual = AwsEcsResourceDetector().detect()
+        self.assertDictEqual(actual.attributes.copy(), {})
+
     @patch.dict(
         "os.environ",
         {"ECS_CONTAINER_METADATA_URI": "mock-uri"},
@@ -150,7 +161,6 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     ):
         mock_http_get_function.side_effect = _http_get_function_ec2
         actual = AwsEcsResourceDetector().detect()
-        self.maxDiff = None
         self.assertDictEqual(
             actual.attributes.copy(),
             OrderedDict(
@@ -215,7 +225,6 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
     ):
         mock_http_get_function.side_effect = _http_get_function_fargate
         actual = AwsEcsResourceDetector().detect()
-        self.maxDiff = None
         self.assertDictEqual(
             actual.attributes.copy(),
             OrderedDict(

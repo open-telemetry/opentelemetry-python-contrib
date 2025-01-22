@@ -18,7 +18,7 @@ Instrument kafka-python to report instrumentation-kafka produced and consumed me
 Usage
 -----
 
-..code:: python
+.. code:: python
 
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
@@ -45,7 +45,8 @@ this function signature is:
 def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 
-.. code: python
+.. code:: python
+
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
 
@@ -67,6 +68,8 @@ for example:
 API
 ___
 """
+
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import kafka
@@ -74,7 +77,11 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.kafka.package import _instruments
+from opentelemetry.instrumentation.kafka.package import (
+    _instruments,
+    _instruments_kafka_python,
+    _instruments_kafka_python_ng,
+)
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -86,6 +93,23 @@ class KafkaInstrumentor(BaseInstrumentor):
     """
 
     def instrumentation_dependencies(self) -> Collection[str]:
+        # Determine which package of kafka-python is installed
+        # Right now there are two packages, kafka-python and kafka-python-ng
+        # The latter is a fork of the former because the former is connected
+        # to a pypi namespace that the current maintainers cannot access
+        # https://github.com/dpkp/kafka-python/issues/2431
+        try:
+            distribution("kafka-python-ng")
+            return (_instruments_kafka_python_ng,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("kafka-python")
+            return (_instruments_kafka_python,)
+        except PackageNotFoundError:
+            pass
+
         return _instruments
 
     def _instrument(self, **kwargs):

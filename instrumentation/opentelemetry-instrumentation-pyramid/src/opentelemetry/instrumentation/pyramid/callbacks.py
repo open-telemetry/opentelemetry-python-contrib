@@ -31,6 +31,7 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
@@ -140,7 +141,7 @@ def trace_tween_factory(handler, registry):
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
         unit="ms",
-        description="Duration of HTTP client requests.",
+        description="Measures the duration of inbound HTTP requests.",
     )
     active_requests_counter = meter.create_up_down_counter(
         name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -180,6 +181,7 @@ def trace_tween_factory(handler, registry):
 
         response = None
         status = None
+        recordable_exc = None
 
         try:
             response = handler(request)
@@ -190,11 +192,14 @@ def trace_tween_factory(handler, registry):
             # As described in docs, Pyramid exceptions are all valid
             # response types
             response = exc
+            if isinstance(exc, HTTPServerError):
+                recordable_exc = exc
             raise
-        except BaseException:
+        except BaseException as exc:
             # In the case that a non-HTTPException is bubbled up we
             # should infer a internal server error and raise
             status = "500 InternalServerError"
+            recordable_exc = exc
             raise
         finally:
             duration = max(round((default_timer() - start) * 1000), 0)
@@ -221,6 +226,12 @@ def trace_tween_factory(handler, registry):
                         status,
                         getattr(response, "headerlist", None),
                     )
+
+                    if recordable_exc is not None:
+                        span.set_status(
+                            Status(StatusCode.ERROR, str(recordable_exc))
+                        )
+                        span.record_exception(recordable_exc)
 
                 if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                     custom_attributes = (

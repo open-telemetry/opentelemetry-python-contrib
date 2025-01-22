@@ -23,6 +23,7 @@ import elasticsearch
 import elasticsearch.exceptions
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
+from pytest import mark
 
 import opentelemetry.instrumentation.elasticsearch
 from opentelemetry import trace
@@ -36,7 +37,7 @@ from opentelemetry.trace import StatusCode
 
 from . import sanitization_queries  # pylint: disable=no-name-in-module
 
-major_version = elasticsearch.VERSION[0]
+major_version, minor_version = elasticsearch.VERSION[:2]
 
 if major_version == 8:
     from . import helpers_es8 as helpers  # pylint: disable=no-name-in-module
@@ -70,6 +71,9 @@ def get_elasticsearch_client(*args, **kwargs):
 
 
 @mock.patch(helpers.perform_request_mock_path)
+@mock.patch.dict(
+    os.environ, {"OTEL_PYTHON_INSTRUMENTATION_ELASTICSEARCH_ENABLED": "false"}
+)
 class TestElasticsearchIntegration(TestBase):
     search_attributes = {
         SpanAttributes.DB_SYSTEM: "elasticsearch",
@@ -110,8 +114,7 @@ class TestElasticsearchIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        # self.assertEqualSpanInstrumentationInfo(span, opentelemetry.instrumentation.elasticsearch)
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.elasticsearch
         )
 
@@ -475,6 +478,7 @@ class TestElasticsearchIntegration(TestBase):
                 "headers": {
                     "accept": "application/vnd.elasticsearch+json; compatible-with=8"
                 },
+                "otel_span": None,
             }
         elif major_version == 7:
             expected_kwargs = {
@@ -604,6 +608,33 @@ class TestElasticsearchIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.elasticsearch
         )
+
+    @mark.skipif(
+        (major_version, minor_version) < (8, 13),
+        reason="Native OTel since elasticsearch 8.13",
+    )
+    @mock.patch.dict(
+        os.environ,
+        {"OTEL_PYTHON_INSTRUMENTATION_ELASTICSEARCH_ENABLED": "true"},
+    )
+    def test_instrumentation_is_disabled_if_native_support_enabled(
+        self, request_mock
+    ):
+        request_mock.return_value = helpers.mock_response("{}")
+
+        es = get_elasticsearch_client(hosts=["http://localhost:9200"])
+        es.index(
+            index="sw",
+            id=1,
+            **normalize_arguments(body={"name": "adam"}, doc_type="_doc"),
+        )
+
+        spans_list = self.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check that name in span's instrumentation info is not from this instrumentation
+        self.assertEqual(span.instrumentation_info.name, "elasticsearch-api")

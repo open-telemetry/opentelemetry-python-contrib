@@ -14,11 +14,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, overload
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -87,32 +88,32 @@ class SanitizeValue:
 
     def sanitize_header_values(
         self,
-        headers: dict[str, str],
+        headers: Mapping[str, str | list[str]],
         header_regexes: list[str],
         normalize_function: Callable[[str], str],
-    ) -> dict[str, str]:
-        values: dict[str, str] = {}
+    ) -> dict[str, list[str]]:
+        values: dict[str, list[str]] = {}
 
         if header_regexes:
             header_regexes_compiled = re_compile(
-                "|".join("^" + i + "$" for i in header_regexes),
+                "|".join(header_regexes),
                 RE_IGNORECASE,
             )
 
-            for header_name in list(
-                filter(
-                    header_regexes_compiled.match,
-                    headers.keys(),
-                )
-            ):
-                header_values = headers.get(header_name)
-                if header_values:
+            for header_name, header_value in headers.items():
+                if header_regexes_compiled.fullmatch(header_name):
                     key = normalize_function(header_name.lower())
-                    values[key] = [
-                        self.sanitize_header_value(
-                            header=header_name, value=header_values
-                        )
-                    ]
+                    if isinstance(header_value, str):
+                        values[key] = [
+                            self.sanitize_header_value(
+                                header_name, header_value
+                            )
+                        ]
+                    else:
+                        values[key] = [
+                            self.sanitize_header_value(header_name, value)
+                            for value in header_value
+                        ]
 
         return values
 
@@ -120,18 +121,16 @@ class SanitizeValue:
 _root = r"OTEL_PYTHON_{}"
 
 
-def get_traced_request_attrs(instrumentation):
+def get_traced_request_attrs(instrumentation: str) -> list[str]:
     traced_request_attrs = environ.get(
-        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS"), []
+        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS")
     )
-
     if traced_request_attrs:
-        traced_request_attrs = [
+        return [
             traced_request_attr.strip()
             for traced_request_attr in traced_request_attrs.split(",")
         ]
-
-    return traced_request_attrs
+    return []
 
 
 def get_excluded_urls(instrumentation: str) -> ExcludeList:
@@ -166,11 +165,7 @@ def remove_url_credentials(url: str) -> str:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
             parsed_url = urlparse(url)
-            netloc = (
-                (":".join(((parsed_url.hostname or ""), str(parsed_url.port))))
-                if parsed_url.port
-                else (parsed_url.hostname or "")
-            )
+            _, _, netloc = parsed.netloc.rpartition("@")
             return urlunparse(
                 (
                     parsed_url.scheme,
@@ -196,7 +191,15 @@ def normalise_response_header_name(header: str) -> str:
     return f"http.response.header.{key}"
 
 
-def sanitize_method(method: Optional[str]) -> Optional[str]:
+@overload
+def sanitize_method(method: str) -> str: ...
+
+
+@overload
+def sanitize_method(method: None) -> None: ...
+
+
+def sanitize_method(method: str | None) -> str | None:
     if method is None:
         return None
     method = method.upper()
