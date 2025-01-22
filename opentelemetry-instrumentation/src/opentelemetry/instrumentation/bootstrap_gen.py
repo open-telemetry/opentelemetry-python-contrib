@@ -18,7 +18,7 @@
 libraries = [
     {
         "library": "openai >= 1.26.0",
-        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.1b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.2b0.dev",
     },
     {
         "library": "google-cloud-aiplatform >= 1.64",
@@ -142,6 +142,10 @@ libraries = [
     },
     {
         "library": "psycopg2 >= 2.7.3.1",
+        "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
+    },
+    {
+        "library": "psycopg2-binary >= 2.7.3.1",
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
     },
     {

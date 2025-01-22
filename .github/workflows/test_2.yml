@@ -16,6 +16,222 @@ env:
 
 jobs:
 
+  py39-test-util-http_ubuntu-latest:
+    name: util-http 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-util-http -- -ra
+
+  py310-test-util-http_ubuntu-latest:
+    name: util-http 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-util-http -- -ra
+
+  py311-test-util-http_ubuntu-latest:
+    name: util-http 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-util-http -- -ra
+
+  py312-test-util-http_ubuntu-latest:
+    name: util-http 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-util-http -- -ra
+
+  py313-test-util-http_ubuntu-latest:
+    name: util-http 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-util-http -- -ra
+
+  pypy3-test-util-http_ubuntu-latest:
+    name: util-http pypy-3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.8"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-util-http -- -ra
+
+  py38-test-propagator-aws-xray-0_ubuntu-latest:
+    name: propagator-aws-xray-0 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-propagator-aws-xray-0 -- -ra
+
+  py38-test-propagator-aws-xray-1_ubuntu-latest:
+    name: propagator-aws-xray-1 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-propagator-aws-xray-1 -- -ra
+
+  py39-test-propagator-aws-xray-0_ubuntu-latest:
+    name: propagator-aws-xray-0 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-propagator-aws-xray-0 -- -ra
+
+  py39-test-propagator-aws-xray-1_ubuntu-latest:
+    name: propagator-aws-xray-1 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-propagator-aws-xray-1 -- -ra
+
+  py310-test-propagator-aws-xray-0_ubuntu-latest:
+    name: propagator-aws-xray-0 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-propagator-aws-xray-0 -- -ra
+
+  py310-test-propagator-aws-xray-1_ubuntu-latest:
+    name: propagator-aws-xray-1 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-propagator-aws-xray-1 -- -ra
+
   py311-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.11 Ubuntu
     runs-on: ubuntu-latest
@@ -29,7 +245,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-propagator-aws-xray-0 -- -ra
@@ -47,7 +263,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-propagator-aws-xray-1 -- -ra
@@ -65,7 +281,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-propagator-aws-xray-0 -- -ra
@@ -83,7 +299,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-propagator-aws-xray-1 -- -ra
@@ -101,7 +317,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-propagator-aws-xray-0 -- -ra
@@ -119,7 +335,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-propagator-aws-xray-1 -- -ra
@@ -137,7 +353,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-propagator-aws-xray-0 -- -ra
@@ -155,7 +371,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-propagator-aws-xray-1 -- -ra
@@ -173,7 +389,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-propagator-ot-trace -- -ra
@@ -191,7 +407,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-propagator-ot-trace -- -ra
@@ -209,7 +425,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-propagator-ot-trace -- -ra
@@ -227,7 +443,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-propagator-ot-trace -- -ra
@@ -245,7 +461,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-propagator-ot-trace -- -ra
@@ -263,7 +479,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-propagator-ot-trace -- -ra
@@ -281,7 +497,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-propagator-ot-trace -- -ra
@@ -299,7 +515,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sio-pika-0 -- -ra
@@ -317,7 +533,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sio-pika-1 -- -ra
@@ -335,7 +551,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-sio-pika-0 -- -ra
@@ -353,7 +569,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-sio-pika-1 -- -ra
@@ -371,7 +587,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-sio-pika-0 -- -ra
@@ -389,7 +605,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-sio-pika-1 -- -ra
@@ -407,7 +623,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-sio-pika-0 -- -ra
@@ -425,7 +641,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-sio-pika-1 -- -ra
@@ -443,7 +659,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-sio-pika-0 -- -ra
@@ -461,7 +677,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-sio-pika-1 -- -ra
@@ -479,7 +695,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-sio-pika-0 -- -ra
@@ -497,7 +713,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-sio-pika-1 -- -ra
@@ -515,7 +731,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-sio-pika-0 -- -ra
@@ -533,7 +749,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-sio-pika-1 -- -ra
@@ -551,7 +767,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-0 -- -ra
@@ -569,7 +785,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-1 -- -ra
@@ -587,7 +803,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-2 -- -ra
@@ -605,7 +821,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-3 -- -ra
@@ -623,7 +839,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-aio-pika-0 -- -ra
@@ -641,7 +857,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-aio-pika-1 -- -ra
@@ -659,7 +875,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-aio-pika-2 -- -ra
@@ -677,7 +893,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-aio-pika-3 -- -ra
@@ -695,7 +911,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-aio-pika-0 -- -ra
@@ -713,7 +929,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-aio-pika-1 -- -ra
@@ -731,7 +947,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-aio-pika-2 -- -ra
@@ -749,7 +965,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-aio-pika-3 -- -ra
@@ -767,7 +983,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-aio-pika-0 -- -ra
@@ -785,7 +1001,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-aio-pika-1 -- -ra
@@ -803,7 +1019,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-aio-pika-2 -- -ra
@@ -821,7 +1037,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-aio-pika-3 -- -ra
@@ -839,7 +1055,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aio-pika-0 -- -ra
@@ -857,7 +1073,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aio-pika-1 -- -ra
@@ -875,7 +1091,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aio-pika-2 -- -ra
@@ -893,7 +1109,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aio-pika-3 -- -ra
@@ -911,7 +1127,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aio-pika-0 -- -ra
@@ -929,7 +1145,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aio-pika-1 -- -ra
@@ -947,7 +1163,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aio-pika-2 -- -ra
@@ -965,7 +1181,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aio-pika-3 -- -ra
@@ -983,7 +1199,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aio-pika-0 -- -ra
@@ -1001,7 +1217,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aio-pika-1 -- -ra
@@ -1019,7 +1235,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aio-pika-2 -- -ra
@@ -1037,7 +1253,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aio-pika-3 -- -ra
@@ -1055,7 +1271,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aiokafka -- -ra
@@ -1073,7 +1289,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-aiokafka -- -ra
@@ -1091,7 +1307,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-aiokafka -- -ra
@@ -1109,7 +1325,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-aiokafka -- -ra
@@ -1127,7 +1343,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-aiokafka -- -ra
@@ -1145,7 +1361,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aiokafka -- -ra
@@ -1163,7 +1379,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aiokafka -- -ra
@@ -1181,7 +1397,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-kafka-python -- -ra
@@ -1199,7 +1415,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-kafka-python -- -ra
@@ -1217,7 +1433,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-kafka-python -- -ra
@@ -1235,7 +1451,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-kafka-python -- -ra
@@ -1253,7 +1469,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-kafka-pythonng -- -ra
@@ -1271,7 +1487,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-kafka-pythonng -- -ra
@@ -1289,7 +1505,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-kafka-pythonng -- -ra
@@ -1307,7 +1523,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-kafka-pythonng -- -ra
@@ -1325,7 +1541,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-kafka-pythonng -- -ra
@@ -1343,7 +1559,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-kafka-pythonng -- -ra
@@ -1361,7 +1577,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-kafka-python -- -ra
@@ -1379,7 +1595,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-kafka-pythonng -- -ra
@@ -1397,7 +1613,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-confluent-kafka -- -ra
@@ -1415,7 +1631,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-confluent-kafka -- -ra
@@ -1433,7 +1649,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-confluent-kafka -- -ra
@@ -1451,7 +1667,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-confluent-kafka -- -ra
@@ -1469,7 +1685,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-confluent-kafka -- -ra
@@ -1487,7 +1703,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-confluent-kafka -- -ra
@@ -1505,7 +1721,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-asyncio -- -ra
@@ -1523,7 +1739,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-asyncio -- -ra
@@ -1541,7 +1757,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-asyncio -- -ra
@@ -1559,7 +1775,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-asyncio -- -ra
@@ -1577,7 +1793,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-asyncio -- -ra
@@ -1595,7 +1811,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-asyncio -- -ra
@@ -1613,7 +1829,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-cassandra -- -ra
@@ -1631,7 +1847,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-cassandra -- -ra
@@ -1649,7 +1865,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-cassandra -- -ra
@@ -1667,7 +1883,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-cassandra -- -ra
@@ -1685,7 +1901,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-cassandra -- -ra
@@ -1703,7 +1919,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-cassandra -- -ra
@@ -1721,7 +1937,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-cassandra -- -ra
@@ -1739,7 +1955,7 @@ jobs:
           python-version: "3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-processor-baggage -- -ra
@@ -1757,7 +1973,7 @@ jobs:
           python-version: "3.9"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py39-test-processor-baggage -- -ra
@@ -1775,7 +1991,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py310-test-processor-baggage -- -ra
@@ -1793,7 +2009,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py311-test-processor-baggage -- -ra
@@ -1811,7 +2027,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py312-test-processor-baggage -- -ra
@@ -1829,7 +2045,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py313-test-processor-baggage -- -ra
@@ -1847,7 +2063,7 @@ jobs:
           python-version: "pypy-3.8"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-processor-baggage -- -ra
