@@ -191,8 +191,7 @@ def test_converse_stream_with_invalid_model(
     assert_converse_stream_completion_attributes(
         span,
         llm_model_value,
-        None,
-        "chat",
+        operation_name="chat",
     )
 
     assert span.status.status_code == StatusCode.ERROR
