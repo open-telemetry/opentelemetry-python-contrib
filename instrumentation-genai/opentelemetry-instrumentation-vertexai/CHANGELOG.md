@@ -11,3 +11,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3192](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3192))
 - Initial VertexAI instrumentation
   ([#3123](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3123))
+- VertexAI emit user events
+  ([#3203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3203))

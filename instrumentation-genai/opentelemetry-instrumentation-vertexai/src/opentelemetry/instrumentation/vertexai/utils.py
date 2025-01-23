@@ -19,14 +19,18 @@ from dataclasses import dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
+    Iterable,
     Mapping,
     Sequence,
+    cast,
 )
 
+from opentelemetry._events import Event
+from opentelemetry.instrumentation.vertexai.events import user_event
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.util.types import AttributeValue
+from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.types import content, tool
@@ -137,3 +141,21 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
     if not model:
         return f"{name}"
     return f"{name} {model}"
+
+
+def request_to_events(
+    *, params: GenerateContentParams, capture_content: bool
+) -> Iterable[Event]:
+    for content in params.contents or []:
+        if content.role == "model":
+            # TODO: handle assistant message
+            pass
+        # Assume user event but role should be "user"
+        else:
+            request_content = None
+            if capture_content:
+                request_content = [
+                    cast(dict[str, AnyValue], type(part).to_dict(part))  # type: ignore[reportUnknownMemberType]
+                    for part in content.parts
+                ]
+            yield user_event(role=content.role, content=request_content)

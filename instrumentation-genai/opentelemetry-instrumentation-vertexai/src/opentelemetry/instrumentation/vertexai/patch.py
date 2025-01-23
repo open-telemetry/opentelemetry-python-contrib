@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
     get_span_name,
+    request_to_events,
 )
 from opentelemetry.trace import SpanKind, Tracer
 
@@ -107,13 +108,12 @@ def generate_content_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-        ) as _span:
-            # TODO: emit request events
-            # if span.is_recording():
-            #     for message in kwargs.get("messages", []):
-            #         event_logger.emit(
-            #             message_to_event(message, capture_content)
-            #         )
+        ) as span:
+            if span.is_recording():
+                for event in request_to_events(
+                    params=params, capture_content=capture_content
+                ):
+                    event_logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
