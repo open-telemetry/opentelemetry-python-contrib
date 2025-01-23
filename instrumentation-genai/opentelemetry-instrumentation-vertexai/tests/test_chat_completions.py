@@ -259,3 +259,74 @@ def assert_span_error(span: ReadableSpan) -> None:
     # Records exception event
     error_events = [e for e in span.events if e.name == "exception"]
     assert error_events != []
+
+
+@pytest.mark.vcr
+def test_generate_content_all_input_events(
+    log_exporter: InMemoryLogExporter,
+    instrument_with_content: VertexAIInstrumentor,
+):
+    model = GenerativeModel(
+        "gemini-1.5-flash-002",
+        system_instruction=Part.from_text("You are a clever language model"),
+    )
+    model.generate_content(
+        [
+            Content(
+                role="user", parts=[Part.from_text("My name is OpenTelemetry")]
+            ),
+            Content(
+                role="model", parts=[Part.from_text("Hello OpenTelemetry!")]
+            ),
+            Content(
+                role="user",
+                parts=[
+                    Part.from_text("Address me by name and say this is a test")
+                ],
+            ),
+        ],
+    )
+
+    # Emits a system event, 2 users events, and a assistant event
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 4
+    system_log, user_log1, assistant_log, user_log2 = [
+        log_data.log_record for log_data in logs
+    ]
+
+    assert system_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.system.message",
+    }
+    assert system_log.body == {
+        "content": [{"text": "You are a clever language model"}],
+        # The API only allows user and model, so system instruction is considered a user role
+        "role": "user",
+    }
+
+    assert user_log1.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.user.message",
+    }
+    assert user_log1.body == {
+        "content": [{"text": "My name is OpenTelemetry"}],
+        "role": "user",
+    }
+
+    assert assistant_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.assistant.message",
+    }
+    assert assistant_log.body == {
+        "content": [{"text": "Hello OpenTelemetry!"}],
+        "role": "model",
+    }
+
+    assert user_log2.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.user.message",
+    }
+    assert user_log2.body == {
+        "content": [{"text": "Address me by name and say this is a test"}],
+        "role": "user",
+    }

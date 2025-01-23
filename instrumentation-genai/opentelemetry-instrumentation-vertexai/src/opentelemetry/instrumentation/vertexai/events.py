@@ -45,3 +45,47 @@ def user_event(
         },
         body=body,
     )
+
+
+def assistant_event(
+    *,
+    role: str = "assistant",
+    content: AnyValue = None,
+) -> Event:
+    """Creates a User event
+    https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#assistant-event
+    """
+    body: dict[str, AnyValue] = {
+        "role": role,
+    }
+    if content is not None:
+        body["content"] = content
+    return Event(
+        name="gen_ai.assistant.message",
+        attributes={
+            gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+        },
+        body=body,
+    )
+
+
+def system_event(
+    *,
+    role: str = "system",
+    content: AnyValue = None,
+) -> Event:
+    """Creates a User event
+    https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#system-event
+    """
+    body: dict[str, AnyValue] = {
+        "role": role,
+    }
+    if content is not None:
+        body["content"] = content
+    return Event(
+        name="gen_ai.system.message",
+        attributes={
+            gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+        },
+        body=body,
+    )
