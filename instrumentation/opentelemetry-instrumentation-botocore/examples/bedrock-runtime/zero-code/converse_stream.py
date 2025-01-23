@@ -16,9 +16,9 @@ def main():
     )
 
     response = ""
-    for s in stream["stream"]:
-        if "contentBlockDelta" in s:
-            response += s["contentBlockDelta"]["delta"]["text"]
+    for event in stream["stream"]:
+        if "contentBlockDelta" in event:
+            response += event["contentBlockDelta"]["delta"]["text"]
     print(response)
 
 

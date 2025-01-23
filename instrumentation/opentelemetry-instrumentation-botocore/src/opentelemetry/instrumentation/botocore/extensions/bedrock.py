@@ -278,9 +278,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 result["stream"], stream_done_callback
             )
             return
-        else:
-            # Converse
-            self._converse_on_success(span, result)
+
+        # Converse
+        self._converse_on_success(span, result)
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:

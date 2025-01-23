@@ -22,6 +22,7 @@ from botocore.eventstream import EventStream
 from wrapt import ObjectProxy
 
 
+# pylint: disable=abstract-method
 class ConverseStreamWrapper(ObjectProxy):
     """Wrapper for botocor.event.EventStream"""
 
