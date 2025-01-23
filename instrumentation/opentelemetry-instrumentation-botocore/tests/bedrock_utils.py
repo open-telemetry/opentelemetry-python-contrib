@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import io
 import json
 from typing import Any
 
@@ -40,12 +39,11 @@ def assert_completion_attributes_from_streaming_body(
     input_tokens = None
     output_tokens = None
     finish_reason = None
-    if response:
+    if response is not None:
         original_body = response["body"]
         body_content = original_body.read()
-        stream = io.BytesIO(body_content)
-        telemetry_content = stream.read()
-        response = json.loads(telemetry_content.decode("utf-8"))
+        response = json.loads(body_content.decode("utf-8"))
+        assert response
 
         if "amazon.titan" in request_model:
             input_tokens = response.get("inputTextTokenCount")

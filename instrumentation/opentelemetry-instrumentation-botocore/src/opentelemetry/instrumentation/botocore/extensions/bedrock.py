@@ -226,19 +226,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             original_body = result["body"]
             body_content = original_body.read()
 
-            # Use one stream for telemetry
-            stream = io.BytesIO(body_content)
-            telemetry_content = stream.read()
-            response_body = json.loads(telemetry_content.decode("utf-8"))
+            # Replenish stream for downstream application use
+            new_stream = io.BytesIO(body_content)
+            result["body"] = StreamingBody(new_stream, len(body_content))
+
+            response_body = json.loads(body_content.decode("utf-8"))
             if "amazon.titan" in model_id:
                 self._handle_amazon_titan_response(span, response_body)
             elif "amazon.nova" in model_id:
                 self._handle_amazon_nova_response(span, response_body)
             elif "anthropic.claude" in model_id:
                 self._handle_anthropic_claude_response(span, response_body)
-            # Replenish stream for downstream application use
-            new_stream = io.BytesIO(body_content)
-            result["body"] = StreamingBody(new_stream, len(body_content))
 
         except json.JSONDecodeError:
             _logger.debug("Error: Unable to parse the response body as JSON")
