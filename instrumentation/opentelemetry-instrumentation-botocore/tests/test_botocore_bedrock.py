@@ -25,8 +25,9 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
 from opentelemetry.trace.status import StatusCode
 
 from .bedrock_utils import (
-    assert_completion_attributes,
     assert_completion_attributes_from_streaming_body,
+    assert_converse_completion_attributes,
+    assert_converse_stream_completion_attributes,
 )
 
 BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
@@ -58,7 +59,7 @@ def test_converse_with_content(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    assert_completion_attributes(
+    assert_converse_completion_attributes(
         span,
         llm_model_value,
         response,
@@ -93,7 +94,100 @@ def test_converse_with_invalid_model(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert_completion_attributes(
+    assert_converse_completion_attributes(
+        span,
+        llm_model_value,
+        None,
+        "chat",
+    )
+
+    assert span.status.status_code == StatusCode.ERROR
+    assert span.attributes[ERROR_TYPE] == "ValidationException"
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
+def test_converse_stream_with_content(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "amazon.titan-text-lite-v1"
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    response = bedrock_runtime_client.converse_stream(
+        messages=messages,
+        modelId=llm_model_value,
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+            "topP": top_p,
+            "stopSequences": stop_sequences,
+        },
+    )
+
+    # consume the stream in order to have it traced
+    finish_reason = None
+    input_tokens, output_tokens = None, None
+    text = ""
+    for event in response["stream"]:
+        if "contentBlockDelta" in event:
+            text += event["contentBlockDelta"]["delta"]["text"]
+        if "messageStop" in event:
+            finish_reason = (event["messageStop"]["stopReason"],)
+        if "metadata" in event:
+            usage = event["metadata"]["usage"]
+            input_tokens = usage["inputTokens"]
+            output_tokens = usage["outputTokens"]
+
+    assert text
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_converse_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        "chat",
+        top_p,
+        temperature,
+        max_tokens,
+        stop_sequences,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
+def test_converse_stream_with_invalid_model(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "does-not-exist"
+    with pytest.raises(bedrock_runtime_client.exceptions.ValidationException):
+        bedrock_runtime_client.converse_stream(
+            messages=messages,
+            modelId=llm_model_value,
+        )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_converse_stream_completion_attributes(
         span,
         llm_model_value,
         None,
