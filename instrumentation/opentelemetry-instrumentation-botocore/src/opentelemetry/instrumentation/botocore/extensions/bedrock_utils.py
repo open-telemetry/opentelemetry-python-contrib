@@ -172,6 +172,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             return
 
     def _process_anthropic_claude_chunk(self, chunk):
+        # pylint: disable=too-many-return-statements
         if not (message_type := chunk.get("type")):
             return
 

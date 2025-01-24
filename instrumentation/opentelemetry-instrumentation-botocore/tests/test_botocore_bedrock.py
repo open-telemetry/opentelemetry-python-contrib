@@ -339,6 +339,7 @@ def test_invoke_model_with_response_stream_with_content(
     instrument_with_content,
     model_family,
 ):
+    # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
     max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
     body = get_invoke_model_body(
