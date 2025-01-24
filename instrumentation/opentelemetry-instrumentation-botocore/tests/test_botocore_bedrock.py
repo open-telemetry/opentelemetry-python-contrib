@@ -27,7 +27,7 @@ from opentelemetry.trace.status import StatusCode
 from .bedrock_utils import (
     assert_completion_attributes_from_streaming_body,
     assert_converse_completion_attributes,
-    assert_converse_stream_completion_attributes,
+    assert_stream_completion_attributes,
 )
 
 BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
@@ -149,9 +149,12 @@ def test_converse_stream_with_content(
             output_tokens = usage["outputTokens"]
 
     assert text
+    assert finish_reason
+    assert input_tokens
+    assert output_tokens
 
     (span,) = span_exporter.get_finished_spans()
-    assert_converse_stream_completion_attributes(
+    assert_stream_completion_attributes(
         span,
         llm_model_value,
         input_tokens,
@@ -188,7 +191,7 @@ def test_converse_stream_with_invalid_model(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert_converse_stream_completion_attributes(
+    assert_stream_completion_attributes(
         span,
         llm_model_value,
         operation_name="chat",
@@ -305,6 +308,120 @@ def test_invoke_model_with_invalid_model(
     llm_model_value = "does-not-exist"
     with pytest.raises(bedrock_runtime_client.exceptions.ClientError):
         bedrock_runtime_client.invoke_model(
+            body=b"",
+            modelId=llm_model_value,
+        )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        None,
+        "chat",
+    )
+
+    assert span.status.status_code == StatusCode.ERROR
+    assert span.attributes[ERROR_TYPE] == "ValidationException"
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+)
+@pytest.mark.vcr()
+def test_invoke_model_with_response_stream_with_content(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+    model_family,
+):
+    llm_model_value = get_model_name_from_family(model_family)
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    body = get_invoke_model_body(
+        llm_model_value, max_tokens, temperature, top_p, stop_sequences
+    )
+    response = bedrock_runtime_client.invoke_model_with_response_stream(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    # consume the stream in order to have it traced
+    finish_reason = None
+    input_tokens, output_tokens = None, None
+    text = ""
+    for event in response["body"]:
+        json_bytes = event["chunk"].get("bytes", b"")
+        decoded = json_bytes.decode("utf-8")
+        chunk = json.loads(decoded)
+
+        # amazon.titan
+        if (stop_reason := chunk.get("completionReason")) is not None:
+            finish_reason = stop_reason
+
+        if (output_text := chunk.get("outputText")) is not None:
+            text += output_text
+
+        # amazon.titan, anthropic.claude
+        if invocation_metrics := chunk.get("amazon-bedrock-invocationMetrics"):
+            input_tokens = invocation_metrics["inputTokenCount"]
+            output_tokens = invocation_metrics["outputTokenCount"]
+
+        # anthropic.claude
+        if (message_type := chunk.get("type")) is not None:
+            if message_type == "content_block_start":
+                text += chunk["content_block"]["text"]
+            elif message_type == "content_block_delta":
+                text += chunk["delta"]["text"]
+            elif message_type == "message_delta":
+                finish_reason = chunk["delta"]["stop_reason"]
+
+        # amazon nova
+        if "contentBlockDelta" in chunk:
+            text += chunk["contentBlockDelta"]["delta"]["text"]
+        if "messageStop" in chunk:
+            finish_reason = chunk["messageStop"]["stopReason"]
+        if "metadata" in chunk:
+            usage = chunk["metadata"]["usage"]
+            input_tokens = usage["inputTokens"]
+            output_tokens = usage["outputTokens"]
+
+    assert text
+    assert finish_reason
+    assert input_tokens
+    assert output_tokens
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens,
+        output_tokens,
+        (finish_reason,),
+        "text_completion" if model_family == "amazon.titan" else "chat",
+        top_p,
+        temperature,
+        max_tokens,
+        stop_sequences,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
+@pytest.mark.vcr()
+def test_invoke_model_with_response_stream_invalid_model(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    llm_model_value = "does-not-exist"
+    with pytest.raises(bedrock_runtime_client.exceptions.ClientError):
+        bedrock_runtime_client.invoke_model_with_response_stream(
             body=b"",
             modelId=llm_model_value,
         )
