@@ -102,7 +102,7 @@ class _AwsSdkExtension:
         return True
 
     def should_end_span_on_exit(self) -> bool:  # pylint:disable=no-self-use
-        """Returns if the span should be close automatically on exit
+        """Returns if the span should be closed automatically on exit
 
         Extensions might override this function to disable automatic closing
         of the span if they need to close it at a later time themselves.
