@@ -86,3 +86,19 @@ class TestDependencyConflicts(TestBase):
             str(conflict),
             'DependencyConflict: requested: "test-pkg~=1.0; extra == "instruments"" but found: "None"',
         )
+
+    def test_get_dist_dependency_conflicts_requires_none(self):
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
+
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return None
+
+        dist = MockDistribution()
+        conflict = get_dist_dependency_conflicts(dist)
+        self.assertTrue(conflict is None)

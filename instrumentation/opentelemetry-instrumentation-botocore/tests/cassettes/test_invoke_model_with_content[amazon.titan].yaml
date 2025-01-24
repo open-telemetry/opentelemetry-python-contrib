@@ -1,0 +1,57 @@
+interactions:
+- request:
+    body: '{"inputText": "Say this is a test", "textGenerationConfig": {"maxTokenCount":
+      10, "temperature": 0.8, "topP": 1, "stopSequences": ["|"]}}'
+    headers:
+      Content-Length:
+      - '137'
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
+        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
+        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      X-Amz-Date:
+      - !!binary |
+        MjAyNTAxMjJUMTUyNDA1Wg==
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - !!binary |
+        Um9vdD0xLWZmMzM4ODA0LWMwMzYyNzgzNjczNjAzMWI0ZTZlZTIwNTtQYXJlbnQ9MmJjZmVlZGE5
+        NWVjZWUyYztTYW1wbGVkPTE=
+      amz-sdk-invocation-id:
+      - !!binary |
+        YmZjOGJiMjEtY2Q2MS00MDNmLWE2NzEtZmQ4YmMzNzBkOTJl
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/invoke
+  response:
+    body:
+      string: '{"inputTextTokenCount":5,"results":[{"tokenCount":9,"outputText":"
+        comment\nHello! How are you?","completionReason":"FINISH"}]}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '127'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 Jan 2025 15:24:06 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '1104'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '9'
+      x-amzn-RequestId:
+      - ef788ecb-b5ed-404e-ace7-de59741cded5
+    status:
+      code: 200
+      message: OK
+version: 1

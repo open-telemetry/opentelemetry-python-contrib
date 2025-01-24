@@ -1,0 +1,58 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}],
+      "inferenceConfig": {"max_new_tokens": 10, "temperature": 0.8, "topP": 1, "stopSequences":
+      ["|"]}, "schemaVersion": "messages-v1"}'
+    headers:
+      Content-Length:
+      - '207'
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
+        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
+        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      X-Amz-Date:
+      - !!binary |
+        MjAyNTAxMjJUMTUyNDA0Wg==
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - !!binary |
+        Um9vdD0xLTY0ZGIzYWIxLTc2YWUzYmUxYmQ0NzI4Mzg1ZjdmOTEzZTtQYXJlbnQ9ZGRmYTdlZjI4
+        NWNiYTIxNTtTYW1wbGVkPTE=
+      amz-sdk-invocation-id:
+      - !!binary |
+        ZDZlMGIyOTUtYjM5Yi00NGU3LThiMmItZjgyODM2OTlkZTZk
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: '{"output":{"message":{"content":[{"text":"It sounds like you might
+        be in the middle of"}],"role":"assistant"}},"stopReason":"max_tokens","usage":{"inputTokens":5,"outputTokens":10,"totalTokens":15}}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '198'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 Jan 2025 15:24:05 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '237'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 32f3134e-fc64-4db5-94bf-0279159cf79d
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,51 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Content-Length:
+      - '0'
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
+        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
+        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      X-Amz-Date:
+      - !!binary |
+        MjAyNTAxMjJUMTUyNDA3Wg==
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - !!binary |
+        Um9vdD0xLWVmZWZjYTdkLTM0OTI0ZjRmYTVlMDJmOTRhODFiY2M3NjtQYXJlbnQ9YWZiYmEwYjRh
+        MmU1NTQ0NDtTYW1wbGVkPTE=
+      amz-sdk-invocation-id:
+      - !!binary |
+        ODI0ZDAwZDgtMmE1Yy00Mzk4LWIwYTItOWY5ZmNlYjQ2MGNh
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/does-not-exist/invoke
+  response:
+    body:
+      string: '{"message":"The provided model identifier is invalid."}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '55'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 Jan 2025 15:24:08 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-ErrorType:
+      - ValidationException:http://internal.amazon.com/coral/com.amazon.bedrock/
+      x-amzn-RequestId:
+      - 9739ef10-1ae7-4694-ba63-3a39e7ca02c1
+    status:
+      code: 400
+      message: Bad Request
+version: 1
