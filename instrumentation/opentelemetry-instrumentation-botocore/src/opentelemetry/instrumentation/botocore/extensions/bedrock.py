@@ -271,7 +271,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
             def stream_done_callback(response):
                 self._converse_on_success(span, response)
-                print("span.attr", span.attributes)
                 span.end()
 
             result["stream"] = ConverseStreamWrapper(
