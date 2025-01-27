@@ -91,7 +91,7 @@ def assert_completion_attributes_from_streaming_body(
     )
 
 
-def assert_completion_attributes(
+def assert_converse_completion_attributes(
     span: ReadableSpan,
     request_model: str,
     response: dict[str, Any] | None,
@@ -112,6 +112,34 @@ def assert_completion_attributes(
     else:
         finish_reason = None
 
+    return assert_all_attributes(
+        span,
+        request_model,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        operation_name,
+        request_top_p,
+        request_temperature,
+        request_max_tokens,
+        tuple(request_stop_sequences)
+        if request_stop_sequences is not None
+        else request_stop_sequences,
+    )
+
+
+def assert_converse_stream_completion_attributes(
+    span: ReadableSpan,
+    request_model: str,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    finish_reason: tuple[str] | None = None,
+    operation_name: str = "chat",
+    request_top_p: int | None = None,
+    request_temperature: int | None = None,
+    request_max_tokens: int | None = None,
+    request_stop_sequences: list[str] | None = None,
+):
     return assert_all_attributes(
         span,
         request_model,
