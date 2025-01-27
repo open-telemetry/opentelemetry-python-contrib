@@ -664,6 +664,24 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-pymysql
 
+  lint-instrumentation-pymssql:
+    name: instrumentation-pymssql
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-pymssql
+
   lint-instrumentation-pyramid:
     name: instrumentation-pyramid
     runs-on: ubuntu-latest
