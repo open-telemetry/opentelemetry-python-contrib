@@ -128,7 +128,7 @@ def assert_converse_completion_attributes(
     )
 
 
-def assert_converse_stream_completion_attributes(
+def assert_stream_completion_attributes(
     span: ReadableSpan,
     request_model: str,
     input_tokens: int | None = None,
