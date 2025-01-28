@@ -25,6 +25,7 @@ from opentelemetry._events import EventLogger
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
+    get_server_attributes,
     get_span_name,
     request_to_events,
 )
@@ -101,7 +102,11 @@ def generate_content_create(
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
-        span_attributes = get_genai_request_attributes(params)
+        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+        span_attributes = {
+            **get_genai_request_attributes(params),
+            **get_server_attributes(api_endpoint),
+        }
 
         span_name = get_span_name(span_attributes)
         with tracer.start_as_current_span(

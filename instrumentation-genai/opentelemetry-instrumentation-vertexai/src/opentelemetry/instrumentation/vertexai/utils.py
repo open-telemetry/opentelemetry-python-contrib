@@ -24,6 +24,7 @@ from typing import (
     Sequence,
     cast,
 )
+from urllib.parse import urlparse
 
 from opentelemetry._events import Event
 from opentelemetry.instrumentation.vertexai.events import (
@@ -34,6 +35,7 @@ from opentelemetry.instrumentation.vertexai.events import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
@@ -64,6 +66,24 @@ class GenerateContentParams:
     generation_config: (
         content.GenerationConfig | content_v1beta1.GenerationConfig | None
     ) = None
+
+
+def get_server_attributes(
+    endpoint: str,
+) -> dict[str, AttributeValue]:
+    """Get server.* attributes from the endpoint, which is a hostname with optional port e.g.
+    - ``us-central1-aiplatform.googleapis.com``
+    - ``us-central1-aiplatform.googleapis.com:5431``
+    """
+    parsed = urlparse(f"scheme://{endpoint}")
+
+    if not parsed.hostname:
+        return {}
+
+    return {
+        server_attributes.SERVER_ADDRESS: parsed.hostname,
+        server_attributes.SERVER_PORT: parsed.port or 443,
+    }
 
 
 def get_genai_request_attributes(
