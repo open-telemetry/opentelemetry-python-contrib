@@ -113,12 +113,11 @@ def generate_content_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-        ) as span:
-            if span.is_recording():
-                for event in request_to_events(
-                    params=params, capture_content=capture_content
-                ):
-                    event_logger.emit(event)
+        ) as _span:
+            for event in request_to_events(
+                params=params, capture_content=capture_content
+            ):
+                event_logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
@@ -130,10 +129,9 @@ def generate_content_create(
             #     )
 
             # TODO: add response attributes and events
-            # if span.is_recording():
-            #     _set_response_attributes(
-            #         span, result, event_logger, capture_content
-            #     )
+            # _set_response_attributes(
+            #     span, result, event_logger, capture_content
+            # )
             return result
 
     return traced_method
