@@ -82,6 +82,8 @@ def test_generate_content_without_events(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
 
     # Emits event without body.content
