@@ -37,7 +37,7 @@ instruments = [
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
-pymssql = "opentelemetry.instrumentation.pymssql:pymssqlInstrumentor"
+pymssql = "opentelemetry.instrumentation.pymssql:PyMSSQLInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-pymssql"
