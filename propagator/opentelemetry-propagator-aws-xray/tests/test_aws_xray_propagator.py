@@ -92,7 +92,7 @@ def build_test_span_context(
         trace_state,
     )
 
-
+# pylint: disable=R0904
 class AwsXRayPropagatorTest(unittest.TestCase):
     XRAY_PROPAGATOR = AwsXRayPropagator()
 
@@ -281,7 +281,9 @@ class AwsXRayPropagatorTest(unittest.TestCase):
             ),
         )
 
-        self.assertEqual(baggage.get_baggage(LINEAGE_KEY, context=context_with_extracted), lineage)
+        self.assertEqual(
+            baggage.get_baggage(LINEAGE_KEY, context=context_with_extracted), lineage
+        )
 
         self.assertEqual(
             get_nested_span_context(context_with_extracted),
@@ -417,14 +419,21 @@ class AwsXRayPropagatorTest(unittest.TestCase):
             }
         )
         setter_carrier = CaseInsensitiveDict()
-        
-        extract_ctx  = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(getter_carrier, build_test_current_context())
 
-        self.assertEqual(baggage.get_baggage(LINEAGE_KEY, extract_ctx), "32767:e65a2c4d:255")
+        extract_ctx = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
+            getter_carrier, build_test_current_context()
+        )
+
+        self.assertEqual(
+            baggage.get_baggage(LINEAGE_KEY, extract_ctx), "32767:e65a2c4d:255"
+        )
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(setter_carrier, extract_ctx)
-        
-        self.assertEqual(setter_carrier.get(TRACE_HEADER_KEY), 'Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0;Lineage=32767:e65a2c4d:255')
+
+        self.assertEqual(
+            setter_carrier.get(TRACE_HEADER_KEY),
+            "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0;Lineage=32767:e65a2c4d:255",
+        )
 
     def test_extract_inject_invalid_lineage(self):
         getter_carrier = CaseInsensitiveDict(
@@ -433,15 +442,20 @@ class AwsXRayPropagatorTest(unittest.TestCase):
             }
         )
         setter_carrier = CaseInsensitiveDict()
-        
-        extract_ctx  = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(getter_carrier, build_test_current_context())
+
+        extract_ctx = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
+            getter_carrier, build_test_current_context()
+        )
 
         self.assertEqual(baggage.get_baggage(LINEAGE_KEY, extract_ctx), None)
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(setter_carrier, extract_ctx)
-        
-        self.assertEqual(setter_carrier.get(TRACE_HEADER_KEY), 'Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0')
-        
+
+        self.assertEqual(
+            setter_carrier.get(TRACE_HEADER_KEY),
+            "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0",
+        )
+
     @patch("opentelemetry.propagators.aws.aws_xray_propagator.trace")
     def test_fields(self, mock_trace):
         """Make sure the fields attribute returns the fields used in inject"""

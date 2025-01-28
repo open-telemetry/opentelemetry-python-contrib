@@ -318,7 +318,8 @@ class AwsXRayPropagator(TextMapPropagator):
 
         is_hash_valid = (
             len(lineage_hash) == LINEAGE_HASH_LENGTH
-            and AwsXRayPropagator._parse_natural_or_return_negative(lineage_hash, 16) != -1
+            and AwsXRayPropagator._parse_natural_or_return_negative(lineage_hash, 16)
+            != -1
         )
         is_valid_loop_counter = (
             LINEAGE_MIN_LOOP_REQUEST_COUNTER <= loop_counter <= LINEAGE_MAX_LOOP_COUNTER
