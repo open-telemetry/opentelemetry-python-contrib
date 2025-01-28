@@ -40,6 +40,8 @@ class DependencyConflict:
 
 
 class DependencyConflictError(Exception):
+    conflict: DependencyConflict
+
     def __init__(self, conflict: DependencyConflict):
         self.conflict = conflict
 
