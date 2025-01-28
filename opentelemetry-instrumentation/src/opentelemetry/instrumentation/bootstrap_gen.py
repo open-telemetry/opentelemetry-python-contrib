@@ -157,6 +157,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-pymongo==0.51b0.dev",
     },
     {
+        "library": "pymssql >= 2.1.5, < 3",
+        "instrumentation": "opentelemetry-instrumentation-pymssql==0.51b0.dev",
+    },
+    {
         "library": "PyMySQL < 2",
         "instrumentation": "opentelemetry-instrumentation-pymysql==0.51b0.dev",
     },

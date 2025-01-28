@@ -188,11 +188,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
+        end_span_on_exit = extension.should_end_span_on_exit()
 
         with self._tracer.start_as_current_span(
             call_context.span_name,
             kind=call_context.span_kind,
             attributes=attributes,
+            # tracing streaming services require to close the span manually
+            # at a later time after the stream has been consumed
+            end_on_exit=end_span_on_exit,
         ) as span:
             _safe_invoke(extension.before_service_call, span)
             self._call_request_hook(span, call_context)

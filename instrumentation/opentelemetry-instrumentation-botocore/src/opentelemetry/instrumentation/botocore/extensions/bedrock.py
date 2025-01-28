@@ -23,8 +23,13 @@ import json
 import logging
 from typing import Any
 
+from botocore.eventstream import EventStream
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    ConverseStreamWrapper,
+    InvokeModelWithResponseStreamWrapper,
+)
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
@@ -62,7 +67,22 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     Amazon Bedrock Runtime</a>.
     """
 
-    _HANDLED_OPERATIONS = {"Converse", "InvokeModel"}
+    _HANDLED_OPERATIONS = {
+        "Converse",
+        "ConverseStream",
+        "InvokeModel",
+        "InvokeModelWithResponseStream",
+    }
+    _DONT_CLOSE_SPAN_ON_END_OPERATIONS = {
+        "ConverseStream",
+        "InvokeModelWithResponseStream",
+    }
+
+    def should_end_span_on_exit(self):
+        return (
+            self._call_context.operation
+            not in self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
+        )
 
     def extract_attributes(self, attributes: _AttributeMapT):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
@@ -77,7 +97,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GenAiOperationNameValues.CHAT.value
             )
 
-            # Converse
+            # Converse / ConverseStream
             if inference_config := self._call_context.params.get(
                 "inferenceConfig"
             ):
@@ -251,6 +271,20 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             return
 
         if not span.is_recording():
+            if not self.should_end_span_on_exit():
+                span.end()
+            return
+
+        # ConverseStream
+        if "stream" in result and isinstance(result["stream"], EventStream):
+
+            def stream_done_callback(response):
+                self._converse_on_success(span, response)
+                span.end()
+
+            result["stream"] = ConverseStreamWrapper(
+                result["stream"], stream_done_callback
+            )
             return
 
         # Converse
@@ -263,6 +297,20 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         # InvokeModel
         if "body" in result and isinstance(result["body"], StreamingBody):
             self._invoke_model_on_success(span, result, model_id)
+            return
+
+        # InvokeModelWithResponseStream
+        if "body" in result and isinstance(result["body"], EventStream):
+
+            def invoke_model_stream_done_callback(response):
+                # the callback gets data formatted as the simpler converse API
+                self._converse_on_success(span, response)
+                span.end()
+
+            result["body"] = InvokeModelWithResponseStreamWrapper(
+                result["body"], invoke_model_stream_done_callback, model_id
+            )
+            return
 
     # pylint: disable=no-self-use
     def _handle_amazon_titan_response(
@@ -328,3 +376,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         span.set_status(Status(StatusCode.ERROR, str(exception)))
         if span.is_recording():
             span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+
+        if not self.should_end_span_on_exit():
+            span.end()
