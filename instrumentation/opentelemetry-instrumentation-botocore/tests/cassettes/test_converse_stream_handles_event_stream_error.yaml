@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}],
+      "inferenceConfig": {"maxTokens": 10, "temperature": 0.8, "topP": 1, "stopSequences":
+      ["|"]}}'
+    headers:
+      Content-Length:
+      - '170'
+      Content-Type:
+      - !!binary |
+        YXBwbGljYXRpb24vanNvbg==
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
+        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
+        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      X-Amz-Date:
+      - !!binary |
+        MjAyNTAxMjdUMTE0NjAyWg==
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - !!binary |
+        Um9vdD0xLWI5YzVlMjRlLWRmYzBjYTYyMmFiYjA2ZWEyMjAzZDZkYjtQYXJlbnQ9NDE0MWM4NWIx
+        ODkzMmI3OTtTYW1wbGVkPTE=
+      amz-sdk-invocation-id:
+      - !!binary |
+        YjA0ZTAzYWEtMDg2MS00NGIzLTk3NmMtMWZjOGE5MzY5YTFl
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse-stream
+  response:
+    body:
+      string: !!binary |
+        AAAAswAAAFK3IJ11CzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
+        cHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsicCI6ImFiY2RlZmdoaWprbG1u
+        b3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMSIsInJvbGUiOiJhc3Npc3Rh
+        bnQifRl7p7oAAAC3AAAAVzLKzzoLOmV2ZW50LXR5cGUHABFjb250ZW50QmxvY2tEZWx0YQ06Y29u
+        dGVudC10eXBlBwAQYXBwbGljYXRpb24vanNvbg06bWVzc2FnZS10eXBlBwAFZXZlbnR7ImNvbnRl
+        bnRCbG9ja0luZGV4IjowLCJkZWx0YSI6eyJ0ZXh0IjoiSGkhIEknbSBhbiBBSSBsYW5ndWFnZSJ9
+        LCJwIjoiYWJjZGVmZ2gifUn9+AsAAACUAAAAVsOsqngLOmV2ZW50LXR5cGUHABBjb250ZW50Qmxv
+        Y2tTdG9wDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVl
+        dmVudHsiY29udGVudEJsb2NrSW5kZXgiOjAsInAiOiJhYmNkZWZnaGlqa2xtbm9wIn3KsHRKAAAA
+        pgAAAFGGKdQ9CzpldmVudC10eXBlBwALbWVzc2FnZVN0b3ANOmNvbnRlbnQtdHlwZQcAEGFwcGxp
+        Y2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJwIjoiYWJjZGVmZ2hpamtsbW5vcHFy
+        c3R1dnd4eXpBQkNERUZHSEkiLCJzdG9wUmVhc29uIjoibWF4X3Rva2VucyJ9eRUDZQAAAPUAAABO
+        dJJs0ws6ZXZlbnQtdHlwZQcACG1ldGFkYXRhDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9q
+        c29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsibWV0cmljcyI6eyJsYXRlbmN5TXMiOjY2NH0sInAi
+        OiJhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ekFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaMDEi
+        LCJ1c2FnZSI6eyJpbnB1dFRva2VucyI6OCwib3V0cHV0VG9rZW5zIjoxMCwidG90YWxUb2tlbnMi
+        OjE4fX3B+Dpy
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/vnd.amazon.eventstream
+      Date:
+      - Mon, 27 Jan 2025 11:46:02 GMT
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      x-amzn-RequestId:
+      - 657e0bef-5ebb-4387-be65-d3ceafd53dea
+    status:
+      code: 200
+      message: OK
+version: 1

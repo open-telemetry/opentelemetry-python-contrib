@@ -34,6 +34,8 @@ def test_generate_content(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
 
 
@@ -62,6 +64,8 @@ def test_generate_content_empty_model(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "",
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
     assert_span_error(spans[0])
 
@@ -91,6 +95,8 @@ def test_generate_content_missing_model(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-does-not-exist",
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
     assert_span_error(spans[0])
 
@@ -122,6 +128,8 @@ def test_generate_content_invalid_temperature(
         "gen_ai.request.model": "gemini-1.5-flash-002",
         "gen_ai.request.temperature": 1000.0,
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
     assert_span_error(spans[0])
 
@@ -158,6 +166,8 @@ def test_generate_content_extra_params(span_exporter, instrument_no_content):
         "gen_ai.request.temperature": 0.20000000298023224,
         "gen_ai.request.top_p": 0.949999988079071,
         "gen_ai.system": "vertex_ai",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
     }
 
 
