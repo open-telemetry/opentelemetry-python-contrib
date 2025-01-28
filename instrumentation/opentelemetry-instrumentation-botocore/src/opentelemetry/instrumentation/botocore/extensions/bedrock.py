@@ -266,6 +266,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             if original_body is not None:
                 original_body.close()
 
+    def _on_stream_error_callback(self, span: Span, exception):
+        span.set_status(Status(StatusCode.ERROR, str(exception)))
+        if span.is_recording():
+            span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+        span.end()
+
     def on_success(self, span: Span, result: dict[str, Any]):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
@@ -282,8 +288,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 self._converse_on_success(span, response)
                 span.end()
 
+            def stream_error_callback(exception):
+                self._on_stream_error_callback(span, exception)
+
             result["stream"] = ConverseStreamWrapper(
-                result["stream"], stream_done_callback
+                result["stream"], stream_done_callback, stream_error_callback
             )
             return
 
@@ -307,8 +316,14 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 self._converse_on_success(span, response)
                 span.end()
 
+            def invoke_model_stream_error_callback(exception):
+                self._on_stream_error_callback(span, exception)
+
             result["body"] = InvokeModelWithResponseStreamWrapper(
-                result["body"], invoke_model_stream_done_callback, model_id
+                result["body"],
+                invoke_model_stream_done_callback,
+                invoke_model_stream_error_callback,
+                model_id,
             )
             return
 

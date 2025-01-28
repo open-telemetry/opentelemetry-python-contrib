@@ -19,9 +19,13 @@
 from __future__ import annotations
 
 import json
+from typing import Callable, Dict, Union
 
-from botocore.eventstream import EventStream
+from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
+
+_StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
+_StreamErrorCallableT = Callable[[Exception], None]
 
 
 # pylint: disable=abstract-method
@@ -31,19 +35,25 @@ class ConverseStreamWrapper(ObjectProxy):
     def __init__(
         self,
         stream: EventStream,
-        stream_done_callback,
+        stream_done_callback: _StreamDoneCallableT,
+        stream_error_callback: _StreamErrorCallableT,
     ):
         super().__init__(stream)
 
         self._stream_done_callback = stream_done_callback
+        self._stream_error_callback = stream_error_callback
         # accumulating things in the same shape of non-streaming version
         # {"usage": {"inputTokens": 0, "outputTokens": 0}, "stopReason": "finish"}
         self._response = {}
 
     def __iter__(self):
-        for event in self.__wrapped__:
-            self._process_event(event)
-            yield event
+        try:
+            for event in self.__wrapped__:
+                self._process_event(event)
+                yield event
+        except EventStreamError as exc:
+            self._stream_error_callback(exc)
+            raise
 
     def _process_event(self, event):
         if "messageStart" in event:
@@ -85,12 +95,14 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
     def __init__(
         self,
         stream: EventStream,
-        stream_done_callback,
+        stream_done_callback: _StreamDoneCallableT,
+        stream_error_callback: _StreamErrorCallableT,
         model_id: str,
     ):
         super().__init__(stream)
 
         self._stream_done_callback = stream_done_callback
+        self._stream_error_callback = stream_error_callback
         self._model_id = model_id
 
         # accumulating things in the same shape of the Converse API
@@ -98,9 +110,13 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         self._response = {}
 
     def __iter__(self):
-        for event in self.__wrapped__:
-            self._process_event(event)
-            yield event
+        try:
+            for event in self.__wrapped__:
+                self._process_event(event)
+                yield event
+        except EventStreamError as exc:
+            self._stream_error_callback(exc)
+            raise
 
     def _process_event(self, event):
         if "chunk" not in event:
