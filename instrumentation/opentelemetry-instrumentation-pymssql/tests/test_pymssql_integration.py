@@ -20,6 +20,7 @@ import opentelemetry.instrumentation.pymssql
 from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import entry_points
 
 
 def mock_connect(*args, **kwargs):
@@ -182,3 +183,15 @@ class TestPyMSSQLIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_load_entry_point(self):
+        self.assertIs(
+            next(
+                iter(
+                    entry_points(
+                        group="opentelemetry_instrumentor", name="pymssql"
+                    )
+                )
+            ).load(),
+            PyMSSQLInstrumentor,
+        )
