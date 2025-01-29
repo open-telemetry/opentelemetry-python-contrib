@@ -52,7 +52,7 @@ def assistant_event(
     role: str = "assistant",
     content: AnyValue = None,
 ) -> Event:
-    """Creates a User event
+    """Creates an Assistant event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#assistant-event
     """
     body: dict[str, AnyValue] = {
@@ -74,7 +74,7 @@ def system_event(
     role: str = "system",
     content: AnyValue = None,
 ) -> Event:
-    """Creates a User event
+    """Creates a System event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#system-event
     """
     body: dict[str, AnyValue] = {
