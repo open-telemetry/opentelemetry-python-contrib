@@ -537,6 +537,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1780](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1780))
 - Add metric instrumentation for celery
   ([#1679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1679))
+- Added Enable_commenter for mysql
+  ([#1834](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1834))
 - `opentelemetry-instrumentation-asgi` Add `http.server.response.size` metric
   ([#1789](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1789))
 - `opentelemetry-instrumentation-grpc` Allow gRPC connections via Unix socket
