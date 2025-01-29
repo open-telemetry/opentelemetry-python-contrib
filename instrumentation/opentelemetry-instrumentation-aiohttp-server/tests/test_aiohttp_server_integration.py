@@ -22,6 +22,7 @@ import pytest_asyncio
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
+    _InstrumentedApplication,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.semconv.trace import SpanAttributes
@@ -70,13 +71,20 @@ def fixture_suppress():
     return False
 
 
+@pytest.mark.asyncio
+async def test_aiohttp_app_instrumented():
+    AioHttpServerInstrumentor().instrument()
+    from aiohttp import web, web_app  # pylint: disable=C0415
+
+    assert web.Application is _InstrumentedApplication
+    assert web_app.Application is _InstrumentedApplication
+
+
 @pytest_asyncio.fixture(name="server_fixture")
 async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     _, memory_exporter = tracer
 
-    AioHttpServerInstrumentor().instrument()
-
-    app = aiohttp.web.Application()
+    app = _InstrumentedApplication()
     app.add_routes([aiohttp.web.get("/test-path", default_handler)])
     if suppress:
         with suppress_http_instrumentation():
@@ -87,8 +95,6 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     yield server, app
 
     memory_exporter.clear()
-
-    AioHttpServerInstrumentor().uninstrument()
 
 
 def test_checking_instrumentor_pkg_installed():

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `opentelemetry-instrumentation-aiohttp-server` injection to `aiohttp` module `web_app`.
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
