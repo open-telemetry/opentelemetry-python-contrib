@@ -19,16 +19,24 @@ from dataclasses import dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
+    Iterable,
     Mapping,
     Sequence,
+    cast,
 )
 from urllib.parse import urlparse
 
+from opentelemetry._events import Event
+from opentelemetry.instrumentation.vertexai.events import (
+    assistant_event,
+    system_event,
+    user_event,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv.attributes import server_attributes
-from opentelemetry.util.types import AttributeValue
+from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.types import content, tool
@@ -157,3 +165,46 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
     if not model:
         return f"{name}"
     return f"{name} {model}"
+
+
+def request_to_events(
+    *, params: GenerateContentParams, capture_content: bool
+) -> Iterable[Event]:
+    # System message
+    if params.system_instruction:
+        request_content = _parts_to_any_value(
+            capture_content=capture_content,
+            parts=params.system_instruction.parts,
+        )
+        yield system_event(
+            role=params.system_instruction.role, content=request_content
+        )
+
+    for content in params.contents or []:
+        # Assistant message
+        if content.role == "model":
+            request_content = _parts_to_any_value(
+                capture_content=capture_content, parts=content.parts
+            )
+
+            yield assistant_event(role=content.role, content=request_content)
+        # Assume user event but role should be "user"
+        else:
+            request_content = _parts_to_any_value(
+                capture_content=capture_content, parts=content.parts
+            )
+            yield user_event(role=content.role, content=request_content)
+
+
+def _parts_to_any_value(
+    *,
+    capture_content: bool,
+    parts: Sequence[content.Part] | Sequence[content_v1beta1.Part],
+) -> list[dict[str, AnyValue]] | None:
+    if not capture_content:
+        return None
+
+    return [
+        cast("dict[str, AnyValue]", type(part).to_dict(part))  # type: ignore[reportUnknownMemberType]
+        for part in parts
+    ]
