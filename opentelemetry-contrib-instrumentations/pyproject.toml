@@ -64,6 +64,7 @@ dependencies = [
     "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
     "opentelemetry-instrumentation-pymemcache==0.51b0.dev",
     "opentelemetry-instrumentation-pymongo==0.51b0.dev",
+    "opentelemetry-instrumentation-pymssql==0.51b0.dev",
     "opentelemetry-instrumentation-pymysql==0.51b0.dev",
     "opentelemetry-instrumentation-pyramid==0.51b0.dev",
     "opentelemetry-instrumentation-redis==0.51b0.dev",
