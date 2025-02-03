@@ -196,7 +196,7 @@ def instrument_with_content(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content_sample_out(
+def instrument_with_content_unsampled(
     span_exporter, event_logger_provider, meter_provider
 ):
     os.environ.update(

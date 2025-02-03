@@ -73,11 +73,10 @@ def chat_completions_create(
                     _set_response_attributes(
                         span, result, event_logger, capture_content
                     )
-                if getattr(result, "choices", None):
-                    for choice in result.choices:
-                        event_logger.emit(
-                            choice_to_event(choice, capture_content)
-                        )
+                for choice in getattr(result, "choices", []):
+                    event_logger.emit(
+                        choice_to_event(choice, capture_content)
+                    )
 
                 span.end()
                 return result
@@ -134,11 +133,10 @@ def async_chat_completions_create(
                     _set_response_attributes(
                         span, result, event_logger, capture_content
                     )
-                if getattr(result, "choices", None):
-                    for choice in result.choices:
-                        event_logger.emit(
-                            choice_to_event(choice, capture_content)
-                        )
+                for choice in  getattr(result, "choices", []):
+                    event_logger.emit(
+                        choice_to_event(choice, capture_content)
+                    )
 
                 span.end()
                 return result
@@ -234,9 +232,8 @@ def _set_response_attributes(
     )
 
     if getattr(result, "choices", None):
-        choices = result.choices
         finish_reasons = []
-        for choice in choices:
+        for choice in result.choices:
             finish_reasons.append(choice.finish_reason or "error")
 
         set_span_attribute(

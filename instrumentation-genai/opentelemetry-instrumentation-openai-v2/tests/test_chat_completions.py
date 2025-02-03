@@ -660,11 +660,11 @@ def test_chat_completion_multiple_tools_streaming_no_content(
 
 
 @pytest.mark.vcr()
-def test_chat_completion_with_content_span_sampled_out(
+def test_chat_completion_with_content_span_unsampled(
     span_exporter,
     log_exporter,
     openai_client,
-    instrument_with_content_sample_out,
+    instrument_with_content_unsampled,
 ):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]

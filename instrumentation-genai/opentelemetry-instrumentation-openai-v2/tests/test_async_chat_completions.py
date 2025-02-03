@@ -635,11 +635,11 @@ async def test_async_chat_completion_multiple_tools_streaming_no_content(
 
 @pytest.mark.vcr()
 @pytest.mark.asyncio()
-async def test_async_chat_completion_streaming_sample_out(
+async def test_async_chat_completion_streaming_unsampled(
     span_exporter,
     log_exporter,
     async_openai_client,
-    instrument_with_content_sample_out,
+    instrument_with_content_unsampled,
 ):
     llm_model_value = "gpt-4"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
