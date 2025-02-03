@@ -56,11 +56,8 @@ def chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            if span.is_recording():
-                for message in kwargs.get("messages", []):
-                    event_logger.emit(
-                        message_to_event(message, capture_content)
-                    )
+            for message in kwargs.get("messages", []):
+                event_logger.emit(message_to_event(message, capture_content))
 
             start = default_timer()
             result = None
@@ -76,6 +73,12 @@ def chat_completions_create(
                     _set_response_attributes(
                         span, result, event_logger, capture_content
                     )
+                if getattr(result, "choices", None):
+                    for choice in result.choices:
+                        event_logger.emit(
+                            choice_to_event(choice, capture_content)
+                        )
+
                 span.end()
                 return result
 
@@ -114,11 +117,8 @@ def async_chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            if span.is_recording():
-                for message in kwargs.get("messages", []):
-                    event_logger.emit(
-                        message_to_event(message, capture_content)
-                    )
+            for message in kwargs.get("messages", []):
+                event_logger.emit(message_to_event(message, capture_content))
 
             start = default_timer()
             result = None
@@ -134,6 +134,12 @@ def async_chat_completions_create(
                     _set_response_attributes(
                         span, result, event_logger, capture_content
                     )
+                if getattr(result, "choices", None):
+                    for choice in result.choices:
+                        event_logger.emit(
+                            choice_to_event(choice, capture_content)
+                        )
+
                 span.end()
                 return result
 
@@ -229,9 +235,6 @@ def _set_response_attributes(
 
     if getattr(result, "choices", None):
         choices = result.choices
-        for choice in choices:
-            event_logger.emit(choice_to_event(choice, capture_content))
-
         finish_reasons = []
         for choice in choices:
             finish_reasons.append(choice.finish_reason or "error")
@@ -333,42 +336,43 @@ class StreamWrapper:
 
     def cleanup(self):
         if self._span_started:
-            if self.response_model:
+            if self.span.is_recording():
+                if self.response_model:
+                    set_span_attribute(
+                        self.span,
+                        GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+                        self.response_model,
+                    )
+
+                if self.response_id:
+                    set_span_attribute(
+                        self.span,
+                        GenAIAttributes.GEN_AI_RESPONSE_ID,
+                        self.response_id,
+                    )
+
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_RESPONSE_MODEL,
-                    self.response_model,
+                    GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                    self.prompt_tokens,
                 )
-
-            if self.response_id:
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_RESPONSE_ID,
-                    self.response_id,
+                    GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                    self.completion_tokens,
                 )
 
-            set_span_attribute(
-                self.span,
-                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
-                self.prompt_tokens,
-            )
-            set_span_attribute(
-                self.span,
-                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-                self.completion_tokens,
-            )
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+                    self.service_tier,
+                )
 
-            set_span_attribute(
-                self.span,
-                GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
-                self.service_tier,
-            )
-
-            set_span_attribute(
-                self.span,
-                GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                self.finish_reasons,
-            )
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                    self.finish_reasons,
+                )
 
             for idx, choice in enumerate(self.choice_buffers):
                 message = {"role": "assistant"}
