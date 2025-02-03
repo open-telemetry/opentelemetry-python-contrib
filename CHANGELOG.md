@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.30.0/0.51b0 (2025-02-03)
+
 ### Added
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
