@@ -25,6 +25,7 @@ from opentelemetry._events import EventLogger
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
+    get_genai_response_attributes,
     get_server_attributes,
     get_span_name,
     request_to_events,
@@ -113,7 +114,7 @@ def generate_content_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-        ) as _span:
+        ) as span:
             for event in request_to_events(
                 params=params, capture_content=capture_content
             ):
@@ -121,17 +122,19 @@ def generate_content_create(
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
-            result = wrapped(*args, **kwargs)
+            response = wrapped(*args, **kwargs)
             # TODO: handle streaming
             # if is_streaming(kwargs):
             #     return StreamWrapper(
             #         result, span, event_logger, capture_content
             #     )
 
+            if span.is_recording():
+                span.set_attributes(get_genai_response_attributes(response))
             # TODO: add response attributes and events
             # _set_response_attributes(
             #     span, result, event_logger, capture_content
             # )
-            return result
+            return response
 
     return traced_method

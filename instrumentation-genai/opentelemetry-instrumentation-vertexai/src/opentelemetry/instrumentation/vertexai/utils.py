@@ -39,9 +39,16 @@ from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
-    from google.cloud.aiplatform_v1.types import content, tool
+    from google.cloud.aiplatform_v1.types import (
+        content,
+        prediction_service,
+        tool,
+    )
     from google.cloud.aiplatform_v1beta1.types import (
         content as content_v1beta1,
+    )
+    from google.cloud.aiplatform_v1beta1.types import (
+        prediction_service as prediction_service_v1beta1,
     )
     from google.cloud.aiplatform_v1beta1.types import (
         tool as tool_v1beta1,
@@ -135,6 +142,21 @@ def get_genai_request_attributes(
         )
 
     return attributes
+
+
+def get_genai_response_attributes(
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+) -> dict[str, AttributeValue]:
+    finish_reasons: list[str] = [
+        candidate.finish_reason.name for candidate in response.candidates
+    ]
+    return {
+        GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
+        GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS: response.usage_metadata.prompt_token_count,
+        GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS: response.usage_metadata.candidates_token_count,
+    }
 
 
 _MODEL_STRIP_RE = re.compile(
