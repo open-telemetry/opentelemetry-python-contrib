@@ -97,9 +97,9 @@ LINEAGE_DELIMITER = ":"
 LINEAGE_MAX_LENGTH = 18
 LINEAGE_MIN_LENGTH = 12
 LINEAGE_HASH_LENGTH = 8
-LINEAGE_MAX_LOOP_COUNTER = 32767
-LINEAGE_MAX_REQUEST_COUNTER = 255
-LINEAGE_MIN_LOOP_REQUEST_COUNTER = 0
+LINEAGE_MAX_COUNTER1 = 32767
+LINEAGE_MAX_COUNTER2 = 255
+LINEAGE_MIN_COUNTER = 0
 INVALID_LINEAGE_HEADER = "-1:11111111:0"
 
 
@@ -311,8 +311,8 @@ class AwsXRayPropagator(TextMapPropagator):
     def _is_valid_lineage(key):
         split = key.split(LINEAGE_DELIMITER)
         lineage_hash = split[1]
-        loop_counter = AwsXRayPropagator._parse_natural_or_return_negative(split[0], 10)
-        request_counter = AwsXRayPropagator._parse_natural_or_return_negative(
+        counter1 = AwsXRayPropagator._parse_natural_or_return_negative(split[0], 10)
+        counter2 = AwsXRayPropagator._parse_natural_or_return_negative(
             split[2], 10
         )
 
@@ -321,16 +321,16 @@ class AwsXRayPropagator(TextMapPropagator):
             and AwsXRayPropagator._parse_natural_or_return_negative(lineage_hash, 16)
             != -1
         )
-        is_valid_loop_counter = (
-            LINEAGE_MIN_LOOP_REQUEST_COUNTER <= loop_counter <= LINEAGE_MAX_LOOP_COUNTER
+        is_valid_counter1 = (
+            LINEAGE_MIN_COUNTER <= counter1 <= LINEAGE_MAX_COUNTER1
         )
-        is_valid_request_counter = (
-            LINEAGE_MIN_LOOP_REQUEST_COUNTER
-            <= request_counter
-            <= LINEAGE_MAX_REQUEST_COUNTER
+        is_valid_counter2 = (
+            LINEAGE_MIN_COUNTER
+            <= counter2
+            <= LINEAGE_MAX_COUNTER2
         )
 
-        return is_hash_valid and is_valid_loop_counter and is_valid_request_counter
+        return is_hash_valid and is_valid_counter1 and is_valid_counter2
 
     @staticmethod
     def _parse_natural_or_return_negative(value, base):
