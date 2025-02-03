@@ -74,9 +74,7 @@ def chat_completions_create(
                         span, result, event_logger, capture_content
                     )
                 for choice in getattr(result, "choices", []):
-                    event_logger.emit(
-                        choice_to_event(choice, capture_content)
-                    )
+                    event_logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
                 return result
@@ -133,10 +131,8 @@ def async_chat_completions_create(
                     _set_response_attributes(
                         span, result, event_logger, capture_content
                     )
-                for choice in  getattr(result, "choices", []):
-                    event_logger.emit(
-                        choice_to_event(choice, capture_content)
-                    )
+                for choice in getattr(result, "choices", []):
+                    event_logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
                 return result
