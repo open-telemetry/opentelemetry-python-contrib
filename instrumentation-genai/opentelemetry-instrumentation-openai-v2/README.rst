@@ -92,7 +92,7 @@ To implement these bucket boundaries, you can create Views in your OpenTelemetry
     from opentelemetry.sdk.metrics import MeterProvider, View
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-    from opentelemetry.sdk.metrics.aggregation import ExplicitBucketHistogramAggregation
+    from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 
     views = [
         View(
