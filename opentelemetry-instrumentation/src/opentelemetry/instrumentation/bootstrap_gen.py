@@ -22,7 +22,7 @@ libraries = [
     },
     {
         "library": "google-cloud-aiplatform >= 1.64",
-        "instrumentation": "opentelemetry-instrumentation-vertexai==0.51b0",
+        "instrumentation": "opentelemetry-instrumentation-vertexai==2.1b0.dev",
     },
     {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
