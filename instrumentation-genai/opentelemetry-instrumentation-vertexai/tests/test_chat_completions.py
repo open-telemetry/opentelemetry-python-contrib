@@ -47,21 +47,42 @@ def test_generate_content(
         "server.port": 443,
     }
 
-    # Emits content event
+    # Emits user and choice events
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
-    log_record = logs[0].log_record
+    assert len(logs) == 2
+    user_log, choice_log = [log_data.log_record for log_data in logs]
+
     span_context = spans[0].get_span_context()
-    assert log_record.trace_id == span_context.trace_id
-    assert log_record.span_id == span_context.span_id
-    assert log_record.trace_flags == span_context.trace_flags
-    assert log_record.attributes == {
+    assert user_log.trace_id == span_context.trace_id
+    assert user_log.span_id == span_context.span_id
+    assert user_log.trace_flags == span_context.trace_flags
+    assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
     }
-    assert log_record.body == {
+    assert user_log.body == {
         "content": [{"text": "Say this is a test"}],
         "role": "user",
+    }
+
+    assert choice_log.trace_id == span_context.trace_id
+    assert choice_log.span_id == span_context.span_id
+    assert choice_log.trace_flags == span_context.trace_flags
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+            "content": [
+                {
+                    "text": "Okay, I understand.  I'm ready for your test.  Please proceed.\n"
+                }
+            ],
+            "role": "model",
+        },
     }
 
 
@@ -94,15 +115,25 @@ def test_generate_content_without_events(
         "server.port": 443,
     }
 
-    # Emits event without body.content
+    # Emits user and choice event without body.content
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
-    log_record = logs[0].log_record
-    assert log_record.attributes == {
+    assert len(logs) == 2
+    user_log, choice_log = [log_data.log_record for log_data in logs]
+    assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
     }
-    assert log_record.body == {"role": "user"}
+    assert user_log.body == {"role": "user"}
+
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {"role": "model"},
+    }
 
 
 @pytest.mark.vcr
@@ -286,7 +317,7 @@ def assert_span_error(span: ReadableSpan) -> None:
 
 
 @pytest.mark.vcr
-def test_generate_content_all_input_events(
+def test_generate_content_all_events(
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
 ):
@@ -311,10 +342,10 @@ def test_generate_content_all_input_events(
         ],
     )
 
-    # Emits a system event, 2 users events, and a assistant event
+    # Emits a system event, 2 users events, an assistant event, and the choice (response) event
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
-    system_log, user_log1, assistant_log, user_log2 = [
+    assert len(logs) == 5
+    system_log, user_log1, assistant_log, user_log2, choice_log = [
         log_data.log_record for log_data in logs
     ]
 
@@ -353,4 +384,17 @@ def test_generate_content_all_input_events(
     assert user_log2.body == {
         "content": [{"text": "Address me by name and say this is a test"}],
         "role": "user",
+    }
+
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+            "content": [{"text": "OpenTelemetry, this is a test.\n"}],
+            "role": "model",
+        },
     }

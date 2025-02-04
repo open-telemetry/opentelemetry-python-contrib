@@ -29,6 +29,7 @@ from opentelemetry.instrumentation.vertexai.utils import (
     get_server_attributes,
     get_span_name,
     request_to_events,
+    response_to_events,
 )
 from opentelemetry.trace import SpanKind, Tracer
 
@@ -131,10 +132,11 @@ def generate_content_create(
 
             if span.is_recording():
                 span.set_attributes(get_genai_response_attributes(response))
-            # TODO: add response attributes and events
-            # _set_response_attributes(
-            #     span, result, event_logger, capture_content
-            # )
+            for event in response_to_events(
+                response=response, capture_content=capture_content
+            ):
+                event_logger.emit(event)
+
             return response
 
     return traced_method

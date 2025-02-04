@@ -28,7 +28,10 @@ from urllib.parse import urlparse
 
 from opentelemetry._events import Event
 from opentelemetry.instrumentation.vertexai.events import (
+    ChoiceMessage,
+    FinishReason,
     assistant_event,
+    choice_event,
     system_event,
     user_event,
 )
@@ -53,6 +56,9 @@ if TYPE_CHECKING:
     from google.cloud.aiplatform_v1beta1.types import (
         tool as tool_v1beta1,
     )
+
+
+_MODEL = "model"
 
 
 @dataclass(frozen=True)
@@ -204,7 +210,7 @@ def request_to_events(
 
     for content in params.contents or []:
         # Assistant message
-        if content.role == "model":
+        if content.role == _MODEL:
             request_content = _parts_to_any_value(
                 capture_content=capture_content, parts=content.parts
             )
@@ -216,6 +222,27 @@ def request_to_events(
                 capture_content=capture_content, parts=content.parts
             )
             yield user_event(role=content.role, content=request_content)
+
+
+def response_to_events(
+    *,
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+    capture_content: bool,
+) -> Iterable[Event]:
+    for candidate in response.candidates:
+        yield choice_event(
+            finish_reason=_map_finish_reason(candidate.finish_reason),
+            index=candidate.index,
+            # default to "model" since Vertex uses that instead of assistant
+            message=ChoiceMessage(
+                role=candidate.content.role or _MODEL,
+                content=_parts_to_any_value(
+                    capture_content=capture_content,
+                    parts=candidate.content.parts,
+                ),
+            ),
+        )
 
 
 def _parts_to_any_value(
@@ -230,3 +257,26 @@ def _parts_to_any_value(
         cast("dict[str, AnyValue]", type(part).to_dict(part))  # type: ignore[reportUnknownMemberType]
         for part in parts
     ]
+
+
+def _map_finish_reason(
+    finish_reason: content.Candidate.FinishReason
+    | content_v1beta1.Candidate.FinishReason,
+) -> FinishReason | str:
+    EnumType = type(finish_reason)  # pylint: disable=invalid-name
+    if (
+        finish_reason is EnumType.FINISH_REASON_UNSPECIFIED
+        or finish_reason is EnumType.OTHER
+    ):
+        return "error"
+    if finish_reason is EnumType.STOP:
+        return "stop"
+    if finish_reason is EnumType.MAX_TOKENS:
+        return "length"
+
+    # There are a lot of specific enum values from Vertex that would map to "content_filter".
+    # I'm worried trying to map the enum obfuscates the telemetry because 1) it over
+    # generalizes and 2) half of the values are from the OTel enum and others from the vertex
+    # enum. See for reference
+    # https://github.com/googleapis/python-aiplatform/blob/c5023698c7068e2f84523f91b824641c9ef2d694/google/cloud/aiplatform_v1/types/content.py#L786-L822
+    return finish_reason.name.lower()
