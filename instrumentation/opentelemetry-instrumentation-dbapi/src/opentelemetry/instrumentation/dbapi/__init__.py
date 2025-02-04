@@ -491,6 +491,8 @@ class CursorTracer(Generic[CursorT]):
             # Convert sql statement to string, handling  psycopg2.sql.Composable object
             if hasattr(args_list[0], "as_string"):
                 args_list[0] = args_list[0].as_string(cursor.connection)
+
+            args_list[0] = str(args_list[0])
             statement = _add_sql_comment(args_list[0], **commenter_data)
             args_list[0] = statement
             args = tuple(args_list)

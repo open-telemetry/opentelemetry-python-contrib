@@ -84,6 +84,8 @@ class _QueryWrapper:
         if hasattr(sql, "as_string"):
             sql = sql.as_string(context["connection"])
 
+        sql = str(sql)
+
         sql = _add_sql_comment(
             sql,
             # Information about the controller.

@@ -274,9 +274,9 @@ class EngineTracer:
                     commenter_data = self._get_commenter_data(conn)
 
                     if self.enable_attribute_commenter:
-                        # Convert sql statement to string, handling  psycopg2.sql.Composable object
-                        if hasattr(statement, "as_string"):
-                            statement = statement.as_string(conn)
+                        # just to handle type safety
+                        statement = str(statement)
+
                         # sqlcomment is added to executed query and db.statement span attribute
                         statement = _add_sql_comment(
                             statement, **commenter_data
