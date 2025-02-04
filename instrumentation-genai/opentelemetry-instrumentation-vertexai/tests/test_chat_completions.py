@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 from google.api_core.exceptions import BadRequest, NotFound
 from vertexai.generative_models import (
@@ -5,6 +7,9 @@ from vertexai.generative_models import (
     GenerationConfig,
     GenerativeModel,
     Part,
+)
+from vertexai.preview.generative_models import (
+    GenerativeModel as PreviewGenerativeModel,
 )
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
@@ -321,10 +326,37 @@ def test_generate_content_all_events(
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
 ):
-    model = GenerativeModel(
-        "gemini-1.5-flash-002",
-        system_instruction=Part.from_text("You are a clever language model"),
+    generate_content_all_input_events(
+        GenerativeModel(
+            "gemini-1.5-flash-002",
+            system_instruction=Part.from_text(
+                "You are a clever language model"
+            ),
+        ),
+        log_exporter,
     )
+
+
+@pytest.mark.vcr
+def test_preview_generate_content_all_input_events(
+    log_exporter: InMemoryLogExporter,
+    instrument_with_content: VertexAIInstrumentor,
+):
+    generate_content_all_input_events(
+        PreviewGenerativeModel(
+            "gemini-1.5-flash-002",
+            system_instruction=Part.from_text(
+                "You are a clever language model"
+            ),
+        ),
+        log_exporter,
+    )
+
+
+def generate_content_all_input_events(
+    model: GenerativeModel | PreviewGenerativeModel,
+    log_exporter: InMemoryLogExporter,
+):
     model.generate_content(
         [
             Content(
