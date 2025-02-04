@@ -18,7 +18,7 @@
 libraries = [
     {
         "library": "openai >= 1.26.0",
-        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.1b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.2b0.dev",
     },
     {
         "library": "google-cloud-aiplatform >= 1.64",
@@ -93,7 +93,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.51b0.dev",
     },
     {
-        "library": "falcon >= 1.4.1, < 3.1.2",
+        "library": "falcon >= 1.4.1, < 5.0.0",
         "instrumentation": "opentelemetry-instrumentation-falcon==0.51b0.dev",
     },
     {
@@ -145,12 +145,20 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
     },
     {
+        "library": "psycopg2-binary >= 2.7.3.1",
+        "instrumentation": "opentelemetry-instrumentation-psycopg2==0.51b0.dev",
+    },
+    {
         "library": "pymemcache >= 1.3.5, < 5",
         "instrumentation": "opentelemetry-instrumentation-pymemcache==0.51b0.dev",
     },
     {
         "library": "pymongo >= 3.1, < 5.0",
         "instrumentation": "opentelemetry-instrumentation-pymongo==0.51b0.dev",
+    },
+    {
+        "library": "pymssql >= 2.1.5, < 3",
+        "instrumentation": "opentelemetry-instrumentation-pymssql==0.51b0.dev",
     },
     {
         "library": "PyMySQL < 2",

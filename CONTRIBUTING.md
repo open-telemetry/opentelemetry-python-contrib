@@ -56,7 +56,13 @@ some aspects of development, including testing against multiple Python versions.
 To install `tox`, run:
 
 ```sh
-$ pip install tox
+pip install tox
+```
+
+You can also run tox with `uv` support. By default [tox.ini](./tox.ini) will automatically create a provisioned tox environment with `tox-uv`, but you can install it at host level:
+
+```sh
+pip install tox-uv
 ```
 
 You can run `tox` with the following arguments:
@@ -74,13 +80,13 @@ You can run `tox` with the following arguments:
 `ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
 
 ```console
-$ pip install pre-commit -c dev-requirements.txt
+pip install pre-commit -c dev-requirements.txt
 ```
 
 and run this command inside the git repository:
 
 ```console
-$ pre-commit install
+pre-commit install
 ```
 
 See
@@ -89,7 +95,7 @@ for more detail on available tox commands.
 
 ### Troubleshooting
 
-Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
@@ -126,31 +132,45 @@ pull requests (PRs).
 To create a new PR, fork the project in GitHub and clone the upstream repo:
 
 ```sh
-$ git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
-$ cd opentelemetry-python-contrib
+git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
+cd opentelemetry-python-contrib
 ```
 
 Add your fork as an origin:
 
 ```sh
-$ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
+git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
 ```
 
-Run tests:
+make sure you have all supported versions of Python installed, install `tox` only for the first time:
 
 ```sh
-# make sure you have all supported versions of Python installed
-$ pip install tox  # only first time.
-$ tox  # execute in the root of the repository
+pip install tox tox-uv
+```
+
+Run tests in the root of the repository (this will run all tox environments and may take some time):
+
+```sh
+tox
 ```
 
 Check out a new branch, make modifications and push the branch to your fork:
 
 ```sh
-$ git checkout -b feature
-# edit files
-$ git commit
-$ git push fork feature
+git checkout -b feature
+```
+
+After you edit the files, stage changes in the current directory:
+
+```sh
+git add .
+```
+
+Then run the following to commit the changes:
+
+```sh
+git commit
+git push fork feature
 ```
 
 Open a pull request against the main `opentelemetry-python-contrib` repo.
