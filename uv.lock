@@ -46,6 +46,7 @@ members = [
     "opentelemetry-instrumentation-psycopg2",
     "opentelemetry-instrumentation-pymemcache",
     "opentelemetry-instrumentation-pymongo",
+    "opentelemetry-instrumentation-pymssql",
     "opentelemetry-instrumentation-pymysql",
     "opentelemetry-instrumentation-pyramid",
     "opentelemetry-instrumentation-redis",
@@ -1700,7 +1701,6 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry-exporter-prometheus-remote-write"
-version = "0.51b0.dev0"
 source = { editable = "exporter/opentelemetry-exporter-prometheus-remote-write" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1721,7 +1721,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-exporter-richconsole"
-version = "0.51b0.dev0"
 source = { editable = "exporter/opentelemetry-exporter-richconsole" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1740,7 +1739,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation"
-version = "0.51b0.dev0"
 source = { editable = "opentelemetry-instrumentation" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1759,7 +1757,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aio-pika"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aio-pika" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1782,7 +1779,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aiohttp-client"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aiohttp-client" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1809,7 +1805,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aiohttp-server"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aiohttp-server" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1836,7 +1831,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aiokafka"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aiokafka" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1859,7 +1853,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aiopg"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aiopg" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1885,7 +1878,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-asgi"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-asgi" }
 dependencies = [
     { name = "asgiref" },
@@ -1912,7 +1904,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-asyncio"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-asyncio" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1931,7 +1922,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-asyncpg"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-asyncpg" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1954,7 +1944,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-aws-lambda"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-aws-lambda" }
 dependencies = [
     { name = "opentelemetry-instrumentation" },
@@ -1971,7 +1960,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-boto"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-boto" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -1994,7 +1982,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-boto3sqs"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2020,7 +2007,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-botocore"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-botocore" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2046,7 +2032,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-cassandra"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-cassandra" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2073,7 +2058,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-celery"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-celery" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2096,7 +2080,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-click"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-click" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2119,7 +2102,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-confluent-kafka"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-confluent-kafka" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2142,7 +2124,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-dbapi"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-dbapi" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2161,7 +2142,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-django"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-django" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2192,7 +2172,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-elasticsearch"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-elasticsearch" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2217,7 +2196,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-falcon"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-falcon" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2246,7 +2224,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-fastapi"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-fastapi" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2273,7 +2250,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-flask"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-flask" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2302,7 +2278,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-grpc"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-grpc" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2327,7 +2302,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-httpx"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-httpx" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2354,7 +2328,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-jinja2"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-jinja2" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2377,7 +2350,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-kafka-python"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-kafka-python" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2402,7 +2374,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-logging"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-logging" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2417,7 +2388,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-mysql"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-mysql" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2440,7 +2410,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-mysqlclient"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-mysqlclient" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2463,7 +2432,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-pika"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pika" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2488,7 +2456,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-psycopg"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-psycopg" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2511,7 +2478,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-psycopg2"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-psycopg2" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2522,6 +2488,7 @@ dependencies = [
 [package.optional-dependencies]
 instruments = [
     { name = "psycopg2" },
+    { name = "psycopg2-binary" },
 ]
 
 [package.metadata]
@@ -2530,11 +2497,11 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
     { name = "psycopg2", marker = "extra == 'instruments'", specifier = ">=2.7.3.1" },
+    { name = "psycopg2-binary", marker = "extra == 'instruments'", specifier = ">=2.7.3.1" },
 ]
 
 [[package]]
 name = "opentelemetry-instrumentation-pymemcache"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pymemcache" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2559,7 +2526,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-pymongo"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pymongo" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2581,8 +2547,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "opentelemetry-instrumentation-pymssql"
+source = { editable = "instrumentation/opentelemetry-instrumentation-pymssql" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-dbapi" },
+]
+
+[package.optional-dependencies]
+instruments = [
+    { name = "pymssql" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
+    { name = "pymssql", marker = "extra == 'instruments'", specifier = ">=2.1.5,<3" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-pymysql"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pymysql" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2605,7 +2592,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-pyramid"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-pyramid" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2634,7 +2620,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-redis"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-redis" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2659,7 +2644,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-remoulade"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-remoulade" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2682,7 +2666,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-requests"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-requests" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2707,7 +2690,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-sqlalchemy"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-sqlalchemy" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2734,7 +2716,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-sqlite3"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-sqlite3" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2751,7 +2732,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-starlette"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-starlette" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2778,7 +2758,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-system-metrics"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-system-metrics" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2801,7 +2780,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-threading"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-threading" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2818,7 +2796,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-tornado"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-tornado" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2843,7 +2820,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-tortoiseorm"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-tortoiseorm" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2868,7 +2844,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-urllib"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-urllib" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2887,7 +2862,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-urllib3"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-urllib3" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2914,7 +2888,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-instrumentation-wsgi"
-version = "0.51b0.dev0"
 source = { editable = "instrumentation/opentelemetry-instrumentation-wsgi" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2933,7 +2906,6 @@ requires-dist = [
 
 [[package]]
 name = "opentelemetry-propagator-aws-xray"
-version = "1.1.0.dev0"
 source = { editable = "propagator/opentelemetry-propagator-aws-xray" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -2944,7 +2916,6 @@ requires-dist = [{ name = "opentelemetry-api", git = "https://github.com/open-te
 
 [[package]]
 name = "opentelemetry-propagator-ot-trace"
-version = "0.51b0.dev0"
 source = { editable = "propagator/opentelemetry-propagator-ot-trace" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -3115,7 +3086,6 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry-util-http"
-version = "0.51b0.dev0"
 source = { editable = "util/opentelemetry-util-http" }
 
 [[package]]
@@ -3576,6 +3546,71 @@ wheels = [
 ]
 
 [[package]]
+name = "pymssql"
+version = "2.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/c8/2ce5b171581c2e4d5d9726aaa805eb01febc7ed70a3bf686e1e0f5501b07/pymssql-2.3.2.tar.gz", hash = "sha256:18089641b687be1ebd0f64f0d1ff977478a397ffa1af372bdf10dbec29cf6d2e", size = 184760 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/a4/dbabcdea2f07e580c30ad0e159e22227bf6c8e0ba5800e8bc29585d77f8e/pymssql-2.3.2-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:73fac766b448613d7ae26e6b304b2cb8a7ffebccaa373633bad3b3cbcc829935", size = 2773345 },
+    { url = "https://files.pythonhosted.org/packages/8d/76/953d46be8d24a92806c060f1fad16f21e4aae8257fa30587e6eb8d5dac82/pymssql-2.3.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:eb629b5fb0376fbf39d575cf1365e504b84877b19f9e8d53caa5228fed56894a", size = 3895799 },
+    { url = "https://files.pythonhosted.org/packages/a7/78/b47a88636cbe1a6f41cc11b45bd986aab891f1324843d3449ec83aebc2ba/pymssql-2.3.2-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ab912d1178d5977e421cf9c4d4071958b223cbe4a2b6dd64611d521aa6bb7187", size = 3902232 },
+    { url = "https://files.pythonhosted.org/packages/9a/78/6d78d3ed551341d86cc3b56dc944d0c6dea5ceab7c634b9b6e8fc51242f2/pymssql-2.3.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:06883bc9bdb297ae9132d9371b5b1a3a223c8f93dd6a87d1c112c6a688f26d53", size = 4248032 },
+    { url = "https://files.pythonhosted.org/packages/2e/8f/c58225d71a4c5929493c8af8ca004f2c539d456920ef0a20a70459891f8f/pymssql-2.3.2-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:c24ba6aedb9b5540b56f3e74bff92b687c6e90c00650823385729c7e55923cf5", size = 4633948 },
+    { url = "https://files.pythonhosted.org/packages/60/f1/e50ee90dc03b1d57356ddefef037b0f5c1404c63ae1af2f2583184cfdd79/pymssql-2.3.2-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:26bdb7abd5f107b6be422635f03e2cecaa52a5f4c394a205014586abbff9e72a", size = 3984523 },
+    { url = "https://files.pythonhosted.org/packages/48/13/02d8d68637b9e35176c81a59758eee2d951713e742ffe426fd7b490d6ef2/pymssql-2.3.2-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:72b6599963b6e066998c4b27b7bf207684c243b12b1e5dcc180b2af22802ae6c", size = 4002836 },
+    { url = "https://files.pythonhosted.org/packages/20/96/0e978914c5ac936b0ff547dda0abc8aa0393034a3e20932f524da4510d91/pymssql-2.3.2-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:23f5e2e2bdba1cf7cecbac66dd07de7631a8efca5692efee18ff46ebc087b757", size = 4469080 },
+    { url = "https://files.pythonhosted.org/packages/95/b1/71e4f987d5facf1e6309583763c3769f454f061889326156d5350bfede09/pymssql-2.3.2-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:82ed3dd560d3fb222d26ce3a7373f46dc3ad1d50b6e6417ef7399e87fa9aefe1", size = 4679770 },
+    { url = "https://files.pythonhosted.org/packages/cc/5c/0a7fa7e44aebbad2c2769091afe85cf1ebb65e811b970428103d659eb4b9/pymssql-2.3.2-cp310-cp310-win32.whl", hash = "sha256:cbe9058b6520be74463476ff2cdb17bbab5ff60b60b3ed7bd8bd2d086bdfd9bd", size = 1320206 },
+    { url = "https://files.pythonhosted.org/packages/e2/3d/0e5a83e081f1f2f19b6a0a65a98d8c77b794d80215938f195c5836c06238/pymssql-2.3.2-cp310-cp310-win_amd64.whl", hash = "sha256:fdd774b26407babd0205ef85a098f90553e6b3da77a22322a1e7d2cb51f742c0", size = 2005042 },
+    { url = "https://files.pythonhosted.org/packages/31/0d/a919acf75a26a5c5dabceb11b4f7446d7860a761ef68bdce3cd1055c9d25/pymssql-2.3.2-cp311-cp311-macosx_13_0_universal2.whl", hash = "sha256:2a44a0898dacba4e25cac8778d0ed112e297883fe862204e447081888da78dc4", size = 3070057 },
+    { url = "https://files.pythonhosted.org/packages/e8/e0/3a87b214403c361a19bd6c7d8462a6f3a1e87661909fc326b8f5f0efd9f8/pymssql-2.3.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f9737c06b13ca2012b9900185fa3af72a37941c532da2e6373dd7c9ab16abddf", size = 4044744 },
+    { url = "https://files.pythonhosted.org/packages/1b/f0/0359b8a371723d8e3a9255755e42fcb3ab32700a4a14b3121dbc438ad39f/pymssql-2.3.2-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0831c5c95aab0b9aba5142dc97e28f59c4130e1c34ffc13ecbfdd4d2fe45b8a0", size = 4032859 },
+    { url = "https://files.pythonhosted.org/packages/06/d6/3499b98a591bf713deed6f48b1b3b3e80c008b4ed1760d6f9c07f7824772/pymssql-2.3.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae02cc1594f0addd748bf5ac1ccc7a73c03846ada9c553663c381b242b586606", size = 4391018 },
+    { url = "https://files.pythonhosted.org/packages/9f/cb/d8aadb2628917b2fc386446f871dc32124c5029c9e48f6dea4d887dba70c/pymssql-2.3.2-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:1c99dba4bf5b1ce10657e9e2885f18ba9179190251b63d1498e7d6d72e64f1ce", size = 4788674 },
+    { url = "https://files.pythonhosted.org/packages/2f/a0/d80b9ad5807f5a14e249f011a6d24f16fa6ef96bd6e643d9b677d74d90a0/pymssql-2.3.2-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:9e3d6fada7fbe7a5f5fafc420673f777bab3f399c78fa44e29de6a8cbc36e515", size = 4123868 },
+    { url = "https://files.pythonhosted.org/packages/b9/87/5247858d1a7d03634c2082679c1a4fe40775e226fb3fc70c855851fe9938/pymssql-2.3.2-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:5904d78e61668ec89761d3ae01efd4b42b31d820f612929f449e93cd23ba3c54", size = 4157236 },
+    { url = "https://files.pythonhosted.org/packages/3d/29/07da1e426b9627a870e762ec2d1b7f5fc144d4c201a312cec79633486cb0/pymssql-2.3.2-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:9361593a89c9162fc631baf648a87e2666373382d9d54aacfb19edab9ceb2007", size = 4629804 },
+    { url = "https://files.pythonhosted.org/packages/36/9b/1ced1ab60e5b9e025aab65bede8f05595e1c763db1decd20c093f8267176/pymssql-2.3.2-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:0768d90f96ae3267d7561d3bcfe94dd671d107489e870388b12570c3debbc552", size = 4843590 },
+    { url = "https://files.pythonhosted.org/packages/a4/9e/94af63f23becb5b411eba30d2090f17b8455c91166209e3c672d3199e859/pymssql-2.3.2-cp311-cp311-win32.whl", hash = "sha256:97fbd8491ad3ece0adcb321acec6db48b8fe37bc74af4c91bb657d4d9347d634", size = 1319041 },
+    { url = "https://files.pythonhosted.org/packages/65/f8/9336690fb988f7a848aaafd0b1df9aff9e16b7c24be1da7fc27e64e0b30c/pymssql-2.3.2-cp311-cp311-win_amd64.whl", hash = "sha256:79cdc3ed1da3129ba56232127db86279728c4328595e2532ed4d0da6379a5c72", size = 2005840 },
+    { url = "https://files.pythonhosted.org/packages/03/b4/d9b30b565cf8af6d3f0e90802694860ff2e1c269d444be6ca24c4cfd9761/pymssql-2.3.2-cp312-cp312-macosx_13_0_universal2.whl", hash = "sha256:235c230e56d8c8c5f289e665c538f31d967fec302d05ad269dcd64fa9d6eb3b7", size = 3042870 },
+    { url = "https://files.pythonhosted.org/packages/76/da/be4296cf0b4fd8b4f1a082cba2b8d08d7e730e98b8f0be62c84db891796f/pymssql-2.3.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1bc33ed9af6d8ebea2d49144cd2317b7ae1105dd51dddfd46982c90c8f0cf6ab", size = 3987883 },
+    { url = "https://files.pythonhosted.org/packages/9e/80/ae1a77e5de1ca0a9f0a1ff5d9b60dc9c270e3afa6932302e459bd529aadc/pymssql-2.3.2-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:793a93da1521fa66bf02b3b873065e22bf14bda5570e005ce3d5fae0776d7b92", size = 3961886 },
+    { url = "https://files.pythonhosted.org/packages/38/d3/28e827a01234853fcfbb71703a5dcee490988eb5d1ff8859ac9fcc6db38c/pymssql-2.3.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b156b15165f7a0bbb392a124d8e2d678145c93e5bfcfef3b637e4d87eadcc85b", size = 4350551 },
+    { url = "https://files.pythonhosted.org/packages/30/53/626d5f203d3d05e6af5cfd1c611def622abb815ba7315c766c4faefd569d/pymssql-2.3.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:f2b1da4e68d618c7972e583ae19f386ae620258acb61564e8067c203f27cd769", size = 4745384 },
+    { url = "https://files.pythonhosted.org/packages/67/ec/ff4d831bd250b2b5491c7f85abf04ce2c5613cd955e1855957b98fd72b89/pymssql-2.3.2-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:2f4093b95f1f3a1232687fc92f652aaf675eb423db8549c16d146b91ac2f0eba", size = 4045126 },
+    { url = "https://files.pythonhosted.org/packages/85/ed/79ec7edbd5a99e445d85a46b48ea71ae9a920c9e92b743318446f4d4dffb/pymssql-2.3.2-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:cc13c2e0f1b8efc3a46941de9db768fa59937b5a54081ec0cb0ff0da17d1fff3", size = 4107959 },
+    { url = "https://files.pythonhosted.org/packages/71/27/aff4b90fcfdfb3227f881d9ca6665139adbf1c397106e0f588493156e449/pymssql-2.3.2-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:6019d2939963112662288704f608f31634038bffcfd5cad1bc79cb167edb3cc1", size = 4566181 },
+    { url = "https://files.pythonhosted.org/packages/9b/eb/376e2ae6ba7c7632137b9f46318573d0a988fc32184aea68eee64dc78d7a/pymssql-2.3.2-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:41d09e1b2534229b288c37b88c1de3d964317af2c7eec58bfb97e01d679eba27", size = 4787575 },
+    { url = "https://files.pythonhosted.org/packages/6e/5b/fa906b132431009174bb966c7b7ce0da3dbd9343dc6e1ed6c448b22a4291/pymssql-2.3.2-cp312-cp312-win32.whl", hash = "sha256:b16d5880f7028442d6c49c94801ce9bff3af8af0fbda7c6039febb936714aed5", size = 1306859 },
+    { url = "https://files.pythonhosted.org/packages/11/2e/be51090e0c1c99b9259d06d2e3533c0e3681fd95203fc50040e6c18685a5/pymssql-2.3.2-cp312-cp312-win_amd64.whl", hash = "sha256:a3f9e7eb813dfeab6d01bf6474049bb76b0521235159d3e969ec82df384eac49", size = 1990007 },
+    { url = "https://files.pythonhosted.org/packages/e0/26/f90c0251c0452fb6a80c44a7d7eb9b1e63e1657098659364ec81cb9cbb87/pymssql-2.3.2-cp313-cp313-macosx_13_0_universal2.whl", hash = "sha256:f282e701dca155b3e7f1644d7e3b60c201ca5f3be8045bce34042d3c737d63ee", size = 3031958 },
+    { url = "https://files.pythonhosted.org/packages/ea/8d/8146de09a00a3c1737c1f1feb83a10519a406da045b3e7f5ad315d2266fd/pymssql-2.3.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f1791f4627c42fe2d2833c884d036b0c5c8cf628f2cdfa3536191c217acf729e", size = 3981704 },
+    { url = "https://files.pythonhosted.org/packages/97/75/b1e7586c73e63f35664cf4dcf8df79d18892a3a57db3e93039443fb5a568/pymssql-2.3.2-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3870085a49e5332bc67ecb24f217c586977d5352eb51598244fc7bc278eee3e1", size = 3964863 },
+    { url = "https://files.pythonhosted.org/packages/40/5c/a1e6bbb17c5a606eeba78da8f13784c5afa6e614c9a44348a95c229fbb0e/pymssql-2.3.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1afda7b7022eff9451bd83e3f64c450a1a8cdff4ba8b8e399866dcd2cb861a1e", size = 4346193 },
+    { url = "https://files.pythonhosted.org/packages/ca/5f/ec35ac1efa66172c626a0e86cc1520d2964b415fae6f2a7a818ef1d98fcc/pymssql-2.3.2-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:b0c2b11aca16617cacaf385fb94134e73ba0216a924f9b85778cc7e3d3713361", size = 4743947 },
+    { url = "https://files.pythonhosted.org/packages/1c/fa/9e1d88e2f025ce8d389f861bd962c0558ee23bc1b6d18981a967b6b51e6d/pymssql-2.3.2-cp313-cp313-musllinux_1_1_i686.whl", hash = "sha256:2568944db3888996e161b40ad06c1b9e0fbb6cfcb38279a3abb98ece7a8e1c4a", size = 4047878 },
+    { url = "https://files.pythonhosted.org/packages/f5/2a/7ad8a39d8ff79a8f7ee7fc5a9c43f22cd365aff3f296b20a702c164eebb6/pymssql-2.3.2-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:ee8ee2c7c227c413ad9b88ddba1cb6a25e28c217ae73ecac1c7a6b8c29003604", size = 4109700 },
+    { url = "https://files.pythonhosted.org/packages/b6/94/eed7fff479be51827e03c2bfcffda73dfe4e0d72c4c8144425aa63daede0/pymssql-2.3.2-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:8cd806380d362d4cef2d925a6baee6a4b2b151a92cac2cab5c4bfabed4be4849", size = 4565816 },
+    { url = "https://files.pythonhosted.org/packages/f1/a1/f99f37547126981a351e0c8854f35b7d984238c68af54ff8863ea2d3644b/pymssql-2.3.2-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:ef0d29c705db552f9e75230f946b0ca9db0db903c5c9ee79ce8b88ad25ea9670", size = 4786896 },
+    { url = "https://files.pythonhosted.org/packages/24/4f/93438cd488497f1c089d077380c3bc9a7adf98666fa01d7a380861440965/pymssql-2.3.2-cp313-cp313-win32.whl", hash = "sha256:1037053e6c74d6fe14c428cc942968b4e4bf06854706a83fe8e822e475e3f107", size = 1306239 },
+    { url = "https://files.pythonhosted.org/packages/ad/b9/6782fee30a1bb699aa023e132ca85d137e20466ef9fe562656a1e3dec25b/pymssql-2.3.2-cp313-cp313-win_amd64.whl", hash = "sha256:148b7714fff5a5b7ce038e92b02dd9bf68fe442c181a3aae32148e7b13f6db95", size = 1988634 },
+    { url = "https://files.pythonhosted.org/packages/72/af/7882f11de250b5713f48205a21b37f335097bf3c75e5a124441aac52889c/pymssql-2.3.2-cp39-cp39-macosx_13_0_x86_64.whl", hash = "sha256:bac6f355c454f94b0e15a04b7841236e5c5c4ef44d2d1beed00a3ad7b50ccc53", size = 2773791 },
+    { url = "https://files.pythonhosted.org/packages/a8/a3/f42d5a6b7bfb358857ba631de588db4a29716a29b963d8a9596a99fd9a42/pymssql-2.3.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:33ad813092f8fb8f74578c5b5e37c818c4ae130fd4047cb28f0b256f2f107367", size = 3894493 },
+    { url = "https://files.pythonhosted.org/packages/c8/27/0bfb355f345fe8c91d5aa8feef05ab70d14bb9d121b1e587c538b5c4afe2/pymssql-2.3.2-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:08facd25a50a7279385d1ffcee9d6d83c4e361db1af38e14519a87d7b1cadb10", size = 3899062 },
+    { url = "https://files.pythonhosted.org/packages/3c/be/b933e6f30b8f8a5028123db6c74a5d6b02bdba2fb69c4d8307d23d56b3da/pymssql-2.3.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ab48de09864fa6f49c575ef569f6773981d0cd905ff7288b5b185f8079a5a21f", size = 4245860 },
+    { url = "https://files.pythonhosted.org/packages/18/91/cb0c68f205464b8c4ac3144e032a89f26e483bdbfd02701e4d438ac7678b/pymssql-2.3.2-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:b3eb201c402bcf4f5b9399df0bb20d522636d2e87d1c6957a0b6d772ee636c61", size = 4628413 },
+    { url = "https://files.pythonhosted.org/packages/f4/92/767832c8dd2bfc2da812655ae7c2b9022d57c68da5f3cc52d116e1d55596/pymssql-2.3.2-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:dd5fe7552edc81628e4242b4671f7bad5ff1ec790bae5c7615d989375620edac", size = 2770557 },
+    { url = "https://files.pythonhosted.org/packages/75/d8/e3ffc5874e9d1dd11c6f7c2ff7a73f3bd9baba616ac093759578460e6490/pymssql-2.3.2-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:fb8a7b197aaf466a7577ca6690aa9d747081b653ab212d052d71f3cc10587c3b", size = 2871080 },
+    { url = "https://files.pythonhosted.org/packages/9f/4f/40180a3c509ac72f3703ac7eaf6485983744c492db5420ecd98e5fa20179/pymssql-2.3.2-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:0a20a17db870fb0e446a6d6bf7664aaf84af7be58ab1fad025cafa4e092507a1", size = 3982981 },
+    { url = "https://files.pythonhosted.org/packages/7a/55/18d67fccc7b7501c2783f92eb0ddad251ea53715ed8d9368ba7d97dc5ed3/pymssql-2.3.2-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:1cdc2619e7b4192b8d6619fd52ba8a2eae18b38b376f8649fb8f0727c4e88ff9", size = 4004449 },
+    { url = "https://files.pythonhosted.org/packages/5f/8d/74097c30fb2a098c2498b922baf57d58c5f47009867dafdeacea1d8660a1/pymssql-2.3.2-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:b14cc65369d1425f2fb517609113465a0f55f19a49648160f2d10be4cb43ff4d", size = 4482642 },
+    { url = "https://files.pythonhosted.org/packages/a2/5e/4f98dcd8aaaf364b86cb80d06fa28d8652e3de88eadfaa80900190377f88/pymssql-2.3.2-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:22b1ce3a48f28ee7d06ebc9ed94276d0bf1c99051ee1df3d2377b74721bd62ef", size = 4674120 },
+    { url = "https://files.pythonhosted.org/packages/08/0c/e340d3e20d7c8c55cad47f53e6b9de65ace4d4d341015718b74ebee1626f/pymssql-2.3.2-cp39-cp39-win32.whl", hash = "sha256:aa08b6203b2b5ed5ce47f80d5c529459181300d7e0d0c1e84390a4d01d45e509", size = 1320268 },
+    { url = "https://files.pythonhosted.org/packages/91/26/0349fa033ae139fc8829837c4c26842ab5ef71a926fbadac81658f7171ad/pymssql-2.3.2-cp39-cp39-win_amd64.whl", hash = "sha256:22fb0fdd3b889bc10abbe3aa2abe7a008b30a6367b9ba159412d185d7d8fda9d", size = 2005205 },
+]
+
+[[package]]
 name = "pymysql"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3810,6 +3845,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/9f/61101daf7cc1a9677be498f7ef81ac9c3986c4fa5e4af334fdb0a96a12af/scylla_driver-3.28.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d918d4bb0dd993aebf7d95c2c8d572ac625fd2b551eee625031dc087002318d7", size = 3085316 },
     { url = "https://files.pythonhosted.org/packages/15/b7/02acac58f936ec71c2e7c4b57759c72845a9f99f5f96fa5398544e165938/scylla_driver-3.28.0-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:90ca34ffafeadcec7c874e92ec24e145670dfde8249f7059bb0702b852adac41", size = 352246 },
     { url = "https://files.pythonhosted.org/packages/8f/b6/4872427be00ed3cbe4aba0508cd842f5805ef9fcc33a16964f8b607f484d/scylla_driver-3.28.0-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:696611dd6e26de337da0e8d7c17fa33fd9f885769c6300b6acbf33b58bfe2418", size = 375781 },
+    { url = "https://files.pythonhosted.org/packages/ce/b7/e48cacb7c984987c039ce985c4a4cb473579b7e5b455429916f48a3e2a8a/scylla_driver-3.28.0-cp310-cp310-macosx_14_0_arm64.whl", hash = "sha256:5a9dcac5fe3a1c3c9ff9b2b7b102370333e5febb87e02edb27fa2bda72efe37e", size = 3789693 },
     { url = "https://files.pythonhosted.org/packages/6f/81/1941244da9bd3f46795e187da06416e779ab3b75c576aa7ab7b682ec6a00/scylla_driver-3.28.0-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:507bc38fe42cc67a92d05872569b33f34550180b4905c8ebeb82aa684e593d54", size = 3916978 },
     { url = "https://files.pythonhosted.org/packages/9b/53/a6d01f30b42bf5219b53be55e2fac29071dff23b04cf0bebab7b9a8f2f12/scylla_driver-3.28.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:51b895d056224be8d028f8c5a931a440d6cd8e29dca0d2cb5b8e9196f06a0add", size = 4276633 },
     { url = "https://files.pythonhosted.org/packages/e6/4b/0d23c59b0d0cd44d603f793232c9036a6e8a16c4acdcd499b738ee0d5213/scylla_driver-3.28.0-cp310-cp310-win_amd64.whl", hash = "sha256:ec06f2accfe5b1cb6808351545f2c9c974efba7c26e33b8b4ba8cab963ce264f", size = 2662967 },
@@ -3817,6 +3853,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/3c/05/bf74c314f58d7ef66e20b9110f414f491dec6c8165b829964c5ccb41de61/scylla_driver-3.28.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5bf1bf8ac4faacf46d2d304ddc52bc427350aba58af3c88181e63af53a39d911", size = 3035867 },
     { url = "https://files.pythonhosted.org/packages/a9/3d/6f04d84479085ce018cf786d7c4bc3dde490a2e0cfd399d4e77f6a4bd237/scylla_driver-3.28.0-cp311-cp311-macosx_13_0_arm64.whl", hash = "sha256:59dc210c74945213d70225fac3771a97247d34fc473839b3331c8e14fd2b4c4d", size = 352246 },
     { url = "https://files.pythonhosted.org/packages/e6/47/89714ee963010172f56ac00ea59ea9d6e10332237913cec0fce7ee854ad5/scylla_driver-3.28.0-cp311-cp311-macosx_13_0_x86_64.whl", hash = "sha256:d6fd4262c3a53e39af18823dfb15754028db63fd42bf1853efa2bee2f8566bfb", size = 375786 },
+    { url = "https://files.pythonhosted.org/packages/e6/2b/866fc708bf2ee8e55ee39b09afa31386dc12c7cbff22f9c7d5a19b1df250/scylla_driver-3.28.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:82e907c592ca53d51367abc7b71f4650e4ca5134cbb26b98a07268ef4049b690", size = 3754583 },
     { url = "https://files.pythonhosted.org/packages/0c/7d/a9559a04014d98eadfaaa182f3b41ef36a948cef49cfd78c8d84d0cf8ffe/scylla_driver-3.28.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:464365edf4cee527b1cd8fecd373880351b557b77827d3f47ff3149ae3e680cb", size = 3884470 },
     { url = "https://files.pythonhosted.org/packages/57/4e/bc05e54cb1fc0a6e4b4fc7202cdbd5933a54ea87733ad1dea8cedd422a30/scylla_driver-3.28.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:185a9e5ad92fa1d758b89a0fba43ce137b013ae430501b5db2302c93880829bb", size = 4231846 },
     { url = "https://files.pythonhosted.org/packages/3b/92/e35687d6e741bd53cf735ca680e48a6dade56d08ef9d98830e7628350292/scylla_driver-3.28.0-cp311-cp311-win_amd64.whl", hash = "sha256:f05e8f5bbbc5b70928ea4d0e3cc5f153bfbdbaade8b0fb5aa2bcf850170fbea7", size = 2638201 },
@@ -3824,11 +3861,14 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/59/9d18ba02a1cbab2643826b64db7e0d7b39875b026932fab744d8a673612a/scylla_driver-3.28.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7fe537b8ad203bf4031ddad1da3617e8053794b38b30887f17edbc3ac80f947c", size = 3017394 },
     { url = "https://files.pythonhosted.org/packages/58/5d/22bc98832819c0fa3b8230b204bf133c92ef5dc263d37a685fb0a495eb3d/scylla_driver-3.28.0-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:ce10c0e31f8be8dfdbd0164f9d737445a9e1500595accddd05ef95b4b8b772a0", size = 352258 },
     { url = "https://files.pythonhosted.org/packages/de/38/395e0e0cf42e820b284cff88935a5dd265972bb92abd8b15dc0406ede26d/scylla_driver-3.28.0-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:4da483e5ce27e74dec96c9a7c99b5940e1c67de8e56ee5d8b6d19ce4d499a063", size = 375863 },
+    { url = "https://files.pythonhosted.org/packages/6a/78/99b395d897343cc5c456dab1b3c2448feccf7297afe0fcdab438d3c5a35f/scylla_driver-3.28.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:a2a34aaaa6bfd4636baf9b331d314375917bbad8feb9bedd7b1a7086e16d7756", size = 3721273 },
     { url = "https://files.pythonhosted.org/packages/9b/20/73fea813b173a1481d97d715fa02ce45c24f7d353bf2da522df7d65cbd54/scylla_driver-3.28.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:0b259f1219492e91ec752559a9001989ec580502909475a215e4ad763108d601", size = 3560625 },
     { url = "https://files.pythonhosted.org/packages/2a/16/c158973a593dba20b96cdde6a3988281f7f532478f3d59462fc509388a77/scylla_driver-3.28.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:6d4b0b96bca5d49b9d83a24d4891f71f8806f4cb62111fdec8b16f600d3afaf5", size = 3902035 },
     { url = "https://files.pythonhosted.org/packages/05/d1/f85a695de2414f73668c33ccc6b79b859ecf772f5ec0d1978d1e92bd982d/scylla_driver-3.28.0-cp312-cp312-win_amd64.whl", hash = "sha256:a4995debf516fff5d3c470933524adbcb0baabe04fd8cbb696863854c1d3972a", size = 2543638 },
     { url = "https://files.pythonhosted.org/packages/e0/46/ac069b080eac0bcf28b0ea61be901544b2f4a7f269b9fa0951f758fb7065/scylla_driver-3.28.0-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:59c0c1530a1a5f34190e3e9898452a69ad109a0f6b9ab0c32b2d2d624170ff83", size = 352253 },
     { url = "https://files.pythonhosted.org/packages/86/f5/d53d85f9b340e9d880ffd471de4f32890dccf9b8f239d9785949ecf1f528/scylla_driver-3.28.0-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:79de91b544ab75e50f4aaa161eb473773f09ba31807eedce86b92f246454a844", size = 351875 },
+    { url = "https://files.pythonhosted.org/packages/63/5f/ed911646f088ac7979ada7723c8aa9127c3053ea9085c34e4ba3ea60f550/scylla_driver-3.28.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:20b4541cead2dca71de64845c401aef565d530ecabc02f48570a96446ff5575d", size = 3806903 },
+    { url = "https://files.pythonhosted.org/packages/e5/d9/93ef335aea5be6eefd3670d4548af75fe4af1bfb18efba8a21da23cc1ff7/scylla_driver-3.28.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:085ac19fd5233b743a12de795ae558c775df9b16a450781e26b4b4663bde1f4b", size = 4290858 },
     { url = "https://files.pythonhosted.org/packages/3b/b4/afeaaea6cce86805b1892d8161811287155b3f058785b9b3aa4e9f341177/scylla_driver-3.28.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:db0f9ea00128f69c2f5613766916bea6dc7446a4f3b2df6cfa4af5ed729eb5f8", size = 390052 },
     { url = "https://files.pythonhosted.org/packages/e4/38/f36e2389986eac2f33119ea3278fa097a41fec0ff138cb927e098cd47b6e/scylla_driver-3.28.0-cp313-cp313-win_amd64.whl", hash = "sha256:4806066d797346788612f14cbc1593a696c6e505ec7c4b2542d6a22eebece9b1", size = 356240 },
     { url = "https://files.pythonhosted.org/packages/2d/37/f0b4ee8616d67a1ae7673f0caba284aa14fb6e257619d2ddbb278244553b/scylla_driver-3.28.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:fb50ac783000dd9e76cacf1d409d9d95026fbc21d591edea703ab0024b28a21c", size = 3543915 },
@@ -3839,6 +3879,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/ed/14e7e42bcd8dcb6c9a7ecb90805ede10872eff77fd84a6fe5b6a6d8c5a19/scylla_driver-3.28.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:d183634005d230486b39f7ec8b62a6833cd703f92e9f6084e2c22a4ee581ebf4", size = 3057166 },
     { url = "https://files.pythonhosted.org/packages/83/73/3aff178edd6593a0e727653a19494b9b08f1f0b43b912a8e77e831f6aacc/scylla_driver-3.28.0-cp39-cp39-macosx_13_0_arm64.whl", hash = "sha256:a4f1c30a9904b39f1dd6a3208f78c251a008bb53904445f5aa444f2d95214289", size = 352236 },
     { url = "https://files.pythonhosted.org/packages/47/fc/2e1d6c688bf7354e147438a366a94737d1b33bfef3d5fd2a412cb6bdb476/scylla_driver-3.28.0-cp39-cp39-macosx_13_0_x86_64.whl", hash = "sha256:7877ba8d68f4b01e746a6dbb08a63744a2e06e9fdd11a5285306bb1b6c797da8", size = 375773 },
+    { url = "https://files.pythonhosted.org/packages/c8/1c/7424f67e0b5f51c7cfded81452b7371fae0132417ca4945703d75a20dbd7/scylla_driver-3.28.0-cp39-cp39-macosx_14_0_arm64.whl", hash = "sha256:8edacf693ef69aadc4637a8f9038b3febf2f4df63ef6e0cd750ec7c8b15b67e3", size = 3792938 },
     { url = "https://files.pythonhosted.org/packages/12/7f/4437ab5ef9e09f907929e97e08e24053d3dc3f4e97bff2365c47a22b9bad/scylla_driver-3.28.0-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:d72411a4d84574b1b50d148911257a2bf342d14e2a35615ed1454e69fefbc542", size = 4091342 },
     { url = "https://files.pythonhosted.org/packages/eb/40/3857f73e5a64522f8e00603d602c60ec17baef473b9ace0c00da4235fb11/scylla_driver-3.28.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:14a64fac4a840e11f588882d525bb7836432952fbf29556cea8cb57c0381f12f", size = 4439234 },
     { url = "https://files.pythonhosted.org/packages/b6/e0/f31f8881bd75661052181e15a307e73be2112cc7a3d79bf812dfe08476b5/scylla_driver-3.28.0-cp39-cp39-win_amd64.whl", hash = "sha256:fe849a6a64082ed61bb24e5966aaa6f9e72f782a25ca5ce89f09a3512dbd6194", size = 2802529 },
