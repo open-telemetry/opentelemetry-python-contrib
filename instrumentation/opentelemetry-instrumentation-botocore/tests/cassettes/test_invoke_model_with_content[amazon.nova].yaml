@@ -1,57 +1,82 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}],
-      "inferenceConfig": {"max_new_tokens": 10, "temperature": 0.8, "topP": 1, "stopSequences":
-      ["|"]}, "schemaVersion": "messages-v1"}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        },
+        "schemaVersion": "messages-v1"
+      }
     headers:
       Content-Length:
       - '207'
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjJUMTUyNDA0Wg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051236Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLTY0ZGIzYWIxLTc2YWUzYmUxYmQ0NzI4Mzg1ZjdmOTEzZTtQYXJlbnQ9ZGRmYTdlZjI4
-        NWNiYTIxNTtTYW1wbGVkPTE=
+      - Root=1-36143b12-70c21615c28ab43161636b63;Parent=9effb7c7b6cb2137;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        ZDZlMGIyOTUtYjM5Yi00NGU3LThiMmItZjgyODM2OTlkZTZk
+      - ad4815dd-0511-4185-a5ff-7205d52f1116
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
   response:
     body:
-      string: '{"output":{"message":{"content":[{"text":"It sounds like you might
-        be in the middle of"}],"role":"assistant"}},"stopReason":"max_tokens","usage":{"inputTokens":5,"outputTokens":10,"totalTokens":15}}'
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Certainly, here's a test:\n\n---\n\n**"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 10,
+            "totalTokens": 15
+          }
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '198'
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 Jan 2025 15:24:05 GMT
+      - Thu, 06 Feb 2025 05:12:37 GMT
       Set-Cookie: test_set_cookie
       X-Amzn-Bedrock-Input-Token-Count:
       - '5'
       X-Amzn-Bedrock-Invocation-Latency:
-      - '237'
+      - '186'
       X-Amzn-Bedrock-Output-Token-Count:
       - '10'
       x-amzn-RequestId:
-      - 32f3134e-fc64-4db5-94bf-0279159cf79d
+      - 7e0027c0-ef54-4918-8cef-4c84a35594ab
     status:
       code: 200
       message: OK
