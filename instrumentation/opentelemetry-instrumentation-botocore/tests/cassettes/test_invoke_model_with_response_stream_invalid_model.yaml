@@ -1,0 +1,43 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Content-Length:
+      - '0'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250206T051245Z
+      X-Amzn-Trace-Id:
+      - Root=1-aeb6fdcb-0e88bedd693e4370e96e981f;Parent=2d8d8f593ea037bf;Sampled=1
+      amz-sdk-invocation-id:
+      - 4fe9ff37-80a1-4ceb-9387-a3908aac18f7
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/does-not-exist/invoke-with-response-stream
+  response:
+    body:
+      string: |-
+        {
+          "message": "The provided model identifier is invalid."
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 06 Feb 2025 05:12:46 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-ErrorType:
+      - ValidationException:http://internal.amazon.com/coral/com.amazon.bedrock/
+      x-amzn-RequestId:
+      - c35768fc-ba55-40d6-8705-9168e0479c7c
+    status:
+      code: 400
+      message: Bad Request
+version: 1

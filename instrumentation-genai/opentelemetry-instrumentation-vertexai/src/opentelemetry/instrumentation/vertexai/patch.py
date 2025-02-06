@@ -25,7 +25,9 @@ from opentelemetry._events import EventLogger
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
+    get_server_attributes,
     get_span_name,
+    request_to_events,
 )
 from opentelemetry.trace import SpanKind, Tracer
 
@@ -100,7 +102,11 @@ def generate_content_create(
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
-        span_attributes = get_genai_request_attributes(params)
+        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+        span_attributes = {
+            **get_genai_request_attributes(params),
+            **get_server_attributes(api_endpoint),
+        }
 
         span_name = get_span_name(span_attributes)
         with tracer.start_as_current_span(
@@ -108,12 +114,10 @@ def generate_content_create(
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
         ) as _span:
-            # TODO: emit request events
-            # if span.is_recording():
-            #     for message in kwargs.get("messages", []):
-            #         event_logger.emit(
-            #             message_to_event(message, capture_content)
-            #         )
+            for event in request_to_events(
+                params=params, capture_content=capture_content
+            ):
+                event_logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
@@ -125,10 +129,9 @@ def generate_content_create(
             #     )
 
             # TODO: add response attributes and events
-            # if span.is_recording():
-            #     _set_response_attributes(
-            #         span, result, event_logger, capture_content
-            #     )
+            # _set_response_attributes(
+            #     span, result, event_logger, capture_content
+            # )
             return result
 
     return traced_method

@@ -46,7 +46,9 @@ class TestDBApiIntegration(TestBase):
             "user": "user",
         }
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname", "testcomponent", connection_attributes
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props
@@ -78,7 +80,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_span_name(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname", "testcomponent", {}
+            "instrumenting_module_test_name", "testcomponent", {}
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -117,7 +119,7 @@ class TestDBApiIntegration(TestBase):
             "user": "user",
         }
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "testcomponent",
             connection_attributes,
             capture_parameters=True,
@@ -169,7 +171,9 @@ class TestDBApiIntegration(TestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname", "testcomponent", connection_attributes
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, connection_props
@@ -183,7 +187,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_span_failed(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent"
+            "instrumenting_module_test_name", "testcomponent"
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -207,7 +211,9 @@ class TestDBApiIntegration(TestBase):
         tracer_provider, exporter = result
 
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer, "testcomponent", tracer_provider=tracer_provider
+            "instrumenting_module_test_name",
+            "testcomponent",
+            tracer_provider=tracer_provider,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -224,7 +230,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_no_op_tracer_provider(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            self.tracer,
+            "instrumenting_module_test_name",
             "testcomponent",
             tracer_provider=trace_api.NoOpTracerProvider(),
         )
@@ -239,7 +245,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_executemany(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname", "testcomponent"
+            "instrumenting_module_test_name", "testcomponent"
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -263,7 +269,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -296,7 +302,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -333,7 +339,7 @@ class TestDBApiIntegration(TestBase):
 
         connect_module = MockConnectModule()
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             connect_module=connect_module,
@@ -369,7 +375,7 @@ class TestDBApiIntegration(TestBase):
 
         connect_module = MockConnectModule()
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             connect_module=connect_module,
@@ -404,7 +410,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -445,7 +451,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -481,7 +487,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -515,7 +521,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -548,7 +554,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -583,7 +589,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -617,7 +623,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -650,7 +656,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -683,7 +689,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -726,7 +732,7 @@ class TestDBApiIntegration(TestBase):
         )
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -768,7 +774,7 @@ class TestDBApiIntegration(TestBase):
         )
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -803,7 +809,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.get_client_info = mock.MagicMock(return_value="123")
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -837,7 +843,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.get_client_info = mock.MagicMock(return_value="123")
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "mysql",
             enable_commenter=True,
             commenter_options={"db_driver": True, "dbapi_level": False},
@@ -872,7 +878,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -916,7 +922,7 @@ class TestDBApiIntegration(TestBase):
         connect_module.paramstyle = "test"
 
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname",
+            "instrumenting_module_test_name",
             "postgresql",
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
@@ -953,7 +959,7 @@ class TestDBApiIntegration(TestBase):
 
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            "testname", "testcomponent"
+            "instrumenting_module_test_name", "testcomponent"
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -987,15 +993,19 @@ class TestDBApiIntegration(TestBase):
         self.assertIsInstance(connection, mock.Mock)
 
     def test_instrument_connection(self):
-        connection = mock.Mock()
+        mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
         # Avoid get_attributes failing because can't concatenate mock
-        connection.database = "-"
-        connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2.__wrapped__, connection)
+        connection2 = dbapi.instrument_connection(
+            "instrumenting_module_test_name", mocked_conn, "dbname"
+        )
+        self.assertIs(connection2.__wrapped__, mocked_conn)
 
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
     def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
-        dbapi.instrument_connection(self.tracer, mock.Mock(), "foo")
+        mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
+        dbapi.instrument_connection(
+            "instrumenting_module_test_name", mocked_conn, "foo"
+        )
         kwargs = mock_dbapiint.call_args[1]
         self.assertEqual(kwargs["connection_attributes"], None)
         self.assertEqual(kwargs["version"], "")
@@ -1008,11 +1018,12 @@ class TestDBApiIntegration(TestBase):
 
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
     def test_instrument_connection_kwargs_provided(self, mock_dbapiint):
+        mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
         mock_tracer_provider = mock.MagicMock()
         mock_connect_module = mock.MagicMock()
         dbapi.instrument_connection(
-            self.tracer,
-            mock.Mock(),
+            "instrumenting_module_test_name",
+            mocked_conn,
             "foo",
             connection_attributes={"foo": "bar"},
             version="test",
@@ -1033,20 +1044,35 @@ class TestDBApiIntegration(TestBase):
         self.assertIs(kwargs["connect_module"], mock_connect_module)
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
+    def test_instrument_connection_db_api_integration_factory(self):
+        mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
+
+        class DBApiIntegrationTestClass(dbapi.DatabaseApiIntegration):
+            pass
+
+        conn = dbapi.instrument_connection(
+            "instrumenting_module_test_name",
+            mocked_conn,
+            "dbsystem",
+            db_api_integration_factory=DBApiIntegrationTestClass,
+        )
+        self.assertIsInstance(
+            conn._self_db_api_integration, DBApiIntegrationTestClass
+        )
+
     def test_uninstrument_connection(self):
-        connection = mock.Mock()
-        # Set connection.database to avoid a failure because mock can't
-        # be concatenated
-        connection.database = "-"
-        connection2 = dbapi.instrument_connection(self.tracer, connection, "-")
-        self.assertIs(connection2.__wrapped__, connection)
+        mocked_conn = MockConnection("dbname", "999", "dbhost", "dbuser")
+        connection2 = dbapi.instrument_connection(
+            "instrumenting_module_test_name", mocked_conn, "-"
+        )
+        self.assertIs(connection2.__wrapped__, mocked_conn)
 
         connection3 = dbapi.uninstrument_connection(connection2)
-        self.assertIs(connection3, connection)
+        self.assertIs(connection3, mocked_conn)
 
         with self.assertLogs(level=logging.WARNING):
-            connection4 = dbapi.uninstrument_connection(connection)
-        self.assertIs(connection4, connection)
+            connection4 = dbapi.uninstrument_connection(mocked_conn)
+        self.assertIs(connection4, mocked_conn)
 
 
 # pylint: disable=unused-argument
