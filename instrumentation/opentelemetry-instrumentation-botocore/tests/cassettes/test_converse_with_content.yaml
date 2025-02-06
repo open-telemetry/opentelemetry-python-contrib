@@ -1,54 +1,80 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}],
-      "inferenceConfig": {"maxTokens": 10, "temperature": 0.8, "topP": 1, "stopSequences":
-      ["|"]}}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
     headers:
       Content-Length:
       - '170'
       Content-Type:
-      - !!binary |
-        YXBwbGljYXRpb24vanNvbg==
+      - application/json
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjJUMTYwODQwWg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051231Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLTZjNTNiNTMyLTI0MDMzZTUwYzQ0M2JkODY2YTVhODhmMztQYXJlbnQ9MWM4ZDk4NmE2
-        Zjk1Y2Y0NTtTYW1wbGVkPTE=
+      - Root=1-c114b02b-84cec2d763a71299ae73fb9f;Parent=6f540fd45e1dc3b3;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        MmRkMzAxNjUtYTdmOC00MjAzLWJlOGItZmE1ZWEzYmFjOGUy
+      - a8c71d0c-ae7b-4685-b696-6ba0ded398ef
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse
   response:
     body:
-      string: '{"metrics":{"latencyMs":742},"output":{"message":{"content":[{"text":"Hey
-        there! Is there anything else"}],"role":"assistant"}},"stopReason":"max_tokens","usage":{"inputTokens":8,"outputTokens":10,"totalTokens":18}}'
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 608
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Hi, how can I help you"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 8,
+            "outputTokens": 10,
+            "totalTokens": 18
+          }
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '215'
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 Jan 2025 16:08:41 GMT
+      - Thu, 06 Feb 2025 05:12:33 GMT
       Set-Cookie: test_set_cookie
       x-amzn-RequestId:
-      - 9fe3b968-40b3-400c-a48d-96fdf682557c
+      - 180bdcbc-0fea-4b99-a0f0-b858dd830a83
     status:
       code: 200
       message: OK
