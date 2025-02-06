@@ -164,7 +164,7 @@ def choice_to_event(choice, capture_content):
 
 
 def set_span_attributes(span, attributes: dict):
-    for field, value in attributes.model_dump(by_alias=True).items():
+    for field, value in attributes.items():
         set_span_attribute(span, field, value)
 
 

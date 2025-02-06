@@ -35,6 +35,7 @@ from .utils import (
     is_streaming,
     message_to_event,
     set_span_attribute,
+    set_span_attributes,
 )
 
 
@@ -48,7 +49,6 @@ def chat_completions_create(
 
     def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
-
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
             name=span_name,
@@ -56,6 +56,7 @@ def chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
+            set_span_attributes(span, span_attributes)
             if span.is_recording():
                 for message in kwargs.get("messages", []):
                     event_logger.emit(
@@ -114,6 +115,7 @@ def async_chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
+            set_span_attributes(span, span_attributes)
             if span.is_recording():
                 for message in kwargs.get("messages", []):
                     event_logger.emit(
