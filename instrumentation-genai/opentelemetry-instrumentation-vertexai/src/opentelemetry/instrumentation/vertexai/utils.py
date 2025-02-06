@@ -157,6 +157,8 @@ def get_genai_response_attributes(
     finish_reasons: list[str] = [
         candidate.finish_reason.name for candidate in response.candidates
     ]
+    # TODO: add gen_ai.response.id once available in the python client
+    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3246
     return {
         GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
         GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
