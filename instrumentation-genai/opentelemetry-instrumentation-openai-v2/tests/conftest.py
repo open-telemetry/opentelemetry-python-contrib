@@ -33,6 +33,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 
 
 @pytest.fixture(scope="function", name="span_exporter")
@@ -182,6 +183,29 @@ def instrument_with_content(
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_content_unsampled(
+    span_exporter, event_logger_provider, meter_provider
+):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+    )
+
+    tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
