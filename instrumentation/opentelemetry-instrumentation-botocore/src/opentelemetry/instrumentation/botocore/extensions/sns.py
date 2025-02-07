@@ -81,10 +81,10 @@ class _OpPublish(_SnsOperation):
         )
         attributes[SpanAttributes.MESSAGING_DESTINATION] = destination_name
 
-        # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when opentelemetry-semantic-conventions 0.42b0 is released
-        attributes["messaging.destination.name"] = cls._extract_input_arn(
-            call_context
-        )
+        if not is_phone_number:
+            attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = (
+                cls._extract_input_arn(call_context)
+            )
         call_context.span_name = (
             f"{'phone_number' if is_phone_number else destination_name} send"
         )
