@@ -38,7 +38,7 @@ def test_generate_content(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
-        "gen_ai.response.finish_reasons": ("STOP",),
+        "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
         "gen_ai.usage.input_tokens": 5,
@@ -106,7 +106,7 @@ def test_generate_content_without_events(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
-        "gen_ai.response.finish_reasons": ("STOP",),
+        "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
         "gen_ai.usage.input_tokens": 5,
@@ -294,7 +294,7 @@ def test_generate_content_extra_params(span_exporter, instrument_no_content):
         "gen_ai.request.stop_sequences": ("\n\n\n",),
         "gen_ai.request.temperature": 0.20000000298023224,
         "gen_ai.request.top_p": 0.949999988079071,
-        "gen_ai.response.finish_reasons": ("MAX_TOKENS",),
+        "gen_ai.response.finish_reasons": ("length",),
         "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
         "gen_ai.usage.input_tokens": 5,

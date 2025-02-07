@@ -155,7 +155,8 @@ def get_genai_response_attributes(
     | prediction_service_v1beta1.GenerateContentResponse,
 ) -> dict[str, AttributeValue]:
     finish_reasons: list[str] = [
-        candidate.finish_reason.name for candidate in response.candidates
+        _map_finish_reason(candidate.finish_reason)
+        for candidate in response.candidates
     ]
     # TODO: add gen_ai.response.id once available in the python client
     # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3246
@@ -276,9 +277,5 @@ def _map_finish_reason(
     if finish_reason is EnumType.MAX_TOKENS:
         return "length"
 
-    # There are a lot of specific enum values from Vertex that would map to "content_filter".
-    # I'm worried trying to map the enum obfuscates the telemetry because 1) it over
-    # generalizes and 2) half of the values are from the OTel enum and others from the vertex
-    # enum. See for reference
-    # https://github.com/googleapis/python-aiplatform/blob/c5023698c7068e2f84523f91b824641c9ef2d694/google/cloud/aiplatform_v1/types/content.py#L786-L822
-    return finish_reason.name.lower()
+    # If there is no 1:1 mapping to an OTel preferred enum value, use the exact vertex reason
+    return finish_reason.name

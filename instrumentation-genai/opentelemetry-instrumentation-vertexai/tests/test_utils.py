@@ -13,7 +13,19 @@
 # limitations under the License.
 
 
-from opentelemetry.instrumentation.vertexai.utils import get_server_attributes
+from opentelemetry.instrumentation.vertexai.utils import (
+    get_server_attributes,
+    _map_finish_reason,
+)
+import pytest
+from google.cloud.aiplatform_v1.types import (
+    content,
+    prediction_service,
+    tool,
+)
+from google.cloud.aiplatform_v1beta1.types import (
+    content as content_v1beta1,
+)
 
 
 def test_get_server_attributes() -> None:
@@ -30,3 +42,25 @@ def test_get_server_attributes() -> None:
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 5432,
     }
+
+
+def test_map_finish_reason():
+    for Enum in (
+        content.Candidate.FinishReason,
+        content_v1beta1.Candidate.FinishReason,
+    ):
+        for finish_reason, expect in [
+            # Handled mappings
+            (Enum.FINISH_REASON_UNSPECIFIED, "error"),
+            (Enum.OTHER, "error"),
+            (Enum.STOP, "stop"),
+            (Enum.MAX_TOKENS, "length"),
+            # Preserve vertex enum value
+            (Enum.BLOCKLIST, "BLOCKLIST"),
+            (Enum.MALFORMED_FUNCTION_CALL, "MALFORMED_FUNCTION_CALL"),
+            (Enum.PROHIBITED_CONTENT, "PROHIBITED_CONTENT"),
+            (Enum.RECITATION, "RECITATION"),
+            (Enum.SAFETY, "SAFETY"),
+            (Enum.SPII, "SPII"),
+        ]:
+            assert _map_finish_reason(finish_reason) == expect
