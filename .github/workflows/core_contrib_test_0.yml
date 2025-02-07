@@ -36,7 +36,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-openai-v2-0 -- -ra
@@ -58,7 +58,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-openai-v2-1 -- -ra
@@ -80,7 +80,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-vertexai-0 -- -ra
@@ -102,7 +102,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-vertexai-1 -- -ra
@@ -124,7 +124,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-resource-detector-container -- -ra
@@ -146,7 +146,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-resource-detector-azure-0 -- -ra
@@ -168,7 +168,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-resource-detector-azure-1 -- -ra
@@ -190,7 +190,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-sdk-extension-aws-0 -- -ra
@@ -212,7 +212,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-sdk-extension-aws-1 -- -ra
@@ -234,7 +234,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-distro -- -ra
@@ -256,7 +256,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-opentelemetry-instrumentation -- -ra
@@ -278,7 +278,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aiohttp-client -- -ra
@@ -300,7 +300,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aiohttp-server -- -ra
@@ -322,7 +322,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aiopg -- -ra
@@ -344,13 +344,13 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aws-lambda -- -ra
 
-  py38-test-instrumentation-botocore:
-    name: instrumentation-botocore 
+  py38-test-instrumentation-botocore-0:
+    name: instrumentation-botocore-0 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
@@ -366,10 +366,32 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-botocore -- -ra
+        run: tox -e py38-test-instrumentation-botocore-0 -- -ra
+
+  py38-test-instrumentation-botocore-1:
+    name: instrumentation-botocore-1 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-botocore-1 -- -ra
 
   py38-test-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs 
@@ -388,7 +410,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-boto3sqs -- -ra
@@ -410,7 +432,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-django-0 -- -ra
@@ -432,7 +454,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-django-1 -- -ra
@@ -454,7 +476,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-django-2 -- -ra
@@ -476,7 +498,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-dbapi -- -ra
@@ -498,7 +520,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-boto -- -ra
@@ -520,7 +542,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-click -- -ra
@@ -542,7 +564,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-elasticsearch-0 -- -ra
@@ -564,7 +586,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-elasticsearch-1 -- -ra
@@ -586,7 +608,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-elasticsearch-2 -- -ra
@@ -608,7 +630,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-falcon-0 -- -ra
@@ -630,7 +652,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-falcon-1 -- -ra
@@ -652,7 +674,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-falcon-2 -- -ra
@@ -674,7 +696,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-falcon-3 -- -ra
@@ -696,7 +718,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-fastapi -- -ra
@@ -718,7 +740,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-flask-0 -- -ra
@@ -740,7 +762,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-flask-1 -- -ra
@@ -762,7 +784,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-flask-2 -- -ra
@@ -784,7 +806,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-urllib -- -ra
@@ -806,7 +828,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-urllib3-0 -- -ra
@@ -828,7 +850,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-urllib3-1 -- -ra
@@ -850,7 +872,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-requests -- -ra
@@ -872,7 +894,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-starlette -- -ra
@@ -894,7 +916,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-jinja2 -- -ra
@@ -916,7 +938,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-logging -- -ra
@@ -938,7 +960,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-exporter-richconsole -- -ra
@@ -960,7 +982,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-exporter-prometheus-remote-write -- -ra
@@ -982,7 +1004,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-mysql-0 -- -ra
@@ -1004,7 +1026,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-mysql-1 -- -ra
@@ -1026,7 +1048,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-mysqlclient -- -ra
@@ -1048,10 +1070,32 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-psycopg2 -- -ra
+
+  py38-test-instrumentation-psycopg2-binary:
+    name: instrumentation-psycopg2-binary 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-psycopg2-binary -- -ra
 
   py38-test-instrumentation-psycopg:
     name: instrumentation-psycopg 
@@ -1070,7 +1114,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-psycopg -- -ra
@@ -1092,7 +1136,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymemcache-0 -- -ra
@@ -1114,7 +1158,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymemcache-1 -- -ra
@@ -1136,7 +1180,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymemcache-2 -- -ra
@@ -1158,7 +1202,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymemcache-3 -- -ra
@@ -1180,7 +1224,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymemcache-4 -- -ra
@@ -1202,7 +1246,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymongo -- -ra
@@ -1224,10 +1268,32 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pymysql -- -ra
+
+  py38-test-instrumentation-pymssql:
+    name: instrumentation-pymssql 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-pymssql -- -ra
 
   py38-test-instrumentation-pyramid:
     name: instrumentation-pyramid 
@@ -1246,7 +1312,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-pyramid -- -ra
@@ -1268,7 +1334,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-asgi -- -ra
@@ -1290,7 +1356,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-asyncpg -- -ra
@@ -1312,7 +1378,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sqlite3 -- -ra
@@ -1334,7 +1400,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-wsgi -- -ra
@@ -1356,7 +1422,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-grpc-0 -- -ra
@@ -1378,7 +1444,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-grpc-1 -- -ra
@@ -1400,7 +1466,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sqlalchemy-1 -- -ra
@@ -1422,7 +1488,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sqlalchemy-2 -- -ra
@@ -1444,7 +1510,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-redis -- -ra
@@ -1466,7 +1532,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-remoulade -- -ra
@@ -1488,7 +1554,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-celery -- -ra
@@ -1510,7 +1576,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-system-metrics -- -ra
@@ -1532,7 +1598,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-threading -- -ra
@@ -1554,7 +1620,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-tornado -- -ra
@@ -1576,7 +1642,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-tortoiseorm -- -ra
@@ -1598,7 +1664,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-httpx-0 -- -ra
@@ -1620,7 +1686,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-httpx-1 -- -ra
@@ -1642,7 +1708,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-util-http -- -ra
@@ -1664,7 +1730,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-propagator-aws-xray-0 -- -ra
@@ -1686,7 +1752,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-propagator-aws-xray-1 -- -ra
@@ -1708,7 +1774,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-propagator-ot-trace -- -ra
@@ -1730,7 +1796,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sio-pika-0 -- -ra
@@ -1752,7 +1818,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-sio-pika-1 -- -ra
@@ -1774,7 +1840,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-0 -- -ra
@@ -1796,7 +1862,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-1 -- -ra
@@ -1818,7 +1884,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-2 -- -ra
@@ -1840,7 +1906,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aio-pika-3 -- -ra
@@ -1862,7 +1928,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-aiokafka -- -ra
@@ -1884,7 +1950,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-kafka-python -- -ra
@@ -1906,7 +1972,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-kafka-pythonng -- -ra
@@ -1928,7 +1994,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-confluent-kafka -- -ra
@@ -1950,7 +2016,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-asyncio -- -ra
@@ -1972,7 +2038,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-instrumentation-cassandra -- -ra
@@ -1994,7 +2060,7 @@ jobs:
           architecture: "x64"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e py38-test-processor-baggage -- -ra

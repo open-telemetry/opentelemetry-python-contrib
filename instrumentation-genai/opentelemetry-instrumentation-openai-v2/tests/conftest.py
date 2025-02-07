@@ -17,11 +17,23 @@ from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
     SimpleLogRecordProcessor,
 )
+from opentelemetry.sdk.metrics import (
+    Histogram,
+    MeterProvider,
+)
+from opentelemetry.sdk.metrics.export import (
+    InMemoryMetricReader,
+)
+from opentelemetry.sdk.metrics.view import (
+    ExplicitBucketHistogramAggregation,
+    View,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 
 
 @pytest.fixture(scope="function", name="span_exporter")
@@ -33,6 +45,12 @@ def fixture_span_exporter():
 @pytest.fixture(scope="function", name="log_exporter")
 def fixture_log_exporter():
     exporter = InMemoryLogExporter()
+    yield exporter
+
+
+@pytest.fixture(scope="function", name="metric_reader")
+def fixture_metric_reader():
+    exporter = InMemoryMetricReader()
     yield exporter
 
 
@@ -50,6 +68,62 @@ def fixture_event_logger_provider(log_exporter):
     event_logger_provider = EventLoggerProvider(provider)
 
     return event_logger_provider
+
+
+@pytest.fixture(scope="function", name="meter_provider")
+def fixture_meter_provider(metric_reader):
+    token_usage_histogram_view = View(
+        instrument_type=Histogram,
+        instrument_name="gen_ai.client.token.usage",
+        aggregation=ExplicitBucketHistogramAggregation(
+            boundaries=[
+                1,
+                4,
+                16,
+                64,
+                256,
+                1024,
+                4096,
+                16384,
+                65536,
+                262144,
+                1048576,
+                4194304,
+                16777216,
+                67108864,
+            ]
+        ),
+    )
+
+    duration_histogram_view = View(
+        instrument_type=Histogram,
+        instrument_name="gen_ai.client.operation.duration",
+        aggregation=ExplicitBucketHistogramAggregation(
+            boundaries=[
+                0.01,
+                0.02,
+                0.04,
+                0.08,
+                0.16,
+                0.32,
+                0.64,
+                1.28,
+                2.56,
+                5.12,
+                10.24,
+                20.48,
+                40.96,
+                81.92,
+            ]
+        ),
+    )
+
+    meter_provider = MeterProvider(
+        metric_readers=[metric_reader],
+        views=[token_usage_histogram_view, duration_histogram_view],
+    )
+
+    return meter_provider
 
 
 @pytest.fixture(autouse=True)
@@ -83,7 +157,9 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(tracer_provider, event_logger_provider):
+def instrument_no_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
     )
@@ -92,6 +168,7 @@ def instrument_no_content(tracer_provider, event_logger_provider):
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
     )
 
     yield instrumentor
@@ -100,7 +177,9 @@ def instrument_no_content(tracer_provider, event_logger_provider):
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(tracer_provider, event_logger_provider):
+def instrument_with_content(
+    tracer_provider, event_logger_provider, meter_provider
+):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
@@ -108,6 +187,30 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_content_unsampled(
+    span_exporter, event_logger_provider, meter_provider
+):
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+    )
+
+    tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
     )
 
     yield instrumentor

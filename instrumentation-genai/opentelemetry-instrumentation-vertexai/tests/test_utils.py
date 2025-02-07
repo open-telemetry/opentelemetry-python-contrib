@@ -12,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: adapt tests from OpenLLMetry here along with tests from
-# instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/test_chat_completions.py
+
+from opentelemetry.instrumentation.vertexai.utils import get_server_attributes
 
 
-def test_placeholder():
-    assert True
+def test_get_server_attributes() -> None:
+    # without port
+    assert get_server_attributes("us-central1-aiplatform.googleapis.com") == {
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
+    }
+
+    # with port
+    assert get_server_attributes(
+        "us-central1-aiplatform.googleapis.com:5432"
+    ) == {
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 5432,
+    }
