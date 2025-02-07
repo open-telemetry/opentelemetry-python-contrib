@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added 
+
+- `opentelemetry-instrumentation-system-metrics` Add `process` metrics and deprecated `process.runtime` prefixed ones 
+  ([#3250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3250))
+
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
 ### Added
