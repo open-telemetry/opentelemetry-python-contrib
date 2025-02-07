@@ -13,18 +13,16 @@
 # limitations under the License.
 
 
-from opentelemetry.instrumentation.vertexai.utils import (
-    get_server_attributes,
-    _map_finish_reason,
-)
-import pytest
 from google.cloud.aiplatform_v1.types import (
     content,
-    prediction_service,
-    tool,
 )
 from google.cloud.aiplatform_v1beta1.types import (
     content as content_v1beta1,
+)
+
+from opentelemetry.instrumentation.vertexai.utils import (
+    _map_finish_reason,
+    get_server_attributes,
 )
 
 
