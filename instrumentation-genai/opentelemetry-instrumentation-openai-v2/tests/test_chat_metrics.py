@@ -111,10 +111,10 @@ def test_chat_completion_metrics(
     )
     assert duration_metric is not None
 
-    duration_metric = duration_metric.data.data_points[0]
-    assert duration_metric.sum > 0
-    assert_all_metric_attributes(duration_metric)
-    assert duration_metric.explicit_bounds == _DURATION_BUCKETS
+    duration_point = duration_metric.data.data_points[0]
+    assert duration_point .sum > 0
+    assert_all_metric_attributes(duration_point )
+    assert duration_point .explicit_bounds == _DURATION_BUCKETS
 
     token_usage_metric = next(
         (
