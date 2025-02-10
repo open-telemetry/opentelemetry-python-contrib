@@ -1,0 +1,84 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "top_p": 1,
+        "stop_sequences": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '211'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250211T141039Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-8be6f3ea-614b53957b659455b7f8a1ff;Parent=9f44c46d2e6821c0;Sampled=1
+      amz-sdk-invocation-id:
+      - 5d18ca20-a5ac-4403-99b5-aaa6ecf46b5d
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_01QBSj9wkkgvNKMZZxMa6J77",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-2.0",
+          "content": [
+            {
+              "type": "text",
+              "text": "Okay, I just said \"This is a test"
+            }
+          ],
+          "stop_reason": "max_tokens",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 14,
+            "output_tokens": 10
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 11 Feb 2025 14:10:40 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '14'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '506'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - a6cbb4fd-4a3f-4c19-8e68-23ad1622ddfe
+    status:
+      code: 200
+      message: OK
+version: 1

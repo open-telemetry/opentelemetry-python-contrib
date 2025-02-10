@@ -29,10 +29,15 @@ from opentelemetry.trace.status import StatusCode
 from .bedrock_utils import (
     assert_completion_attributes_from_streaming_body,
     assert_converse_completion_attributes,
+    assert_message_in_logs,
     assert_stream_completion_attributes,
 )
 
 BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
+
+
+def filter_message_keys(message, keys):
+    return {k: v for k, v in message.items() if k in keys}
 
 
 @pytest.mark.skipif(
@@ -73,7 +78,51 @@ def test_converse_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
+)
+@pytest.mark.vcr()
+def test_converse_no_content(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "amazon.titan-text-lite-v1"
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    response = bedrock_runtime_client.converse(
+        messages=messages,
+        modelId=llm_model_value,
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+            "topP": top_p,
+            "stopSequences": stop_sequences,
+        },
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_converse_completion_attributes(
+        span,
+        llm_model_value,
+        response,
+        "chat",
+        top_p,
+        temperature,
+        max_tokens,
+        stop_sequences,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+    assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
 
 
 @pytest.mark.skipif(
@@ -107,7 +156,8 @@ def test_converse_with_invalid_model(
     assert span.attributes[ERROR_TYPE] == "ValidationException"
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 @pytest.mark.skipif(
@@ -170,7 +220,73 @@ def test_converse_stream_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
+def test_converse_stream_no_content(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+):
+    # pylint:disable=too-many-locals
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "amazon.titan-text-lite-v1"
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    response = bedrock_runtime_client.converse_stream(
+        messages=messages,
+        modelId=llm_model_value,
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+            "topP": top_p,
+            "stopSequences": stop_sequences,
+        },
+    )
+
+    # consume the stream in order to have it traced
+    finish_reason = None
+    input_tokens, output_tokens = None, None
+    text = ""
+    for event in response["stream"]:
+        if "contentBlockDelta" in event:
+            text += event["contentBlockDelta"]["delta"]["text"]
+        if "messageStop" in event:
+            finish_reason = (event["messageStop"]["stopReason"],)
+        if "metadata" in event:
+            usage = event["metadata"]["usage"]
+            input_tokens = usage["inputTokens"]
+            output_tokens = usage["outputTokens"]
+
+    assert text
+    assert finish_reason
+    assert input_tokens
+    assert output_tokens
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        "chat",
+        top_p,
+        temperature,
+        max_tokens,
+        stop_sequences,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+    assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
 
 
 @pytest.mark.skipif(
@@ -229,7 +345,9 @@ def test_converse_stream_handles_event_stream_error(
     assert span.attributes[ERROR_TYPE] == "EventStreamError"
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 @pytest.mark.skipif(
@@ -262,7 +380,9 @@ def test_converse_stream_with_invalid_model(
     assert span.attributes[ERROR_TYPE] == "ValidationException"
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 def get_invoke_model_body(
@@ -356,7 +476,53 @@ def test_invoke_model_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    if model_family == "anthropic.claude":
+        user_content = {
+            "content": [{"text": "Say this is a test", "type": "text"}]
+        }
+    else:
+        user_content = {"content": [{"text": "Say this is a test"}]}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+)
+@pytest.mark.vcr()
+def test_invoke_model_no_content(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_no_content,
+    model_family,
+):
+    llm_model_value = get_model_name_from_family(model_family)
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    body = get_invoke_model_body(
+        llm_model_value, max_tokens, temperature, top_p, stop_sequences
+    )
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        response,
+        "text_completion" if model_family == "amazon.titan" else "chat",
+        top_p,
+        temperature,
+        max_tokens,
+        stop_sequences,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+    assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
 
 
 @pytest.mark.vcr()
@@ -471,7 +637,14 @@ def test_invoke_model_with_response_stream_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    if model_family == "anthropic.claude":
+        user_content = {
+            "content": [{"text": "Say this is a test", "type": "text"}]
+        }
+    else:
+        user_content = {"content": [{"text": "Say this is a test"}]}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 @pytest.mark.vcr()
@@ -521,7 +694,9 @@ def test_invoke_model_with_response_stream_handles_stream_error(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 0
+    assert len(logs) == 1
+    user_content = {"content": [{"text": "Say this is a test"}]}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 @pytest.mark.vcr()

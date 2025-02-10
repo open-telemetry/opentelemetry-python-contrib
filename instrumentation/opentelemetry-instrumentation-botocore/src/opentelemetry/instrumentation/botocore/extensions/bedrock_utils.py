@@ -15,10 +15,20 @@
 from __future__ import annotations
 
 import json
+from os import environ
 from typing import Callable, Dict, Union
 
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
+
+from opentelemetry._events import Event
+from opentelemetry.instrumentation.botocore.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_SYSTEM,
+    GenAiSystemValues,
+)
 
 _StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
 _StreamErrorCallableT = Callable[[Exception], None]
@@ -220,3 +230,37 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._process_invocation_metrics(invocation_metrics)
             self._stream_done_callback(self._response)
             return
+
+
+def genai_capture_message_content() -> bool:
+    capture_content = environ.get(
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+    )
+    return capture_content.lower() == "true"
+
+
+def message_to_event(message, capture_content):
+    attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+    role = message.get("role")
+    content = message.get("content")
+
+    body = {}
+    if capture_content and content:
+        body["content"] = content
+    if role == "assistant":
+        # TODO
+        """
+        tool_calls = extract_tool_calls(message, capture_content)
+        if tool_calls:
+            body = {"tool_calls": tool_calls}
+        """
+    elif role == "tool":
+        tool_call_id = message.get("tool_call_id")
+        if tool_call_id:
+            body["id"] = tool_call_id
+
+    return Event(
+        name=f"gen_ai.{role}.message",
+        attributes=attributes,
+        body=body if body else None,
+    )
