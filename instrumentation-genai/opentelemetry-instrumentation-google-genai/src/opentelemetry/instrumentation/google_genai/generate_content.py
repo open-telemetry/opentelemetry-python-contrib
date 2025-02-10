@@ -24,6 +24,12 @@ from opentelemetry.semconv.attributes import error_attributes
 _logger = logging.getLogger(__name__)
 
 
+# Enable these after these cases are fully vetted and tested
+_INSTRUMENT_STREAMING = False
+_INSTRUMENT_ASYNC = False
+
+
+
 class _MethodsSnapshot:
 
     def __init__(self):
@@ -317,6 +323,9 @@ def _create_instrumented_generate_content_stream(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper):
     wrapped_func = snapshot.generate_content_stream
+    if not _INSTRUMENT_STREAMING:
+        # TODO: remove once this case has been fully tested
+        return wrapped_func
     @functools.wraps(wrapped_func)
     def instrumented_generate_content_stream(
         self: Models,
@@ -343,6 +352,9 @@ def _create_instrumented_async_generate_content(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper):
     wrapped_func = snapshot.async_generate_content
+    if not _INSTRUMENT_ASYNC:
+        # TODO: remove once this case has been fully tested
+        return wrapped_func
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content(
         self: AsyncModels,
@@ -369,6 +381,9 @@ def _create_instrumented_async_generate_content_stream(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper):
     wrapped_func = snapshot.async_generate_content_stream
+    if not _INSTRUMENT_ASYNC or not _INSTRUMENT_STREAMING:
+        # TODO: remove once this case has been fully tested
+        return wrapped_func
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content_stream(
         self: AsyncModels,
