@@ -291,9 +291,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
             # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                inner_server_error_middleware: ASGIApp = (
-                    self._original_build_middleware_stack()
-                )  # type: ignore
+                inner_server_error_middleware: ASGIApp = (  # type: ignore
+                    self._original_build_middleware_stack()  # type: ignore
+                )
                 otel_middleware = OpenTelemetryMiddleware(
                     inner_server_error_middleware,
                     excluded_urls=excluded_urls,
