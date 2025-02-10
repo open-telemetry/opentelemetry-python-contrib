@@ -93,6 +93,10 @@ class _AwsSdkExtension:
     def __init__(self, call_context: _AwsSdkCallContext):
         self._call_context = call_context
 
+    def tracer_schema_version(self) -> str:
+        """Returns the tracer OTel schema version the extension is following"""
+        return "1.11.0"
+
     def should_trace_service_call(self) -> bool:  # pylint:disable=no-self-use
         """Returns if the AWS SDK service call should be traced or not
 
