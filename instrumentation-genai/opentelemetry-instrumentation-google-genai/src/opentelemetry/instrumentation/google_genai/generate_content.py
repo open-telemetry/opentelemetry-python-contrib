@@ -1,5 +1,6 @@
 from typing import Union, Optional, Iterator, AsyncIterator, Awaitable
 
+import logging
 import time
 import os
 import functools
@@ -18,6 +19,9 @@ from .otel_wrapper import OTelWrapper
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.semconv.attributes import error_attributes
+
+
+_logger = logging.getLogger(__name__)
 
 
 class _MethodsSnapshot:
@@ -189,6 +193,7 @@ class _GenerateContentInstrumentationHelper:
         span.set_attribute(gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS, sorted(list(self._finish_reasons_set)))
         self._record_token_usage_metric()
         self._record_duration_metric()
+        self._otel_wrapper.done()
 
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
         input_tokens = _get_response_property(response, 'usage_metadata.prompt_token_count')
@@ -199,22 +204,51 @@ class _GenerateContentInstrumentationHelper:
             self._output_tokens += output_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
-        pass
+        if response.candidates:
+            return
+        if ((not response.prompt_feedback) or
+            (not response.prompt_feedback.block_reason) or
+            (block_reason == genai_types.BlockedReason.BLOCKED_REASON_UNSPECIFIED)):
+            self._error_type = 'NO_CANDIDATES'
+            return
+        block_reason = response.prompt_feedback.block_reason
+        self._error_type = 'BLOCKED_{}'.format(block_reason.name)
 
     def _maybe_log_system_instruction(self, config: Optional[GenerateContentConfigOrDict]=None):
         if not self._content_recording_enabled:
             return
-        pass
+        system_instruction = _get_config_property(config, 'system_instruction')
+        if not system_instruction:
+            return
+        self._otel_wrapper.log_system_prompt(
+            attributes={
+                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            },
+            body={
+                'content': system_instruction,
+            })
     
     def _maybe_log_user_prompt(self, contents: Union[ContentListUnion, ContentListUnionDict]):
         if not self._content_recording_enabled:
             return
-        pass
+        self._otel_wrapper.log_user_prompt(
+            attributes={
+                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            },
+            body={
+                'content': contents,
+            })
 
     def _maybe_log_response(self, response: GenerateContentResponse):
         if not self._content_recording_enabled:
             return
-        pass
+        self._otel_wrapper.log_response_content(
+            attributes={
+                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            },
+            body={
+                'content': response.model_dump(),
+            })
 
     def _record_token_usage_metric(self):
         self._otel_wrapper.token_usage_metric.record(

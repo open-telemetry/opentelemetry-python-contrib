@@ -1,8 +1,15 @@
+import logging
+
+import json
 import google.genai
 
 from .version import __version__ as _LIBRARY_VERSION
+from opentelemetry._events import Event
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+
+
+_logger = logging.getLogger(__name__)
 
 
 _LIBRARY_NAME = 'opentelemetry-instrumentation-google-genai'
@@ -41,6 +48,9 @@ class OTelWrapper:
     def start_as_current_span(self, *args, **kwargs):
         return self._tracer.start_as_current_span(*args, **kwargs)
 
+    def done(self):
+        pass
+
     @property
     def tracer(self):
         return self._tracer
@@ -60,3 +70,23 @@ class OTelWrapper:
     @property
     def token_usage_metric(self):
         return self._token_usage_metric
+
+    def log_system_prompt(self, attributes, body):
+        _logger.debug('Recording system prompt.')
+        event_name = 'gen_ai.system.message'
+        self._log_event(event_name, attributes, body)
+
+    def log_user_prompt(self, attributes, body):
+        _logger.debug('Recording user prompt.')
+        event_name = 'gen_ai.user.message'
+        self._log_event(event_name, attributes, body)
+    
+    def log_response_content(self, attributes, body):
+        _logger.debug('Recording response.')
+        event_name = 'gen_ai.assistant.message'
+        self._log_event(event_name, attributes, body)
+
+    def _log_event(self, event_name, attributes, body):
+        event = Event(event_name, body=body, attributes=attributes)
+        self.event_logger.emit(event)
+

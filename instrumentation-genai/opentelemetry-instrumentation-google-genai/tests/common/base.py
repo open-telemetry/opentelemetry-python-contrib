@@ -21,14 +21,17 @@ class TestCase(unittest.TestCase):
         self._otel.install()
         self._requests = RequestsMocker()
         self._requests.install()
-        self._instrumentation_context = InstrumentationContext()
-        self._instrumentation_context.install()
+        self._instrumentation_context = None
         self._api_key = 'test-api-key'
         self._project = 'test-project'
         self._location = 'test-location'
         self._client = None
         self._uses_vertex = False
         self._credentials = _FakeCredentials()
+
+    def _lazy_init(self):
+        self._instrumentation_context = InstrumentationContext()
+        self._instrumentation_context.install()
 
     @property
     def client(self):
@@ -48,6 +51,7 @@ class TestCase(unittest.TestCase):
         self._uses_vertex = use_vertex
 
     def _create_client(self):
+        self._lazy_init()
         if self._uses_vertex:
             os.environ['GOOGLE_API_KEY'] = self._api_key
             return google.genai.Client(
@@ -58,6 +62,7 @@ class TestCase(unittest.TestCase):
         return google.genai.Client(api_key=self._api_key)
 
     def tearDown(self):
-        self._instrumentation_context.uninstall()
+        if self._instrumentation_context is not None:
+            self._instrumentation_context.uninstall()
         self._requests.uninstall()
         self._otel.uninstall()
