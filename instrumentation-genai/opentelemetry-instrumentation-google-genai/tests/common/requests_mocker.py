@@ -99,6 +99,10 @@ class RequestsMocker:
     def uninstall(self):
         requests.sessions.Session.send = self._original_send
 
+    def reset(self):
+        self._calls = []
+        self._handlers = []
+
     def add_response(self, response, if_matches=None):
         self._handlers.append((if_matches, _to_response_generator(response)))
 

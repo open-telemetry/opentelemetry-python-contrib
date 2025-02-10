@@ -92,7 +92,22 @@ def _get_config_property(
     for path_segment in path_segments:
         if current_context is None:
             return None
-        if isdict(current_context):
+        if isinstance(current_context, dict):
+            current_context = current_context.get(path_segment)
+        else:
+            current_context = getattr(current_context, path_segment)
+    return current_context
+
+
+def _get_response_property(
+    response: GenerateContentResponse,
+    path: str):
+    path_segments = path.split('.')
+    current_context = response
+    for path_segment in path_segments:
+        if current_context is None:
+            return None
+        if isinstance(current_context, dict):
             current_context = current_context.get(path_segment)
         else:
             current_context = getattr(current_context, path_segment)
@@ -160,7 +175,9 @@ class _GenerateContentInstrumentationHelper:
         
 
     def process_response(self, response: GenerateContentResponse):
-        pass
+        self._maybe_update_token_counts(response)
+        self._maybe_update_error_type(response)
+        self._maybe_log_response(response)
 
     def process_error(self, e: Exception):
         self._error_type = str(e.__class__.__name__)
@@ -173,12 +190,28 @@ class _GenerateContentInstrumentationHelper:
         self._record_token_usage_metric()
         self._record_duration_metric()
 
+    def _maybe_update_token_counts(self, response: GenerateContentResponse):
+        input_tokens = _get_response_property(response, 'usage_metadata.prompt_token_count')
+        output_tokens = _get_response_property(response, 'usage_metadata.candidates_token_count')
+        if input_tokens:
+            self._input_tokens += input_tokens
+        if output_tokens:
+            self._output_tokens += output_tokens
+
+    def _maybe_update_error_type(self, response: GenerateContentResponse):
+        pass
+
     def _maybe_log_system_instruction(self, config: Optional[GenerateContentConfigOrDict]=None):
         if not self._content_recording_enabled:
             return
         pass
     
     def _maybe_log_user_prompt(self, contents: Union[ContentListUnion, ContentListUnionDict]):
+        if not self._content_recording_enabled:
+            return
+        pass
+
+    def _maybe_log_response(self, response: GenerateContentResponse):
         if not self._content_recording_enabled:
             return
         pass
