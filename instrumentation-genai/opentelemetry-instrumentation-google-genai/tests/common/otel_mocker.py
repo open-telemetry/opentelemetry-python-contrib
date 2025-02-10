@@ -1,3 +1,10 @@
+import time
+
+import opentelemetry.trace
+import opentelemetry._logs._internal
+import opentelemetry.metrics._internal
+from opentelemetry.util._once import Once
+
 from opentelemetry.trace import (
     get_tracer_provider,
     set_tracer_provider
@@ -22,6 +29,13 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 
+def _bypass_otel_once():
+    opentelemetry.trace._TRACER_PROVIDER_SET_ONCE = Once()
+    opentelemetry._logs._internal._LOGGER_PROVIDER_SET_ONCE = Once()
+    opentelemetry.metrics._internal._METER_PROVIDER_SET_ONCE = Once()
+
+
+
 class OTelProviderSnapshot:
 
     def __init__(self):
@@ -30,6 +44,7 @@ class OTelProviderSnapshot:
         self._meter_provider = get_meter_provider()
 
     def restore(self):
+        _bypass_otel_once()
         set_tracer_provider(self._tracer_provider)
         set_logger_provider(self._logger_provider)
         set_meter_provider(self._meter_provider)
@@ -42,9 +57,11 @@ class OTelMocker:
         self._logs = InMemoryLogExporter()
         self._traces = InMemorySpanExporter()
         self._metrics = InMemoryMetricReader()
+        self._spans = []
 
     def install(self):
         self._snapshot = OTelProviderSnapshot()
+        _bypass_otel_once()
         self._install_logs()
         self._install_metrics()
         self._install_traces()
@@ -56,7 +73,9 @@ class OTelMocker:
         return self._logs.get_finished_logs()
     
     def get_finished_spans(self):
-        return self._traces.get_finished_spans()
+        for span in self._traces.get_finished_spans():
+            self._spans.append(span)
+        return self._spans
 
     def get_metrics_data(self):
         return self._metrics.get_metrics_data()
@@ -66,10 +85,11 @@ class OTelMocker:
             if span.name == name:
                 return span
         return None
-        
+
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
-        assert span is not None, f'Could not find span named {name}; finished spans: {self.get_finished_spans()}'
+        finished_spans = self.get_finished_spans()
+        assert span is not None, 'Could not find span named "{}"; finished spans: {}'.format(name, finished_spans)
 
     def _install_logs(self):
         processor = SynchronousMultiLogRecordProcessor()

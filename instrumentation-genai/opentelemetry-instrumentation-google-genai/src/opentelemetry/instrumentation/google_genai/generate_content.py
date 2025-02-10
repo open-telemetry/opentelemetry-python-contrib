@@ -52,11 +52,11 @@ class _MethodsSnapshot:
 
 
 def _get_vertexai_system_name():
-    return gen_ai_attributes.GenAiSystemValues.VERTEX_AI
+    return gen_ai_attributes.GenAiSystemValues.VERTEX_AI.name.lower()
 
 
 def _get_gemini_system_name():
-    return gen_ai_attributes.GenAiSystemValues.GEMINI
+    return gen_ai_attributes.GenAiSystemValues.GEMINI.name.lower()
 
 
 def _guess_genai_system_from_env():
