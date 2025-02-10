@@ -28,7 +28,10 @@ from urllib.parse import urlparse
 
 from opentelemetry._events import Event
 from opentelemetry.instrumentation.vertexai.events import (
+    ChoiceMessage,
+    FinishReason,
     assistant_event,
+    choice_event,
     system_event,
     user_event,
 )
@@ -39,13 +42,23 @@ from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
-    from google.cloud.aiplatform_v1.types import content, tool
+    from google.cloud.aiplatform_v1.types import (
+        content,
+        prediction_service,
+        tool,
+    )
     from google.cloud.aiplatform_v1beta1.types import (
         content as content_v1beta1,
     )
     from google.cloud.aiplatform_v1beta1.types import (
+        prediction_service as prediction_service_v1beta1,
+    )
+    from google.cloud.aiplatform_v1beta1.types import (
         tool as tool_v1beta1,
     )
+
+
+_MODEL = "model"
 
 
 @dataclass(frozen=True)
@@ -137,6 +150,24 @@ def get_genai_request_attributes(
     return attributes
 
 
+def get_genai_response_attributes(
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+) -> dict[str, AttributeValue]:
+    finish_reasons: list[str] = [
+        _map_finish_reason(candidate.finish_reason)
+        for candidate in response.candidates
+    ]
+    # TODO: add gen_ai.response.id once available in the python client
+    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3246
+    return {
+        GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
+        GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS: response.usage_metadata.prompt_token_count,
+        GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS: response.usage_metadata.candidates_token_count,
+    }
+
+
 _MODEL_STRIP_RE = re.compile(
     r"^projects/(.*)/locations/(.*)/publishers/google/models/"
 )
@@ -182,7 +213,7 @@ def request_to_events(
 
     for content in params.contents or []:
         # Assistant message
-        if content.role == "model":
+        if content.role == _MODEL:
             request_content = _parts_to_any_value(
                 capture_content=capture_content, parts=content.parts
             )
@@ -194,6 +225,27 @@ def request_to_events(
                 capture_content=capture_content, parts=content.parts
             )
             yield user_event(role=content.role, content=request_content)
+
+
+def response_to_events(
+    *,
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+    capture_content: bool,
+) -> Iterable[Event]:
+    for candidate in response.candidates:
+        yield choice_event(
+            finish_reason=_map_finish_reason(candidate.finish_reason),
+            index=candidate.index,
+            # default to "model" since Vertex uses that instead of assistant
+            message=ChoiceMessage(
+                role=candidate.content.role or _MODEL,
+                content=_parts_to_any_value(
+                    capture_content=capture_content,
+                    parts=candidate.content.parts,
+                ),
+            ),
+        )
 
 
 def _parts_to_any_value(
@@ -208,3 +260,22 @@ def _parts_to_any_value(
         cast("dict[str, AnyValue]", type(part).to_dict(part))  # type: ignore[reportUnknownMemberType]
         for part in parts
     ]
+
+
+def _map_finish_reason(
+    finish_reason: content.Candidate.FinishReason
+    | content_v1beta1.Candidate.FinishReason,
+) -> FinishReason | str:
+    EnumType = type(finish_reason)  # pylint: disable=invalid-name
+    if (
+        finish_reason is EnumType.FINISH_REASON_UNSPECIFIED
+        or finish_reason is EnumType.OTHER
+    ):
+        return "error"
+    if finish_reason is EnumType.STOP:
+        return "stop"
+    if finish_reason is EnumType.MAX_TOKENS:
+        return "length"
+
+    # If there is no 1:1 mapping to an OTel preferred enum value, use the exact vertex reason
+    return finish_reason.name
