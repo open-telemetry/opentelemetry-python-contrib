@@ -178,6 +178,7 @@ API
 
 from __future__ import annotations
 
+import functools
 import logging
 import types
 from typing import Collection, Literal
@@ -226,7 +227,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app,
+        app: fastapi.FastAPI,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
@@ -290,9 +291,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                app = type(self).build_middleware_stack(self)
-                app = OpenTelemetryMiddleware(
-                    app,
+                inner_server_error_middleware: ASGIApp = (
+                    self._original_build_middleware_stack()
+                )  # type: ignore
+                otel_middleware = OpenTelemetryMiddleware(
+                    inner_server_error_middleware,
                     excluded_urls=excluded_urls,
                     default_span_details=_get_default_span_details,
                     server_request_hook=server_request_hook,
@@ -310,12 +313,28 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # are handled.
                 # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
                 # to impact the user's application just because we wrapped the middlewares in this order.
-                app = ServerErrorMiddleware(app)
-                return app
+                if isinstance(
+                    inner_server_error_middleware, ServerErrorMiddleware
+                ):  # usually true
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware,
+                        handler=inner_server_error_middleware.handler,
+                        debug=inner_server_error_middleware.debug,
+                    )
+                else:
+                    # Something else seems to have patched things, or maybe Starlette changed.
+                    # Just create a default ServerErrorMiddleware.
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware
+                    )
+                return outer_server_error_middleware
 
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
-                build_middleware_stack, app
+                functools.wraps(app.build_middleware_stack)(
+                    build_middleware_stack
+                ),
+                app,
             )
 
             app._is_instrumented_by_opentelemetry = True

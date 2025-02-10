@@ -665,9 +665,9 @@ class OpenTelemetryMiddleware:
     # pylint: disable=too-many-statements
     async def __call__(
         self,
-        scope: dict[str, Any],
-        receive: Callable[[], Awaitable[dict[str, Any]]],
-        send: Callable[[dict[str, Any]], Awaitable[None]],
+        scope: typing.MutableMapping[str, Any],
+        receive: Callable[[], Awaitable[typing.MutableMapping[str, Any]]],
+        send: Callable[[typing.MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
         """The ASGI application
 
