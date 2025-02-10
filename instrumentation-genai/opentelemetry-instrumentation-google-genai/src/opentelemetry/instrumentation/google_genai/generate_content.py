@@ -1,3 +1,5 @@
+from typing import Union, Optional, Iterator, AsyncIterator, Awaitable
+
 import time
 import os
 import functools
@@ -14,21 +16,47 @@ from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
 
 from opentelemetry import trace
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.semconv.attributes import error_attributes
-from opentelemetry.semconv._incubating import gen_ai_attributes
 
-_original_generate_content = Models.generate_content
-_original_generate_content_stream = Models.generate_content_stream
-_original_async_generate_content = AsyncModels.generate_content
-_original_async_generate_content_stream = AsyncModels.generate_content_stream
+
+class _MethodsSnapshot:
+
+    def __init__(self):
+        self._original_generate_content = Models.generate_content
+        self._original_generate_content_stream = Models.generate_content_stream
+        self._original_async_generate_content = AsyncModels.generate_content
+        self._original_async_generate_content_stream = AsyncModels.generate_content_stream
+
+    @property
+    def generate_content(self):
+        return self._original_generate_content
+
+    @property
+    def generate_content_stream(self):
+        return self._original_generate_content_stream
+
+    @property
+    def async_generate_content(self):
+        return self._original_async_generate_content
+
+    @property
+    def async_generate_content_stream(self):
+        return self._original_async_generate_content_stream
+
+    def restore(self):
+        Models.generate_content = self._original_generate_content
+        Models.generate_content_stream = self._original_generate_content_stream
+        AsyncModels.generate_content = self._original_async_generate_content
+        AsyncModels.generate_content_stream = self._original_async_generate_content_stream
 
 
 def _get_vertexai_system_name():
-    return gen_ai_attributes.GenaiSystemValues.VERTEX_AI
+    return gen_ai_attributes.GenAiSystemValues.VERTEX_AI
 
 
 def _get_gemini_system_name():
-    return gen_ai_attributes.GenaiSystemValues.GEMINI
+    return gen_ai_attributes.GenAiSystemValues.GEMINI
 
 
 def _guess_genai_system_from_env():
@@ -62,7 +90,7 @@ def _get_config_property(
     path_segments = path.split('.')
     current_context = config
     for path_segment in path_segments:
-        if current_context is None
+        if current_context is None:
             return None
         if isdict(current_context):
             current_context = current_context.get(path_segment)
@@ -94,8 +122,8 @@ class _GenerateContentInstrumentationHelper:
 
     def __init__(
         self,
-        otel_wrapper: OTelWrapper,
         models_object: Union[Models, AsyncModels],
+        otel_wrapper: OTelWrapper,
         model: str):
         self._start_time = time.time_ns()
         self._otel_wrapper = otel_wrapper
@@ -107,9 +135,9 @@ class _GenerateContentInstrumentationHelper:
         self._output_tokens = 0
         self._content_recording_enabled = is_content_recording_enabled()
 
-    def start_span_as_current_span(self):
-        return self._otel_wrapper.tracer.start_span_as_current_span(
-            'google.genai.GenerateContent',
+    def start_span_as_current_span(self, name):
+        return self._otel_wrapper.start_as_current_span(
+            name,
             start_time=self._start_time,
             attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
@@ -123,11 +151,11 @@ class _GenerateContentInstrumentationHelper:
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict]):
         span = trace.get_current_span()
-        for attribute_key, extractor in _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR:
+        for attribute_key, extractor in _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR.items():
             attribute_value = extractor(config)
             if attribute_value is not None:
                 span.set_attribute(attribute_key, attribute_value)
-        self._maybe_log_system_instruction(config)
+        self._maybe_log_system_instruction(config=config)
         self._maybe_log_user_prompt(contents)
         
 
@@ -145,12 +173,12 @@ class _GenerateContentInstrumentationHelper:
         self._record_token_usage_metric()
         self._record_duration_metric()
 
-    def _maybe_log_system_instruction(config: Optional[GenerateContentConfigOrDict]):
+    def _maybe_log_system_instruction(self, config: Optional[GenerateContentConfigOrDict]=None):
         if not self._content_recording_enabled:
             return
         pass
     
-    def _maybe_log_user_prompt(contents: Union[ContentListUnion, ContentListUnionDict]):
+    def _maybe_log_user_prompt(self, contents: Union[ContentListUnion, ContentListUnionDict]):
         if not self._content_recording_enabled:
             return
         pass
@@ -159,7 +187,7 @@ class _GenerateContentInstrumentationHelper:
         self._otel_wrapper.token_usage_metric.record(
             self._input_tokens,
             attributes={
-                gen_ai_attributes.GEN_AI_TOKEN_TYPE: gen_ai_attributes.GenAiTokenTypeValues.INPUT,
+                gen_ai_attributes.GEN_AI_TOKEN_TYPE: 'input',
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: 'GenerateContent',
@@ -168,7 +196,7 @@ class _GenerateContentInstrumentationHelper:
         self._otel_wrapper.token_usage_metric.record(
             self._output_tokens,
             attributes={
-                gen_ai_attributes.GEN_AI_TOKEN_TYPE: gen_ai_attributes.GenAiTokenTypeValues.OUTPPUT,
+                gen_ai_attributes.GEN_AI_TOKEN_TYPE: 'output',
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: 'GenerateContent',
@@ -192,19 +220,22 @@ class _GenerateContentInstrumentationHelper:
 
 
 
-def _create_instrumented_generate_content(otel_wrapper: OTelWrapper):
-    @functools.wraps(_original_generate_content)
+def _create_instrumented_generate_content(
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper):
+    wrapped_func = snapshot.generate_content
+    @functools.wraps(wrapped_func)
     def instrumented_generate_content(
         self: Models,
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict]) -> GenerateContentResponse:
+        config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span():
+        with helper.start_span_as_current_span('google.genai.Models.generate_content'):
             helper.process_request(contents, config)
             try:
-                response = _original_generate_content(self, model=model, contents=contents, config=config)
+                response = wrapped_func(self, model=model, contents=contents, config=config)
                 helper.process_response(response)
                 return response
             except Exception as e:
@@ -212,22 +243,25 @@ def _create_instrumented_generate_content(otel_wrapper: OTelWrapper):
                 raise
             finally:
                 helper.finalize_processing()
-    return instrument_generate_content
+    return instrumented_generate_content
 
 
-def _create_instrumented_generate_content_stream(otel_wrapper: OTelWrapper):
-    @functools.wraps(_original_generate_content_stream)
+def _create_instrumented_generate_content_stream(
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper):
+    wrapped_func = snapshot.generate_content_stream
+    @functools.wraps(wrapped_func)
     def instrumented_generate_content_stream(
         self: Models,
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict]) -> Iterator[GenerateContentResponse]:
+        config: Optional[GenerateContentConfigOrDict] = None) -> Iterator[GenerateContentResponse]:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span():
+        with helper.start_span_as_current_span('google.genai.Models.generate_content_stream'):
             helper.process_request(contents, config)
             try:
-                for response in _original_generate_content_stream(self, model=model, contents=contents, config=config):
+                for response in wrapped_func(self, model=model, contents=contents, config=config):
                     helper.process_response(response)
                     yield response
             except Exception as e:
@@ -235,22 +269,25 @@ def _create_instrumented_generate_content_stream(otel_wrapper: OTelWrapper):
                 raise
             finally:
                 helper.finalize_processing()
-    return instrument_generate_content
+    return instrumented_generate_content_stream
 
 
-def _create_instrumented_async_generate_content(otel_wrapper: OTelWrapper):
-    @functools.wraps(_original_async_generate_content)
+def _create_instrumented_async_generate_content(
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper):
+    wrapped_func = snapshot.async_generate_content
+    @functools.wraps(wrapped_func)
     async def instrumented_generate_content(
         self: AsyncModels,
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict]) -> GenerateContentResponse
+        config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span():
+        with helper.start_span_as_current_span('google.genai.AsyncModels.generate_content'):
             helper.process_request(contents, config)
             try:
-                response = await _original_async_generate_content(self, model=model, contents=contents, config=config)
+                response = await wrapped_func(self, model=model, contents=contents, config=config)
                 helper.process_response(response)
                 return response
             except Exception as e:
@@ -258,22 +295,25 @@ def _create_instrumented_async_generate_content(otel_wrapper: OTelWrapper):
                 raise
             finally:
                 helper.finalize_processing()
-    return instrument_generate_content
+    return instrumented_generate_content
 
 
-def _create_instrumented_async_generate_content_stream(otel_wrapper: OTelWrapper):
-    @functools.wraps(_original_async_generate_content_stream)
+def _create_instrumented_async_generate_content_stream(
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper):
+    wrapped_func = snapshot.async_generate_content_stream
+    @functools.wraps(wrapped_func)
     async def instrumented_generate_content_stream(
         self: AsyncModels,
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict]) -> Awaitable[AsyncIterator[types.GenerateContentResponse]]:
+        config: Optional[GenerateContentConfigOrDict] = None) -> Awaitable[AsyncIterator[GenerateContentResponse]]:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span():
+        with helper.start_span_as_current_span('google.genai.AsyncModels.generate_content_stream'):
             helper.process_request(contents, config)
             try:
-                async for response in _original_async_generate_content_stream(self, model=model, contents=contents, config=config)
+                async for response in wrapped_func(self, model=model, contents=contents, config=config):
                     helper.process_response(response)
                     yield response
             except Exception as e:
@@ -281,18 +321,18 @@ def _create_instrumented_async_generate_content_stream(otel_wrapper: OTelWrapper
                 raise
             finally:
                 helper.finalize_processing()
-    return instrument_generate_content
+    return instrumented_generate_content_stream
 
 
-def uninstrument_generate_content():
-    Models.generate_content = _original_generate_content
-    Models.generate_content_stream = _original_generate_content_stream
-    AsyncModels.generate_content = _original_async_generate_content
-    AsyncModels.generate_content_stream = _original_async_generate_content_stream
+def uninstrument_generate_content(snapshot: object):
+    assert isinstance(snapshot, _MethodsSnapshot)
+    snapshot.restore()
 
 
-def instrument_generate_content(otel_wrapper: OTelWrapper):
-    Models.generate_content = _create_instrumented_generate_content(otel_wrapper)
-    Models.generate_content_stream = _create_instrumented_generate_content_stream(otel_wrapper)
-    AsyncModels.generate_content = _create_instrumented_async_generate_content(otel_wrapper)
-    AsyncModels.generate_content_stream = _create_instrumented_async_generate_content_stream(otel_wrapper)
+def instrument_generate_content(otel_wrapper: OTelWrapper) -> object:
+    snapshot = _MethodsSnapshot()
+    Models.generate_content = _create_instrumented_generate_content(snapshot, otel_wrapper)
+    Models.generate_content_stream = _create_instrumented_generate_content_stream(snapshot, otel_wrapper)
+    AsyncModels.generate_content = _create_instrumented_async_generate_content(snapshot, otel_wrapper)
+    AsyncModels.generate_content_stream = _create_instrumented_async_generate_content_stream(snapshot, otel_wrapper)
+    return snapshot

@@ -38,6 +38,9 @@ class OTelWrapper:
             meter = meter_provider.get_meter(_LIBRARY_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
         )
 
+    def start_as_current_span(self, *args, **kwargs):
+        return self._tracer.start_as_current_span(*args, **kwargs)
+
     @property
     def tracer(self):
         return self._tracer
