@@ -99,11 +99,13 @@ class _AwsSdkExtension:
     def __init__(self, call_context: _AwsSdkCallContext):
         self._call_context = call_context
 
-    def tracer_schema_version(self) -> str:
+    @staticmethod
+    def tracer_schema_version() -> str:
         """Returns the tracer OTel schema version the extension is following"""
         return "1.11.0"
 
-    def event_logger_schema_version(self) -> str:
+    @staticmethod
+    def event_logger_schema_version() -> str:
         """Returns the event logger OTel schema version the extension is following"""
         return "1.30.0"
 

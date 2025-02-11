@@ -157,7 +157,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
             self._patched_endpoint_prepare_request,
         )
 
-    def _get_instrumentation_name(self, extension: _AwsSdkExtension) -> str:
+    @staticmethod
+    def _get_instrumentation_name(extension: _AwsSdkExtension) -> str:
         has_extension = _has_extension(extension._call_context)
         return (
             f"{__name__}.{extension._call_context.service}"
