@@ -14,7 +14,7 @@
 
 import os
 
-from pymongo import MongoClient
+from pymongo import MongoClient, IndexModel, ASCENDING
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
@@ -113,6 +113,30 @@ class TestFunctionalPymongo(TestBase):
         expected_db_statement = "find {'name': 'testName'}"
         self.validate_spans(expected_db_statement)
 
+    def test_find_one_and_update(self):
+        """Should create a child span for find_one_and_update"""
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._collection.find_one_and_update(
+                {"name": "testName"}, {"$set": {"value": "someOtherValue"}}
+            )
+
+        expected_db_statement = "findAndModify {'name': 'testName'} {'$set': {'value': 'someOtherValue'}}"
+        self.validate_spans(expected_db_statement)
+
+    def test_aggregate(self):
+        """Should create a child span for aggregate"""
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._collection.aggregate(
+                [
+                    {"$match": {"field": "value"}},
+                    {"$group": {"_id": "$anotherField", "count": {"$sum": 1}}},
+                ]
+            )
+
+
+        expected_db_statement = "aggregate [{'$match': {'field': 'value'}}, {'$group': {'_id': '$anotherField', 'count': {'$sum': 1}}}]"
+        self.validate_spans(expected_db_statement)
+
     def test_delete(self):
         """Should create a child span for delete"""
         with self._tracer.start_as_current_span("rootSpan"):
@@ -121,6 +145,15 @@ class TestFunctionalPymongo(TestBase):
         expected_db_statement = (
             "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
         )
+        self.validate_spans(expected_db_statement)
+
+    def test_create_indexes(self):
+        """Should create a child span for create_indexes"""
+        some_index = IndexModel([("anotherField", ASCENDING)], name="some_index")
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._collection.create_indexes([some_index])
+
+        expected_db_statement = "createIndexes [{'name': 'some_index', 'key': SON([('anotherField', 1)])}]"
         self.validate_spans(expected_db_statement)
 
     def test_find_without_capture_statement(self):
