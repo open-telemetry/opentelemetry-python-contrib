@@ -247,17 +247,6 @@ def message_to_event(message, capture_content):
     body = {}
     if capture_content and content:
         body["content"] = content
-    if role == "assistant":
-        # TODO
-        """
-        tool_calls = extract_tool_calls(message, capture_content)
-        if tool_calls:
-            body = {"tool_calls": tool_calls}
-        """
-    elif role == "tool":
-        tool_call_id = message.get("tool_call_id")
-        if tool_call_id:
-            body["id"] = tool_call_id
 
     return Event(
         name=f"gen_ai.{role}.message",
