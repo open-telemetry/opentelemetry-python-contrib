@@ -228,7 +228,7 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_anext_span"
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span"
     )
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
