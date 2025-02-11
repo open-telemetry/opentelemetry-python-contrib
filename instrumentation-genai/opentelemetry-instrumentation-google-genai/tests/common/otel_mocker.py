@@ -12,41 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 
-import opentelemetry.trace
-import opentelemetry._logs._internal
 import opentelemetry._events
+import opentelemetry._logs._internal
 import opentelemetry.metrics._internal
-from opentelemetry.util._once import Once
-
-from opentelemetry.trace import (
-    get_tracer_provider,
-    set_tracer_provider
-)
-from opentelemetry._logs import (
-    get_logger_provider,
-    set_logger_provider
-)
+import opentelemetry.trace
 from opentelemetry._events import (
     get_event_logger_provider,
-    set_event_logger_provider
+    set_event_logger_provider,
 )
-from opentelemetry.metrics import (
-    get_meter_provider,
-    set_meter_provider
-)
-
+from opentelemetry._logs import get_logger_provider, set_logger_provider
+from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
-from opentelemetry.sdk._logs.export import InMemoryLogExporter
-from opentelemetry.sdk.metrics._internal.export import InMemoryMetricReader
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.metrics._internal.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import get_tracer_provider, set_tracer_provider
+from opentelemetry.util._once import Once
 
 
 def _bypass_otel_once():
@@ -85,7 +76,7 @@ class _LogWrapper:
     @property
     def resource(self):
         return self._log_data.log_record.resource
-    
+
     @property
     def attributes(self):
         return self._log_data.log_record.attributes
@@ -112,7 +103,7 @@ class _MetricDataPointWrapper:
     @property
     def scope(self):
         return self._scope
-    
+
     @property
     def metric(self):
         return self._metric
@@ -182,7 +173,7 @@ class OTelMocker:
 
     def get_event_named(self, event_name):
         for event in self.get_finished_logs():
-            event_name_attr = event.attributes.get('event.name')
+            event_name_attr = event.attributes.get("event.name")
             if event_name_attr is None:
                 continue
             if event_name_attr == event_name:
@@ -196,15 +187,15 @@ class OTelMocker:
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)
-        assert event is None, 'Unexpected event: {}'.format(event)
-    
+        assert event is None, "Unexpected event: {}".format(event)
+
     def get_metrics_data_named(self, name):
         results = []
         for entry in self.get_metrics_data():
             if entry.name == name:
                 results.append(entry)
         return results
-    
+
     def assert_has_metrics_data_named(self, name):
         data = self.get_metrics_data_named(name)
         assert len(data) > 0

@@ -12,33 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import google.genai
 
 # NOTE: OpenTelemetry Python Logs and Events APIs are in beta
 from opentelemetry import _events as otel_events
 from opentelemetry import _logs as otel_logs
-from opentelemetry import trace as otel_trace
 from opentelemetry import metrics as otel_metrics
+from opentelemetry import trace as otel_trace
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
     OTLPLogExporter,
-)
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter,
 )
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
     OTLPMetricExporter,
 )
-from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
+)
+from opentelemetry.instrumentation.google_genai import (
+    GoogleGenAiSdkInstrumentor,
+)
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import (
-    PeriodicExportingMetricReader,
-)
+
 
 def setup_otel_tracing():
     otel_trace.set_tracer_provider(TracerProvider())
@@ -82,8 +85,8 @@ def main():
     instrument_google_genai()
     client = google.genai.Client()
     response = client.models.generate_content(
-        model = os.getenv('MODEL', 'gemini-2.0-flash-001'),
-        contents = os.getenv('PROMPT', 'Why is the sky blue?'),
+        model = os.getenv("MODEL", "gemini-2.0-flash-001"),
+        contents = os.getenv("PROMPT", "Why is the sky blue?"),
     )
     print(response.text)
 

@@ -25,7 +25,7 @@ Usage
 .. code:: python
 
     import os
-    import google.genai 
+    import google.genai
     from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 
     GoogleGenAiSdkInstrumentor().instrument()
@@ -44,4 +44,7 @@ API
 from .instrumentor import GoogleGenAiSdkInstrumentor
 from .version import __version__
 
-__all__ = ['GoogleGenAiSdkInstrumentor']
+__all__ = [
+    "GoogleGenAiSdkInstrumentor",
+    "__version__"
+]

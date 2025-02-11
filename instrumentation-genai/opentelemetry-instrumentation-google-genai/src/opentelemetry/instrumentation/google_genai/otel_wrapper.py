@@ -14,24 +14,23 @@
 
 import logging
 
-import json
 import google.genai
 
-from .version import __version__ as _LIBRARY_VERSION
 from opentelemetry._events import Event
-from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+from opentelemetry.semconv.schemas import Schemas
 
+from .version import __version__ as _LIBRARY_VERSION
 
 _logger = logging.getLogger(__name__)
 
 
-_LIBRARY_NAME = 'opentelemetry-instrumentation-google-genai'
+_LIBRARY_NAME = "opentelemetry-instrumentation-google-genai"
 _SCHEMA_URL = Schemas.V1_30_0.value
 _SCOPE_ATTRIBUTES = {
-    'gcp.client.name': 'google.genai',
-    'gcp.client.repo': 'googleapis/python-genai',
-    'gcp.client.version': google.genai.__version__,
+    "gcp.client.name": "google.genai",
+    "gcp.client.repo": "googleapis/python-genai",
+    "gcp.client.version": google.genai.__version__,
 }
 
 
@@ -47,7 +46,7 @@ class OTelWrapper:
         self._meter = meter
         self._operation_duration_metric = gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
         self._token_usage_metric = gen_ai_metrics.create_gen_ai_client_token_usage(meter)
- 
+
     @staticmethod
     def from_providers(
         tracer_provider,
@@ -68,7 +67,7 @@ class OTelWrapper:
     @property
     def tracer(self):
         return self._tracer
-    
+
     @property
     def event_logger(self):
         return self._event_logger
@@ -86,18 +85,18 @@ class OTelWrapper:
         return self._token_usage_metric
 
     def log_system_prompt(self, attributes, body):
-        _logger.debug('Recording system prompt.')
-        event_name = 'gen_ai.system.message'
+        _logger.debug("Recording system prompt.")
+        event_name = "gen_ai.system.message"
         self._log_event(event_name, attributes, body)
 
     def log_user_prompt(self, attributes, body):
-        _logger.debug('Recording user prompt.')
-        event_name = 'gen_ai.user.message'
+        _logger.debug("Recording user prompt.")
+        event_name = "gen_ai.user.message"
         self._log_event(event_name, attributes, body)
-    
+
     def log_response_content(self, attributes, body):
-        _logger.debug('Recording response.')
-        event_name = 'gen_ai.assistant.message'
+        _logger.debug("Recording response.")
+        event_name = "gen_ai.assistant.message"
         self._log_event(event_name, attributes, body)
 
     def _log_event(self, event_name, attributes, body):

@@ -16,25 +16,27 @@
 
 import asyncio
 import logging
-import unittest
 import sys
-sys.path.append('../')
+import unittest
+
+sys.path.append("../")
 
 from common.base import TestCase
 
-def create_valid_response(response_text='The model response', input_tokens=10, output_tokens=20):
+
+def create_valid_response(response_text="The model response", input_tokens=10, output_tokens=20):
     return {
-        'modelVersion': 'gemini-2.0-flash-test123',
-        'usageMetadata': {
-            'promptTokenCount': input_tokens,
-            'candidatesTokenCount': output_tokens,
-            'totalTokenCount': input_tokens + output_tokens,
+        "modelVersion": "gemini-2.0-flash-test123",
+        "usageMetadata": {
+            "promptTokenCount": input_tokens,
+            "candidatesTokenCount": output_tokens,
+            "totalTokenCount": input_tokens + output_tokens,
         },
-        'candidates': [{
-            'content': {
-                'role': 'model',
-                'parts': [{
-                    'text': response_text,
+        "candidates": [{
+            "content": {
+                "role": "model",
+                "parts": [{
+                    "text": response_text,
                 }],
             }
         }]
@@ -45,7 +47,7 @@ class TestGenerateContentAsyncStreaming(TestCase):
     def setUp(self):
         super().setUp()
 
-    def configure_valid_response(self, response_text='The model_response', input_tokens=10, output_tokens=20):
+    def configure_valid_response(self, response_text="The model_response", input_tokens=10, output_tokens=20):
         self.requests.add_response(create_valid_response(
             response_text=response_text,
             input_tokens=input_tokens,
@@ -61,17 +63,17 @@ class TestGenerateContentAsyncStreaming(TestCase):
         return asyncio.run(self._generate_content_helper(*args, **kwargs))
 
     def test_async_generate_content_not_broken_by_instrumentation(self):
-        self.configure_valid_response(response_text='Yep, it works!')
+        self.configure_valid_response(response_text="Yep, it works!")
         responses = self.generate_content(
-            model='gemini-2.0-flash',
-            contents='Does this work?')
+            model="gemini-2.0-flash",
+            contents="Does this work?")
         self.assertEqual(len(responses), 1)
-        self.assertEqual(responses[0].text, 'Yep, it works!')
+        self.assertEqual(responses[0].text, "Yep, it works!")
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
 
 
-if __name__  == '__main__':
+if __name__  == "__main__":
     main()

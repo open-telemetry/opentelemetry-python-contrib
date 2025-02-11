@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import sys
-sys.path.append('../../src')
 
-from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
+sys.path.append("../../src")
+
+from opentelemetry.instrumentation.google_genai import (
+    GoogleGenAiSdkInstrumentor,
+)
+
 
 class InstrumentationContext:
 

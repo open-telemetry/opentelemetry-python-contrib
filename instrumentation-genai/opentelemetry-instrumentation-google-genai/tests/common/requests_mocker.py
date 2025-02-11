@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import functools
-import requests
-import requests.sessions
 import io
 import json
+
+import requests
+import requests.sessions
 
 
 class RequestsCallArgs:
@@ -33,7 +35,7 @@ class RequestsCallArgs:
     @property
     def session(self):
         return self._session
-    
+
     @property
     def request(self):
         return self._request
@@ -52,7 +54,7 @@ class RequestsCall:
     @property
     def args(self):
         return self._args
-    
+
     @property
     def response(self):
         return self._response_generator(self._args)
@@ -69,12 +71,12 @@ def _return_error_status(args: RequestsCallArgs, status_code: int, reason: str):
 
 
 def _return_404(args: RequestsCallArgs):
-    return _return_error_status(args, 404, 'Not Found')
+    return _return_error_status(args, 404, "Not Found")
 
 
 def _to_response_generator(response):
     if response is None:
-        raise ValueError('response must not be None')
+        raise ValueError("response must not be None")
     if isinstance(response, int):
         return lambda args: _return_error_status(args, response)
     if isinstance(response, requests.Response):
@@ -88,12 +90,12 @@ def _to_response_generator(response):
         def response_generator(args):
             result = requests.Response()
             result.status_code = 200
-            result.headers['content-type'] = 'application/json'
-            result.encoding = 'utf-8'
+            result.headers["content-type"] = "application/json"
+            result.encoding = "utf-8"
             result.raw = io.BytesIO(json.dumps(response).encode())
             return result
         return response_generator
-    raise ValueError(f'Unsupported response type: {type(response)}')
+    raise ValueError(f"Unsupported response type: {type(response)}")
 
 
 class RequestsMocker:

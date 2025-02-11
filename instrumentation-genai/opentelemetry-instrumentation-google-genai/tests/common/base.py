@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import os
-import google.genai
 import unittest
 
+import google.genai
+
+from .instrumentation_context import InstrumentationContext
 from .otel_mocker import OTelMocker
 from .requests_mocker import RequestsMocker
-from .instrumentation_context import InstrumentationContext
 
 
 class _FakeCredentials(google.auth.credentials.AnonymousCredentials):
@@ -36,9 +37,9 @@ class TestCase(unittest.TestCase):
         self._requests = RequestsMocker()
         self._requests.install()
         self._instrumentation_context = None
-        self._api_key = 'test-api-key'
-        self._project = 'test-project'
-        self._location = 'test-location'
+        self._api_key = "test-api-key"
+        self._project = "test-project"
+        self._location = "test-location"
         self._client = None
         self._uses_vertex = False
         self._credentials = _FakeCredentials()
@@ -67,7 +68,7 @@ class TestCase(unittest.TestCase):
     def _create_client(self):
         self._lazy_init()
         if self._uses_vertex:
-            os.environ['GOOGLE_API_KEY'] = self._api_key
+            os.environ["GOOGLE_API_KEY"] = self._api_key
             return google.genai.Client(
                 vertexai=True,
                 project=self._project,
