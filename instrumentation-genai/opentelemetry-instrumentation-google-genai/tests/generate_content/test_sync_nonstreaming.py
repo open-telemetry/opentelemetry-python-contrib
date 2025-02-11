@@ -54,9 +54,12 @@ class TestGenerateContentSyncNonstreaming(TestCase):
             input_tokens=input_tokens,
             output_tokens=output_tokens))
 
+    def generate_content(self, *args, **kwargs):
+        return self.client.models.generate_content(*args, **kwargs)
+
     def test_generates_span(self):
         self.configure_valid_response(response_text='Yep, it works!')
-        response = self.client.models.generate_content(
+        response = self.generate_content(
             model='gemini-2.0-flash',
             contents='Does this work?')
         self.assertEqual(response.text, 'Yep, it works!')
@@ -64,7 +67,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
 
     def test_generated_span_has_minimal_genai_attributes(self):
         self.configure_valid_response(response_text='Yep, it works!')
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Does this work?')
         self.otel.assert_has_span_named('google.genai.Models.generate_content')
@@ -74,7 +77,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
 
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(input_tokens=123, output_tokens=456)
-        response = self.client.models.generate_content(
+        response = self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_has_span_named('google.genai.Models.generate_content')
@@ -88,7 +91,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
             'system_instruction': 'foo'
         }
         self.configure_valid_response()
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input',
             config=config)
@@ -103,7 +106,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
             'system_instruction': 'foo'
         }
         self.configure_valid_response()
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input',
             config=config)
@@ -112,7 +115,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
     def test_does_not_record_system_prompt_as_log_if_no_system_prompt_present(self):
         os.environ['OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT'] = 'true'
         self.configure_valid_response()
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_does_not_have_event_named('gen_ai.system.message')
@@ -120,7 +123,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
     def test_records_user_prompt_as_log(self):
         os.environ['OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT'] = 'true'
         self.configure_valid_response()
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_has_event_named('gen_ai.user.message')
@@ -131,7 +134,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
     def test_does_not_record_user_prompt_as_log_if_disabled_by_env(self):
         os.environ['OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT'] = 'false'
         self.configure_valid_response()
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_does_not_have_event_named('gen_ai.user.message')
@@ -139,7 +142,7 @@ class TestGenerateContentSyncNonstreaming(TestCase):
     def test_records_response_as_log(self):
         os.environ['OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT'] = 'true'
         self.configure_valid_response(response_text='Some response content')
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_has_event_named('gen_ai.assistant.message')
@@ -150,14 +153,14 @@ class TestGenerateContentSyncNonstreaming(TestCase):
     def test_does_not_record_response_as_log_if_disabled_by_env(self):
         os.environ['OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT'] = 'false'
         self.configure_valid_response(response_text='Some response content')
-        self.client.models.generate_content(
+        self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_does_not_have_event_named('gen_ai.assistant.message')
 
     def test_records_metrics_data(self):
         self.configure_valid_response()
-        response = self.client.models.generate_content(
+        response = self.generate_content(
             model='gemini-2.0-flash',
             contents='Some input')
         self.otel.assert_has_metrics_data_named('gen_ai.client.token.usage')
