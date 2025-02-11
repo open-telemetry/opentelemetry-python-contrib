@@ -1,0 +1,83 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        },
+        "schemaVersion": "messages-v1"
+      }
+    headers:
+      Content-Length:
+      - '207'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250206T051236Z
+      X-Amzn-Trace-Id:
+      - Root=1-36143b12-70c21615c28ab43161636b63;Parent=9effb7c7b6cb2137;Sampled=1
+      amz-sdk-invocation-id:
+      - ad4815dd-0511-4185-a5ff-7205d52f1116
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Certainly, here's a test:\n\n---\n\n**"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 10,
+            "totalTokens": 15
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 06 Feb 2025 05:12:37 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '186'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 7e0027c0-ef54-4918-8cef-4c84a35594ab
+    status:
+      code: 200
+      message: OK
+version: 1

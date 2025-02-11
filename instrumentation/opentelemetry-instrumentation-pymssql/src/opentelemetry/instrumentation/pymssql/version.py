@@ -12,9 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: adapt tests from OpenLLMetry here along with tests from
-# instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/test_chat_completions.py
-
-
-def test_placeholder():
-    assert True
+__version__ = "0.52b0.dev"
