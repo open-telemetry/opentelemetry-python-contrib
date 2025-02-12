@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Sequence, Tuple
+from typing import Any, List, Sequence, Tuple, cast
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 import aiokafka
@@ -138,16 +138,22 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         return producer
 
-    async def test_getone(self) -> None:
-        AIOKafkaInstrumentor().uninstrument()
+    def setUp(self):
+        super().setUp()
         AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
+    def tearDown(self):
+        super().tearDown()
+        AIOKafkaInstrumentor().uninstrument()
+
+    async def test_getone(self) -> None:
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
         consumer = await self.consumer_factory(
             client_id=client_id, group_id=group_id
         )
-        next_record_mock: mock.AsyncMock = consumer._fetcher.next_record
+        self.addAsyncCleanup(consumer.stop)
+        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
 
         expected_spans = [
             {
@@ -229,7 +235,8 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         )
 
         consumer = await self.consumer_factory()
-        next_record_mock: mock.AsyncMock = consumer._fetcher.next_record
+        self.addAsyncCleanup(consumer.stop)
+        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
 
         self.memory_exporter.clear()
 
@@ -261,7 +268,8 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         )
 
         consumer = await self.consumer_factory()
-        next_record_mock: mock.AsyncMock = consumer._fetcher.next_record
+        self.addAsyncCleanup(consumer.stop)
+        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
 
         next_record_mock.side_effect = [
             self.consumer_record_factory(1, headers=())
@@ -272,16 +280,14 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         async_consume_hook_mock.assert_awaited_once()
 
     async def test_getmany(self) -> None:
-        AIOKafkaInstrumentor().uninstrument()
-        AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
-
         client_id = str(uuid.uuid4())
         group_id = str(uuid.uuid4())
         consumer = await self.consumer_factory(
             client_id=client_id, group_id=group_id
         )
-        fetched_records_mock: mock.AsyncMock = (
-            consumer._fetcher.fetched_records
+        self.addAsyncCleanup(consumer.stop)
+        fetched_records_mock = cast(
+            mock.AsyncMock, consumer._fetcher.fetched_records
         )
 
         expected_spans = [
@@ -384,12 +390,10 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         self._compare_spans(span_list, expected_spans)
 
     async def test_send(self) -> None:
-        AIOKafkaInstrumentor().uninstrument()
-        AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
-
         producer = await self.producer_factory()
-        add_message_mock: mock.AsyncMock = (
-            producer._message_accumulator.add_message
+        self.addAsyncCleanup(producer.stop)
+        add_message_mock = cast(
+            mock.AsyncMock, producer._message_accumulator.add_message
         )
 
         tracer = self.tracer_provider.get_tracer(__name__)
@@ -419,12 +423,10 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         )
 
     async def test_send_baggage(self) -> None:
-        AIOKafkaInstrumentor().uninstrument()
-        AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
-
         producer = await self.producer_factory()
-        add_message_mock: mock.AsyncMock = (
-            producer._message_accumulator.add_message
+        self.addAsyncCleanup(producer.stop)
+        add_message_mock = cast(
+            mock.AsyncMock, producer._message_accumulator.add_message
         )
 
         tracer = self.tracer_provider.get_tracer(__name__)
@@ -453,6 +455,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         )
 
         producer = await self.producer_factory()
+        self.addAsyncCleanup(producer.stop)
 
         await producer.send("topic_1", b"value_1")
 
