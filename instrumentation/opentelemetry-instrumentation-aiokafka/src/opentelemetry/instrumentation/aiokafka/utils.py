@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
@@ -213,9 +212,7 @@ def _enrich_base_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(
-        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
-    )
+    span.set_attribute(server_attributes.SERVER_ADDRESS, bootstrap_servers)
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
     span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
 
@@ -324,9 +321,7 @@ def _enrich_getmany_poll_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(
-        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
-    )
+    span.set_attribute(server_attributes.SERVER_ADDRESS, bootstrap_servers)
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
 
     if consumer_group is not None:

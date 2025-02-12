@@ -161,7 +161,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "1",
@@ -178,7 +178,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "2",
@@ -296,7 +296,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "1",
@@ -313,7 +313,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_1",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "1",
@@ -328,7 +328,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CONSUMER,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "2",
@@ -345,7 +345,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "topic_2",
                     messaging_attributes.MESSAGING_DESTINATION_PARTITION_ID: "2",
@@ -360,7 +360,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
-                    server_attributes.SERVER_ADDRESS: '"localhost"',
+                    server_attributes.SERVER_ADDRESS: "localhost",
                     messaging_attributes.MESSAGING_CLIENT_ID: client_id,
                     messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME: group_id,
                     messaging_attributes.MESSAGING_OPERATION_NAME: "poll",
