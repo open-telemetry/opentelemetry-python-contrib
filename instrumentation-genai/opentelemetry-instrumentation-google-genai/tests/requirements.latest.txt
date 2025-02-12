@@ -12,6 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# ********************************
+# WARNING: NOT HERMETIC !!!!!!!!!!
+**********************************
+#
+# This "requirements.txt" is installed in conjuction
+# with multiple other dependencies in the top-level "tox.ini"
+# file. In particular, please see:
+#
+#   google-genai-recent-deps: {[testenv]test_deps}
+#   google-genai-recent-deps: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/requirements.latest.txt
+#
+# This provides additional dependencies, namely:
+#
+#   opentelemetry-api
+#   opentelemetry-sdk
+#   opentelemetry-semantic-conventions
+#
+# ... with a "dev" version based on the latest distribution.
+
+
 # This variant of the requirements aims to test the system using
 # the newest supported version of external depenendencies.
 
@@ -21,11 +42,8 @@ pytest-vcr==1.0.2
 
 google-auth==2.38.0
 google-genai==1.0.0
-opentelemetry-api==1.30.0
-opentelemetry-sdk==1.30.0
-opentelemetry-semantic-conventions==0.51b0
-opentelemetry-instrumentation==0.51b0
 
 # Install locally from the folder. This path is relative to the
 # root directory, given invocation from "tox" at root level.
+-e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-google-genai
