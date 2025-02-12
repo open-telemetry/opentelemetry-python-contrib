@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Sequence, Tuple, cast
+from typing import Any, Sequence, cast
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 import aiokafka
@@ -66,7 +66,7 @@ class TestAIOKafkaInstrumentor(TestCase):
 class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     @staticmethod
     def consumer_record_factory(
-        number: int, headers: Tuple[Tuple[str, bytes], ...]
+        number: int, headers: tuple[tuple[str, bytes], ...]
     ) -> ConsumerRecord:
         return ConsumerRecord(
             f"topic_{number}",
@@ -84,7 +84,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
     @staticmethod
     def consumer_batch_factory(
-        *headers: Tuple[Tuple[str, bytes], ...],
+        *headers: tuple[tuple[str, bytes], ...],
     ) -> dict[aiokafka.TopicPartition, list[aiokafka.ConsumerRecord]]:
         records = {}
         for number, record_headers in enumerate(headers, start=1):
@@ -462,7 +462,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         async_produce_hook_mock.assert_awaited_once()
 
     def _compare_spans(
-        self, spans: Sequence[ReadableSpan], expected_spans: List[dict]
+        self, spans: Sequence[ReadableSpan], expected_spans: list[dict]
     ) -> None:
         self.assertEqual(len(spans), len(expected_spans))
         for span, expected_span in zip(spans, expected_spans):

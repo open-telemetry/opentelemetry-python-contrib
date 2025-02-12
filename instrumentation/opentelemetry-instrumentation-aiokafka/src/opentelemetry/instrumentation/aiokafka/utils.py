@@ -9,11 +9,11 @@ from typing import (
     Awaitable,
     Callable,
     Dict,
-    List,
+    MutableSequence,
     Optional,
     Protocol,
+    Sequence,
     Tuple,
-    Union,
 )
 
 import aiokafka
@@ -49,8 +49,8 @@ if TYPE_CHECKING:
         async def __call__(
             self,
             topic: str,
-            value: Any | None = None,
-            key: Any | None = None,
+            value: object | None = None,
+            key: object | None = None,
             partition: int | None = None,
             timestamp_ms: int | None = None,
             headers: HeadersT | None = None,
@@ -72,14 +72,14 @@ ConsumeHookT = Optional[
     ]
 ]
 
-HeadersT = List[Tuple[str, Optional[bytes]]]
+HeadersT = Sequence[Tuple[str, Optional[bytes]]]
 
 _LOG = getLogger(__name__)
 
 
 def _extract_bootstrap_servers(
     client: aiokafka.AIOKafkaClient,
-) -> Union[str, List[str]]:
+) -> str | list[str]:
     return client._bootstrap_servers
 
 
@@ -89,7 +89,7 @@ def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
 
 def _extract_consumer_group(
     consumer: aiokafka.AIOKafkaConsumer,
-) -> Optional[str]:
+) -> str | None:
     return consumer._group_id
 
 
@@ -97,43 +97,45 @@ def _extract_argument(
     key: str,
     position: int,
     default_value: Any,
-    args: Tuple[Any],
-    kwargs: Dict[str, Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
 ) -> Any:
     if len(args) > position:
         return args[position]
     return kwargs.get(key, default_value)
 
 
-def _extract_send_topic(args: Tuple[Any], kwargs: Dict[str, Any]) -> str:
+def _extract_send_topic(args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
     """extract topic from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("topic", 0, "unknown", args, kwargs)
 
 
 def _extract_send_value(
-    args: Tuple[Any], kwargs: Dict[str, Any]
-) -> Optional[Any]:
+    args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> object | None:
     """extract value from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("value", 1, None, args, kwargs)
 
 
 def _extract_send_key(
-    args: Tuple[Any], kwargs: Dict[str, Any]
-) -> Optional[Any]:
+    args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> object | None:
     """extract key from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("key", 2, None, args, kwargs)
 
 
-def _extract_send_headers(args: Tuple[Any], kwargs: Dict[str, Any]):
+def _extract_send_headers(
+    args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> HeadersT | None:
     """extract headers from `send` method arguments in AIOKafkaProducer class"""
     return _extract_argument("headers", 5, None, args, kwargs)
 
 
 async def _extract_send_partition(
     instance: aiokafka.AIOKafkaProducer,
-    args: Tuple[Any],
-    kwargs: Dict[str, Any],
-) -> Optional[int]:
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> int | None:
     """extract partition `send` method arguments, using the `_partition` method in AIOKafkaProducer class"""
     try:
         topic = _extract_send_topic(args, kwargs)
@@ -159,7 +161,7 @@ async def _extract_send_partition(
 
 
 class AIOKafkaContextGetter(textmap.Getter[HeadersT]):
-    def get(self, carrier: HeadersT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: HeadersT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -169,7 +171,7 @@ class AIOKafkaContextGetter(textmap.Getter[HeadersT]):
                     return [value.decode()]
         return None
 
-    def keys(self, carrier: HeadersT) -> List[str]:
+    def keys(self, carrier: HeadersT) -> list[str]:
         if carrier is None:
             return []
         return [key for (key, value) in carrier]
@@ -177,9 +179,15 @@ class AIOKafkaContextGetter(textmap.Getter[HeadersT]):
 
 class AIOKafkaContextSetter(textmap.Setter[HeadersT]):
     def set(
-        self, carrier: HeadersT, key: Optional[str], value: Optional[str]
+        self, carrier: HeadersT, key: str | None, value: str | None
     ) -> None:
         if carrier is None or key is None:
+            return
+
+        if not isinstance(carrier, MutableSequence):
+            _LOG.warning(
+                "Unable to set context in headers. Headers is immutable"
+            )
             return
 
         if value is not None:
@@ -195,11 +203,11 @@ _aiokafka_setter = AIOKafkaContextSetter()
 def _enrich_base_span(
     span: Span,
     *,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
     topic: str,
-    partition: Optional[int],
-    key: Optional[Any],
+    partition: int | None,
+    key: object | None,
 ) -> None:
     span.set_attribute(
         messaging_attributes.MESSAGING_SYSTEM,
@@ -219,18 +227,19 @@ def _enrich_base_span(
 
     if key is not None:
         span.set_attribute(
-            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key
+            messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY,
+            key,  # FIXME: serialize key to str?
         )
 
 
 def _enrich_send_span(
     span: Span,
     *,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
     topic: str,
-    partition: Optional[int],
-    key: Optional[str],
+    partition: int | None,
+    key: object | None,
 ) -> None:
     if not span.is_recording():
         return
@@ -254,12 +263,12 @@ def _enrich_send_span(
 def _enrich_getone_span(
     span: Span,
     *,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
-    consumer_group: Optional[str],
+    consumer_group: str | None,
     topic: str,
-    partition: Optional[int],
-    key: Optional[str],
+    partition: int | None,
+    key: object | None,
     offset: int,
 ) -> None:
     if not span.is_recording():
@@ -303,9 +312,9 @@ def _enrich_getone_span(
 def _enrich_getmany_poll_span(
     span: Span,
     *,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
-    consumer_group: Optional[str],
+    consumer_group: str | None,
     message_count: int,
 ) -> None:
     if not span.is_recording():
@@ -339,9 +348,9 @@ def _enrich_getmany_poll_span(
 def _enrich_getmany_topic_span(
     span: Span,
     *,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
-    consumer_group: Optional[str],
+    consumer_group: str | None,
     topic: str,
     partition: int,
     message_count: int,
@@ -384,10 +393,10 @@ def _wrap_send(
     async def _traced_send(
         func: AIOKafkaSendProto,
         instance: aiokafka.AIOKafkaProducer,
-        args: Tuple[Any],
-        kwargs: Dict[str, Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
     ) -> asyncio.Future[RecordMetadata]:
-        headers = _extract_send_headers(args, kwargs)
+        headers: HeadersT | None = _extract_send_headers(args, kwargs)
         if headers is None:
             headers = []
             kwargs["headers"] = headers
@@ -430,11 +439,11 @@ async def _create_consumer_span(
     async_consume_hook: ConsumeHookT,
     record: aiokafka.ConsumerRecord[object, object],
     extracted_context: Context,
-    bootstrap_servers: Union[str, List[str]],
+    bootstrap_servers: str | list[str],
     client_id: str,
-    consumer_group: Optional[str],
-    args: Tuple[Any],
-    kwargs: Dict[str, Any],
+    consumer_group: str | None,
+    args: tuple[aiokafka.TopicPartition, ...],
+    kwargs: dict[str, Any],
 ) -> trace.Span:
     span_name = _get_span_name("receive", record.topic)
     with tracer.start_as_current_span(
@@ -470,8 +479,8 @@ def _wrap_getone(
     async def _traced_getone(
         func: AIOKafkaGetOneProto,
         instance: aiokafka.AIOKafkaConsumer,
-        args: Tuple[Any],
-        kwargs: Dict[str, Any],
+        args: tuple[aiokafka.TopicPartition, ...],
+        kwargs: dict[str, Any],
     ) -> aiokafka.ConsumerRecord[object, object]:
         record = await func(*args, **kwargs)
 
@@ -513,8 +522,8 @@ def _wrap_getmany(
     async def _traced_getmany(
         func: AIOKafkaGetManyProto,
         instance: aiokafka.AIOKafkaConsumer,
-        args: Tuple[Any],
-        kwargs: Dict[str, Any],
+        args: tuple[aiokafka.TopicPartition, ...],
+        kwargs: dict[str, Any],
     ) -> dict[
         aiokafka.TopicPartition, list[aiokafka.ConsumerRecord[object, object]]
     ]:
@@ -527,9 +536,7 @@ def _wrap_getmany(
 
             span_name = _get_span_name(
                 "poll",
-                ", ".join(
-                    sorted(set(topic.topic for topic in records.keys()))
-                ),
+                ", ".join(sorted({topic.topic for topic in records.keys()})),
             )
             with tracer.start_as_current_span(
                 span_name, kind=trace.SpanKind.CLIENT

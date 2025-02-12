@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint: disable=unnecessary-dunder-call
+from __future__ import annotations
 
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -45,7 +46,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         carrier_list = [("key1", b"val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = AIOKafkaContextSetter()
