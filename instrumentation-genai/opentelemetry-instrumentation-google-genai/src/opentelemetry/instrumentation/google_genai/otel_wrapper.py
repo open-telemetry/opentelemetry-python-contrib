@@ -102,4 +102,3 @@ class OTelWrapper:
     def _log_event(self, event_name, attributes, body):
         event = Event(event_name, body=body, attributes=attributes)
         self.event_logger.emit(event)
-

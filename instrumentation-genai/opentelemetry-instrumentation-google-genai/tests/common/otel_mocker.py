@@ -169,7 +169,7 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = self.get_finished_spans()
-        assert span is not None, 'Could not find span named "{}"; finished spans: {}'.format(name, finished_spans)
+        assert span is not None, f'Could not find span named "{name}"; finished spans: {finished_spans}'
 
     def get_event_named(self, event_name):
         for event in self.get_finished_logs():
@@ -183,11 +183,11 @@ class OTelMocker:
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert event is not None, 'Could not find event named "{}"; finished logs: {}'.format(name, finished_logs)
+        assert event is not None, f'Could not find event named "{name}"; finished logs: {finished_logs}'
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)
-        assert event is None, "Unexpected event: {}".format(event)
+        assert event is None, f'Unexpected event: {event}'
 
     def get_metrics_data_named(self, name):
         results = []
@@ -215,4 +215,4 @@ class OTelMocker:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(self._traces))
         set_tracer_provider(provider)
-
+    

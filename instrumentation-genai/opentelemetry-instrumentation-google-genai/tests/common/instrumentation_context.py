@@ -16,7 +16,10 @@ import sys
 
 sys.path.append("../../src")
 
-from opentelemetry.instrumentation.google_genai import (
+# This import has to happen after 'sys.path.append' above, so that it is possible
+# to use this name relative to "../../src" (at least when this module is imported
+# from a test script that has been invoked directly).
+from opentelemetry.instrumentation.google_genai import (  # pylint: disable=wrong-import-position
     GoogleGenAiSdkInstrumentor,
 )
 

@@ -87,7 +87,7 @@ def _guess_genai_system_from_env():
           "true",
           "1",
       ]:
-      return _get_vertexai_system_name()
+        return _get_vertexai_system_name()
     return _get_gemini_system_name()
 
 
@@ -230,8 +230,8 @@ class _GenerateContentInstrumentationHelper:
             (response.prompt_feedback.block_reason == BlockedReason.BLOCKED_REASON_UNSPECIFIED)):
             self._error_type = "NO_CANDIDATES"
             return
-        block_reason = response.prompt_feedback.block_reason
-        self._error_type = "BLOCKED_{}".format(block_reason.name)
+        block_reason = response.prompt_feedback.block_reason.name.upper()
+        self._error_type = f'BLOCKED_{block_reason}'
 
     def _maybe_log_system_instruction(self, config: Optional[GenerateContentConfigOrDict]=None):
         if not self._content_recording_enabled:
@@ -324,8 +324,8 @@ def _create_instrumented_generate_content(
                 response = wrapped_func(self, model=model, contents=contents, config=config)
                 helper.process_response(response)
                 return response
-            except Exception as e:
-                helper.process_error(e)
+            except Exception as error:
+                helper.process_error(error)
                 raise
             finally:
                 helper.finalize_processing()
@@ -353,8 +353,8 @@ def _create_instrumented_generate_content_stream(
                 for response in wrapped_func(self, model=model, contents=contents, config=config):
                     helper.process_response(response)
                     yield response
-            except Exception as e:
-                helper.process_error(e)
+            except Exception as error:
+                helper.process_error(error)
                 raise
             finally:
                 helper.finalize_processing()
@@ -382,8 +382,8 @@ def _create_instrumented_async_generate_content(
                 response = await wrapped_func(self, model=model, contents=contents, config=config)
                 helper.process_response(response)
                 return response
-            except Exception as e:
-                helper.process_error(e)
+            except Exception as error:
+                helper.process_error(error)
                 raise
             finally:
                 helper.finalize_processing()
@@ -411,8 +411,8 @@ def _create_instrumented_async_generate_content_stream(
                 async for response in wrapped_func(self, model=model, contents=contents, config=config):
                     helper.process_response(response)
                     yield response
-            except Exception as e:
-                helper.process_error(e)
+            except Exception as error:
+                helper.process_error(error)
                 raise
             finally:
                 helper.finalize_processing()

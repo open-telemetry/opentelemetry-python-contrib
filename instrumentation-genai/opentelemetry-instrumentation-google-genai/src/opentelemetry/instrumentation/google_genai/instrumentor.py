@@ -31,7 +31,9 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
     def __init__(self):
         self._generate_content_snapshot = None
 
-    def instrumentation_dependencies(self) -> Collection[str]:
+    # Inherited, abstract function from 'BaseInstrumentor'. Even though 'self' is
+    # not used in the definition, a method is required per the API contract.
+    def instrumentation_dependencies(self) -> Collection[str]:  # pylint: disable=no-self-use
         return ["google-genai>=1.0.0,<2"]
 
     def _instrument(self, **kwargs: Any):
@@ -47,4 +49,3 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs: Any):
         uninstrument_generate_content(self._generate_content_snapshot)
-

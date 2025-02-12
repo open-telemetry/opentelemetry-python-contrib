@@ -21,7 +21,9 @@ import unittest
 
 sys.path.append("../")
 
-from common.base import TestCase
+# This needs to go after 'sys.path.append' in order to ensure that 'common'
+# can be imported using this naming (when the script is invoked directly).
+from common.base import TestCase  # pylint: disable=wrong-import-position
 
 
 def create_valid_response(response_text="The model response", input_tokens=10, output_tokens=20):
@@ -43,9 +45,6 @@ def create_valid_response(response_text="The model response", input_tokens=10, o
     }
 
 class TestGenerateContentAsyncStreaming(TestCase):
-
-    def setUp(self):
-        super().setUp()
 
     def configure_valid_response(self, response_text="The model_response", input_tokens=10, output_tokens=20):
         self.requests.add_response(create_valid_response(

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import http.client
 import copy
 import functools
 import io
@@ -61,11 +62,11 @@ class RequestsCall:
 
 
 
-def _return_error_status(args: RequestsCallArgs, status_code: int, reason: str):
+def _return_error_status(args: RequestsCallArgs, status_code: int, reason: str=None):
     result = requests.Response()
     result.url = args.request.url
     result.status_code = status_code
-    result.reason = reason
+    result.reason = reason or http.client.responses.get(status_code)
     result.request = args.request
     return result
 
@@ -80,28 +81,32 @@ def _to_response_generator(response):
     if isinstance(response, int):
         return lambda args: _return_error_status(args, response)
     if isinstance(response, requests.Response):
-        def response_generator(args):
+        def generate_response_from_response(args):
             new_response = copy.deepcopy(response)
             new_response.request = args.request
             new_response.url = args.request.url
             return new_response
-        return response_generator
+        return generate_response_from_response
     if isinstance(response, dict):
-        def response_generator(args):
+        def generate_response_from_dict(args):
             result = requests.Response()
             result.status_code = 200
             result.headers["content-type"] = "application/json"
             result.encoding = "utf-8"
             result.raw = io.BytesIO(json.dumps(response).encode())
             return result
-        return response_generator
+        return generate_response_from_dict
     raise ValueError(f"Unsupported response type: {type(response)}")
 
 
 class RequestsMocker:
 
-    def install(self):
+    def __init__(self):
         self._original_send = requests.sessions.Session.send
+        self._calls = []
+        self._handlers = []
+
+    def install(self):
         @functools.wraps(requests.sessions.Session.send)
         def replacement_send(
             s: requests.sessions.Session,
@@ -109,8 +114,6 @@ class RequestsMocker:
             **kwargs):
             return self._do_send(s, request, **kwargs)
         requests.sessions.Session.send = replacement_send
-        self._calls = []
-        self._handlers = []
 
     def uninstall(self):
         requests.sessions.Session.send = self._original_send
@@ -145,4 +148,3 @@ class RequestsMocker:
             if matcher(args):
                 return response_generator
         return _return_404
-
