@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-bocotore` Add support for GenAI user events
+- `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
   ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
 
 ### Fixed
