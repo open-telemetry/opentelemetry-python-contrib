@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all test install clean
+.PHONY: all test install clean lint
 
-all: build test
+all: build test lint
 
 test:
 	./tools/test.sh
@@ -26,6 +26,10 @@ build: ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
 
 install: ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
 	pip install ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
+
+
+lint:
+	./tools/lint.sh
 
 clean:
 	rm -rf .test
