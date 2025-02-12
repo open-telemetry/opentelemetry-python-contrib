@@ -158,7 +158,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         expected_spans = [
             {
                 "name": "topic_1 receive",
-                "kind": SpanKind.CONSUMER,
+                "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
                     server_attributes.SERVER_ADDRESS: "localhost",
@@ -175,7 +175,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             },
             {
                 "name": "topic_2 receive",
-                "kind": SpanKind.CONSUMER,
+                "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
                     server_attributes.SERVER_ADDRESS: "localhost",
@@ -293,7 +293,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         expected_spans = [
             {
                 "name": "topic_1 receive",
-                "kind": SpanKind.CONSUMER,
+                "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
                     server_attributes.SERVER_ADDRESS: "localhost",
@@ -325,7 +325,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             },
             {
                 "name": "topic_2 receive",
-                "kind": SpanKind.CONSUMER,
+                "kind": SpanKind.CLIENT,
                 "attributes": {
                     messaging_attributes.MESSAGING_SYSTEM: messaging_attributes.MessagingSystemValues.KAFKA.value,
                     server_attributes.SERVER_ADDRESS: "localhost",

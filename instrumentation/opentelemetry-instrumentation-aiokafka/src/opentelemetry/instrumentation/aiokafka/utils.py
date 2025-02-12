@@ -253,7 +253,7 @@ def _enrich_send_span(
     span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
+        messaging_attributes.MessagingOperationTypeValues.SEND.value,
     )
 
 
@@ -444,7 +444,7 @@ async def _create_consumer_span(
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
-        kind=trace.SpanKind.CONSUMER,
+        kind=trace.SpanKind.CLIENT,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
