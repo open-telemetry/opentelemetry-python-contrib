@@ -526,7 +526,10 @@ def _wrap_getmany(
             consumer_group = _extract_consumer_group(instance)
 
             span_name = _get_span_name(
-                "poll", ", ".join([topic.topic for topic in records.keys()])
+                "poll",
+                ", ".join(
+                    sorted(set(topic.topic for topic in records.keys()))
+                ),
             )
             with tracer.start_as_current_span(
                 span_name, kind=trace.SpanKind.CLIENT
