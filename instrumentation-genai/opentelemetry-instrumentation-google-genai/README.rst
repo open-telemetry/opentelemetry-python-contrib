@@ -1,5 +1,5 @@
 OpenTelemetry Google GenAI SDK Instrumentation
-====================================
+==============================================
 
 |pypi|
 
