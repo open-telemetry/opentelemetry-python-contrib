@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This variant of the requirements aims to test the system using
-# the newest supported version of external depenendencies.
+# Helper script of "test.sh".
+#
+# Assumptions:
+#   - Working directory: top-level root project directory
+#   - Virtual environment:
+#       - Activated
+#       - Contains the "tox" script
+#   - Arguments:
+#       - One argument
+#       - Argument supplies name of a configured tox environment
+#
+# Action:
+#
+#   Runs the given tox environment, with additional parameters
+#   to provide for more verbose debug output when testing.
 
-pytest==7.4.4
-pytest-asyncio==0.21.0
-pytest-vcr==1.0.2
+function main() {
+    local tox_env="$1"
+    tox -e "${tox_env}" -- -o log_cli_level=debug
+    exit $?
+}
 
-google-auth==2.38.0
-google-genai==1.0.0
-opentelemetry-api==1.30.0
-opentelemetry-sdk==1.30.0
-opentelemetry-semantic-conventions==0.51b0
-opentelemetry-instrumentation==0.51b0
-
-# Install locally from the folder. This path is relative to the
-# root directory, given invocation from "tox" at root level.
--e instrumentation-genai/opentelemetry-instrumentation-google-genai
+main "$@"
