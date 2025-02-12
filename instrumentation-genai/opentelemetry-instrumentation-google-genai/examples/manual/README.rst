@@ -13,9 +13,9 @@ token usage as well as the latency distribution of the GenAI operations.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` configures
-Google GenAI SDK instrumentation to capture prompt and completion contents on
-events.
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`
+
+... configures Google GenAI SDK instrumentation to capture prompt/response content.
 
 Setup
 -----
