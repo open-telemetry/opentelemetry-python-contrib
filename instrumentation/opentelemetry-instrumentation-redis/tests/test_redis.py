@@ -35,6 +35,15 @@ from opentelemetry.trace import SpanKind
 
 
 class TestRedis(TestBase):
+    def assert_span_count(self, count: int):
+        """
+        Assert that the memory exporter has the expected number of spans.
+        Returns the spans list if assertion passes
+        """
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), count)
+        return spans
+
     def setUp(self):
         super().setUp()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
@@ -387,6 +396,15 @@ class TestRedis(TestBase):
 
 
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
+    def assert_span_count(self, count: int):
+        """
+        Assert that the memory exporter has the expected number of spans.
+        Returns the spans list if assertion passes
+        """
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), count)
+        return spans
+
     def setUp(self):
         super().setUp()
         self.instrumentor = RedisInstrumentor()
@@ -530,6 +548,15 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
 
 
 class TestRedisInstance(TestBase):
+    def assert_span_count(self, count: int):
+        """
+        Assert that the memory exporter has the expected number of spans.
+        Returns the spans list if assertion passes
+        """
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), count)
+        return spans
+
     def setUp(self):
         super().setUp()
         self.client = fakeredis.FakeStrictRedis()
