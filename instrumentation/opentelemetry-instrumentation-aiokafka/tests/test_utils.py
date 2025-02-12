@@ -248,13 +248,14 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
     )
+    # pylint: disable=too-many-locals
     async def test_wrap_getmany(
         self,
         extract_consumer_group: mock.MagicMock,
         extract_client_id: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
-        enrich_getmany_poll_span: mock.MagicMock,
-        enrich_getmany_topic_span: mock.MagicMock,
+        _enrich_getmany_poll_span: mock.MagicMock,
+        _enrich_getmany_topic_span: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
     ) -> None:
