@@ -80,9 +80,18 @@ def test_converse_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": "max_tokens",
+        "message": {
+            "content": [{"text": "Hi, how can I help you"}],
+            "role": "assistant",
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -114,7 +123,7 @@ def test_converse_with_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(
         logs[0], "gen_ai.system.message", {"content": system_content}, span
     )
@@ -129,6 +138,15 @@ def test_converse_with_content_different_events(
     assert_message_in_logs(
         logs[3], "gen_ai.user.message", last_user_content, span
     )
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": {
+            "content": [{"text": "This is a test"}],
+            "role": "assistant",
+        },
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -159,11 +177,17 @@ def test_converse_no_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(logs[0], "gen_ai.system.message", None, span)
     assert_message_in_logs(logs[1], "gen_ai.user.message", None, span)
     assert_message_in_logs(logs[2], "gen_ai.assistant.message", None, span)
     assert_message_in_logs(logs[3], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -204,8 +228,14 @@ def test_converse_no_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": "max_tokens",
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -303,9 +333,18 @@ def test_converse_stream_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": "max_tokens",
+        "message": {
+            "content": [{"text": "I am here and ready to assist"}],
+            "role": "assistant",
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -343,7 +382,7 @@ def test_converse_stream_with_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(
         logs[0], "gen_ai.system.message", {"content": system_content}, span
     )
@@ -358,6 +397,15 @@ def test_converse_stream_with_content_different_events(
     assert_message_in_logs(
         logs[3], "gen_ai.user.message", last_user_content, span
     )
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": {
+            "role": "assistant",
+            "content": [{"text": "This is a test"}],
+        },
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -394,7 +442,7 @@ def test_converse_stream_no_content(
         if "contentBlockDelta" in event:
             text += event["contentBlockDelta"]["delta"]["text"]
         if "messageStop" in event:
-            finish_reason = (event["messageStop"]["stopReason"],)
+            finish_reason = event["messageStop"]["stopReason"]
         if "metadata" in event:
             usage = event["metadata"]["usage"]
             input_tokens = usage["inputTokens"]
@@ -411,7 +459,7 @@ def test_converse_stream_no_content(
         llm_model_value,
         input_tokens,
         output_tokens,
-        finish_reason,
+        (finish_reason,),
         "chat",
         top_p,
         temperature,
@@ -420,8 +468,14 @@ def test_converse_stream_no_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -458,11 +512,17 @@ def test_converse_stream_no_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(logs[0], "gen_ai.system.message", None, span)
     assert_message_in_logs(logs[1], "gen_ai.user.message", None, span)
     assert_message_in_logs(logs[2], "gen_ai.assistant.message", None, span)
     assert_message_in_logs(logs[3], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.skipif(
@@ -662,14 +722,37 @@ def test_invoke_model_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     if model_family == "anthropic.claude":
         user_content = {
             "content": [{"text": "Say this is a test", "type": "text"}]
         }
     else:
         user_content = {"content": [{"text": "Say this is a test"}]}
+    if model_family == "amazon.titan":
+        message = {"content": " comment\nHello! I am writing this as a"}
+        finish_reason = "LENGTH"
+    elif model_family == "amazon.nova":
+        message = {
+            "role": "assistant",
+            "content": [{"text": "Certainly, here's a test:\n\n---\n\n**"}],
+        }
+        finish_reason = "max_tokens"
+    elif model_family == "anthropic.claude":
+        message = {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": 'Okay, I said "This is a test"'}
+            ],
+        }
+        finish_reason = "max_tokens"
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": message,
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -690,9 +773,13 @@ def test_invoke_model_with_content_different_events(
     if llm_model_value == "amazon.nova-micro-v1:0":
         messages = amazon_nova_messages()
         system = amazon_nova_system()
+        finish_reason = "max_tokens"
+        choice_content = [{"text": "Again, this is a test. If you need"}]
     elif llm_model_value == "anthropic.claude-v2":
         messages = anthropic_claude_messages()
         system = anthropic_claude_system()
+        finish_reason = "end_turn"
+        choice_content = [{"type": "text", "text": "This is a test"}]
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -715,7 +802,7 @@ def test_invoke_model_with_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(
         logs[0],
         "gen_ai.system.message",
@@ -733,6 +820,12 @@ def test_invoke_model_with_content_different_events(
     assert_message_in_logs(
         logs[3], "gen_ai.user.message", last_user_content, span
     )
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": {"role": "assistant", "content": choice_content},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -770,8 +863,23 @@ def test_invoke_model_no_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
+    if model_family == "anthropic.claude":
+        choice_message = {"role": "assistant"}
+        finish_reason = "max_tokens"
+    elif model_family == "amazon.nova":
+        choice_message = {"role": "assistant"}
+        finish_reason = "max_tokens"
+    elif model_family == "amazon.titan":
+        choice_message = {}
+        finish_reason = "LENGTH"
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": choice_message,
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -791,9 +899,11 @@ def test_invoke_model_no_content_different_events(
     if llm_model_value == "amazon.nova-micro-v1:0":
         messages = amazon_nova_messages()
         system = amazon_nova_system()
+        finish_reason = "max_tokens"
     elif llm_model_value == "anthropic.claude-v2":
         messages = anthropic_claude_messages()
         system = anthropic_claude_system()
+        finish_reason = "end_turn"
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -816,11 +926,17 @@ def test_invoke_model_no_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(logs[0], "gen_ai.system.message", None, span)
     assert_message_in_logs(logs[1], "gen_ai.user.message", None, span)
     assert_message_in_logs(logs[2], "gen_ai.assistant.message", None, span)
     assert_message_in_logs(logs[3], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.vcr()
@@ -935,7 +1051,7 @@ def test_invoke_model_with_response_stream_with_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     if model_family == "anthropic.claude":
         user_content = {
             "content": [{"text": "Say this is a test", "type": "text"}]
@@ -943,6 +1059,31 @@ def test_invoke_model_with_response_stream_with_content(
     else:
         user_content = {"content": [{"text": "Say this is a test"}]}
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    if model_family == "anthropic.claude":
+        choice_message = {
+            "content": [{"text": "Okay, I will repeat: This is a test"}],
+            "role": "assistant",
+        }
+    elif model_family == "amazon.nova":
+        choice_message = {
+            "content": [
+                {"text": "It sounds like you're initiating a message or"}
+            ],
+            "role": "assistant",
+        }
+    elif model_family == "amazon.titan":
+        choice_message = {
+            "content": [
+                {"text": "\nHello! I am a computer program designed to"}
+            ]
+        }
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": choice_message,
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -963,10 +1104,12 @@ def test_invoke_model_with_response_stream_with_content_different_events(
         messages = amazon_nova_messages()
         system = amazon_nova_system()
         finish_reason = "max_tokens"
+        choice_content = [{"text": "This is a test again. If you need any"}]
     elif llm_model_value == "anthropic.claude-v2":
         messages = anthropic_claude_messages()
         system = anthropic_claude_system()
         finish_reason = "end_turn"
+        choice_content = [{"text": "This is a test"}]
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -996,7 +1139,7 @@ def test_invoke_model_with_response_stream_with_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(
         logs[0],
         "gen_ai.system.message",
@@ -1014,6 +1157,12 @@ def test_invoke_model_with_response_stream_with_content_different_events(
     assert_message_in_logs(
         logs[3], "gen_ai.user.message", last_user_content, span
     )
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": {"content": choice_content, "role": "assistant"},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -1099,8 +1248,15 @@ def test_invoke_model_with_response_stream_no_content(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
+    assert len(logs) == 2
     assert_message_in_logs(logs[0], "gen_ai.user.message", None, span)
+    message = {} if model_family == "amazon.titan" else {"role": "assistant"}
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": message,
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -1153,11 +1309,17 @@ def test_invoke_model_with_response_stream_no_content_different_events(
     )
 
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
+    assert len(logs) == 5
     assert_message_in_logs(logs[0], "gen_ai.system.message", None, span)
     assert_message_in_logs(logs[1], "gen_ai.user.message", None, span)
     assert_message_in_logs(logs[2], "gen_ai.assistant.message", None, span)
     assert_message_in_logs(logs[3], "gen_ai.user.message", None, span)
+    choice_body = {
+        "index": 0,
+        "finish_reason": finish_reason,
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.vcr()
