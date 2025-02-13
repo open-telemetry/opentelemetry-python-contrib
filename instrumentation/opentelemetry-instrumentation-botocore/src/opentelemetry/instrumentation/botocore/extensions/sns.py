@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
@@ -165,6 +166,8 @@ class _SnsExtension(_AwsSdkExtension):
         if self._op:
             self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._op:
             self._op.before_service_call(self._call_context, span)
