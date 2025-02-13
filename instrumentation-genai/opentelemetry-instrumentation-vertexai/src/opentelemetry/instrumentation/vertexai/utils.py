@@ -257,7 +257,10 @@ def _parts_to_any_value(
         return None
 
     return [
-        cast("dict[str, AnyValue]", type(part).to_dict(part))  # type: ignore[reportUnknownMemberType]
+        cast(
+            "dict[str, AnyValue]",
+            type(part).to_dict(part, including_default_value_fields=False),  # type: ignore[reportUnknownMemberType]
+        )
         for part in parts
     ]
 
