@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
+  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
+
+
 ### Fixed
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
@@ -23,8 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
   ([#3111](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3111))
-- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
-  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
+
 - `opentelemetry-instrumentation-urllib` Add `py.typed` file to enable PEP 561
   ([#3131](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3131))
 - `opentelemetry-opentelemetry-pymongo` Add `py.typed` file to enable PEP 561
