@@ -91,12 +91,25 @@ def _guess_genai_system_from_env():
     return _get_gemini_system_name()
 
 
+def _get_is_vertexai(models_object: Union[Models, AsyncModels]):
+    # Since commit 8e561de04965bb8766db87ad8eea7c57c1040442 of "googleapis/python-genai",
+    # it is possible to obtain the information using a documented property.
+    if hasattr(models_object, 'vertexai'):
+        vertexai_attr = getattr(models_object, 'vertexai')
+        if vertexai_attr is not None:
+            return vertexai_attr
+    # For earlier revisions, it is necessary to deeply inspect the internals.
+    if hasattr(models_object, '_api_client'):
+        client = getattr(models_object, "_api_client")
+        if not client:
+            return None
+        if hasattr(client, 'vertexai'):
+            return getattr(client, "vertexai")
+    return None
+
 
 def _determine_genai_system(models_object: Union[Models, AsyncModels]):
-    client = getattr(models_object, "_api_client")
-    if not client:
-        return _guess_genai_system_from_env()
-    vertexai_attr = getattr(client, "vertexai")
+    vertexai_attr = _get_is_vertexai(models_object)
     if vertexai_attr is None:
         return _guess_genai_system_from_env()
     if vertexai_attr:

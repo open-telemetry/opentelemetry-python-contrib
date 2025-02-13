@@ -75,6 +75,17 @@ class TestGenerateContentSyncNonstreaming(TestCase):
         self.assertEqual(span.attributes["gen_ai.system"], "gemini")
         self.assertEqual(span.attributes["gen_ai.operation.name"], "GenerateContent")
 
+    def test_generated_span_has_vertex_ai_system_when_configured(self):
+        self.set_use_vertex(True)
+        self.configure_valid_response(response_text="Yep, it works!")
+        self.generate_content(
+            model="gemini-2.0-flash",
+            contents="Does this work?")
+        self.otel.assert_has_span_named("google.genai.Models.generate_content")
+        span = self.otel.get_span_named("google.genai.Models.generate_content")
+        self.assertEqual(span.attributes["gen_ai.system"], "vertex_ai")
+        self.assertEqual(span.attributes["gen_ai.operation.name"], "GenerateContent")
+
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(input_tokens=123, output_tokens=456)
         self.generate_content(
