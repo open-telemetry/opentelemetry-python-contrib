@@ -55,6 +55,17 @@ CELERY_CONTEXT_ATTRIBUTES = (
 )
 
 
+def flatten_dict(d, parent_key="", sep="."):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
 # pylint:disable=too-many-branches
 def set_attributes_from_context(span, context):
     """Helper to extract meta values from a Celery Context"""
@@ -95,6 +106,14 @@ def set_attributes_from_context(span, context):
                     SpanAttributes.MESSAGING_DESTINATION, routing_key
                 )
 
+            # Flatten the dictionary
+            if value:
+                flattened = flatten_dict(value)
+                for k, v in flattened.items():
+                    if v is not None and v != "":
+                        span.set_attribute(f"celery.delivery_info.{k}", v)
+            continue
+
         elif key == "id":
             attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
 
@@ -114,6 +133,15 @@ def set_attributes_from_context(span, context):
                 if declare.exchange.type == "topic":
                     value = "topic"
                     break
+
+        # If the value is a dictionary, flatten it
+        if isinstance(value, dict):
+            flattened = flatten_dict(value)
+            for nested_key, nested_value in flattened.items():
+                if nested_value is not None and nested_value != "":
+                    nested_attr_name = f"celery.{key}.{nested_key}"
+                    span.set_attribute(nested_attr_name, nested_value)
+            continue
 
         # set attribute name if not set specially for a key
         if attribute_name is None:
