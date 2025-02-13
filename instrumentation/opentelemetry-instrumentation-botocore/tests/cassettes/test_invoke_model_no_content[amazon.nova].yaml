@@ -1,0 +1,91 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        },
+        "schemaVersion": "messages-v1"
+      }
+    headers:
+      Content-Length:
+      - '207'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250211T141037Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-c2ac5bb7-05fa324e3cb618c2b67e493b;Parent=f005000ccddbf918;Sampled=1
+      amz-sdk-invocation-id:
+      - d988352d-9242-448f-b283-a92382ea97a9
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "It seems like you\u2019re running a test or"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 10,
+            "totalTokens": 15,
+            "cacheReadInputTokenCount": 0,
+            "cacheWriteInputTokenCount": 0
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 11 Feb 2025 14:10:38 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Cache-Read-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Cache-Write-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '223'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - b302eeb1-efef-4054-9a64-6a343cc2ccf1
+    status:
+      code: 200
+      message: OK
+version: 1
