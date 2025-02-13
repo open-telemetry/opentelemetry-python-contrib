@@ -132,8 +132,8 @@ class ThreadingInstrumentor(BaseInstrumentor):
     def __wrap_threading_start(
         call_wrapped: Callable[[], None],
         instance: HasOtelContext,
-        args: ...,
-        kwargs: ...,
+        args: tuple[()],
+        kwargs: dict[str, Any],
     ) -> None:
         instance._otel_context = context.get_current()
         return call_wrapped(*args, **kwargs)
