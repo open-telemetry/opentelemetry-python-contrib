@@ -20,6 +20,7 @@ from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
+    _BotocoreInstrumentorContext,
     _DynamoDbExtension,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -180,7 +181,9 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension(operation)
 
         extension.on_success(
-            span, {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}}
+            span,
+            {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}},
+            _BotocoreInstrumentorContext(event_logger=mock.Mock()),
         )
         self.assert_item_col_metrics(span)
 
@@ -290,7 +293,9 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension("DeleteItem")
 
         extension.on_success(
-            span, {"ConsumedCapacity": {"TableName": "table"}}
+            span,
+            {"ConsumedCapacity": {"TableName": "table"}},
+            _BotocoreInstrumentorContext(event_logger=mock.Mock()),
         )
         self.assert_consumed_capacity(span, "table")
 

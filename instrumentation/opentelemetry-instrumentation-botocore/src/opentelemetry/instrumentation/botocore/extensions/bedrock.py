@@ -29,11 +29,14 @@ from botocore.response import StreamingBody
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
+    genai_capture_message_content,
+    message_to_event,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
     _BotoClientErrorT,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
@@ -205,9 +208,33 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if value is not None:
             attributes[key] = value
 
-    def before_service_call(self, span: Span):
+    def _get_request_messages(self):
+        input_text = None
+        if not (messages := self._call_context.params.get("messages", [])):
+            if body := self._call_context.params.get("body"):
+                decoded_body = json.loads(body)
+                messages = decoded_body.get("messages", [])
+                if not messages:
+                    # transform old school amazon titan invokeModel api to messages
+                    if input_text := decoded_body.get("inputText"):
+                        messages = [
+                            {"role": "user", "content": [{"text": input_text}]}
+                        ]
+
+        return messages
+
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
+
+        _capture_content = genai_capture_message_content()
+
+        messages = self._get_request_messages()
+        for message in messages:
+            event_logger = instrumentor_context.event_logger
+            event_logger.emit(message_to_event(message, _capture_content))
 
         if not span.is_recording():
             return
@@ -272,7 +299,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
         span.end()
 
-    def on_success(self, span: Span, result: dict[str, Any]):
+    def on_success(
+        self,
+        span: Span,
+        result: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
@@ -384,7 +416,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
             )
 
-    def on_error(self, span: Span, exception: _BotoClientErrorT):
+    def on_error(
+        self,
+        span: Span,
+        exception: _BotoClientErrorT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
