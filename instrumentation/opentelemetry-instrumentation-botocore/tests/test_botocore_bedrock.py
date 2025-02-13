@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint:disable=too-many-lines
+
 from __future__ import annotations
 
 import json
@@ -93,6 +95,7 @@ def test_converse_with_content_different_events(
     bedrock_runtime_client,
     instrument_with_content,
 ):
+    # pylint:disable=too-many-locals
     messages = anthropic_claude_converse_messages()
     llm_model_value = "anthropic.claude-v2"
     system_content = anthropic_claude_converse_system()
@@ -315,6 +318,7 @@ def test_converse_stream_with_content_different_events(
     bedrock_runtime_client,
     instrument_with_content,
 ):
+    # pylint:disable=too-many-locals
     messages = anthropic_claude_converse_messages()
     llm_model_value = "anthropic.claude-v2"
     system_content = anthropic_claude_converse_system()
@@ -325,7 +329,7 @@ def test_converse_stream_with_content_different_events(
     )
 
     # consume the stream in order to have it traced
-    for event in response["stream"]:
+    for _ in response["stream"]:
         pass
 
     (span,) = span_exporter.get_finished_spans()
@@ -440,7 +444,7 @@ def test_converse_stream_no_content_different_events(
     )
 
     # consume the stream in order to have it traced
-    for event in response["stream"]:
+    for _ in response["stream"]:
         pass
 
     (span,) = span_exporter.get_finished_spans()
@@ -680,6 +684,7 @@ def test_invoke_model_with_content_different_events(
     instrument_with_content,
     model_family,
 ):
+    # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
     max_tokens = 10
     if llm_model_value == "amazon.nova-micro-v1:0":
@@ -952,6 +957,7 @@ def test_invoke_model_with_response_stream_with_content_different_events(
     instrument_with_content,
     model_family,
 ):
+    # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
     if llm_model_value == "amazon.nova-micro-v1:0":
         messages = amazon_nova_messages()
@@ -975,7 +981,7 @@ def test_invoke_model_with_response_stream_with_content_different_events(
     )
 
     # consume the stream in order to have it traced
-    for event in response["body"]:
+    for _ in response["body"]:
         pass
 
     (span,) = span_exporter.get_finished_spans()
@@ -1132,7 +1138,7 @@ def test_invoke_model_with_response_stream_no_content_different_events(
     )
 
     # consume the stream in order to have it traced
-    for event in response["body"]:
+    for _ in response["body"]:
         pass
 
     (span,) = span_exporter.get_finished_spans()
