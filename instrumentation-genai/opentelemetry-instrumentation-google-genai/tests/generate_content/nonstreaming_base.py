@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import abc
 import json
-import logging
 import os
 import sys
 import unittest
@@ -49,7 +47,10 @@ def create_valid_response(response_text="The model response", input_tokens=10, o
 
 class NonStreamingTestCase(TestCase):
 
-    def setUp(self):
+    # The "setUp" function is defined by "unittest.TestCase" and thus
+    # this name must be used. Uncertain why pylint doesn't seem to
+    # recognize that this is a unit test class for which this is inherited.
+    def setUp(self):  # pylint: disable=invalid-name
         super().setUp()
         if self.__class__ == NonStreamingTestCase:
             raise unittest.SkipTest('Skipping testcase base.')
