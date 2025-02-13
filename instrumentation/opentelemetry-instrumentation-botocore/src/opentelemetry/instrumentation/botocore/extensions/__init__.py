@@ -40,6 +40,10 @@ _KNOWN_EXTENSIONS = {
 }
 
 
+def _has_extension(call_context: _AwsSdkCallContext) -> bool:
+    return call_context.service in _KNOWN_EXTENSIONS
+
+
 def _find_extension(call_context: _AwsSdkCallContext) -> _AwsSdkExtension:
     try:
         loader = _KNOWN_EXTENSIONS.get(call_context.service)

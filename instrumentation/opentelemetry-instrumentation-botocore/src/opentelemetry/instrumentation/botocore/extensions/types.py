@@ -15,6 +15,7 @@
 import logging
 from typing import Any, Dict, Optional, Tuple
 
+from opentelemetry._events import EventLogger
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
@@ -89,9 +90,24 @@ class _AwsSdkCallContext:
             return default
 
 
+class _BotocoreInstrumentorContext:
+    def __init__(self, event_logger: EventLogger):
+        self.event_logger = event_logger
+
+
 class _AwsSdkExtension:
     def __init__(self, call_context: _AwsSdkCallContext):
         self._call_context = call_context
+
+    @staticmethod
+    def tracer_schema_version() -> str:
+        """Returns the tracer OTel schema version the extension is following"""
+        return "1.11.0"
+
+    @staticmethod
+    def event_logger_schema_version() -> str:
+        """Returns the event logger OTel schema version the extension is following"""
+        return "1.30.0"
 
     def should_trace_service_call(self) -> bool:  # pylint:disable=no-self-use
         """Returns if the AWS SDK service call should be traced or not
@@ -115,7 +131,9 @@ class _AwsSdkExtension:
         Extensions might override this function to extract additional attributes.
         """
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         """Callback which gets invoked after the span is created but before the
         AWS SDK service is called.
 
@@ -123,7 +141,12 @@ class _AwsSdkExtension:
         a carrier.
         """
 
-    def on_success(self, span: Span, result: _BotoResultT):
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         """Callback that gets invoked when the AWS SDK call returns
         successfully.
 
@@ -131,12 +154,19 @@ class _AwsSdkExtension:
         attributes on the span.
         """
 
-    def on_error(self, span: Span, exception: _BotoClientErrorT):
+    def on_error(
+        self,
+        span: Span,
+        exception: _BotoClientErrorT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         """Callback that gets invoked when the AWS SDK service call raises a
         ClientError.
         """
 
-    def after_service_call(self):
+    def after_service_call(
+        self, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         """Callback that gets invoked after the AWS SDK service was called.
 
         Extensions might override this function to do some cleanup tasks.
