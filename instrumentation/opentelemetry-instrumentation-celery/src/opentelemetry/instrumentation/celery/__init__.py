@@ -96,6 +96,8 @@ _TASK_REVOKED_REASON_KEY = "celery.revoked.reason"
 _TASK_REVOKED_TERMINATED_SIGNAL_KEY = "celery.terminated.signal"
 _TASK_NAME_KEY = "celery.task_name"
 
+_QUEUE_NAME = "queue"
+
 
 class CeleryGetter(Getter):
     def get(self, carrier, key):
@@ -204,6 +206,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         # request context tags
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_RUN)
+            span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, _QUEUE_NAME)
             utils.set_attributes_from_context(span, kwargs)
             utils.set_attributes_from_context(span, task.request)
             span.set_attribute(_TASK_NAME_KEY, task.name)
@@ -241,6 +244,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
             span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
+            span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, _QUEUE_NAME)
             span.set_attribute(_TASK_NAME_KEY, task_name)
             utils.set_attributes_from_context(span, kwargs)
 
