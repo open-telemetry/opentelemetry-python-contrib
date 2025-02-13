@@ -41,6 +41,9 @@ class TestSnsExtension(TestBase):
         )
         self.client = session.create_client("sns", region_name="us-west-2")
         self.topic_name = "my-topic"
+        self.topic_arn = (
+            f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
+        )
 
     def tearDown(self):
         super().tearDown()
@@ -115,14 +118,12 @@ class TestSnsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
         )
         self.assertEqual(
-            self.topic_name,
+            self.topic_arn,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
         self.assertEqual(
             target_arn,
-            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
-            #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
     @mock_aws
@@ -135,7 +136,8 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span("phone_number send")
         self.assertEqual(
-            phone_number, span.attributes[SpanAttributes.MESSAGING_DESTINATION]
+            "phone_number:**",
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
 
     @mock_aws
@@ -187,14 +189,12 @@ class TestSnsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
         )
         self.assertEqual(
-            self.topic_name,
+            topic_arn,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
         self.assertEqual(
             topic_arn,
-            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
-            #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
         self.assert_injected_span(message1_attrs, span)
