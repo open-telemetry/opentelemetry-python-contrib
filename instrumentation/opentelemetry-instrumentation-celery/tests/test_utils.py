@@ -285,20 +285,16 @@ class TestUtils(unittest.TestCase):
 
     def test_origin_and_hostname_attributes(self):
         """Test that 'origin' and 'hostname' are distinct attributes"""
-        # Create a mock span
         span = mock.Mock()
         span.is_recording.return_value = True
 
-        # Create a context with both 'origin' and 'hostname' keys
         context = {
             "origin": "gen8@b98c7aca4628",
             "hostname": "celery@7c2c2cd6a5b5",
         }
 
-        # Call the function
         utils.set_attributes_from_context(span, context)
 
-        # Verify that both attributes were set with their original keys
         span.set_attribute.assert_has_calls(
             [
                 mock.call("celery.origin", "gen8@b98c7aca4628"),
