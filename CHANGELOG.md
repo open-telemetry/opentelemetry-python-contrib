@@ -12,11 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+
 - `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
   ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
-
+- `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
+  ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
 
 ### Fixed
+
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
 
