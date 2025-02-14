@@ -21,8 +21,8 @@
 # with multiple other dependencies in the top-level "tox.ini"
 # file. In particular, please see:
 #
-#   openai-recent-deps: {[testenv]test_deps}
-#   openai-recent-deps: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/requirements.latest.txt
+#   openai-latest: {[testenv]test_deps}
+#   openai-latest: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/requirements.latest.txt
 #
 # This provides additional dependencies, namely:
 #

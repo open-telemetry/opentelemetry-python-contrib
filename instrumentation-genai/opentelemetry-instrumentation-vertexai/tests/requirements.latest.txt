@@ -21,8 +21,8 @@
 # with multiple other dependencies in the top-level "tox.ini"
 # file. In particular, please see:
 #
-#   vertexai-recent-deps: {[testenv]test_deps}
-#   vertexai-recent-deps: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/requirements.latest.txt
+#   vertexai-latest: {[testenv]test_deps}
+#   vertexai-latest: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/requirements.latest.txt
 #
 # This provides additional dependencies, namely:
 #
