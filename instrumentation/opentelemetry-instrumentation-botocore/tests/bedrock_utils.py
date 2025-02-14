@@ -161,7 +161,9 @@ def assert_stream_completion_attributes(
 
 def assert_equal_or_not_present(value, attribute_name, span):
     if value is not None:
-        assert value == span.attributes[attribute_name]
+        assert value == span.attributes[attribute_name], span.attributes[
+            attribute_name
+        ]
     else:
         assert attribute_name not in span.attributes, attribute_name
 
