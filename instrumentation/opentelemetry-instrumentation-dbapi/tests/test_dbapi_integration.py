@@ -1074,6 +1074,39 @@ class TestDBApiIntegration(TestBase):
             connection4 = dbapi.uninstrument_connection(mocked_conn)
         self.assertIs(connection4, mocked_conn)
 
+    def test_non_string_sql_conversion(self):
+        """Test that non-string SQL statements are converted to strings before adding comments."""
+        # Create a mock connect_module with required attributes
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = "1.0"
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = "2.0"
+        connect_module.threadsafety = 1
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "testname",
+            "postgresql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+
+        input_sql = mock.MagicMock(as_string=lambda conn: "SELECT 2")
+        expected_sql = "SELECT 2"
+
+        cursor.executemany(input_sql)
+        # Extract the SQL part (before the comment)
+        actual_sql = cursor.query.split("/*")[0].strip()
+        self.assertEqual(actual_sql, expected_sql)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
 
 # pylint: disable=unused-argument
 def mock_connect(*args, **kwargs):
@@ -1100,6 +1133,7 @@ class MockCursor:
     def __init__(self) -> None:
         self.query = ""
         self.params = None
+        self.connection = None
         # Mock mysql.connector modules and method
         self._cnx = mock.MagicMock()
         self._cnx._cmysql = mock.MagicMock()
