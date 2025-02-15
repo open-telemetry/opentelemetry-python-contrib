@@ -1,0 +1,107 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "text": "This is a test"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say again this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 10
+        },
+        "schemaVersion": "messages-v1",
+        "system": [
+          {
+            "text": "You are friendly model"
+          }
+        ]
+      }
+    headers:
+      Content-Length:
+      - '333'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250213T113030Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-ba0c8a29-b443cf8553f07da7a91a8206;Parent=976f285f1d94e9d5;Sampled=1
+      amz-sdk-invocation-id:
+      - 01a2bce5-51df-4e24-bbc4-ec0fb28b35ae
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Again, this is a test. If you need"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 24,
+            "outputTokens": 10,
+            "totalTokens": 34,
+            "cacheReadInputTokenCount": 0,
+            "cacheWriteInputTokenCount": 0
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 13 Feb 2025 11:30:30 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Cache-Read-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Cache-Write-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '24'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '182'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 88719d47-9d62-4ae6-8623-07af41fb0044
+    status:
+      code: 200
+      message: OK
+version: 1
