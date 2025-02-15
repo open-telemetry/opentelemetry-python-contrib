@@ -204,10 +204,12 @@ def instrument_connection(
     commenter_options: dict[str, Any] | None = None,
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
+    db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
     Args:
+        name: The instrumentation module name.
         connection: The connection to instrument.
         database_system: An identifier for the database management system (DBMS)
             product being used.
@@ -220,6 +222,10 @@ def instrument_connection(
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        db_api_integration_factory: A class or factory function to use as a
+            replacement for :class:`DatabaseApiIntegration`. Can be used to
+            obtain connection attributes from the connect method instead of
+            from the connection itself (as done by the pymssql intrumentor).
 
     Returns:
         An instrumented connection.
@@ -228,7 +234,11 @@ def instrument_connection(
         _logger.warning("Connection already instrumented")
         return connection
 
-    db_integration = DatabaseApiIntegration(
+    db_api_integration_factory = (
+        db_api_integration_factory or DatabaseApiIntegration
+    )
+
+    db_integration = db_api_integration_factory(
         name,
         database_system,
         connection_attributes=connection_attributes,

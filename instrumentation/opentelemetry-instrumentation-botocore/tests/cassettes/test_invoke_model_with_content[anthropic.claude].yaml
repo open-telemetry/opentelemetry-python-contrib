@@ -1,0 +1,82 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "top_p": 1,
+        "stop_sequences": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '211'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250206T051238Z
+      X-Amzn-Trace-Id:
+      - Root=1-6b2173ac-0edeb464a48f377fe871f4d6;Parent=709b0744fe7b43be;Sampled=1
+      amz-sdk-invocation-id:
+      - f2b1380f-2da0-439d-99f6-11ddb3d74c22
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_01NCxHHwwdtMc7wioSxo2wBC",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-2.0",
+          "content": [
+            {
+              "type": "text",
+              "text": "Okay, I said \"This is a test\""
+            }
+          ],
+          "stop_reason": "max_tokens",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 14,
+            "output_tokens": 10
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 06 Feb 2025 05:12:40 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '14'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '1131'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 173e5b06-61f1-4368-9926-0a3369f721eb
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
+  ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI system events
+  ([#3266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3266))
+
+### Fixed
+
+- `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
+  ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
+- `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
+  ([#3253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3253))
+
+## Version 1.30.0/0.51b0 (2025-02-03)
+
+### Added
+
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
 - Add support to database stability opt-in in `_semconv` utilities and add tests
@@ -39,6 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3129](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3129))
 - `opentelemetry-util-http` Add `py.typed` file to enable PEP 561
   ([#3127](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3127))
+- `opentelemetry-instrumentation-psycopg2` Add support for psycopg2-binary
+  ([#3186](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3186))
+- `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock Converse API
+  ([#3161](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3161))
+- `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock InvokeModel API
+  ([#3200](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3200))
+- `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock ConverseStream API
+  ([#3204](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3204))
+- `opentelemetry-opentelemetry-botocore` Add basic support for GenAI attributes for AWS Bedrock InvokeModelWithStreamResponse API
+  ([#3206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3206))
+- `opentelemetry-instrumentation-pymssql` Add pymssql instrumentation
+  ([#394](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/394))
+- `opentelemetry-instrumentation-mysql` Add sqlcommenter support
+  ([#3163](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3163))
 
 ### Fixed
 
@@ -53,22 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-exporter-prometheus-remote-write` updated protobuf required version from 4.21 to 5.26 and regenerated protobufs 
+ ([#3219](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3219))
 - `opentelemetry-instrumentation-sqlalchemy` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3112))
-
-### Breaking changes
-
-- `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
-  ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
-
-
-### Breaking changes
-
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3115](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3115))
 - `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3121](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3121))
-
 
 ## Version 1.29.0/0.50b0 (2024-12-11)
 
