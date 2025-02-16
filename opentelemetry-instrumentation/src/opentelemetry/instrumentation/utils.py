@@ -75,7 +75,7 @@ def http_status_to_status_code(
     if status < 100:
         return StatusCode.ERROR
     if status <= 299:
-        return StatusCode.UNSET
+        return StatusCode.OK
     if status <= 399 and allow_redirect:
         return StatusCode.UNSET
     if status <= 499 and server_span:
