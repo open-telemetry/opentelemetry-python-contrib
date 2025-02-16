@@ -15,7 +15,12 @@
 
 from logging import WARNING
 from unittest import TestCase
+from unittest.mock import patch
 
+from opentelemetry.instrumentation.dependencies import (
+    DependencyConflict,
+    DependencyConflictError,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
 
@@ -48,3 +53,21 @@ class TestInstrumentor(TestCase):
 
     def test_singleton(self):
         self.assertIs(self.Instrumentor(), self.Instrumentor())
+
+    @patch(
+        "opentelemetry.instrumentation.instrumentor.BaseInstrumentor._check_dependency_conflicts"
+    )
+    def test_instrument_missing_dependency_raise(
+        self, mock__check_dependency_conflicts
+    ):
+        instrumentor = self.Instrumentor()
+
+        mock__check_dependency_conflicts.return_value = DependencyConflict(
+            "missing", "missing"
+        )
+
+        self.assertRaises(
+            DependencyConflictError,
+            instrumentor.instrument,
+            raise_exception_on_conflict=True,
+        )
