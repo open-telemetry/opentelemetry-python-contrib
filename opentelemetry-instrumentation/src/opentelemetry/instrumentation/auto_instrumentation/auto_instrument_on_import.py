@@ -12,19 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import environ
-from os.path import abspath, dirname, pathsep
+from logging import getLogger
 
-from opentelemetry.instrumentation.utils import _python_path_without_directory
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_configurators,
+    _load_distro,
+    _load_instrumentors,
+)
 
-
-def initialize():
-    # prevents auto-instrumentation of subprocesses if code execs another python process
-    environ["PYTHONPATH"] = _python_path_without_directory(
-        environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
-    )
-
-    import opentelemetry.instrumentation.auto_instrumentation.auto_instrument_on_import
+logger = getLogger(__name__)
 
 
-initialize()
+def auto_instrument():
+    try:
+        distro = _load_distro()
+        distro.configure()
+        _load_configurators()
+        _load_instrumentors(distro)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Failed to auto auto_instrument opentelemetry")
+
+
+auto_instrument()

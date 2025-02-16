@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opentelemetry-auto-instrument"
+description = "A package to automatically instrument a Python application"
+version = "0.44b0"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "opentelemetry-instrumentation >= 0.44b0, < 0.45",
+]
