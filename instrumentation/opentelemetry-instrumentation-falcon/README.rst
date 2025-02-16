@@ -43,7 +43,7 @@ For example,
 
     export OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS='query_string,uri_template'
 
-will extract path_info and content_type attributes from every traced request and add them as span attritbues.
+will extract path_info and content_type attributes from every traced request and add them as span attributes.
 
 Falcon Request object reference: https://falcon.readthedocs.io/en/stable/api/request_and_response.html#id1
 
