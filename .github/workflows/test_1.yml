@@ -10,7 +10,9 @@ on:
   pull_request:
 
 env:
+  CORE_REPO: open-telemetry/opentelemetry-python
   CORE_REPO_SHA: main
+  CONTRIB_REPO: open-telemetry/opentelemetry-python-contrib
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
