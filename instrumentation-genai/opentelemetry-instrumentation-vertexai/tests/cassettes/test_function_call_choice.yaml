@@ -1,0 +1,119 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '824'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "New Delhi"
+                      }
+                    }
+                  },
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "San Francisco"
+                      }
+                    }
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -0.00018152029952034354
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 72,
+            "candidatesTokenCount": 16,
+            "totalTokenCount": 88,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 72
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 16
+              }
+            ]
+          },
+          "modelVersion": "gemini-1.5-flash-002",
+          "createTime": "2025-02-06T04:26:30.610859Z",
+          "responseId": "9jmkZ6ukJb382PgPrp7zsQw"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '1029'
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -23,7 +23,7 @@ schematized in YAML and the Weaver tool supports it.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Any, Iterable, Literal
 
 from opentelemetry._events import Event
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -96,6 +96,33 @@ def system_event(
     )
 
 
+def tool_event(
+    *,
+    role: str | None,
+    id_: str,
+    content: AnyValue = None,
+) -> Event:
+    """Creates a Tool message event
+    https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#event-gen_aitoolmessage
+    """
+    if not role:
+        role = "tool"
+
+    body: dict[str, AnyValue] = {
+        "role": role,
+        "id": id_,
+    }
+    if content is not None:
+        body["content"] = content
+    return Event(
+        name="gen_ai.tool.message",
+        attributes={
+            gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
+        },
+        body=body,
+    )
+
+
 @dataclass
 class ChoiceMessage:
     """The message field for a gen_ai.choice event"""
@@ -104,18 +131,31 @@ class ChoiceMessage:
     role: str = "assistant"
 
 
+@dataclass
+class ChoiceToolCall:
+    """The tool_calls field for a gen_ai.choice event"""
+
+    @dataclass
+    class Function:
+        name: str
+        arguments: AnyValue = None
+
+    function: Function
+    id: str
+    type: Literal["function"] = "function"
+
+
 FinishReason = Literal[
     "content_filter", "error", "length", "stop", "tool_calls"
 ]
 
 
-# TODO add tool calls
-# https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3216
 def choice_event(
     *,
     finish_reason: FinishReason | str,
     index: int,
     message: ChoiceMessage,
+    tool_calls: Iterable[ChoiceToolCall] = (),
 ) -> Event:
     """Creates a choice event, which describes the Gen AI response message.
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#event-gen_aichoice
@@ -123,12 +163,14 @@ def choice_event(
     body: dict[str, AnyValue] = {
         "finish_reason": finish_reason,
         "index": index,
-        "message": asdict(
-            message,
-            # filter nulls
-            dict_factory=lambda kvs: {k: v for (k, v) in kvs if v is not None},
-        ),
+        "message": _asdict_filter_nulls(message),
     }
+
+    tool_calls_list = [
+        _asdict_filter_nulls(tool_call) for tool_call in tool_calls
+    ]
+    if tool_calls_list:
+        body["tool_calls"] = tool_calls_list
 
     return Event(
         name="gen_ai.choice",
@@ -136,4 +178,11 @@ def choice_event(
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },
         body=body,
+    )
+
+
+def _asdict_filter_nulls(instance: Any) -> dict[str, AnyValue]:
+    return asdict(
+        instance,
+        dict_factory=lambda kvs: {k: v for (k, v) in kvs if v is not None},
     )
