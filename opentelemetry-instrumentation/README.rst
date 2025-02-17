@@ -135,8 +135,8 @@ auto-instrumentation
 
 ::
 
-    from opentelemetry.instrumentation import autoinstrumentation
-    autoinstrumenttion.initialize()
+    from opentelemetry.instrumentation import auto_instrumentation
+    auto_instrumentation.initialize()
 
 
 If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so manually with
