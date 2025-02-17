@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 
 class TestSiteCustomize(TestCase):
+    # pylint:disable=import-outside-toplevel,unused-import,no-self-use
     @patch("opentelemetry.instrumentation.auto_instrumentation.initialize")
     def test_sitecustomize_side_effects(self, initialize_mock):
         initialize_mock.assert_not_called()
