@@ -115,6 +115,14 @@ class TestSystemMetrics(TestBase):
             "system.network.io",
             "system.network.connections",
             "system.thread_count",
+            "process.context_switches",
+            "process.count",
+            "process.cpu.time",
+            "process.cpu.utilization",
+            "process.memory.usage",
+            "process.memory.virtual",
+            "process.open_file_descriptor.count",
+            "process.thread.count",
             f"process.runtime.{self.implementation}.memory",
             f"process.runtime.{self.implementation}.cpu_time",
             f"process.runtime.{self.implementation}.thread_count",
@@ -124,9 +132,9 @@ class TestSystemMetrics(TestBase):
 
         on_windows = sys.platform == "win32"
         if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 20 if on_windows else 21)
+            self.assertEqual(len(metric_names), 26 if on_windows else 27)
         else:
-            self.assertEqual(len(metric_names), 21 if on_windows else 22)
+            self.assertEqual(len(metric_names), 27 if on_windows else 28)
         observer_names.append(
             f"process.runtime.{self.implementation}.gc_count",
         )
@@ -143,6 +151,44 @@ class TestSystemMetrics(TestBase):
             self.assertNotIn(
                 "process.open_file_descriptor.count", observer_names
             )
+
+    def test_process_metrics_instrument(self):
+        runtime_config = {
+            "process.memory.usage": None,
+            "process.memory.virtual": None,
+            "process.cpu.time": ["user", "system"],
+            "process.thread.count": None,
+            "process.cpu.utilization": None,
+            "process.context_switches": ["involuntary", "voluntary"],
+        }
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        runtime_metrics = SystemMetricsInstrumentor(config=runtime_config)
+        runtime_metrics.instrument(meter_provider=meter_provider)
+
+        metric_names = []
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    metric_names.append(metric.name)
+
+        observer_names = [
+            "process.memory.usage",
+            "process.memory.virtual",
+            "process.cpu.time",
+            "process.thread.count",
+            "process.context_switches",
+            "process.cpu.utilization",
+        ]
+
+        print(metric_names)
+
+        self.assertEqual(len(metric_names), 6)
+
+        for observer in metric_names:
+            self.assertIn(observer, observer_names)
+            observer_names.remove(observer)
 
     def test_runtime_metrics_instrument(self):
         runtime_config = {
@@ -774,6 +820,88 @@ class TestSystemMetrics(TestBase):
         self._test_metrics("system.thread_count", expected)
 
     @mock.patch("psutil.Process.memory_info")
+    def test_memory_usage(self, mock_process_memory_info):
+        PMem = namedtuple("PMem", ["rss", "vms"])
+
+        mock_process_memory_info.configure_mock(
+            **{"return_value": PMem(rss=1, vms=2)}
+        )
+
+        expected = [
+            _SystemMetricsResult({}, 1),
+        ]
+        self._test_metrics("process.memory.usage", expected)
+
+    @mock.patch("psutil.Process.memory_info")
+    def test_memory_virtual(self, mock_process_memory_info):
+        PMem = namedtuple("PMem", ["rss", "vms"])
+
+        mock_process_memory_info.configure_mock(
+            **{"return_value": PMem(rss=1, vms=2)}
+        )
+
+        expected = [
+            _SystemMetricsResult({}, 2),
+        ]
+        self._test_metrics("process.memory.virtual", expected)
+
+    @mock.patch("psutil.Process.cpu_times")
+    def test_cpu_time(self, mock_process_cpu_times):
+        PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
+
+        mock_process_cpu_times.configure_mock(
+            **{"return_value": PCPUTimes(user=1.1, system=2.2)}
+        )
+
+        expected = [
+            _SystemMetricsResult({"type": "user"}, 1.1),
+            _SystemMetricsResult({"type": "system"}, 2.2),
+        ]
+        self._test_metrics("process.cpu.time", expected)
+
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_context_switches(self, mock_process_num_ctx_switches):
+        PCtxSwitches = namedtuple("PCtxSwitches", ["voluntary", "involuntary"])
+
+        mock_process_num_ctx_switches.configure_mock(
+            **{"return_value": PCtxSwitches(voluntary=1, involuntary=2)}
+        )
+
+        expected = [
+            _SystemMetricsResult({"type": "voluntary"}, 1),
+            _SystemMetricsResult({"type": "involuntary"}, 2),
+        ]
+        self._test_metrics("process.context_switches", expected)
+
+    @mock.patch("psutil.Process.num_threads")
+    def test_thread_count(self, mock_process_thread_num):
+        mock_process_thread_num.configure_mock(**{"return_value": 42})
+
+        expected = [_SystemMetricsResult({}, 42)]
+        self._test_metrics("process.thread.count", expected)
+
+    @mock.patch("psutil.Process.cpu_percent")
+    @mock.patch("psutil.cpu_count")
+    def test_cpu_utilization(self, mock_cpu_count, mock_process_cpu_percent):
+        mock_cpu_count.return_value = 1
+        mock_process_cpu_percent.configure_mock(**{"return_value": 42})
+
+        expected = [_SystemMetricsResult({}, 0.42)]
+        self._test_metrics("process.cpu.utilization", expected)
+
+    @skipIf(sys.platform == "win32", "No file descriptors on Windows")
+    @mock.patch("psutil.Process.num_fds")
+    def test_open_file_descriptor_count(self, mock_process_num_fds):
+        mock_process_num_fds.configure_mock(**{"return_value": 3})
+
+        expected = [_SystemMetricsResult({}, 3)]
+        self._test_metrics(
+            "process.open_file_descriptor.count",
+            expected,
+        )
+        mock_process_num_fds.assert_called()
+
+    @mock.patch("psutil.Process.memory_info")
     def test_runtime_memory(self, mock_process_memory_info):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
@@ -838,7 +966,7 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("psutil.Process.num_threads")
-    def test_runtime_thread_num(self, mock_process_thread_num):
+    def test_runtime_thread_count(self, mock_process_thread_num):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 42)]
@@ -847,25 +975,13 @@ class TestSystemMetrics(TestBase):
         )
 
     @mock.patch("psutil.Process.cpu_percent")
-    def test_runtime_cpu_percent(self, mock_process_cpu_percent):
+    def test_runtime_cpu_utilization(self, mock_process_cpu_percent):
         mock_process_cpu_percent.configure_mock(**{"return_value": 42})
 
         expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics(
             f"process.runtime.{self.implementation}.cpu.utilization", expected
         )
-
-    @skipIf(sys.platform == "win32", "No file descriptors on Windows")
-    @mock.patch("psutil.Process.num_fds")
-    def test_open_file_descriptor_count(self, mock_process_num_fds):
-        mock_process_num_fds.configure_mock(**{"return_value": 3})
-
-        expected = [_SystemMetricsResult({}, 3)]
-        self._test_metrics(
-            "process.open_file_descriptor.count",
-            expected,
-        )
-        mock_process_num_fds.assert_called()
 
 
 class TestConfigSystemMetrics(TestBase):
