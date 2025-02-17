@@ -130,6 +130,20 @@ start celery with the rest of the arguments.
 The above command will configure the global trace provider to use the Random IDs Generator, and then
 pass ``--port=3000`` to ``flask run``.
 
+auto-instrumentation
+--------------------
+
+::
+
+    from opentelemetry.instrumentation import autoinstrumentation
+    autoinstrumenttion.initialize()
+
+
+If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so manually with
+the code above.
+
+
+
 References
 ----------
 
