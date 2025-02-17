@@ -38,7 +38,6 @@ class TestInitialize(TestCase):
     def test_handles_pythonpath_set(self, logger_mock):
         auto_instrumentation.initialize()
         self.assertEqual(environ["PYTHONPATH"], ".")
-
         logger_mock.exception.assert_not_called()
 
     @patch.dict(
@@ -49,12 +48,12 @@ class TestInitialize(TestCase):
     def test_clears_auto_instrumentation_path(self, logger_mock):
         auto_instrumentation.initialize()
         self.assertEqual(environ["PYTHONPATH"], "foo")
-
         logger_mock.exception.assert_not_called()
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
     def test_handles_exceptions(self, load_distro_mock, logger_mock):
+        # pylint:disable=no-self-use
         load_distro_mock.side_effect = ValueError
         auto_instrumentation.initialize()
         logger_mock.exception.assert_called_once_with(
