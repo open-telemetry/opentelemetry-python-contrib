@@ -142,8 +142,6 @@ auto-instrumentation
 If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so manually with
 the code above.
 
-
-
 References
 ----------
 
