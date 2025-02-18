@@ -9,5 +9,7 @@ tomli==2.0.1
 typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
+structlog==24.1.0
+opentelemetry-exporter-otlp==1.27.0
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-logging
