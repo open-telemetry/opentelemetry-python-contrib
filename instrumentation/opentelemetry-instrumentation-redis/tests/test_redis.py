@@ -408,9 +408,10 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
         self.instrumentor = RedisInstrumentor()
-        self.client = FakeRedis()
+        self.client: FakeRedis = FakeRedis()
 
-    async def _redis_pipeline_operations(self, client):
+    @staticmethod
+    async def _redis_pipeline_operations(client: FakeRedis):
         with pytest.raises(WatchError):
             async with client.pipeline(transaction=False) as pipe:
                 await pipe.watch("a")

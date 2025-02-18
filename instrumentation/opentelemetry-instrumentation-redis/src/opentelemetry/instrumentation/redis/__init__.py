@@ -775,7 +775,6 @@ class RedisInstrumentor(BaseInstrumentor):
             # created instance. any pipelines created before un-instrumenting will
             # remain instrumented (pipelines should usually have a short span)
             unwrap(client, "pipeline")
-            pass
         else:
             _logger.warning(
                 "Attempting to un-instrument Redis connection that wasn't instrumented"
