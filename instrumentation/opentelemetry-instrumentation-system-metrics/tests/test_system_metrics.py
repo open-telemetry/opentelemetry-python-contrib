@@ -116,12 +116,10 @@ class TestSystemMetrics(TestBase):
             "system.network.connections",
             "system.thread_count",
             "process.context_switches",
-            "process.count",
             "process.cpu.time",
             "process.cpu.utilization",
             "process.memory.usage",
             "process.memory.virtual",
-            "process.open_file_descriptor.count",
             "process.thread.count",
             f"process.runtime.{self.implementation}.memory",
             f"process.runtime.{self.implementation}.cpu_time",
@@ -130,27 +128,25 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
 
-        on_windows = sys.platform == "win32"
-        if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 26 if on_windows else 27)
-        else:
-            self.assertEqual(len(metric_names), 27 if on_windows else 28)
-        observer_names.append(
-            f"process.runtime.{self.implementation}.gc_count",
-        )
-        if not on_windows:
+        # platform dependent metrics
+        if sys.platform != "win32":
             observer_names.append(
                 "process.open_file_descriptor.count",
             )
+        if self.implementation != "pypy":
+            observer_names.append(
+                f"process.runtime.{self.implementation}.gc_count",
+            )
+
+        num_expected_metrics = len(observer_names)
+        self.assertEqual(len(metric_names), num_expected_metrics)
 
         for observer in metric_names:
             self.assertIn(observer, observer_names)
             observer_names.remove(observer)
+            self.assertNotIn(observer, observer_names)
 
-        if on_windows:
-            self.assertNotIn(
-                "process.open_file_descriptor.count", observer_names
-            )
+        self.assertFalse(observer_names)
 
     def test_process_metrics_instrument(self):
         runtime_config = {

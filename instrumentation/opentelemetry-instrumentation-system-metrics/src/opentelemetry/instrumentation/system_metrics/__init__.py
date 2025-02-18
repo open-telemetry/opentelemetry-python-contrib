@@ -35,7 +35,6 @@ following metrics are configured:
         "system.network.connections": ["family", "type"],
         "system.thread_count": None
         "process.context_switches": ["involuntary", "voluntary"],
-        "process.count": None,
         "process.cpu.time": ["user", "system"],
         "process.cpu.utilization": None,
         "process.memory.usage": None,
@@ -128,7 +127,6 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "system.network.connections": ["family", "type"],
     "system.thread_count": None,
     "process.context_switches": ["involuntary", "voluntary"],
-    "process.count": None,
     "process.cpu.time": ["user", "system"],
     "process.cpu.utilization": ["user", "system"],
     "process.memory.usage": None,
