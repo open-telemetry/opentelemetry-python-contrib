@@ -182,8 +182,6 @@ class TestSystemMetrics(TestBase):
             "process.cpu.utilization",
         ]
 
-        print(metric_names)
-
         self.assertEqual(len(metric_names), 6)
 
         for observer in metric_names:
