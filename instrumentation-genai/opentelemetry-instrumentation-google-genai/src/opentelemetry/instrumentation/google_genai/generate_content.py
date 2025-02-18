@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import os
 import time
-from typing import AsyncIterator, Awaitable, Iterator, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
 
 from google.genai.models import AsyncModels, Models
 from google.genai.types import (
@@ -29,6 +30,7 @@ from google.genai.types import (
 
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import error_attributes
 
 from .flags import is_content_recording_enabled
@@ -120,11 +122,11 @@ def _determine_genai_system(models_object: Union[Models, AsyncModels]):
 
 def _get_config_property(
     config: Optional[GenerateContentConfigOrDict],
-    path: str):
+    path: str) -> Any:
     if config is None:
         return None
     path_segments = path.split(".")
-    current_context = config
+    current_context: Any = config
     for path_segment in path_segments:
         if current_context is None:
             return None
@@ -186,11 +188,12 @@ class _GenerateContentInstrumentationHelper:
         self._output_tokens = 0
         self._content_recording_enabled = is_content_recording_enabled()
 
-    def start_span_as_current_span(self, name):
+    def start_span_as_current_span(self, model_name, function_name):
         return self._otel_wrapper.start_as_current_span(
-            name,
+            f'generate_content [{model_name}]',
             start_time=self._start_time,
             attributes={
+                code_attributes.CODE_FUNCTION_NAME: function_name,
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: "GenerateContent",
@@ -230,9 +233,9 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
         input_tokens = _get_response_property(response, "usage_metadata.prompt_token_count")
         output_tokens = _get_response_property(response, "usage_metadata.candidates_token_count")
-        if input_tokens:
+        if input_tokens and isinstance(input_tokens, int):
             self._input_tokens += input_tokens
-        if output_tokens:
+        if output_tokens and isinstance(output_tokens, int):
             self._output_tokens += output_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
@@ -331,7 +334,7 @@ def _create_instrumented_generate_content(
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span("google.genai.Models.generate_content"):
+        with helper.start_span_as_current_span(model, "google.genai.Models.generate_content"):
             helper.process_request(contents, config)
             try:
                 response = wrapped_func(self, model=model, contents=contents, config=config)
@@ -360,7 +363,7 @@ def _create_instrumented_generate_content_stream(
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None) -> Iterator[GenerateContentResponse]:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span("google.genai.Models.generate_content_stream"):
+        with helper.start_span_as_current_span(model, "google.genai.Models.generate_content_stream"):
             helper.process_request(contents, config)
             try:
                 for response in wrapped_func(self, model=model, contents=contents, config=config):
@@ -389,7 +392,7 @@ def _create_instrumented_async_generate_content(
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span("google.genai.AsyncModels.generate_content"):
+        with helper.start_span_as_current_span(model, "google.genai.AsyncModels.generate_content"):
             helper.process_request(contents, config)
             try:
                 response = await wrapped_func(self, model=model, contents=contents, config=config)
@@ -403,7 +406,8 @@ def _create_instrumented_async_generate_content(
     return instrumented_generate_content
 
 
-def _create_instrumented_async_generate_content_stream(
+# Disabling type checking because this is not yet implemented and tested fully.
+def _create_instrumented_async_generate_content_stream(  # pyright: ignore
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper):
     wrapped_func = snapshot.async_generate_content_stream
@@ -416,14 +420,14 @@ def _create_instrumented_async_generate_content_stream(
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None) -> Awaitable[AsyncIterator[GenerateContentResponse]]:
+        config: Optional[GenerateContentConfigOrDict] = None) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
-        with helper.start_span_as_current_span("google.genai.AsyncModels.generate_content_stream"):
+        with helper.start_span_as_current_span(model, "google.genai.AsyncModels.generate_content_stream"):
             helper.process_request(contents, config)
             try:
-                async for response in wrapped_func(self, model=model, contents=contents, config=config):
+                async for response in await wrapped_func(self, model=model, contents=contents, config=config):  # pyright: ignore
                     helper.process_response(response)
-                    yield response
+                    yield response  # pyright: ignore
             except Exception as error:
                 helper.process_error(error)
                 raise

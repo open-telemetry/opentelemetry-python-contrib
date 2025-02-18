@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all test install clean lint
+.PHONY: all test install clean lint typecheck
 
-all: build test lint
+all: build test lint typecheck
 
 test:
 	./tools/test.sh
@@ -27,6 +27,8 @@ build: ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
 install: ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
 	pip install ./dist/opentelemetry_instrumentation_google_genai-0.0.1-py3-none-any.whl
 
+typecheck:
+	./tools/typecheck.sh
 
 lint:
 	./tools/lint.sh

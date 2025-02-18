@@ -25,7 +25,7 @@ class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
         return self.client.models.generate_content(*args, **kwargs)
 
     @property
-    def expected_span_name(self):
+    def expected_function_name(self):
         return "google.genai.Models.generate_content"
 
 

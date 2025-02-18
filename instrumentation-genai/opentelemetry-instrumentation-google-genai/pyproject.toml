@@ -65,3 +65,15 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[tool.pyright]
+include = [
+  "src",
+]
+exclude = [
+  "**/__pycache__",
+]
+stubPath = "types"
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+pythonVersion = "3.9"

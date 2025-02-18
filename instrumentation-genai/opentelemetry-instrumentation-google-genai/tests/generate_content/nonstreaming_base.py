@@ -56,8 +56,8 @@ class NonStreamingTestCase(TestCase):
     def generate_content(self, *args, **kwargs):
         raise NotImplementedError("Must implement 'generate_content'.")
 
-    def expected_span_name(self):
-        raise NotImplementedError("Must implement 'expected_span_name'.")
+    def expected_function_name(self):
+        raise NotImplementedError("Must implement 'expected_function_name'.")
 
     def configure_valid_response(self, response_text="The model_response", input_tokens=10, output_tokens=20):
         self.requests.add_response(create_valid_response(
@@ -78,17 +78,34 @@ class NonStreamingTestCase(TestCase):
             model="gemini-2.0-flash",
             contents="Does this work?")
         self.assertEqual(response.text, "Yep, it works!")
-        self.otel.assert_has_span_named(self.expected_span_name)
+        self.otel.assert_has_span_named("generate_content [gemini-2.0-flash]")
+
+    def test_model_reflected_into_span_name(self):
+        self.configure_valid_response(response_text="Yep, it works!")
+        response = self.generate_content(
+            model="gemini-1.5-flash",
+            contents="Does this work?")
+        self.assertEqual(response.text, "Yep, it works!")
+        self.otel.assert_has_span_named("generate_content [gemini-1.5-flash]")
 
     def test_generated_span_has_minimal_genai_attributes(self):
         self.configure_valid_response(response_text="Yep, it works!")
         self.generate_content(
             model="gemini-2.0-flash",
             contents="Does this work?")
-        self.otel.assert_has_span_named(self.expected_span_name)
-        span = self.otel.get_span_named(self.expected_span_name)
+        self.otel.assert_has_span_named("generate_content [gemini-2.0-flash]")
+        span = self.otel.get_span_named("generate_content [gemini-2.0-flash]")
         self.assertEqual(span.attributes["gen_ai.system"], "gemini")
         self.assertEqual(span.attributes["gen_ai.operation.name"], "GenerateContent")
+
+    def test_generated_span_has_correct_function_name(self):
+        self.configure_valid_response(response_text="Yep, it works!")
+        self.generate_content(
+            model="gemini-2.0-flash",
+            contents="Does this work?")
+        self.otel.assert_has_span_named("generate_content [gemini-2.0-flash]")
+        span = self.otel.get_span_named("generate_content [gemini-2.0-flash]")
+        self.assertEqual(span.attributes["code.function.name"], self.expected_function_name)
 
     def test_generated_span_has_vertex_ai_system_when_configured(self):
         self.set_use_vertex(True)
@@ -96,8 +113,8 @@ class NonStreamingTestCase(TestCase):
         self.generate_content(
             model="gemini-2.0-flash",
             contents="Does this work?")
-        self.otel.assert_has_span_named(self.expected_span_name)
-        span = self.otel.get_span_named(self.expected_span_name)
+        self.otel.assert_has_span_named("generate_content [gemini-2.0-flash]")
+        span = self.otel.get_span_named("generate_content [gemini-2.0-flash]")
         self.assertEqual(span.attributes["gen_ai.system"], "vertex_ai")
         self.assertEqual(span.attributes["gen_ai.operation.name"], "GenerateContent")
 
@@ -106,8 +123,8 @@ class NonStreamingTestCase(TestCase):
         self.generate_content(
             model="gemini-2.0-flash",
             contents="Some input")
-        self.otel.assert_has_span_named(self.expected_span_name)
-        span = self.otel.get_span_named(self.expected_span_name)
+        self.otel.assert_has_span_named("generate_content [gemini-2.0-flash]")
+        span = self.otel.get_span_named("generate_content [gemini-2.0-flash]")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 123)
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 456)
 
