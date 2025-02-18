@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # This variant of the requirements aims to test the system using
-# the oldest supported version of external depenendencies.
+# the oldest supported version of external dependencies.
 
 annotated-types==0.7.0
 cachetools==5.5.0

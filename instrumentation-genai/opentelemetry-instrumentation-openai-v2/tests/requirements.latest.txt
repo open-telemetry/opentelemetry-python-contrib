@@ -17,7 +17,7 @@
 # WARNING: NOT HERMETIC !!!!!!!!!!
 # ********************************
 #
-# This "requirements.txt" is installed in conjuction
+# This "requirements.txt" is installed in conjunction
 # with multiple other dependencies in the top-level "tox.ini"
 # file. In particular, please see:
 #
@@ -34,7 +34,7 @@
 
 
 # This variant of the requirements aims to test the system using
-# the newest supported version of external depenendencies.
+# the newest supported version of external dependencies.
 
 openai==1.26.0
 pydantic==2.8.2
