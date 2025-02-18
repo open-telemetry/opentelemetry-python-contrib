@@ -209,10 +209,23 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes[key] = value
 
     def _get_request_messages(self):
+        """Extracts and normalize system and user / assistant messages"""
         input_text = None
+        if system := self._call_context.params.get("system", []):
+            system_messages = [{"role": "system", "content": system}]
+        else:
+            system_messages = []
+
         if not (messages := self._call_context.params.get("messages", [])):
             if body := self._call_context.params.get("body"):
                 decoded_body = json.loads(body)
+                if system := decoded_body.get("system"):
+                    if isinstance(system, str):
+                        content = [{"text": system}]
+                    else:
+                        content = system
+                    system_messages = [{"role": "system", "content": content}]
+
                 messages = decoded_body.get("messages", [])
                 if not messages:
                     # transform old school amazon titan invokeModel api to messages
@@ -221,7 +234,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                             {"role": "user", "content": [{"text": input_text}]}
                         ]
 
-        return messages
+        return system_messages + messages
 
     def before_service_call(
         self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
