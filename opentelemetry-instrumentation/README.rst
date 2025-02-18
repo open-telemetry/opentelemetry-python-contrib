@@ -140,7 +140,8 @@ auto-instrumentation
 
 
 If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so manually with
-the code above.
+the code above. Please note that some instrumentations may require the ``initialize()`` method to be called before the library they
+instrument is imported.
 
 References
 ----------
