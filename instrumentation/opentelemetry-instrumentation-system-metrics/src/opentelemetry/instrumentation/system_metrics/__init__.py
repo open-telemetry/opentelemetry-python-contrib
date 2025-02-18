@@ -81,7 +81,7 @@ Usage
     SystemMetricsInstrumentor(config=configuration).instrument()
 
 
-Out-of-spec `process.runtime` prefixed metrics are deprecated and will be remobed in future versions, users are encouraged to move
+Out-of-spec `process.runtime` prefixed metrics are deprecated and will be removed in future versions, users are encouraged to move
 to the `process` metrics.
 
 API
