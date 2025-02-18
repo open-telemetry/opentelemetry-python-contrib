@@ -138,30 +138,23 @@ class TestSystemMetrics(TestBase):
                 f"process.runtime.{self.implementation}.gc_count",
             )
 
-        num_expected_metrics = len(observer_names)
-        self.assertEqual(len(metric_names), num_expected_metrics)
-
-        for observer in metric_names:
-            self.assertIn(observer, observer_names)
-            observer_names.remove(observer)
-            self.assertNotIn(observer, observer_names)
-
-        self.assertFalse(observer_names)
+        self.assertEqual(sorted(metric_names), sorted(observer_names))
 
     def test_process_metrics_instrument(self):
-        runtime_config = {
+        process_config = {
+            "process.context_switches": ["involuntary", "voluntary"],
+            "process.cpu.time": ["user", "system"],
+            "process.cpu.utilization": None,
             "process.memory.usage": None,
             "process.memory.virtual": None,
-            "process.cpu.time": ["user", "system"],
+            "process.open_file_descriptor.count": None,
             "process.thread.count": None,
-            "process.cpu.utilization": None,
-            "process.context_switches": ["involuntary", "voluntary"],
         }
 
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
-        runtime_metrics = SystemMetricsInstrumentor(config=runtime_config)
-        runtime_metrics.instrument(meter_provider=meter_provider)
+        process_metrics = SystemMetricsInstrumentor(config=process_config)
+        process_metrics.instrument(meter_provider=meter_provider)
 
         metric_names = []
         for resource_metrics in reader.get_metrics_data().resource_metrics:
@@ -177,12 +170,13 @@ class TestSystemMetrics(TestBase):
             "process.context_switches",
             "process.cpu.utilization",
         ]
+        # platform dependent metrics
+        if sys.platform != "win32":
+            observer_names.append(
+                "process.open_file_descriptor.count",
+            )
 
-        self.assertEqual(len(metric_names), 6)
-
-        for observer in metric_names:
-            self.assertIn(observer, observer_names)
-            observer_names.remove(observer)
+        self.assertEqual(sorted(metric_names), sorted(observer_names))
 
     def test_runtime_metrics_instrument(self):
         runtime_config = {
@@ -214,18 +208,12 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
+        if self.implementation != "pypy":
+            observer_names.append(
+                f"process.runtime.{self.implementation}.gc_count"
+            )
 
-        if self.implementation == "pypy":
-            self.assertEqual(len(metric_names), 5)
-        else:
-            self.assertEqual(len(metric_names), 6)
-        observer_names.append(
-            f"process.runtime.{self.implementation}.gc_count"
-        )
-
-        for observer in metric_names:
-            self.assertIn(observer, observer_names)
-            observer_names.remove(observer)
+        self.assertEqual(sorted(metric_names), sorted(observer_names))
 
     def _assert_metrics(self, observer_name, reader, expected):
         assertions = 0
