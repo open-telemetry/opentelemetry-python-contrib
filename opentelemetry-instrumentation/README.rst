@@ -139,7 +139,7 @@ auto-instrumentation
     auto_instrumentation.initialize()
 
 
-If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so manually with
+If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so programmatically with
 the code above. Please note that some instrumentations may require the ``initialize()`` method to be called before the library they
 instrument is imported.
 
