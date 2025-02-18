@@ -121,9 +121,10 @@ def run() -> None:
 def initialize():
     """Setup auto-instrumentation, called by the sitecustomize module"""
     # prevents auto-instrumentation of subprocesses if code execs another python process
-    environ["PYTHONPATH"] = _python_path_without_directory(
-        environ.get("PYTHONPATH", ""), dirname(abspath(__file__)), pathsep
-    )
+    if "PYTHONPATH" in environ:
+        environ["PYTHONPATH"] = _python_path_without_directory(
+            environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
+        )
 
     try:
         distro = _load_distro()

@@ -30,7 +30,7 @@ class TestInitialize(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     def test_handles_pythonpath_not_set(self, logger_mock):
         auto_instrumentation.initialize()
-        self.assertEqual(environ["PYTHONPATH"], "")
+        self.assertNotIn("PYTHONPATH", environ)
         logger_mock.exception.assert_not_called()
 
     @patch.dict("os.environ", {"PYTHONPATH": "."})
