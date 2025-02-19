@@ -36,27 +36,29 @@ _SCOPE_ATTRIBUTES = {
 
 
 class OTelWrapper:
-
-    def __init__(
-        self,
-        tracer,
-        event_logger,
-        meter):
+    def __init__(self, tracer, event_logger, meter):
         self._tracer = tracer
         self._event_logger = event_logger
         self._meter = meter
-        self._operation_duration_metric = gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
-        self._token_usage_metric = gen_ai_metrics.create_gen_ai_client_token_usage(meter)
+        self._operation_duration_metric = (
+            gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
+        )
+        self._token_usage_metric = (
+            gen_ai_metrics.create_gen_ai_client_token_usage(meter)
+        )
 
     @staticmethod
-    def from_providers(
-        tracer_provider,
-        event_logger_provider,
-        meter_provider):
+    def from_providers(tracer_provider, event_logger_provider, meter_provider):
         return OTelWrapper(
-            tracer_provider.get_tracer(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
-            event_logger_provider.get_event_logger(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
-            meter = meter_provider.get_meter(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            tracer_provider.get_tracer(
+                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
+            ),
+            event_logger_provider.get_event_logger(
+                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
+            ),
+            meter=meter_provider.get_meter(
+                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
+            ),
         )
 
     def start_as_current_span(self, *args, **kwargs):

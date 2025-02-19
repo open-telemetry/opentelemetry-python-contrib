@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import http.client
 import copy
 import functools
+import http.client
 import io
 import json
 
@@ -23,12 +23,12 @@ import requests.sessions
 
 
 class RequestsCallArgs:
-
     def __init__(
         self,
         session: requests.sessions.Session,
         request: requests.PreparedRequest,
-        **kwargs):
+        **kwargs,
+    ):
         self._session = session
         self._request = request
         self._kwargs = kwargs
@@ -47,7 +47,6 @@ class RequestsCallArgs:
 
 
 class RequestsCall:
-
     def __init__(self, args: RequestsCallArgs, response_generator):
         self._args = args
         self._response_generator = response_generator
@@ -61,8 +60,9 @@ class RequestsCall:
         return self._response_generator(self._args)
 
 
-
-def _return_error_status(args: RequestsCallArgs, status_code: int, reason: str=None):
+def _return_error_status(
+    args: RequestsCallArgs, status_code: int, reason: str = None
+):
     result = requests.Response()
     result.url = args.request.url
     result.status_code = status_code
@@ -81,13 +81,16 @@ def _to_response_generator(response):
     if isinstance(response, int):
         return lambda args: _return_error_status(args, response)
     if isinstance(response, requests.Response):
+
         def generate_response_from_response(args):
             new_response = copy.deepcopy(response)
             new_response.request = args.request
             new_response.url = args.request.url
             return new_response
+
         return generate_response_from_response
     if isinstance(response, dict):
+
         def generate_response_from_dict(args):
             result = requests.Response()
             result.status_code = 200
@@ -95,12 +98,12 @@ def _to_response_generator(response):
             result.encoding = "utf-8"
             result.raw = io.BytesIO(json.dumps(response).encode())
             return result
+
         return generate_response_from_dict
     raise ValueError(f"Unsupported response type: {type(response)}")
 
 
 class RequestsMocker:
-
     def __init__(self):
         self._original_send = requests.sessions.Session.send
         self._calls = []
@@ -111,8 +114,10 @@ class RequestsMocker:
         def replacement_send(
             s: requests.sessions.Session,
             request: requests.PreparedRequest,
-            **kwargs):
+            **kwargs,
+        ):
             return self._do_send(s, request, **kwargs)
+
         requests.sessions.Session.send = replacement_send
 
     def uninstall(self):
@@ -133,7 +138,8 @@ class RequestsMocker:
         self,
         session: requests.sessions.Session,
         request: requests.PreparedRequest,
-        **kwargs):
+        **kwargs,
+    ):
         args = RequestsCallArgs(session, request, **kwargs)
         response_generator = self._lookup_response_generator(args)
         call = RequestsCall(args, response_generator)

@@ -19,8 +19,8 @@ import unittest
 
 from nonstreaming_base import NonStreamingTestCase
 
-class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
 
+class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
     def generate_content(self, *args, **kwargs):
         return self.client.models.generate_content(*args, **kwargs)
 
@@ -34,5 +34,5 @@ def main():
     unittest.main()
 
 
-if __name__  == "__main__":
+if __name__ == "__main__":
     main()

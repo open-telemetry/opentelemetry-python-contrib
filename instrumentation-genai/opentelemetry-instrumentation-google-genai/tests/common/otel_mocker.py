@@ -47,9 +47,7 @@ def _bypass_otel_once():
     opentelemetry.metrics._internal._METER_PROVIDER_SET_ONCE = Once()
 
 
-
 class OTelProviderSnapshot:
-
     def __init__(self):
         self._tracer_provider = get_tracer_provider()
         self._logger_provider = get_logger_provider()
@@ -65,7 +63,6 @@ class OTelProviderSnapshot:
 
 
 class _LogWrapper:
-
     def __init__(self, log_data):
         self._log_data = log_data
 
@@ -90,7 +87,6 @@ class _LogWrapper:
 
 
 class _MetricDataPointWrapper:
-
     def __init__(self, resource, scope, metric):
         self._resource = resource
         self._scope = scope
@@ -118,7 +114,6 @@ class _MetricDataPointWrapper:
 
 
 class OTelMocker:
-
     def __init__(self):
         self._snapshot = None
         self._logs = InMemoryLogExporter()
@@ -156,7 +151,9 @@ class OTelMocker:
                 for scope_metrics in resource_metric.scope_metrics:
                     scope = scope_metrics.scope
                     for metric in scope_metrics.metrics:
-                        wrapper = _MetricDataPointWrapper(resource, scope, metric)
+                        wrapper = _MetricDataPointWrapper(
+                            resource, scope, metric
+                        )
                         self._metrics_data.append(wrapper)
         return self._metrics_data
 
@@ -169,7 +166,9 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert span is not None, f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        assert (
+            span is not None
+        ), f'Could not find span named "{name}"; finished spans: {finished_spans}'
 
     def get_event_named(self, event_name):
         for event in self.get_finished_logs():
@@ -183,11 +182,13 @@ class OTelMocker:
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert event is not None, f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        assert (
+            event is not None
+        ), f'Could not find event named "{name}"; finished logs: {finished_logs}'
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)
-        assert event is None, f'Unexpected event: {event}'
+        assert event is None, f"Unexpected event: {event}"
 
     def get_metrics_data_named(self, name):
         results = []
@@ -215,4 +216,3 @@ class OTelMocker:
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(self._traces))
         set_tracer_provider(provider)
-    

@@ -23,14 +23,11 @@ from .requests_mocker import RequestsMocker
 
 
 class _FakeCredentials(google.auth.credentials.AnonymousCredentials):
-
     def refresh(self, request):
         pass
 
 
-
 class TestCase(unittest.TestCase):
-
     def setUp(self):
         self._otel = OTelMocker()
         self._otel.install()
@@ -73,7 +70,8 @@ class TestCase(unittest.TestCase):
                 vertexai=True,
                 project=self._project,
                 location=self._location,
-                credentials=self._credentials)
+                credentials=self._credentials,
+            )
         return google.genai.Client(api_key=self._api_key)
 
     def tearDown(self):

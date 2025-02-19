@@ -25,7 +25,6 @@ from opentelemetry.instrumentation.google_genai import (  # pylint: disable=wron
 
 
 class InstrumentationContext:
-
     def __init__(self):
         self._instrumentor = GoogleGenAiSdkInstrumentor()
 

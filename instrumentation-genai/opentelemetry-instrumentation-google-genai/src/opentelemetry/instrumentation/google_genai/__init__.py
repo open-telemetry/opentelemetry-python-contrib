@@ -44,7 +44,4 @@ API
 from .instrumentor import GoogleGenAiSdkInstrumentor
 from .version import __version__
 
-__all__ = [
-    "GoogleGenAiSdkInstrumentor",
-    "__version__"
-]
+__all__ = ["GoogleGenAiSdkInstrumentor", "__version__"]
