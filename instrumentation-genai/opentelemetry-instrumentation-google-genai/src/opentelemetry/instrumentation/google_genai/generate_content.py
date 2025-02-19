@@ -225,7 +225,7 @@ class _GenerateContentInstrumentationHelper:
         span = trace.get_current_span()
         span.set_attribute(gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, self._input_tokens)
         span.set_attribute(gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, self._output_tokens)
-        span.set_attribute(gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS, sorted(list(self._finish_reasons_set)))
+        span.set_attribute(gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS, sorted(self._finish_reasons_set))
         self._record_token_usage_metric()
         self._record_duration_metric()
         self._otel_wrapper.done()
