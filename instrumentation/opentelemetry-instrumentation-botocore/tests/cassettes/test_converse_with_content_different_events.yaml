@@ -1,0 +1,96 @@
+interactions:
+- request:
+    body: |-
+      {
+        "system": [
+          {
+            "text": "You are a friendly app"
+          }
+        ],
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "text": "This is a test"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say again this is a test"
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Content-Length:
+      - '258'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250213T113026Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-188a1ced-da75f3769b7d8ee0334fa4bf;Parent=f8c672d0277ff6e1;Sampled=1
+      amz-sdk-invocation-id:
+      - fae72016-6b0e-4b6f-b15a-100aa7f19e48
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/converse
+  response:
+    body:
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 408
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "This is a test"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "end_turn",
+          "usage": {
+            "inputTokens": 37,
+            "outputTokens": 8,
+            "totalTokens": 45
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 13 Feb 2025 11:30:27 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-RequestId:
+      - 5273de67-e76c-45ad-be0a-558957af8046
+    status:
+      code: 200
+      message: OK
+version: 1
