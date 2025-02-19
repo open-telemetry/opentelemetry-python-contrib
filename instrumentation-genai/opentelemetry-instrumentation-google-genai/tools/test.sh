@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE:-$0}"); pwd)
+set -o pipefail
+
+SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE:-$0}") || exit; pwd)
 PROJECT_DIR=$(readlink -f "${SCRIPT_DIR}/..")
 TOP_LEVEL_DIR=$(readlink -f "${PROJECT_DIR}/../../")
 TESTS_DIR="${PROJECT_DIR}/tests"
@@ -41,7 +43,7 @@ function main() {
     local tox_environments=$(tox -l | grep 'test-instrumentation-google-genai')
     local successful=0
     for tox_environment in ${tox_environments} ; do
-      echo "[INFO] Testing environment: ${tox_environmenmt}" >&2
+      echo "[INFO] Testing environment: ${tox_environment}" >&2
       ${SCRIPT_DIR}/test-with-tox.sh "${tox_environment}"|| exit $?
       successful=$(expr ${successful} + 1)
     done

@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE:-$0}"); pwd)
+set -o pipefail
+
+SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE:-$0}") || exit; pwd)
 PROJECT_DIR=$(readlink -f "${SCRIPT_DIR}/..")
 TESTS_DIR="${PROJECT_DIR}/tests"
 REQUIREMENTS_FILE="${TESTS_DIR}/requirements.txt"

@@ -30,6 +30,8 @@
 #   Runs the given tox environment, with additional parameters
 #   to provide for more verbose debug output when testing.
 
+set -o pipefail
+
 function main() {
     local tox_env="$1"
     tox -e "${tox_env}" -- -o log_cli_level=debug
