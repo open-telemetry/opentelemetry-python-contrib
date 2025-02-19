@@ -332,12 +332,13 @@ def _create_instrumented_generate_content(
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
+        config: Optional[GenerateContentConfigOrDict] = None,
+        **kwargs: Any) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
         with helper.start_span_as_current_span(model, "google.genai.Models.generate_content"):
             helper.process_request(contents, config)
             try:
-                response = wrapped_func(self, model=model, contents=contents, config=config)
+                response = wrapped_func(self, model=model, contents=contents, config=config, **kwargs)
                 helper.process_response(response)
                 return response
             except Exception as error:
@@ -361,12 +362,13 @@ def _create_instrumented_generate_content_stream(
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None) -> Iterator[GenerateContentResponse]:
+        config: Optional[GenerateContentConfigOrDict] = None,
+        **kwargs: Any) -> Iterator[GenerateContentResponse]:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
         with helper.start_span_as_current_span(model, "google.genai.Models.generate_content_stream"):
             helper.process_request(contents, config)
             try:
-                for response in wrapped_func(self, model=model, contents=contents, config=config):
+                for response in wrapped_func(self, model=model, contents=contents, config=config, **kwargs):
                     helper.process_response(response)
                     yield response
             except Exception as error:
@@ -390,12 +392,13 @@ def _create_instrumented_async_generate_content(
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None) -> GenerateContentResponse:
+        config: Optional[GenerateContentConfigOrDict] = None,
+        **kwargs: Any) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
         with helper.start_span_as_current_span(model, "google.genai.AsyncModels.generate_content"):
             helper.process_request(contents, config)
             try:
-                response = await wrapped_func(self, model=model, contents=contents, config=config)
+                response = await wrapped_func(self, model=model, contents=contents, config=config, **kwargs)
                 helper.process_response(response)
                 return response
             except Exception as error:
@@ -420,12 +423,13 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         *,
         model: str,
         contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
+        config: Optional[GenerateContentConfigOrDict] = None,
+        **kwargs: Any) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
         helper = _GenerateContentInstrumentationHelper(self, otel_wrapper, model)
         with helper.start_span_as_current_span(model, "google.genai.AsyncModels.generate_content_stream"):
             helper.process_request(contents, config)
             try:
-                async for response in await wrapped_func(self, model=model, contents=contents, config=config):  # pyright: ignore
+                async for response in await wrapped_func(self, model=model, contents=contents, config=config, **kwargs):  # pyright: ignore
                     helper.process_response(response)
                     yield response  # pyright: ignore
             except Exception as error:
