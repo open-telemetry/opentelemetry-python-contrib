@@ -96,7 +96,7 @@ _TASK_REVOKED_REASON_KEY = "celery.revoked.reason"
 _TASK_REVOKED_TERMINATED_SIGNAL_KEY = "celery.terminated.signal"
 _TASK_NAME_KEY = "celery.task_name"
 
-_QUEUE_NAME = "queue"
+_QUEUE_NAME = "celery"
 
 
 class CeleryGetter(Getter):
