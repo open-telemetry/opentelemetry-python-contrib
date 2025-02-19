@@ -24,13 +24,14 @@ from .version import __version__ as _LIBRARY_VERSION
 
 _logger = logging.getLogger(__name__)
 
-
-_LIBRARY_NAME = "opentelemetry-instrumentation-google-genai"
+_SCOPE_NAME = "opentelemetry.instrumentation.google_genai"
+_PYPI_PACKAGE_NAME = "opentelemetry-instrumentation-google-genai"
 _SCHEMA_URL = Schemas.V1_30_0.value
 _SCOPE_ATTRIBUTES = {
     "gcp.client.name": "google.genai",
     "gcp.client.repo": "googleapis/python-genai",
     "gcp.client.version": google.genai.__version__,
+    "pypi.package.name": _PYPI_PACKAGE_NAME,
 }
 
 
@@ -53,9 +54,9 @@ class OTelWrapper:
         event_logger_provider,
         meter_provider):
         return OTelWrapper(
-            tracer_provider.get_tracer(_LIBRARY_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
-            event_logger_provider.get_event_logger(_LIBRARY_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
-            meter = meter_provider.get_meter(_LIBRARY_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            tracer_provider.get_tracer(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            event_logger_provider.get_event_logger(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            meter = meter_provider.get_meter(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
         )
 
     def start_as_current_span(self, *args, **kwargs):
