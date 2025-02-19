@@ -33,7 +33,7 @@
   <strong>
     <a href="CONTRIBUTING.md">Contributing<a/>
     &nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="https://opentelemetry-python-contrib.readthedocs.io/en/stable/#examples">Examples<a/>
+    <a href="https://opentelemetry-python-contrib.readthedocs.io/en/latest/#instrumentations">Instrumentations<a/>
   </strong>
 </p>
 
