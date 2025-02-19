@@ -51,7 +51,7 @@ function main() {
       echo "[FATAL] No tests ran." >&2
       exit 1
     fi
-    echo "[DONE] Succesfully passed ${successful} environments." >&2
+    echo "[DONE] Successfully passed ${successful} environments." >&2
 }
 
 main
