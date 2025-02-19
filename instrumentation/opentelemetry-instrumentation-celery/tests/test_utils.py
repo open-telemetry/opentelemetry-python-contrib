@@ -302,3 +302,14 @@ class TestUtils(unittest.TestCase):
             ],
             any_order=True,
         )
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(
+            span.attributes.get("celery.origin"),
+            "gen8@b98c7aca4628",
+        )
+        self.assertEqual(
+            span.attributes.get("celery.hostname"),
+            "celery@7c2c2cd6a5b5",
+        )
