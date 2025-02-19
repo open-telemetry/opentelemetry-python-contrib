@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# We skip linting this file with pylint, because the linter is not
+# configured with the "requirements.txt" dependencies and therefore
+# will give multiple "no-name-in-module" errors for the imports.
+#
+# pylint: skip-file
+
 import os
 
 import google.genai
