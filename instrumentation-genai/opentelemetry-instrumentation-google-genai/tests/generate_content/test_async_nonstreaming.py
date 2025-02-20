@@ -20,7 +20,7 @@ import asyncio
 import logging
 import unittest
 
-from common.base import TestCase
+from ..common.base import TestCase
 
 
 def create_valid_response(
@@ -67,7 +67,7 @@ class TestGenerateContentAsyncNonstreaming(TestCase):
 
     def generate_content(self, *args, **kwargs):
         return asyncio.run(
-            self.client.aio.models.generate_content(*args, **kwargs)
+            self.client.aio.models.generate_content(*args, **kwargs)  # pylint: disable=missing-kwoa
         )
 
     def test_async_generate_content_not_broken_by_instrumentation(self):

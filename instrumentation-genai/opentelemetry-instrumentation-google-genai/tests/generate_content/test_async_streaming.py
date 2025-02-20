@@ -22,7 +22,7 @@ import asyncio
 import logging
 import unittest
 
-from common.base import TestCase
+from ..common.base import TestCase
 
 
 def create_valid_response(
@@ -71,7 +71,7 @@ class TestGenerateContentAsyncStreaming(TestCase):
         result = []
         async for (
             response
-        ) in await self.client.aio.models.generate_content_stream(
+        ) in await self.client.aio.models.generate_content_stream(  # pylint: disable=missing-kwoa
             *args, **kwargs
         ):
             result.append(response)

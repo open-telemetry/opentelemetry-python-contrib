@@ -19,7 +19,7 @@
 import logging
 import unittest
 
-from common.base import TestCase
+from ..common.base import TestCase
 
 
 def create_valid_response(
@@ -66,7 +66,7 @@ class TestGenerateContentSyncStreaming(TestCase):
 
     def generate_content(self, *args, **kwargs):
         result = []
-        for response in self.client.models.generate_content_stream(
+        for response in self.client.models.generate_content_stream(  # pylint: disable=missing-kwoa
             *args, **kwargs
         ):
             result.append(response)

@@ -15,7 +15,7 @@
 import logging
 import unittest
 
-from nonstreaming_base import NonStreamingTestCase
+from .nonstreaming_base import NonStreamingTestCase
 
 
 class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
