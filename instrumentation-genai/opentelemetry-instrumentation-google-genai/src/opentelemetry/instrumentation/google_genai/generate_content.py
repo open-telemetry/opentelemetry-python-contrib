@@ -253,7 +253,6 @@ class _GenerateContentInstrumentationHelper:
         )
         self._record_token_usage_metric()
         self._record_duration_metric()
-        self._otel_wrapper.done()
 
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
         input_tokens = _get_response_property(
@@ -327,7 +326,7 @@ class _GenerateContentInstrumentationHelper:
         # a role supplied (and it looks like there could be cases where there
         # is more than one role present in the supplied contents)?
         #
-        # See also: "TODOS.md" 
+        # See also: "TODOS.md"
         self._otel_wrapper.log_user_prompt(
             attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,

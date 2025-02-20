@@ -64,21 +64,6 @@ class OTelWrapper:
     def start_as_current_span(self, *args, **kwargs):
         return self._tracer.start_as_current_span(*args, **kwargs)
 
-    def done(self):
-        pass
-
-    @property
-    def tracer(self):
-        return self._tracer
-
-    @property
-    def event_logger(self):
-        return self._event_logger
-
-    @property
-    def meter(self):
-        return self._meter
-
     @property
     def operation_duration_metric(self):
         return self._operation_duration_metric
@@ -104,4 +89,4 @@ class OTelWrapper:
 
     def _log_event(self, event_name, attributes, body):
         event = Event(event_name, body=body, attributes=attributes)
-        self.event_logger.emit(event)
+        self._event_logger.emit(event)
