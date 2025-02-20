@@ -32,7 +32,6 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     _Choice,
     genai_capture_message_content,
     message_to_event,
-    to_choice_event,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -293,8 +292,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         # context so need to add the span context manually
         span_ctx = span.get_span_context()
         event_logger.emit(
-            to_choice_event(
-                choice,
+            choice.to_choice_event(
                 trace_id=span_ctx.trace_id,
                 span_id=span_ctx.span_id,
                 trace_flags=span_ctx.trace_flags,
@@ -444,7 +442,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             choice = _Choice.from_invoke_amazon_titan(
                 response_body, capture_content
             )
-            event_logger.emit(to_choice_event(choice))
+            event_logger.emit(choice.to_choice_event())
 
     # pylint: disable=no-self-use
     def _handle_amazon_nova_response(
@@ -471,7 +469,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_converse(response_body, capture_content)
-        event_logger.emit(to_choice_event(choice))
+        event_logger.emit(choice.to_choice_event())
 
     # pylint: disable=no-self-use
     def _handle_anthropic_claude_response(
@@ -499,7 +497,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         choice = _Choice.from_invoke_anthropic_claude(
             response_body, capture_content
         )
-        event_logger.emit(to_choice_event(choice))
+        event_logger.emit(choice.to_choice_event())
 
     def on_error(
         self,

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from os import environ
-from typing import Callable, Dict, Union
+from typing import Any, Callable, Dict, Union
 
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
@@ -297,7 +297,7 @@ def genai_capture_message_content() -> bool:
     return capture_content.lower() == "true"
 
 
-def message_to_event(message, capture_content):
+def message_to_event(message: dict[str, Any], capture_content: bool) -> Event:
     attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
     role = message.get("role")
     content = message.get("content")
@@ -314,13 +314,17 @@ def message_to_event(message, capture_content):
 
 
 class _Choice:
-    def __init__(self, message, finish_reason, index):
+    def __init__(
+        self, message: dict[str, Any], finish_reason: str, index: int
+    ):
         self.message = message
         self.finish_reason = finish_reason
         self.index = index
 
     @classmethod
-    def from_converse(cls, response, capture_content):
+    def from_converse(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
         orig_message = response["output"]["message"]
         if role := orig_message.get("role"):
             message = {"role": role}
@@ -332,7 +336,9 @@ class _Choice:
         return cls(message, response["stopReason"], index=0)
 
     @classmethod
-    def from_invoke_amazon_titan(cls, response, capture_content):
+    def from_invoke_amazon_titan(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
         result = response["results"][0]
         if capture_content:
             message = {"content": result["outputText"]}
@@ -341,7 +347,9 @@ class _Choice:
         return cls(message, result["completionReason"], index=0)
 
     @classmethod
-    def from_invoke_anthropic_claude(cls, response, capture_content):
+    def from_invoke_anthropic_claude(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
         if capture_content:
             message = {
                 "content": response["content"],
@@ -352,19 +360,18 @@ class _Choice:
 
         return cls(message, response["stop_reason"], index=0)
 
-    def to_body_dict(self):
+    def _to_body_dict(self) -> dict[str, Any]:
         return {
             "finish_reason": self.finish_reason,
             "index": self.index,
             "message": self.message,
         }
 
-
-def to_choice_event(choice: _Choice, **event_kwargs):
-    attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
-    return Event(
-        name="gen_ai.choice",
-        attributes=attributes,
-        body=choice.to_body_dict(),
-        **event_kwargs,
-    )
+    def to_choice_event(self, **event_kwargs) -> Event:
+        attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+        return Event(
+            name="gen_ai.choice",
+            attributes=attributes,
+            body=self._to_body_dict(),
+            **event_kwargs,
+        )
