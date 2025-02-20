@@ -64,10 +64,10 @@ class TestGenerateContentSyncStreaming(TestCase):
             )
         )
 
-    def generate_content(self, *, model, contents):
+    def generate_content(self, *args, **kwargs):
         result = []
-        for response in self.client.models.generate_content_stream(
-            model=model, contents=contents
+        for response in self.client.models.generate_content_stream(  # pylint: disable=missing-kwoa
+            *args, **kwargs
         ):
             result.append(response)
         return result

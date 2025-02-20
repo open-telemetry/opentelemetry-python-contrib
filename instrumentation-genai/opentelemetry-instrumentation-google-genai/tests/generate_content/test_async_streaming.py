@@ -67,20 +67,18 @@ class TestGenerateContentAsyncStreaming(TestCase):
             )
         )
 
-    async def _generate_content_helper(self, *, model, contents):
+    async def _generate_content_helper(self, *args, **kwargs):
         result = []
         async for (
             response
-        ) in await self.client.aio.models.generate_content_stream(
-            model=model, contents=contents
+        ) in await self.client.aio.models.generate_content_stream(  # pylint: disable=missing-kwoa
+            *args, **kwargs
         ):
             result.append(response)
         return result
 
-    def generate_content(self, *, model, contents):
-        return asyncio.run(
-            self._generate_content_helper(model=model, contents=contents)
-        )
+    def generate_content(self, *args, **kwargs):
+        return asyncio.run(self._generate_content_helper(*args, **kwargs))
 
     def test_async_generate_content_not_broken_by_instrumentation(self):
         self.configure_valid_response(response_text="Yep, it works!")

@@ -65,11 +65,9 @@ class TestGenerateContentAsyncNonstreaming(TestCase):
             )
         )
 
-    def generate_content(self, *, model, contents):
+    def generate_content(self, *args, **kwargs):
         return asyncio.run(
-            self.client.aio.models.generate_content(
-                model=model, contents=contents
-            )
+            self.client.aio.models.generate_content(*args, **kwargs)  # pylint: disable=missing-kwoa
         )
 
     def test_async_generate_content_not_broken_by_instrumentation(self):
