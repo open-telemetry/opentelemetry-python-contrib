@@ -1,0 +1,80 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '170'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250211T141036Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-d573e167-b547bec74e267f033a202851;Parent=0a96ae00e1f4d524;Sampled=1
+      amz-sdk-invocation-id:
+      - abc27203-3d67-43ec-b426-9f01928fd698
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse-stream
+  response:
+    body:
+      string: !!binary |
+        AAAAuQAAAFL9kIXUCzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
+        cHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsicCI6ImFiY2RlZmdoaWprbG1u
+        b3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2NyIsInJvbGUiOiJh
+        c3Npc3RhbnQifWf51EkAAAC6AAAAV8paC4sLOmV2ZW50LXR5cGUHABFjb250ZW50QmxvY2tEZWx0
+        YQ06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24vanNvbg06bWVzc2FnZS10eXBlBwAFZXZlbnR7
+        ImNvbnRlbnRCbG9ja0luZGV4IjowLCJkZWx0YSI6eyJ0ZXh0IjoiU3VyZSwgZGlkIHlvdSBoYXZl
+        IGEgcXVlc3Rpb24ifSwicCI6ImFiY2QifQDDASsAAAChAAAAVqptnY4LOmV2ZW50LXR5cGUHABBj
+        b250ZW50QmxvY2tTdG9wDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdl
+        LXR5cGUHAAVldmVudHsiY29udGVudEJsb2NrSW5kZXgiOjAsInAiOiJhYmNkZWZnaGlqa2xtbm9w
+        cXJzdHV2d3h5ekFCQyJ9AHyeLwAAAIoAAABRghgWOAs6ZXZlbnQtdHlwZQcAC21lc3NhZ2VTdG9w
+        DTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsi
+        cCI6ImFiY2RlZmciLCJzdG9wUmVhc29uIjoibWF4X3Rva2VucyJ9gceI6AAAAOoAAABOliJsgAs6
+        ZXZlbnQtdHlwZQcACG1ldGFkYXRhDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTpt
+        ZXNzYWdlLXR5cGUHAAVldmVudHsibWV0cmljcyI6eyJsYXRlbmN5TXMiOjY5Nn0sInAiOiJhYmNk
+        ZWZnaGlqa2xtbm9wcXJzdHV2d3h5ekFCQ0RFRkdISUpLTE1OT1BRIiwidXNhZ2UiOnsiaW5wdXRU
+        b2tlbnMiOjgsIm91dHB1dFRva2VucyI6MTAsInRvdGFsVG9rZW5zIjoxOH19By4BYA==
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/vnd.amazon.eventstream
+      Date:
+      - Tue, 11 Feb 2025 14:10:37 GMT
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      x-amzn-RequestId:
+      - a2ff4e96-777d-4bf0-9db7-8a9aa7aecf78
+    status:
+      code: 200
+      message: OK
+version: 1

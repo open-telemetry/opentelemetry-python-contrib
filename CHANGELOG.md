@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
+  ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI system events
+  ([#3266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3266))
+
+### Fixed
+
+- `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
+  ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
+- `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
+  ([#3253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3253))
+
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
 ### Added
@@ -69,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-exporter-prometheus-remote-write` updated protobuf required version from 4.21 to 5.26 and regenerated protobufs 
+ ([#3219](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3219))
 - `opentelemetry-instrumentation-sqlalchemy` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3112))
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in

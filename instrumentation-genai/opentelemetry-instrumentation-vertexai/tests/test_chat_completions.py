@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 from google.api_core.exceptions import BadRequest, NotFound
 from vertexai.generative_models import (
@@ -5,6 +7,9 @@ from vertexai.generative_models import (
     GenerationConfig,
     GenerativeModel,
     Part,
+)
+from vertexai.preview.generative_models import (
+    GenerativeModel as PreviewGenerativeModel,
 )
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
@@ -38,26 +43,51 @@ def test_generate_content(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 19,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
     }
 
-    # Emits content event
+    # Emits user and choice events
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
-    log_record = logs[0].log_record
+    assert len(logs) == 2
+    user_log, choice_log = [log_data.log_record for log_data in logs]
+
     span_context = spans[0].get_span_context()
-    assert log_record.trace_id == span_context.trace_id
-    assert log_record.span_id == span_context.span_id
-    assert log_record.trace_flags == span_context.trace_flags
-    assert log_record.attributes == {
+    assert user_log.trace_id == span_context.trace_id
+    assert user_log.span_id == span_context.span_id
+    assert user_log.trace_flags == span_context.trace_flags
+    assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
     }
-    assert log_record.body == {
+    assert user_log.body == {
         "content": [{"text": "Say this is a test"}],
         "role": "user",
+    }
+
+    assert choice_log.trace_id == span_context.trace_id
+    assert choice_log.span_id == span_context.span_id
+    assert choice_log.trace_flags == span_context.trace_flags
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+            "content": [
+                {
+                    "text": "Okay, I understand.  I'm ready for your test.  Please proceed.\n"
+                }
+            ],
+            "role": "model",
+        },
     }
 
 
@@ -81,20 +111,34 @@ def test_generate_content_without_events(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-1.5-flash-002",
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 19,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
     }
 
-    # Emits event without body.content
+    # Emits user and choice event without body.content
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1
-    log_record = logs[0].log_record
-    assert log_record.attributes == {
+    assert len(logs) == 2
+    user_log, choice_log = [log_data.log_record for log_data in logs]
+    assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
     }
-    assert log_record.body == {"role": "user"}
+    assert user_log.body == {"role": "user"}
+
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {"role": "model"},
+    }
 
 
 @pytest.mark.vcr
@@ -255,7 +299,11 @@ def test_generate_content_extra_params(span_exporter, instrument_no_content):
         "gen_ai.request.stop_sequences": ("\n\n\n",),
         "gen_ai.request.temperature": 0.20000000298023224,
         "gen_ai.request.top_p": 0.949999988079071,
+        "gen_ai.response.finish_reasons": ("length",),
+        "gen_ai.response.model": "gemini-1.5-flash-002",
         "gen_ai.system": "vertex_ai",
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
     }
@@ -274,14 +322,41 @@ def assert_span_error(span: ReadableSpan) -> None:
 
 
 @pytest.mark.vcr
-def test_generate_content_all_input_events(
+def test_generate_content_all_events(
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
 ):
-    model = GenerativeModel(
-        "gemini-1.5-flash-002",
-        system_instruction=Part.from_text("You are a clever language model"),
+    generate_content_all_input_events(
+        GenerativeModel(
+            "gemini-1.5-flash-002",
+            system_instruction=Part.from_text(
+                "You are a clever language model"
+            ),
+        ),
+        log_exporter,
     )
+
+
+@pytest.mark.vcr
+def test_preview_generate_content_all_input_events(
+    log_exporter: InMemoryLogExporter,
+    instrument_with_content: VertexAIInstrumentor,
+):
+    generate_content_all_input_events(
+        PreviewGenerativeModel(
+            "gemini-1.5-flash-002",
+            system_instruction=Part.from_text(
+                "You are a clever language model"
+            ),
+        ),
+        log_exporter,
+    )
+
+
+def generate_content_all_input_events(
+    model: GenerativeModel | PreviewGenerativeModel,
+    log_exporter: InMemoryLogExporter,
+):
     model.generate_content(
         [
             Content(
@@ -299,10 +374,10 @@ def test_generate_content_all_input_events(
         ],
     )
 
-    # Emits a system event, 2 users events, and a assistant event
+    # Emits a system event, 2 users events, an assistant event, and the choice (response) event
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 4
-    system_log, user_log1, assistant_log, user_log2 = [
+    assert len(logs) == 5
+    system_log, user_log1, assistant_log, user_log2, choice_log = [
         log_data.log_record for log_data in logs
     ]
 
@@ -341,4 +416,17 @@ def test_generate_content_all_input_events(
     assert user_log2.body == {
         "content": [{"text": "Address me by name and say this is a test"}],
         "role": "user",
+    }
+
+    assert choice_log.attributes == {
+        "gen_ai.system": "vertex_ai",
+        "event.name": "gen_ai.choice",
+    }
+    assert choice_log.body == {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+            "content": [{"text": "OpenTelemetry, this is a test.\n"}],
+            "role": "model",
+        },
     }
