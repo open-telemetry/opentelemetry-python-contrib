@@ -67,6 +67,7 @@ dependencies = [
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
 package = false # https://docs.astral.sh/uv/reference/settings/#package
+required-version = ">=0.6.0"
 
 # https://docs.astral.sh/uv/reference/settings/#sources
 [tool.uv.sources]
