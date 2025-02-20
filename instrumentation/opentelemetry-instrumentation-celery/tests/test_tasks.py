@@ -67,6 +67,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.state": "SUCCESS",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
@@ -85,48 +86,13 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.task_name": "tests.celery_test_tasks.task_add",
                 SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
         self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
-
-    def test_queue_name(self):
-        CeleryInstrumentor().instrument()
-
-        result = task_add.delay(1, 2)
-
-        timeout = time.time() + 60 * 1  # 1 minutes from now
-        while not result.ready():
-            if time.time() > timeout:
-                break
-            time.sleep(0.05)
-
-        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
-        self.assertEqual(len(spans), 2)
-
-        consumer, producer = spans
-
-        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_add")
-        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
-        self.assertSpanHasAttributes(
-            consumer,
-            {
-                "celery.action": "run",
-                "celery.state": "SUCCESS",
-                SpanAttributes.MESSAGING_SYSTEM: "celery",
-                "celery.task_name": "tests.celery_test_tasks.task_add",
-            },
-        )
-        self.assertSpanHasAttributes(
-            producer,
-            {
-                "celery.action": "apply_async",
-                "celery.task_name": "tests.celery_test_tasks.task_add",
-                SpanAttributes.MESSAGING_SYSTEM: "celery",
-            },
-        )
 
     def test_task_raises(self):
         CeleryInstrumentor().instrument()
@@ -155,6 +121,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.state": "FAILURE",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
@@ -186,6 +153,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
                 SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
