@@ -19,7 +19,7 @@
 import logging
 import unittest
 
-from common.base import TestCase
+from ..common.base import TestCase
 
 
 def create_valid_response(
