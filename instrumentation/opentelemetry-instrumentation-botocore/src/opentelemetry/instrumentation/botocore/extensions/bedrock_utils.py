@@ -285,7 +285,8 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._response["output"] = {"message": self._message}
                 self._record_message = False
                 self._message = None
-                self._stream_done_callback(self._response)
+
+            self._stream_done_callback(self._response)
             return
 
 
