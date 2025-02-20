@@ -18,5 +18,5 @@ Here are some TODO items required to achieve stability for this package:
 
 ## Future
 
-Beyond the above TODOs, it would also be desireable to extend the
+Beyond the above TODOs, it would also be desirable to extend the
 instrumentation beyond `generate_content` to other API surfaces.
