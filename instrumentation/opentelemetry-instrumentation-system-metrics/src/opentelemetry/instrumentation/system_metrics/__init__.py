@@ -219,7 +219,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_counter(
                 name="system.cpu.time",
                 callbacks=[self._get_system_cpu_time],
-                description="Seconds each logical CPU spent on each mode",
+                description="System CPU time",
                 unit="s",
             )
 
@@ -228,7 +228,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_gauge(
                 name="system.cpu.utilization",
                 callbacks=[self._get_system_cpu_utilization],
-                description="Difference in system.cpu.time since the last measurement, divided by the elapsed time and number of logical CPUs",
+                description="System CPU utilization",
                 unit="1",
             )
 
@@ -236,7 +236,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._meter.create_observable_gauge(
                 name="system.memory.usage",
                 callbacks=[self._get_system_memory_usage],
-                description="Reports memory in use by state.",
+                description="System memory usage",
                 unit="By",
             )
 
