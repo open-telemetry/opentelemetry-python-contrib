@@ -1,0 +1,148 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": [
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "New Delhi"
+                  }
+                }
+              },
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "San Francisco"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 35, \"unit\": \"C\"}"
+                  }
+                }
+              },
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 25, \"unit\": \"C\"}"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1731'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "The current temperature in New Delhi is 35 degrees Celsius and in San Francisco is 25 degrees Celsius.\n"
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -0.05223702887694041
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 126,
+            "candidatesTokenCount": 24,
+            "totalTokenCount": 150,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 126
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 24
+              }
+            ]
+          },
+          "modelVersion": "gemini-1.5-flash-002",
+          "createTime": "2025-02-06T04:26:33.660225Z",
+          "responseId": "-TmkZ4GmKIH12PgPof-uQQ"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '789'
+    status:
+      code: 200
+      message: OK
+version: 1
