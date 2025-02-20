@@ -46,6 +46,7 @@ def create_valid_response(
         ],
     }
 
+
 # Temporary test fixture just to ensure that the in-progress work to
 # implement this case doesn't break the original code.
 class TestGenerateContentSyncStreaming(TestCase):
