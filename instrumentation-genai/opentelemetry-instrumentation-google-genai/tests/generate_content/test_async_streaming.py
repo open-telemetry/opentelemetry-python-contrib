@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: once the async streaming case has been implemented, we should have
+# two different tests here that inherit from "streaming_base" and "nonstreaming_base",
+# covering the cases of one response and multiple streaming responses.
+
 import asyncio
 import logging
 import unittest
@@ -46,6 +50,8 @@ def create_valid_response(
     }
 
 
+# Temporary test fixture just to ensure that the in-progress work to
+# implement this case doesn't break the original code.
 class TestGenerateContentAsyncStreaming(TestCase):
     def configure_valid_response(
         self,

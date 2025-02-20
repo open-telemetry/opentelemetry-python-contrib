@@ -12,6 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This file defines a "RequestMocker" that facilities mocking the "requests"
+# API. There are a few reasons that we use this approach to testing:
+#
+#    1. Security - although "vcrpy" provides a means of filtering data,
+#       it can be error-prone; use of this solution risks exposing API keys,
+#       auth tokens, etc. It can also inadvertently record fields that are
+#       visibility-restricted (such as fields that are returned and available
+#       when recording using privileged API keys where such fields would not
+#       ordinarily be returned to users with non-privileged API keys).
+#
+#    2. Reproducibility - although the tests may be reproducible once the
+#       recording is present, updating the recording often has external
+#       dependencies that may be difficult to reproduce.
+#
+#    3. Costs - there are both time costs and monetary costs to the external
+#       dependencies required for a record/replay solution.
+#
+# Because they APIs that need to be mocked are simple enough and well documented
+# enough, it seems approachable to mock the requests library, instead.
+
 import copy
 import functools
 import http.client

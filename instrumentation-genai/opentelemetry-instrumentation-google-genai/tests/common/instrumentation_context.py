@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.instrumentation.google_genai import (  # pylint: disable=wrong-import-position
+from opentelemetry.instrumentation.google_genai import (
     GoogleGenAiSdkInstrumentor,
 )
 

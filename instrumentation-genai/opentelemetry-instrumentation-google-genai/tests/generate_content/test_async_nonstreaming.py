@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# TODO: Once the async non-streaming case has been fully implemented,
+# reimplement this in terms of "nonstreaming_base.py".
+
 import asyncio
 import logging
 import unittest
@@ -44,6 +48,8 @@ def create_valid_response(
     }
 
 
+# Temporary test fixture just to ensure that the in-progress work to
+# implement this case doesn't break the original code.
 class TestGenerateContentAsyncNonstreaming(TestCase):
     def configure_valid_response(
         self,
