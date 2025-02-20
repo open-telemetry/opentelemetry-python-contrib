@@ -10,6 +10,10 @@ This library allows tracing LLM requests and logging of messages made by the
 `OpenAI Python API library <https://pypi.org/project/openai/>`_. It also captures
 the duration of the operations and the number of tokens used as metrics.
 
+This instrumentation also works with OpenAI compatible platforms include the following:
+
+- DeepSeek
+- Azure OpenAI
 
 Installation
 ------------
