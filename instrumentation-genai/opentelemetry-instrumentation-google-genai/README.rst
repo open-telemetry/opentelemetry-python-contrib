@@ -12,6 +12,14 @@ It adds trace spans for GenAI operations, events/logs for recording prompts/resp
 GenAI operations in aggregate.
 
 
+Experimental
+------------
+
+This package is still experimental. The instrumentation may not be complete or correct just yet.
+
+Please see "TODOS.md" for a list of known defects/TODOs that are blockers to package stability.
+
+
 Installation
 ------------
 

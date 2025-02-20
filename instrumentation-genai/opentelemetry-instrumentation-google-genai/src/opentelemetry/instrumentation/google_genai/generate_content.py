@@ -164,6 +164,17 @@ def _get_top_p(config: Optional[GenerateContentConfigOrDict]):
     return _get_config_property(config, "top_p")
 
 
+# A map from define attributes to the function that can obtain
+# the relevant information from the request object.
+#
+# TODO: expand this to cover a larger set of the available
+# span attributes from GenAI semantic conventions.
+#
+# TODO: define semantic conventions for attributes that
+# are relevant for the Google GenAI SDK which are not
+# currently covered by the existing semantic conventions.
+#
+# See also: TODOS.md
 _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR = {
     gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE: _get_temperature,
     gen_ai_attributes.GEN_AI_REQUEST_TOP_K: _get_top_k,
@@ -217,6 +228,10 @@ class _GenerateContentInstrumentationHelper:
         self._maybe_log_user_prompt(contents)
 
     def process_response(self, response: GenerateContentResponse):
+        # TODO: Determine if there are other response properties that
+        # need to be reflected back into the span attributes.
+        #
+        # See also: TODOS.md.
         self._maybe_update_token_counts(response)
         self._maybe_update_error_type(response)
         self._maybe_log_response(response)
@@ -265,6 +280,17 @@ class _GenerateContentInstrumentationHelper:
         ):
             self._error_type = "NO_CANDIDATES"
             return
+        # TODO: in the case where there are no candidate responses due to
+        # safety settings like this, it might make sense to emit an event
+        # that contains more details regarding the safety settings, their
+        # thresholds, etc. However, this requires defining an associated
+        # semantic convention to capture this. Follow up with SemConv to
+        # establish appropriate data modelling to capture these details,
+        # and then emit those details accordingly. (For the time being,
+        # we use the defined 'error.type' semantic convention to relay
+        # just the minimum amount of error information here).
+        #
+        # See also: "TODOS.md"
         block_reason = response.prompt_feedback.block_reason.name.upper()
         self._error_type = f"BLOCKED_{block_reason}"
 
@@ -276,6 +302,12 @@ class _GenerateContentInstrumentationHelper:
         system_instruction = _get_config_property(config, "system_instruction")
         if not system_instruction:
             return
+        # TODO: determine if "role" should be reported here or not. It is unclear
+        # since the caller does not supply a "role" and since this comes through
+        # a property named "system_instruction" which would seem to align with
+        # the default "role" that is allowed to be omitted by default.
+        #
+        # See also: "TODOS.md"
         self._otel_wrapper.log_system_prompt(
             attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
@@ -290,6 +322,12 @@ class _GenerateContentInstrumentationHelper:
     ):
         if not self._content_recording_enabled:
             return
+        # TODO: determine if "role" should be reported here or not and, if so,
+        # what the value ought to be. It is not clear whether there is always
+        # a role supplied (and it looks like there could be cases where there
+        # is more than one role present in the supplied contents)?
+        #
+        # See also: "TODOS.md" 
         self._otel_wrapper.log_user_prompt(
             attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
@@ -302,6 +340,14 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_log_response(self, response: GenerateContentResponse):
         if not self._content_recording_enabled:
             return
+        # TODO: determine if "role" should be reported here or not and, if so,
+        # what the value ought to be.
+        #
+        # TODO: extract tool information into a separate tool message.
+        #
+        # TODO: determine if/when we need to emit a 'gen_ai.choice' event.
+        #
+        # See also: "TODOS.md"
         self._otel_wrapper.log_response_content(
             attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
