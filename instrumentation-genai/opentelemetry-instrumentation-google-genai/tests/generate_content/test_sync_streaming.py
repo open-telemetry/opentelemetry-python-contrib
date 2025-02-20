@@ -64,10 +64,10 @@ class TestGenerateContentSyncStreaming(TestCase):
             )
         )
 
-    def generate_content(self, *args, **kwargs):
+    def generate_content(self, *, model, contents):
         result = []
         for response in self.client.models.generate_content_stream(
-            *args, **kwargs
+            model=model, contents=contents
         ):
             result.append(response)
         return result
