@@ -229,7 +229,7 @@ def request_to_events(
         #
         # Function call results can be parts inside of a user Content or in a separate Content
         # entry without a role. That may cause duplication in a user event, see
-        # https://github.com/open-telemetry/semantic-conventions/issues/1883
+        # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3280
         function_responses = [
             part.function_response
             for part in content.parts
@@ -268,7 +268,7 @@ def response_to_events(
         )
 
         # The original function_call Part is still duplicated in message, see
-        # https://github.com/open-telemetry/semantic-conventions/issues/1883
+        # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3280
         yield choice_event(
             finish_reason=_map_finish_reason(candidate.finish_reason),
             index=candidate.index,
