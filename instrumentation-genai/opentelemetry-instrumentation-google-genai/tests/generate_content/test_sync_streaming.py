@@ -1,5 +1,3 @@
-#!./run_with_env.sh
-
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +13,9 @@
 # limitations under the License.
 
 import logging
-import sys
 import unittest
 
-sys.path.append("../")
-
-# This needs to go after 'sys.path.append' in order to ensure that 'common'
-# can be imported using this naming (when the script is invoked directly).
-from common.base import TestCase  # pylint: disable=wrong-import-position
+from common.base import TestCase
 
 
 def create_valid_response(
