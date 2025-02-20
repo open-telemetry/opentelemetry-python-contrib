@@ -63,7 +63,7 @@ packages_to_exclude = [
     "opentelemetry-instrumentation-vertexai",  # not released yet
 ]
 
-# We should not put any version limit for instrumentations that are released indipendently
+# We should not put any version limit for instrumentations that are released independently
 unversioned_packages = [
     "opentelemetry-instrumentation-openai-v2",
     "opentelemetry-instrumentation-vertexai",
