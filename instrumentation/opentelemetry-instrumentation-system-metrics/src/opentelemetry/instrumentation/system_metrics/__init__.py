@@ -798,7 +798,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for CPU utilization"""
         proc_cpu_percent = self._proc.cpu_percent()
-        num_cpus = psutil.cpu_count()
+        # may return None so add a default of 1 in case
+        num_cpus = psutil.cpu_count() or 1
         yield Observation(
             proc_cpu_percent / 100 / num_cpus,
             self._cpu_utilization_labels.copy(),
