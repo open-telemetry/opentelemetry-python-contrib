@@ -7,7 +7,7 @@ extension-pkg-whitelist=cassandra
 
 # Add list of files or directories to be excluded. They should be base names, not
 # paths.
-ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt,docs,.venv
+ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt,docs,.venv,site-packages,.tox
 
 # Add files or directories matching the regex patterns to be excluded. The
 # regex matches against base names, not paths.
