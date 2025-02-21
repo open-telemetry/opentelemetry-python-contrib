@@ -201,7 +201,7 @@ class _GenerateContentInstrumentationHelper:
 
     def start_span_as_current_span(self, model_name, function_name):
         return self._otel_wrapper.start_as_current_span(
-            f"generate_content [{model_name}]",
+            f"generate_content {model_name}",
             start_time=self._start_time,
             attributes={
                 code_attributes.CODE_FUNCTION_NAME: function_name,
