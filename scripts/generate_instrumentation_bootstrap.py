@@ -60,6 +60,13 @@ gen_path = os.path.join(
 # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
 packages_to_exclude = [
     "opentelemetry-instrumentation-aws-lambda",
+    "opentelemetry-instrumentation-vertexai",  # not released yet
+]
+
+# We should not put any version limit for instrumentations that are released independently
+unversioned_packages = [
+    "opentelemetry-instrumentation-openai-v2",
+    "opentelemetry-instrumentation-vertexai",
 ]
 
 
@@ -67,8 +74,11 @@ def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
-    for pkg in get_instrumentation_packages():
-        if pkg.get("name") in packages_to_exclude:
+    for pkg in get_instrumentation_packages(
+        unversioned_packages=unversioned_packages
+    ):
+        pkg_name = pkg.get("name")
+        if pkg_name in packages_to_exclude:
             continue
         if not pkg["instruments"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))

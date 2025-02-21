@@ -24,7 +24,8 @@ instrumentations_path = os.path.join(root_path, "instrumentation")
 genai_instrumentations_path = os.path.join(root_path, "instrumentation-genai")
 
 
-def get_instrumentation_packages():
+def get_instrumentation_packages(unversioned_packages=None):
+    unversioned_packages = unversioned_packages or []
     pkg_paths = []
     for pkg in os.listdir(instrumentations_path):
         pkg_path = os.path.join(instrumentations_path, pkg)
@@ -62,12 +63,15 @@ def get_instrumentation_packages():
                 "instruments"
             ],
         }
-        instrumentation["requirement"] = "==".join(
-            (
-                instrumentation["name"],
-                instrumentation["version"],
+        if instrumentation["name"] in unversioned_packages:
+            instrumentation["requirement"] = instrumentation["name"]
+        else:
+            instrumentation["requirement"] = "==".join(
+                (
+                    instrumentation["name"],
+                    instrumentation["version"],
+                )
             )
-        )
         yield instrumentation
 
 
