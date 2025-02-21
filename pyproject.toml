@@ -60,6 +60,7 @@ dependencies = [
   "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
+  "opentelemetry-propagator-aws-xray",
   "opentelemetry-util-http",
 ]
 
@@ -126,6 +127,7 @@ opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
+opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
@@ -134,7 +136,7 @@ members = [
   "instrumentation/*",
   "exporter/*",
   "opentelemetry-instrumentation",
-  "propagator/opentelemetry-propagator-ot-trace",
+  "propagator/*",
   "util/opentelemetry-util-http",
 ]
 

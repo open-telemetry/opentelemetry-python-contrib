@@ -63,6 +63,7 @@ members = [
     "opentelemetry-instrumentation-urllib",
     "opentelemetry-instrumentation-urllib3",
     "opentelemetry-instrumentation-wsgi",
+    "opentelemetry-propagator-aws-xray",
     "opentelemetry-propagator-ot-trace",
     "opentelemetry-python-contrib",
     "opentelemetry-util-http",
@@ -2324,7 +2325,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-propagator-aws-xray", specifier = "~=1.0" },
+    { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 provides-extras = ["instruments"]
@@ -2397,7 +2398,7 @@ requires-dist = [
     { name = "botocore", marker = "extra == 'instruments'", specifier = "~=1.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-propagator-aws-xray", specifier = "~=1.0" },
+    { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 provides-extras = ["instruments"]
@@ -3322,15 +3323,13 @@ provides-extras = ["instruments"]
 
 [[package]]
 name = "opentelemetry-propagator-aws-xray"
-version = "1.0.2"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "propagator/opentelemetry-propagator-aws-xray" }
 dependencies = [
     { name = "opentelemetry-api" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/31/40004e9e55b1e5694ef3a7526f0b7637df44196fc68a8b7d248a3684680f/opentelemetry_propagator_aws_xray-1.0.2.tar.gz", hash = "sha256:6b2cee5479d2ef0172307b66ed2ed151f598a0fd29b3c01133ac87ca06326260", size = 10994 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/89/849a0847871fd9745315896ad9e23d6479db84d90b8b36c4c26dc46e92b8/opentelemetry_propagator_aws_xray-1.0.2-py3-none-any.whl", hash = "sha256:1c99181ee228e99bddb638a0c911a297fa21f1c3a0af951f841e79919b5f1934", size = 10856 },
-]
+
+[package.metadata]
+requires-dist = [{ name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" }]
 
 [[package]]
 name = "opentelemetry-propagator-ot-trace"
@@ -3403,6 +3402,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-wsgi" },
+    { name = "opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace" },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
@@ -3464,6 +3464,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-urllib", editable = "instrumentation/opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-urllib3" },
     { name = "opentelemetry-instrumentation-wsgi", editable = "instrumentation/opentelemetry-instrumentation-wsgi" },
+    { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace", editable = "propagator/opentelemetry-propagator-ot-trace" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
