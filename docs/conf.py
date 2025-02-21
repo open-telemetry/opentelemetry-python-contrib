@@ -122,6 +122,8 @@ intersphinx_mapping = {
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
+    "psycopg": ("https://www.psycopg.org/psycopg3/docs/", None),
+    "psycopg2": ("https://www.psycopg.org/docs/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky
