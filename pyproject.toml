@@ -62,6 +62,8 @@ dependencies = [
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
   "opentelemetry-util-http",
+  "opentelemetry-instrumentation-vertexai[instruments]",
+  "opentelemetry-instrumentation-openai-v2[instruments]",
 ]
 
 # https://docs.astral.sh/uv/reference/settings/
@@ -129,11 +131,14 @@ opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
+opentelemetry-instrumentation-vertexai = { workspace = true }
+opentelemetry-instrumentation-openai-v2 = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
 members = [
   "instrumentation/*",
+  "instrumentation-genai/*",
   "exporter/*",
   "opentelemetry-instrumentation",
   "propagator/*",
