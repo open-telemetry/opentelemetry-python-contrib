@@ -46,6 +46,7 @@ If you don't have an OpenAI application, yet, try our `examples <examples>`_
 which only need a valid OpenAI API key.
 
 Check out `zero-code example <examples/zero-code>`_ for a quick start.
+
 Usage
 -----
 
