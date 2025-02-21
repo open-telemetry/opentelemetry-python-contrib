@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI system events
   ([#3266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3266))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI choice events
+  ([#3275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3275))
 
 ### Fixed
 

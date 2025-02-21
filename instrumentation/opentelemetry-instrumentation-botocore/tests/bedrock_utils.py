@@ -161,6 +161,7 @@ def assert_stream_completion_attributes(
 
 def assert_equal_or_not_present(value, attribute_name, span):
     if value is not None:
+        assert attribute_name in span.attributes
         assert value == span.attributes[attribute_name], span.attributes[
             attribute_name
         ]
@@ -254,5 +255,5 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
         assert log.log_record.body
         assert dict(log.log_record.body) == remove_none_values(
             expected_content
-        )
+        ), dict(log.log_record.body)
     assert_log_parent(log, parent_span)
