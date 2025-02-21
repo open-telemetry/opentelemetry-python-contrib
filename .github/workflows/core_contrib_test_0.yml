@@ -16,6 +16,7 @@ env:
   CORE_REPO_SHA: ${{ inputs.CORE_REPO_SHA }}
   CONTRIB_REPO_SHA: ${{ inputs.CONTRIB_REPO_SHA }}
   PIP_EXISTS_ACTION: w
+  UV_NO_CONFIG: 1
 
 jobs:
 
