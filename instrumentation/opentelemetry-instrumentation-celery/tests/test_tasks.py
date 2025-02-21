@@ -67,6 +67,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.state": "SUCCESS",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
@@ -85,6 +86,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.task_name": "tests.celery_test_tasks.task_add",
                 SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
@@ -119,6 +121,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.state": "FAILURE",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
@@ -150,6 +153,7 @@ class TestCeleryInstrumentation(TestBase):
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
                 SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
                 SpanAttributes.MESSAGING_DESTINATION: "celery",
+                SpanAttributes.MESSAGING_SYSTEM: "celery",
             },
         )
 
