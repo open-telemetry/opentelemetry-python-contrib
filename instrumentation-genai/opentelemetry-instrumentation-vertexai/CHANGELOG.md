@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.0b0 (2025-02-21)
+
 - Added Vertex AI spans for request parameters
   ([#3192](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3192))
 - Initial VertexAI instrumentation
