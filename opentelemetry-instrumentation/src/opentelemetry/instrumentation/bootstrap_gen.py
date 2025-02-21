@@ -18,11 +18,7 @@
 libraries = [
     {
         "library": "openai >= 1.26.0",
-        "instrumentation": "opentelemetry-instrumentation-openai-v2==2.2b0.dev",
-    },
-    {
-        "library": "google-cloud-aiplatform >= 1.64",
-        "instrumentation": "opentelemetry-instrumentation-vertexai==2.1b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-openai-v2",
     },
     {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
