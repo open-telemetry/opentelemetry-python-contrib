@@ -282,3 +282,34 @@ class TestUtils(unittest.TestCase):
 
         task_id = utils.retrieve_task_id_from_message(context)
         self.assertEqual(task_id, "7e917b83-4018-431d-9832-73a28e1fb6c0")
+
+    def test_origin_and_hostname_attributes(self):
+        """Test that 'origin' and 'hostname' are distinct attributes"""
+        span = mock.Mock()
+        span.is_recording.return_value = True
+
+        context = {
+            "origin": "gen8@b98c7aca4628",
+            "hostname": "celery@7c2c2cd6a5b5",
+        }
+
+        utils.set_attributes_from_context(span, context)
+
+        span.set_attribute.assert_has_calls(
+            [
+                mock.call("celery.origin", "gen8@b98c7aca4628"),
+                mock.call("celery.hostname", "celery@7c2c2cd6a5b5"),
+            ],
+            any_order=True,
+        )
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(
+            span.attributes.get("celery.origin"),
+            "gen8@b98c7aca4628",
+        )
+        self.assertEqual(
+            span.attributes.get("celery.hostname"),
+            "celery@7c2c2cd6a5b5",
+        )
