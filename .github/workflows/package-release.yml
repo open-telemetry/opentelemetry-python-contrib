@@ -12,6 +12,7 @@ on:
         - opentelemetry-instrumentation-vertexai
         description: 'Package to be released'
         required: true
+run-name: "[Package][${{ inputs.package }}] Release"
 jobs:
   release:
     runs-on: ubuntu-latest
