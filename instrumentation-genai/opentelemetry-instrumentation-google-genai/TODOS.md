@@ -15,7 +15,7 @@ Here are some TODO items required to achieve stability for this package:
   7. Additional cleanup/improvement tasks such as:
      - Adoption of 'wrapt' instead of 'functools.wraps'
      - Bolstering test coverage
-
+  8. Migrate tests to use VCR.py
 ## Future
 
 Beyond the above TODOs, it would also be desirable to extend the
