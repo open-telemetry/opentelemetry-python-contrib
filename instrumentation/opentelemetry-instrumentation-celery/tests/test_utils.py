@@ -58,12 +58,63 @@ class TestUtils(unittest.TestCase):
             span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
         )
 
-        self.assertEqual(
-            span.attributes["celery.delivery_info"], str({"eager": True})
-        )
+        self.assertEqual(span.attributes["celery.delivery_info.eager"], True)
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
+
+        self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
+        self.assertEqual(span.attributes.get("celery.retries"), 4)
+        self.assertEqual(
+            span.attributes.get("celery.timelimit"), ("now", "later")
+        )
+        self.assertNotIn("custom_meta", span.attributes)
+
+    def test_set_nested_attributes_from_context(self):
+        context = {
+            "correlation_id": "44b7f305",
+            "delivery_info": {
+                "eager": True,
+                "routing_key": "api_gateway",
+                "priority": 0,
+                "redelivered": False,
+            },
+            "eta": {"time": "soon", "date": "today"},
+            "expires": "later",
+            "hostname": "localhost",
+            "id": "44b7f305",
+            "reply_to": "44b7f305",
+            "retries": 4,
+            "timelimit": ("now", "later"),
+            "custom_meta": "custom_value",
+            "routing_key": "celery",
+        }
+
+        span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
+        utils.set_attributes_from_context(span, context)
+
+        self.assertEqual(
+            span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID),
+            "44b7f305",
+        )
+        self.assertEqual(
+            span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
+            "44b7f305",
+        )
+        self.assertEqual(
+            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
+        )
+
+        self.assertEqual(span.attributes["celery.delivery_info.eager"], True)
+        self.assertEqual(
+            span.attributes["celery.delivery_info.routing_key"], "api_gateway"
+        )
+        self.assertEqual(span.attributes["celery.delivery_info.priority"], 0)
+        self.assertEqual(
+            span.attributes["celery.delivery_info.redelivered"], False
+        )
+        self.assertEqual(span.attributes.get("celery.eta.time"), "soon")
+        self.assertEqual(span.attributes.get("celery.eta.date"), "today")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
