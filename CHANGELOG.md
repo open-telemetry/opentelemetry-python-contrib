@@ -13,12 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-dbapi` Add support for non string query and composable object.
-  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
-- `opentelemetry-instrumentation-django` Add support for non string query and composable object.
-  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
-- `opentelemetry-instrumentation-sqlalchemy` Add support for non string query.
-  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
   ([#3258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3258))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI system events
@@ -26,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-django`,
+  `opentelemetry-instrumentation-sqlalchemy`: Fix sqlcomment for non string query and composable object.
+  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
 - `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
