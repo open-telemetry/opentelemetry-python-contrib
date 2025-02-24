@@ -12,6 +12,8 @@ on:
         - opentelemetry-instrumentation-vertexai
         description: 'Package to be released'
         required: true
+run-name: "[Package][${{ inputs.package }}] Prepare patch release"
+
 jobs:
   prepare-patch-release:
     runs-on: ubuntu-latest

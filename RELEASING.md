@@ -22,6 +22,7 @@
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-vertexai
+>
 > These libraries are also excluded from the general release.
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
