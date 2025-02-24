@@ -42,6 +42,8 @@ from __future__ import annotations
 import functools
 import logging
 import re
+import sys
+import traceback
 from typing import Any, Callable, Generic, TypeVar
 
 import wrapt
@@ -54,7 +56,19 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     unwrap,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.code_attributes import (
+    CODE_STACKTRACE,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -78,6 +92,7 @@ def trace_integration(
     enable_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
+    enable_traceback: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -96,6 +111,7 @@ def trace_integration(
         db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
             default one is used.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_traceback: Enable traceback for every trace.
     """
     wrap_connect(
         __name__,
@@ -109,6 +125,7 @@ def trace_integration(
         enable_commenter=enable_commenter,
         db_api_integration_factory=db_api_integration_factory,
         enable_attribute_commenter=enable_attribute_commenter,
+        enable_traceback=enable_traceback,
     )
 
 
@@ -125,6 +142,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
+    enable_traceback: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -144,6 +162,7 @@ def wrap_connect(
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_traceback: Enable traceback for every trace.
 
     """
     db_api_integration_factory = (
@@ -168,6 +187,7 @@ def wrap_connect(
             commenter_options=commenter_options,
             connect_module=connect_module,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_traceback=enable_traceback,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -204,6 +224,7 @@ def instrument_connection(
     commenter_options: dict[str, Any] | None = None,
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
+    enable_traceback: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
@@ -222,6 +243,7 @@ def instrument_connection(
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_traceback: Enable traceback for every trace.
         db_api_integration_factory: A class or factory function to use as a
             replacement for :class:`DatabaseApiIntegration`. Can be used to
             obtain connection attributes from the connect method instead of
@@ -249,6 +271,7 @@ def instrument_connection(
         commenter_options=commenter_options,
         connect_module=connect_module,
         enable_attribute_commenter=enable_attribute_commenter,
+        enable_traceback=enable_traceback,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -285,6 +308,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
+        enable_traceback: bool = False,
     ):
         if connection_attributes is None:
             self.connection_attributes = {
@@ -307,6 +331,7 @@ class DatabaseApiIntegration:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.enable_traceback = enable_traceback
         self.database_system = database_system
         self.connection_props: dict[str, Any] = {}
         self.span_attributes: dict[str, Any] = {}
@@ -401,13 +426,13 @@ class DatabaseApiIntegration:
         if user and isinstance(user, bytes):
             user = user.decode()
         if user is not None:
-            self.span_attributes[SpanAttributes.DB_USER] = str(user)
+            self.span_attributes[DB_USER] = str(user)
         host = self.connection_props.get("host")
         if host is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_NAME] = host
+            self.span_attributes[NET_PEER_NAME] = host
         port = self.connection_props.get("port")
         if port is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
+            self.span_attributes[NET_PEER_PORT] = port
 
 
 # pylint: disable=abstract-method
@@ -464,6 +489,7 @@ class CursorTracer(Generic[CursorT]):
         self._enable_attribute_commenter = (
             self._db_api_integration.enable_attribute_commenter
         )
+        self._enable_traceback = self._db_api_integration.enable_traceback
         self._connect_module = self._db_api_integration.connect_module
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -516,13 +542,12 @@ class CursorTracer(Generic[CursorT]):
         if not span.is_recording():
             return
         statement = self.get_statement(cursor, args)
-        span.set_attribute(
-            SpanAttributes.DB_SYSTEM, self._db_api_integration.database_system
-        )
-        span.set_attribute(
-            SpanAttributes.DB_NAME, self._db_api_integration.database
-        )
-        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        span.set_attribute(DB_SYSTEM, self._db_api_integration.database_system)
+        span.set_attribute(DB_NAME, self._db_api_integration.database)
+        span.set_attribute(DB_STATEMENT, statement)
+
+        if self._enable_traceback and (tb := self.get_traceback()):
+            span.set_attribute(CODE_STACKTRACE, tb)
 
         for (
             attribute_key,
@@ -548,6 +573,24 @@ class CursorTracer(Generic[CursorT]):
         if isinstance(statement, bytes):
             return statement.decode("utf8", "replace")
         return statement
+
+    def get_traceback(self):
+        filtered_stack_trace = []
+        for frame, lineno in traceback.walk_stack(
+            sys._getframe().f_back.f_back.f_back
+        ):
+            filename = frame.f_code.co_filename
+            # if frame.f_locals.get("__name__", "").startswith("jobs"):
+            frame_summary = traceback.FrameSummary(
+                filename, lineno, frame.f_code.co_name
+            )
+            filtered_stack_trace.append(frame_summary)
+
+        if filtered_stack_trace:
+            formatted_stack_trace = traceback.StackSummary.from_list(
+                filtered_stack_trace
+            ).format()
+            return "".join(formatted_stack_trace)
 
     def traced_execution(
         self,

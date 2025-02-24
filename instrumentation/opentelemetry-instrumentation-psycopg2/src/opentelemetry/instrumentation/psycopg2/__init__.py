@@ -199,6 +199,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        enable_traceback = kwargs.get("enable_traceback", False)
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -211,6 +212,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_traceback=enable_traceback,
         )
 
     def _uninstrument(self, **kwargs):
