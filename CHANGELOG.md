@@ -31,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
 - Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
   ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
-
+- `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
+  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
 
 ### Fixed
 
@@ -39,11 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
 - `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
   ([#3253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3253))
-
-### Added
-
-- Make auto instrumentation use the same dependency resolver as manual instrumentation does
-  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
 
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
