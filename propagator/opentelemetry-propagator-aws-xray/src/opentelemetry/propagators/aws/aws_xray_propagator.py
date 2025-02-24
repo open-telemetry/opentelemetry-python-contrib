@@ -60,7 +60,7 @@ import logging
 import typing
 from os import environ
 
-from opentelemetry import trace
+from opentelemetry import baggage, trace
 from opentelemetry.context import Context
 from opentelemetry.propagators.textmap import (
     CarrierT,
@@ -91,6 +91,16 @@ SAMPLED_FLAG_KEY = "Sampled"
 SAMPLED_FLAG_LENGTH = 1
 IS_SAMPLED = "1"
 NOT_SAMPLED = "0"
+
+LINEAGE_KEY = "Lineage"
+LINEAGE_DELIMITER = ":"
+LINEAGE_MAX_LENGTH = 18
+LINEAGE_MIN_LENGTH = 12
+LINEAGE_HASH_LENGTH = 8
+LINEAGE_MAX_COUNTER1 = 32767
+LINEAGE_MAX_COUNTER2 = 255
+LINEAGE_MIN_COUNTER = 0
+INVALID_LINEAGE_HEADER = "-1:11111111:0"
 
 
 _logger = logging.getLogger(__name__)
@@ -131,11 +141,9 @@ class AwsXRayPropagator(TextMapPropagator):
             return context
 
         try:
-            (
-                trace_id,
-                span_id,
-                sampled,
-            ) = AwsXRayPropagator._extract_span_properties(trace_header)
+            (trace_id, span_id, sampled, lineage) = (
+                AwsXRayPropagator._extract_span_properties(trace_header)
+            )
         except AwsParseTraceHeaderError as err:
             _logger.debug(err.message)
             return context
@@ -158,6 +166,9 @@ class AwsXRayPropagator(TextMapPropagator):
             )
             return context
 
+        if lineage is not INVALID_LINEAGE_HEADER:
+            context.update(baggage.set_baggage(LINEAGE_KEY, lineage, context=context))
+
         return trace.set_span_in_context(
             trace.NonRecordingSpan(span_context), context=context
         )
@@ -167,6 +178,7 @@ class AwsXRayPropagator(TextMapPropagator):
         trace_id = trace.INVALID_TRACE_ID
         span_id = trace.INVALID_SPAN_ID
         sampled = False
+        lineage = INVALID_LINEAGE_HEADER
 
         for kv_pair_str in trace_header.split(KV_PAIR_DELIMITER):
             try:
@@ -231,7 +243,18 @@ class AwsXRayPropagator(TextMapPropagator):
 
                 sampled = AwsXRayPropagator._parse_sampled_flag(value)
 
-        return trace_id, span_id, sampled
+            elif key == LINEAGE_KEY:
+                lineage = AwsXRayPropagator._parse_lineage_header(value)
+                if not AwsXRayPropagator._is_valid_lineage(lineage):
+                    _logger.debug(
+                        "Invalid Lineage in X-Ray trace header: '%s' with value '%s'. Returning trace header with no lineage",
+                        TRACE_HEADER_KEY,
+                        lineage,
+                    )
+
+                    lineage = INVALID_LINEAGE_HEADER
+
+        return trace_id, span_id, sampled, lineage
 
     @staticmethod
     def _validate_trace_id(trace_id_str):
@@ -262,9 +285,7 @@ class AwsXRayPropagator(TextMapPropagator):
 
     @staticmethod
     def _validate_sampled_flag(sampled_flag_str):
-        return len(
-            sampled_flag_str
-        ) == SAMPLED_FLAG_LENGTH and sampled_flag_str in (
+        return len(sampled_flag_str) == SAMPLED_FLAG_LENGTH and sampled_flag_str in (
             IS_SAMPLED,
             NOT_SAMPLED,
         )
@@ -272,6 +293,55 @@ class AwsXRayPropagator(TextMapPropagator):
     @staticmethod
     def _parse_sampled_flag(sampled_flag_str):
         return sampled_flag_str[0] == IS_SAMPLED
+
+    @staticmethod
+    def _parse_lineage_header(xray_lineage_header):
+        num_of_delimiters = xray_lineage_header.count(LINEAGE_DELIMITER)
+
+        if (
+            len(xray_lineage_header) < LINEAGE_MIN_LENGTH
+            or len(xray_lineage_header) > LINEAGE_MAX_LENGTH
+            or num_of_delimiters != 2
+        ):
+            return INVALID_LINEAGE_HEADER
+
+        return xray_lineage_header
+
+    @staticmethod
+    def _is_valid_lineage(key):
+        split = key.split(LINEAGE_DELIMITER)
+        lineage_hash = split[1]
+        counter1 = AwsXRayPropagator._parse_natural_or_return_negative(split[0], 10)
+        counter2 = AwsXRayPropagator._parse_natural_or_return_negative(
+            split[2], 10
+        )
+
+        is_hash_valid = (
+            len(lineage_hash) == LINEAGE_HASH_LENGTH
+            and AwsXRayPropagator._parse_natural_or_return_negative(lineage_hash, 16)
+            != -1
+        )
+        is_valid_counter1 = (
+            LINEAGE_MIN_COUNTER <= counter1 <= LINEAGE_MAX_COUNTER1
+        )
+        is_valid_counter2 = (
+            LINEAGE_MIN_COUNTER
+            <= counter2
+            <= LINEAGE_MAX_COUNTER2
+        )
+
+        return is_hash_valid and is_valid_counter1 and is_valid_counter2
+
+    @staticmethod
+    def _parse_natural_or_return_negative(value, base):
+        try:
+            val = int(value, base)
+
+            if val < 0:
+                return -1
+            return val
+        except ValueError:
+            return -1
 
     def inject(
         self,
@@ -315,10 +385,20 @@ class AwsXRayPropagator(TextMapPropagator):
             ]
         )
 
+        lineage = baggage.get_baggage(LINEAGE_KEY, context=context)
+
+        if lineage is not None:
+            trace_header += (
+                f"{KV_PAIR_DELIMITER}{LINEAGE_KEY}{KEY_AND_VALUE_DELIMITER}{lineage}"
+            )
+
+        # 256 character truncation
+        truncated_trace_header = trace_header[:256]
+
         setter.set(
             carrier,
             TRACE_HEADER_KEY,
-            trace_header,
+            truncated_trace_header,
         )
 
     @property
