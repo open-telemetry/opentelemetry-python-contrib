@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
   "opentelemetry-instrumentation == 0.52b0.dev",
   "opentelemetry-api ~= 1.11",
-  "psutil >= 5.9.0, < 7",
+  "psutil >= 5.9.0, < 8",
 ]
 
 [project.optional-dependencies]
