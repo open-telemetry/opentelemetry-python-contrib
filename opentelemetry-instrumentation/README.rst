@@ -130,7 +130,7 @@ start celery with the rest of the arguments.
 The above command will configure the global trace provider to use the Random IDs Generator, and then
 pass ``--port=3000`` to ``flask run``.
 
-auto-instrumentation
+Programmatic Auto-instrumentation
 --------------------
 
 ::
