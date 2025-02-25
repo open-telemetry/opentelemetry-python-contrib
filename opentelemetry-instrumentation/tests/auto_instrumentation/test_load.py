@@ -307,6 +307,8 @@ class TestLoad(TestCase):
             DependencyConflictError(dependency_conflict),
         ]
 
+        # If a dependency conflict is raised, that instrumentation should not be loaded, but others still should.
+        # In this case, ep_mock4 will fail to load and ep_mock2 will succeed. (ep_mock1 and ep_mock3 are disabled)
         iter_mock.return_value = (ep_mock1, ep_mock2, ep_mock3, ep_mock4)
         _load._load_instrumentors(distro_mock)
         distro_mock.load_instrumentor.assert_has_calls(
