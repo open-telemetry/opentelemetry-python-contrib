@@ -83,9 +83,9 @@ class TestMiddleware(WsgiTestBase):
             middleware = conf.settings.MIDDLEWARE_CLASSES
 
         # adding two dummy middlewares
-        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
-        middleware.append(temprory_middelware)
-        middleware.append(temprory_middelware)
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
+        middleware.append(temporary_middleware)
 
         middleware_position = 1
         _django_instrumentor.instrument(

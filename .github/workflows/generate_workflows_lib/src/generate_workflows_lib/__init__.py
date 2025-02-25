@@ -173,7 +173,7 @@ def get_misc_job_datas(tox_envs: list) -> list:
 def _generate_workflow(
     job_datas: list, name: str, workflow_directory_path: Path, max_jobs=250
 ):
-    # Github seems to limit the amount of jobs in a workflow file, that is why
+    # GitHub seems to limit the amount of jobs in a workflow file, that is why
     # they are split in groups of 250 per workflow file.
     for file_number, job_datas in enumerate(
         [

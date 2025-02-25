@@ -18,7 +18,7 @@ from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 
 class TestUtils(unittest.TestCase):
-    def test_duplicate_instrumentaion(self):
+    def test_duplicate_instrumentation(self):
         first = CeleryInstrumentor()
         first.instrument()
         second = CeleryInstrumentor()
