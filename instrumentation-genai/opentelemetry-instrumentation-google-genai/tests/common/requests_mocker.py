@@ -140,7 +140,13 @@ def _to_stream_response_generator(response_generators):
             response = generator(args)
             if response.status_code != 200:
                 continue
-            # TODO: ...
+            response_json = response.json()
+            response_json_str = json.dumps(response_json_str)
+            contents.append(f'data: {response_json_str}')
+        contents_str = '\r\n'.join(contents)
+        full_contents = f'{contents_str}\r\n\r\n'
+        result.raw = io.StringIO(full_contents)
+        return result
     return combined_generator
 
 
@@ -183,8 +189,8 @@ class RequestsMocker:
     ):
         stream=kwargs.get('stream', False)
         if not stream:
-            return _do_send_non_streaming(session, request, **kwargs)
-        return _do_send_streaming(session, request, **kwargs)
+            return self._do_send_non_streaming(session, request, **kwargs)
+        return self._do_send_streaming(session, request, **kwargs)
 
     def _do_send_streaming(
         self,
@@ -202,6 +208,7 @@ class RequestsMocker:
             response_generators.append(_return_404)
         args = RequestsCallArgs(session, request, **kwargs)
         response_generator = _to_stream_response_generator(response_generators)
+        call = RequestsCall(args, response_generator)
         result = call.response
         self._calls.append(call)
         return result
