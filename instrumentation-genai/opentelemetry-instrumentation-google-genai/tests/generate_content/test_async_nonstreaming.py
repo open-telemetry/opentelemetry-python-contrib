@@ -17,8 +17,6 @@
 # reimplement this in terms of "nonstreaming_base.py".
 
 import asyncio
-import logging
-import unittest
 
 from ..common.base import TestCase
 
@@ -76,12 +74,3 @@ class TestGenerateContentAsyncNonstreaming(TestCase):
             model="gemini-2.0-flash", contents="Does this work?"
         )
         self.assertEqual(response.text, "Yep, it works!")
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
-
-
-if __name__ == "__main__":
-    main()

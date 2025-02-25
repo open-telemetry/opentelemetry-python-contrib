@@ -16,8 +16,6 @@
 # two different tests here that inherit from "streaming_base" and "nonstreaming_base",
 # covering the cases of one response and multiple streaming responses.
 
-import logging
-import unittest
 
 from ..common.base import TestCase
 
@@ -79,12 +77,3 @@ class TestGenerateContentSyncStreaming(TestCase):
         )
         self.assertEqual(len(responses), 1)
         self.assertEqual(responses[0].text, "Yep, it works!")
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
-
-
-if __name__ == "__main__":
-    main()

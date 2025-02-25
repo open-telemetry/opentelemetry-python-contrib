@@ -1,5 +1,3 @@
-#!./run_with_env.sh
-
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +17,6 @@
 # covering the cases of one response and multiple streaming responses.
 
 import asyncio
-import logging
-import unittest
 
 from ..common.base import TestCase
 
@@ -87,12 +83,3 @@ class TestGenerateContentAsyncStreaming(TestCase):
         )
         self.assertEqual(len(responses), 1)
         self.assertEqual(responses[0].text, "Yep, it works!")
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
-
-
-if __name__ == "__main__":
-    main()
