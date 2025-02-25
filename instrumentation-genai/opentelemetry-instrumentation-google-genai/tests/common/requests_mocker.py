@@ -123,6 +123,27 @@ def _to_response_generator(response):
     raise ValueError(f"Unsupported response type: {type(response)}")
 
 
+def _to_stream_response_generator(response_generators):
+    if len(response_generators) == 1:
+        return response_generators[0]
+    def combined_generator(args):
+        first_response = response_generators[0](args)
+        if first_response.status_code != 200:
+            return first_response
+        result = requests.Response()
+        result.status_code = 200
+        result.headers['content-type'] = 'application/json'
+        result.encoding = 'utf-8'
+        result.headers['transfer-encoding'] = 'chunked'
+        contents = []
+        for generator in response_generators:
+            response = generator(args)
+            if response.status_code != 200:
+                continue
+            # TODO: ...
+    return combined_generator
+
+
 class RequestsMocker:
     def __init__(self):
         self._original_send = requests.sessions.Session.send
@@ -155,6 +176,37 @@ class RequestsMocker:
         return self._calls
 
     def _do_send(
+        self,
+        session: requests.sessions.Session,
+        request: requests.PreparedRequest,
+        **kwargs,
+    ):
+        stream=kwargs.get('stream', False)
+        if not stream:
+            return _do_send_non_streaming(session, request, **kwargs)
+        return _do_send_streaming(session, request, **kwargs)
+
+    def _do_send_streaming(
+        self,
+        session: requests.sessions.Session,
+        request: requests.PreparedRequest,
+        **kwargs,
+    ):
+        response_generators = []
+        for matcher, response_generator in self._handlers:
+            if matcher is None:
+                response_generators.append(response_generator)
+            elif matcher(args):
+                response_generators.append(response_generator)
+        if not response_generators:
+            response_generators.append(_return_404)
+        args = RequestsCallArgs(session, request, **kwargs)
+        response_generator = _to_stream_response_generator(response_generators)
+        result = call.response
+        self._calls.append(call)
+        return result
+
+    def _do_send_non_streaming(
         self,
         session: requests.sessions.Session,
         request: requests.PreparedRequest,

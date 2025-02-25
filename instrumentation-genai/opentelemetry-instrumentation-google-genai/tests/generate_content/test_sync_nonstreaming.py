@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import unittest
 
 from .nonstreaming_base import NonStreamingTestCase
 
@@ -25,12 +23,3 @@ class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
     @property
     def expected_function_name(self):
         return "google.genai.Models.generate_content"
-
-
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
-
-
-if __name__ == "__main__":
-    main()

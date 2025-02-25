@@ -1,5 +1,3 @@
-#!./run_with_env.sh
-
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,60 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: once the async streaming case has been implemented, we should have
-# two different tests here that inherit from "streaming_base" and "nonstreaming_base",
-# covering the cases of one response and multiple streaming responses.
-
 import asyncio
-import logging
-import unittest
 
-from ..common.base import TestCase
-
-
-def create_valid_response(
-    response_text="The model response", input_tokens=10, output_tokens=20
-):
-    return {
-        "modelVersion": "gemini-2.0-flash-test123",
-        "usageMetadata": {
-            "promptTokenCount": input_tokens,
-            "candidatesTokenCount": output_tokens,
-            "totalTokenCount": input_tokens + output_tokens,
-        },
-        "candidates": [
-            {
-                "content": {
-                    "role": "model",
-                    "parts": [
-                        {
-                            "text": response_text,
-                        }
-                    ],
-                }
-            }
-        ],
-    }
+from .nonstreaming_base import NonStreamingTestCase
+from .streaming_base import StreamingTestCase
 
 
-# Temporary test fixture just to ensure that the in-progress work to
-# implement this case doesn't break the original code.
-class TestGenerateContentAsyncStreaming(TestCase):
-    def configure_valid_response(
-        self,
-        response_text="The model_response",
-        input_tokens=10,
-        output_tokens=20,
-    ):
-        self.requests.add_response(
-            create_valid_response(
-                response_text=response_text,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            )
-        )
+class AsyncStreamingMixin:
 
-    async def _generate_content_helper(self, *args, **kwargs):
+    @property
+    def expected_function_name(self):
+        return "google.genai.AsyncModels.generate_content_stream"
+
+    async def _generate_content_stream_helper(self, *args, **kwargs):
         result = []
         async for (
             response
@@ -77,22 +34,19 @@ class TestGenerateContentAsyncStreaming(TestCase):
             result.append(response)
         return result
 
+    def generate_content_stream(self, *args, **kwargs):
+        return asyncio.run(self._generate_content_stream_helper(*args, **kwargs))
+
+
+class TestGenerateContentAsyncStreamingWithSingleResult(AsyncStreamingMixin, NonStreamingTestCase):
+
     def generate_content(self, *args, **kwargs):
-        return asyncio.run(self._generate_content_helper(*args, **kwargs))
-
-    def test_async_generate_content_not_broken_by_instrumentation(self):
-        self.configure_valid_response(response_text="Yep, it works!")
-        responses = self.generate_content(
-            model="gemini-2.0-flash", contents="Does this work?"
-        )
+        responses = self.generate_content_stream(*args, **kwargs)
         self.assertEqual(len(responses), 1)
-        self.assertEqual(responses[0].text, "Yep, it works!")
+        return responses[0]
 
 
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    unittest.main()
+class TestGenerateContentAsyncStreamingWithStreamedResults(AsyncStreamingMixin, StreamingTestCase):
 
-
-if __name__ == "__main__":
-    main()
+    def generate_content(self, *args, **kwargs):
+        return self.generate_content_stream(*args, **kwargs)
