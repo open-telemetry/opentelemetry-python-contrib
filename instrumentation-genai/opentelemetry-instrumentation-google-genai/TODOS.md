@@ -4,18 +4,17 @@
 
 Here are some TODO items required to achieve stability for this package:
 
-  1. Add support for streaming interfaces
-  2. Add support for async interfaces
-  3. Add more span-level attributes for request configuration
-  4. Add more span-level attributes for response information
-  5. Verify and correct formatting of events:
+  1. Add more span-level attributes for request configuration
+  2. Add more span-level attributes for response information
+  3. Verify and correct formatting of events:
      - Including the 'role' field for message events
      - Including tool invocation information
-  6. Emit events for safety ratings when they block responses
-  7. Additional cleanup/improvement tasks such as:
+  4. Emit events for safety ratings when they block responses
+  5. Additional cleanup/improvement tasks such as:
      - Adoption of 'wrapt' instead of 'functools.wraps'
      - Bolstering test coverage
-  8. Migrate tests to use VCR.py
+  6. Migrate tests to use VCR.py
+
 ## Future
 
 Beyond the above TODOs, it would also be desirable to extend the
