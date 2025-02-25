@@ -63,3 +63,20 @@ class StreamingTestCase(TestCase):
         self.assertEqual(responses[1].text, "Second response")
         choice_events = self.otel.get_events_named("gen_ai.choice")
         self.assertEqual(len(choice_events), 2)
+
+    def test_includes_token_counts_in_span_aggregated_from_responses(self):
+        # Configure multiple responses whose input/output tokens should be
+        # accumulated together when summarizing the end-to-end request.
+        #
+        #   Input: 1 + 3 + 5 => 4 + 5 => 9
+        #   Output: 2 + 4 + 6 => 6 + 6 => 12
+        self.configure_valid_response(input_tokens=1, output_tokens=2)
+        self.configure_valid_response(input_tokens=3, output_tokens=4)
+        self.configure_valid_response(input_tokens=5, output_tokens=6)
+
+        self.generate_content(model="gemini-2.0-flash", contents="Some input")
+
+        self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
+        span = self.otel.get_span_named("generate_content gemini-2.0-flash")
+        self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 9)
+        self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 12)
