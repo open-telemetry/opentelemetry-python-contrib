@@ -84,7 +84,7 @@ class OTelWrapper:
 
     def log_response_content(self, attributes, body):
         _logger.debug("Recording response.")
-        event_name = "gen_ai.assistant.message"
+        event_name = "gen_ai.choice"
         self._log_event(event_name, attributes, body)
 
     def _log_event(self, event_name, attributes, body):

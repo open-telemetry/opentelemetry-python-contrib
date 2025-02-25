@@ -134,7 +134,10 @@ class NonStreamingTestCase(TestCase):
         self.generate_content(
             model="gemini-2.0-flash", contents="Some input", config=config
         )
-        self.otel.assert_does_not_have_event_named("gen_ai.system.message")
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
+        self.assertEqual(event_record.body["content"], "<elided>")
 
     def test_does_not_record_system_prompt_as_log_if_no_system_prompt_present(
         self,
@@ -163,7 +166,10 @@ class NonStreamingTestCase(TestCase):
         )
         self.configure_valid_response()
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
-        self.otel.assert_does_not_have_event_named("gen_ai.user.message")
+        self.otel.assert_has_event_named("gen_ai.user.message")
+        event_record = self.otel.get_event_named("gen_ai.user.message")
+        self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
+        self.assertEqual(event_record.body["content"], "<elided>")
 
     def test_records_response_as_log(self):
         os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
@@ -171,8 +177,8 @@ class NonStreamingTestCase(TestCase):
         )
         self.configure_valid_response(response_text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
-        self.otel.assert_has_event_named("gen_ai.assistant.message")
-        event_record = self.otel.get_event_named("gen_ai.assistant.message")
+        self.otel.assert_has_event_named("gen_ai.choice")
+        event_record = self.otel.get_event_named("gen_ai.choice")
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertIn(
             "Some response content", json.dumps(event_record.body["content"])
@@ -184,7 +190,10 @@ class NonStreamingTestCase(TestCase):
         )
         self.configure_valid_response(response_text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
-        self.otel.assert_does_not_have_event_named("gen_ai.assistant.message")
+        self.otel.assert_has_event_named("gen_ai.choice")
+        event_record = self.otel.get_event_named("gen_ai.choice")
+        self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
+        self.assertEqual(event_record.body["content"], "<elided>")
 
     def test_records_metrics_data(self):
         self.configure_valid_response()

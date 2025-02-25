@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import json
 import logging
 import os
 import time
@@ -21,6 +22,10 @@ from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
 from google.genai.models import AsyncModels, Models
 from google.genai.types import (
     BlockedReason,
+    Candidate,
+    Content,
+    ContentUnion,
+    ContentUnionDict,
     ContentListUnion,
     ContentListUnionDict,
     GenerateContentConfigOrDict,
@@ -38,6 +43,10 @@ from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
 
 _logger = logging.getLogger(__name__)
+
+
+# Constant used to make the absence of content more understandable.
+_CONTENT_ELIDED = "<elided>"
 
 
 class _MethodsSnapshot:
@@ -177,6 +186,15 @@ _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR = {
 }
 
 
+def _to_dict(value: object):
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, 'model_dump'):
+        return value.model_dump()
+    return json.loads(json.dumps(value))
+
+
+
 class _GenerateContentInstrumentationHelper:
     def __init__(
         self,
@@ -193,6 +211,8 @@ class _GenerateContentInstrumentationHelper:
         self._input_tokens = 0
         self._output_tokens = 0
         self._content_recording_enabled = is_content_recording_enabled()
+        self._response_index = 0
+        self._candidate_index = 0
 
     def start_span_as_current_span(self, model_name, function_name):
         return self._otel_wrapper.start_as_current_span(
@@ -230,6 +250,7 @@ class _GenerateContentInstrumentationHelper:
         self._maybe_update_token_counts(response)
         self._maybe_update_error_type(response)
         self._maybe_log_response(response)
+        self._response_index += 1
 
     def process_error(self, e: Exception):
         self._error_type = str(e.__class__.__name__)
@@ -291,64 +312,145 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
     ):
-        if not self._content_recording_enabled:
-            return
         system_instruction = _get_config_property(config, "system_instruction")
         if not system_instruction:
             return
+        attributes = {
+            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+        }
         # TODO: determine if "role" should be reported here or not. It is unclear
         # since the caller does not supply a "role" and since this comes through
         # a property named "system_instruction" which would seem to align with
         # the default "role" that is allowed to be omitted by default.
         #
         # See also: "TODOS.md"
+        body = {}
+        if self._content_recording_enabled:
+            body["content"] = _to_dict(system_instruction)
+        else:
+            body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_system_prompt(
-            attributes={
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-            },
-            body={
-                "content": system_instruction,
-            },
+            attributes=attributes,
+            body=body,
         )
 
     def _maybe_log_user_prompt(
         self, contents: Union[ContentListUnion, ContentListUnionDict]
     ):
-        if not self._content_recording_enabled:
-            return
+        if isinstance(contents, list):
+            total=len(contents)
+            index=0
+            for entry in contents:
+                self._maybe_log_single_user_prompt(entry, index=index, total=total)
+                index += 1
+        else:
+            self._maybe_log_single_user_prompt(contents)
+
+    def _maybe_log_single_user_prompt(
+        self,
+        contents: Union[ContentUnion, ContentUnionDict],
+        index=0,
+        total=1):
+        # TODO: figure out how to report the index in a manner that is
+        # aligned with the OTel semantic conventions.
+        attributes = {
+            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+        }
+
         # TODO: determine if "role" should be reported here or not and, if so,
         # what the value ought to be. It is not clear whether there is always
         # a role supplied (and it looks like there could be cases where there
         # is more than one role present in the supplied contents)?
         #
         # See also: "TODOS.md"
+        body = {}
+        if self._content_recording_enabled:
+            logged_contents = contents
+            if isinstance(contents, list):
+                logged_contents = Content(parts=contents)
+            body["content"] = _to_dict(logged_contents)
+        else:
+            body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_user_prompt(
-            attributes={
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-            },
-            body={
-                "content": contents,
-            },
+            attributes=attributes,
+            body=body,
         )
 
+    def _maybe_log_response_stats(self, response: GenerateContentResponse):
+        # TODO: Determine if there is a way that we can log a summary
+        # of the overall response in a manner that is aligned with
+        # Semantic Conventions. For example, it would be natural
+        # to report an event that looks something like:
+        #
+        #      gen_ai.response.stats {
+        #         response_index: 0,
+        #         candidate_count: 3,
+        #         parts_per_candidate: [
+        #            3,
+        #            1,
+        #            5
+        #         ]
+        #      }
+        #
+        pass
+
+    def _maybe_log_response_safety_ratings(self, response: GenerateContentResponse):
+        # TODO: Determine if there is a way that we can log
+        # the "prompt_feedback". This would be especially useful
+        # in the case where the response is blocked.
+        pass
+
     def _maybe_log_response(self, response: GenerateContentResponse):
-        if not self._content_recording_enabled:
+        self._maybe_log_response_stats(response)
+        self._maybe_log_response_safety_ratings(response)
+        if not response.candidates:
             return
+        candidate_in_response_index = 0
+        for candidate in response.candidates:
+            self._maybe_log_response_candidate(
+                candidate,
+                flat_candidate_index=self._candidate_index,
+                candidate_in_response_index=candidate_in_response_index,
+                response_index=self._response_index)
+            self._candidate_index += 1
+            candidate_in_response_index += 1
+
+    def _maybe_log_response_candidate(
+        self,
+        candidate: Candidate,
+        flat_candidate_index: int,
+        candidate_in_response_index: int,
+        response_index: int):
+        # TODO: Determine if there might be a way to report the
+        # response index and candidate response index.
+        attributes={
+            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+        }
         # TODO: determine if "role" should be reported here or not and, if so,
         # what the value ought to be.
         #
         # TODO: extract tool information into a separate tool message.
         #
-        # TODO: determine if/when we need to emit a 'gen_ai.choice' event.
+        # TODO: determine if/when we need to emit a 'gen_ai.assistant.message' event.
+        #
+        # TODO: determine how to report other relevant details in the candidate that
+        # are not presently captured by Semantic Conventions. For example, the
+        # "citation_metadata", "grounding_metadata", "logprobs_result", etc.
         #
         # See also: "TODOS.md"
+        body={
+            "index": flat_candidate_index,
+        }
+        if self._content_recording_enabled:
+            if candidate.content:
+                body["content"] = _to_dict(candidate.content)
+        else:
+            body["content"] = _CONTENT_ELIDED
+        if candidate.finish_reason is not None:
+            body["finish_reason"] = candidate.finish_reason.name
         self._otel_wrapper.log_response_content(
-            attributes={
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-            },
-            body={
-                "content": response.model_dump(),
-            },
+            attributes=attributes,
+            body=body,
         )
 
     def _record_token_usage_metric(self):
