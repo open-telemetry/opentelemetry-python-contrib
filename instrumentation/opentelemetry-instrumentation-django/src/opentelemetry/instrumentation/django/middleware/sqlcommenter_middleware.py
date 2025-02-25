@@ -80,6 +80,12 @@ class _QueryWrapper:
         db_driver = context["connection"].settings_dict.get("ENGINE", "")
         resolver_match = self.request.resolver_match
 
+        # Convert sql statement to string, handling psycopg2.sql.Composable object
+        if hasattr(sql, "as_string"):
+            sql = sql.as_string(context["connection"])
+
+        sql = str(sql)
+
         sql = _add_sql_comment(
             sql,
             # Information about the controller.
