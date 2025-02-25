@@ -141,11 +141,11 @@ def _to_stream_response_generator(response_generators):
             if response.status_code != 200:
                 continue
             response_json = response.json()
-            response_json_str = json.dumps(response_json_str)
+            response_json_str = json.dumps(response_json)
             contents.append(f'data: {response_json_str}')
         contents_str = '\r\n'.join(contents)
         full_contents = f'{contents_str}\r\n\r\n'
-        result.raw = io.StringIO(full_contents)
+        result.raw = io.BytesIO(full_contents.encode())
         return result
     return combined_generator
 

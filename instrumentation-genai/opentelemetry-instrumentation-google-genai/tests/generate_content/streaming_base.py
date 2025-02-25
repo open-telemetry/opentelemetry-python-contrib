@@ -51,3 +51,15 @@ class StreamingTestCase(TestCase):
         self.assertEqual(len(responses), 1)
         response = responses[0]
         self.assertEqual(response.text, "Yep, it works!")
+
+    def test_handles_multiple_ressponses(self):
+        self.configure_valid_response(response_text="First response")
+        self.configure_valid_response(response_text="Second response")
+        responses = self.generate_content(
+            model="gemini-2.0-flash", contents="Does this work?"
+        )
+        self.assertEqual(len(responses), 2)
+        self.assertEqual(responses[0].text, "First response")
+        self.assertEqual(responses[1].text, "Second response")
+        choice_events = self.otel.get_events_named("gen_ai.choice")
+        self.assertEqual(len(choice_events), 2)
