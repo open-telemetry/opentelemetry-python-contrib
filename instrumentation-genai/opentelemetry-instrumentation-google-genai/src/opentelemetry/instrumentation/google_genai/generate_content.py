@@ -24,10 +24,10 @@ from google.genai.types import (
     BlockedReason,
     Candidate,
     Content,
-    ContentUnion,
-    ContentUnionDict,
     ContentListUnion,
     ContentListUnionDict,
+    ContentUnion,
+    ContentUnionDict,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
 )
@@ -196,10 +196,9 @@ _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR = {
 def _to_dict(value: object):
     if isinstance(value, dict):
         return value
-    if hasattr(value, 'model_dump'):
+    if hasattr(value, "model_dump"):
         return value.model_dump()
     return json.loads(json.dumps(value))
-
 
 
 class _GenerateContentInstrumentationHelper:
@@ -345,19 +344,19 @@ class _GenerateContentInstrumentationHelper:
         self, contents: Union[ContentListUnion, ContentListUnionDict]
     ):
         if isinstance(contents, list):
-            total=len(contents)
-            index=0
+            total = len(contents)
+            index = 0
             for entry in contents:
-                self._maybe_log_single_user_prompt(entry, index=index, total=total)
+                self._maybe_log_single_user_prompt(
+                    entry, index=index, total=total
+                )
                 index += 1
         else:
             self._maybe_log_single_user_prompt(contents)
 
     def _maybe_log_single_user_prompt(
-        self,
-        contents: Union[ContentUnion, ContentUnionDict],
-        index=0,
-        total=1):
+        self, contents: Union[ContentUnion, ContentUnionDict], index=0, total=1
+    ):
         # TODO: figure out how to report the index in a manner that is
         # aligned with the OTel semantic conventions.
         attributes = {
@@ -401,7 +400,9 @@ class _GenerateContentInstrumentationHelper:
         #
         pass
 
-    def _maybe_log_response_safety_ratings(self, response: GenerateContentResponse):
+    def _maybe_log_response_safety_ratings(
+        self, response: GenerateContentResponse
+    ):
         # TODO: Determine if there is a way that we can log
         # the "prompt_feedback". This would be especially useful
         # in the case where the response is blocked.
@@ -418,7 +419,8 @@ class _GenerateContentInstrumentationHelper:
                 candidate,
                 flat_candidate_index=self._candidate_index,
                 candidate_in_response_index=candidate_in_response_index,
-                response_index=self._response_index)
+                response_index=self._response_index,
+            )
             self._candidate_index += 1
             candidate_in_response_index += 1
 
@@ -427,10 +429,11 @@ class _GenerateContentInstrumentationHelper:
         candidate: Candidate,
         flat_candidate_index: int,
         candidate_in_response_index: int,
-        response_index: int):
+        response_index: int,
+    ):
         # TODO: Determine if there might be a way to report the
         # response index and candidate response index.
-        attributes={
+        attributes = {
             gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
         }
         # TODO: determine if "role" should be reported here or not and, if so,
@@ -445,7 +448,7 @@ class _GenerateContentInstrumentationHelper:
         # "citation_metadata", "grounding_metadata", "logprobs_result", etc.
         #
         # See also: "TODOS.md"
-        body={
+        body = {
             "index": flat_candidate_index,
         }
         if self._content_recording_enabled:
