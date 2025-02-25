@@ -45,6 +45,9 @@ from .otel_wrapper import OTelWrapper
 _logger = logging.getLogger(__name__)
 
 
+# Constant used for the value of 'gen_ai.operation.name".
+_GENERATE_CONTENT_OP_NAME = "generate_content"
+
 # Constant used to make the absence of content more understandable.
 _CONTENT_ELIDED = "<elided>"
 
@@ -220,13 +223,13 @@ class _GenerateContentInstrumentationHelper:
 
     def start_span_as_current_span(self, model_name, function_name):
         return self._otel_wrapper.start_as_current_span(
-            f"generate_content {model_name}",
+            f"{_GENERATE_CONTENT_OP_NAME} {model_name}",
             start_time=self._start_time,
             attributes={
                 code_attributes.CODE_FUNCTION_NAME: function_name,
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-                gen_ai_attributes.GEN_AI_OPERATION_NAME: "GenerateContent",
+                gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
         )
 
@@ -464,7 +467,7 @@ class _GenerateContentInstrumentationHelper:
                 gen_ai_attributes.GEN_AI_TOKEN_TYPE: "input",
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-                gen_ai_attributes.GEN_AI_OPERATION_NAME: "GenerateContent",
+                gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
         )
         self._otel_wrapper.token_usage_metric.record(
@@ -473,7 +476,7 @@ class _GenerateContentInstrumentationHelper:
                 gen_ai_attributes.GEN_AI_TOKEN_TYPE: "output",
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-                gen_ai_attributes.GEN_AI_OPERATION_NAME: "GenerateContent",
+                gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
         )
 
@@ -481,7 +484,7 @@ class _GenerateContentInstrumentationHelper:
         attributes = {
             gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
             gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-            gen_ai_attributes.GEN_AI_OPERATION_NAME: "GenerateContent",
+            gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
         }
         if self._error_type is not None:
             attributes[error_attributes.ERROR_TYPE] = self._error_type
