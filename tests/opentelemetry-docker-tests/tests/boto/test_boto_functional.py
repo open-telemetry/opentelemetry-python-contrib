@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
-
-# Add the path to the boto3 package
-sys.path.append(os.path.expanduser("~/.local/lib/python3.8/site-packages"))
 
 import boto3
 
-from opentelemetry.instrumentation.botocore import (
-    BotocoreInstrumentor as BotoInstrumentor,
-)
+from opentelemetry.instrumentation.boto import BotoInstrumentor
 from opentelemetry.sdk.trace import NoOpTracerProvider
 
 
