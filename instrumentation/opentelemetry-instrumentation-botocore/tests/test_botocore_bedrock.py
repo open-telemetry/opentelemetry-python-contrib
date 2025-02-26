@@ -154,6 +154,7 @@ def test_converse_with_content_different_events(
 def converse_tool_call(
     span_exporter, log_exporter, bedrock_runtime_client, expect_content
 ):
+    # pylint:disable=too-many-locals
     messages = [
         {
             "role": "user",
@@ -648,6 +649,7 @@ def _rebuild_stream_message(response):
 def converse_stream_tool_call(
     span_exporter, log_exporter, bedrock_runtime_client, expect_content
 ):
+    # pylint:disable=too-many-locals,too-many-statements
     messages = [
         {
             "role": "user",
@@ -1294,6 +1296,7 @@ def invoke_model_tool_call(
     llm_model_value,
     expect_content,
 ):
+    # pylint:disable=too-many-locals,too-many-statements
     messages = [
         {
             "role": "user",
@@ -1862,6 +1865,7 @@ def invoke_model_with_response_stream_tool_call(
     llm_model_value,
     expect_content,
 ):
+    # pylint:disable=too-many-locals,too-many-statements,too-many-branches
     messages = [
         {
             "role": "user",

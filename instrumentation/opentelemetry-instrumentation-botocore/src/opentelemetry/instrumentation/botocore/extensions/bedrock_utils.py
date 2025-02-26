@@ -75,6 +75,7 @@ class ConverseStreamWrapper(ObjectProxy):
             raise
 
     def _process_event(self, event):
+        # pylint: disable=too-many-branches
         if "messageStart" in event:
             # {'messageStart': {'role': 'assistant'}}
             if event["messageStart"].get("role") == "assistant":
@@ -214,6 +215,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             self._stream_done_callback(self._response)
 
     def _process_amazon_nova_chunk(self, chunk):
+        # pylint: disable=too-many-branches
         # TODO:  handle tool calls!
         if "messageStart" in chunk:
             # {'messageStart': {'role': 'assistant'}}
@@ -262,7 +264,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             return
 
     def _process_anthropic_claude_chunk(self, chunk):
-        # pylint: disable=too-many-return-statements
+        # pylint: disable=too-many-return-statements,too-many-branches
         if not (message_type := chunk.get("type")):
             return
 
@@ -343,10 +345,10 @@ def genai_capture_message_content() -> bool:
 
 def extract_tool_calls(
     message: dict[str, Any], capture_content: bool
-) -> Sequence[Dict[str, Any]]:
+) -> Sequence[Dict[str, Any]] | None:
     content = message.get("content")
     if not content:
-        return
+        return None
 
     tool_uses = [item["toolUse"] for item in content if "toolUse" in item]
     if not tool_uses:
@@ -358,7 +360,7 @@ def extract_tool_calls(
         tool_id_key = "toolUseId"
 
     if not tool_uses:
-        return
+        return None
 
     tool_calls = []
     for tool_use in tool_uses:
