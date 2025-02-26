@@ -17,7 +17,7 @@ import unittest
 import boto3
 
 from opentelemetry.instrumentation.boto import BotoInstrumentor
-from opentelemetry.sdk import NoOpTracerProvider
+from opentelemetry.sdk.trace import NoOpTracerProvider
 
 
 class TestBotoInstrumentationNoOpTracerProvider(unittest.TestCase):
