@@ -24,10 +24,10 @@ from google.genai.types import (
     BlockedReason,
     Candidate,
     Content,
-    ContentUnion,
-    ContentUnionDict,
     ContentListUnion,
     ContentListUnionDict,
+    ContentUnion,
+    ContentUnionDict,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
 )
@@ -539,6 +539,7 @@ def _create_instrumented_generate_content_stream(
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.generate_content_stream
+
     @functools.wraps(wrapped_func)
     def instrumented_generate_content_stream(
         self: Models,
@@ -578,6 +579,7 @@ def _create_instrumented_async_generate_content(
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content
+
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content(
         self: AsyncModels,
@@ -618,6 +620,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content_stream
+
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content_stream(
         self: AsyncModels,
@@ -630,6 +633,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         helper = _GenerateContentInstrumentationHelper(
             self, otel_wrapper, model
         )
+
         async def _internal_generator():
             with helper.start_span_as_current_span(
                 model, "google.genai.AsyncModels.generate_content_stream"
@@ -650,9 +654,11 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
                     raise
                 finally:
                     helper.finalize_processing()
+
         class _GeneratorProvider:
             def __aiter__(self):
                 return _internal_generator()
+
         return _GeneratorProvider()
 
     return instrumented_generate_content_stream

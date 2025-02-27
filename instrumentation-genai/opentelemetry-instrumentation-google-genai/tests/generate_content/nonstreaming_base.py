@@ -36,13 +36,8 @@ class NonStreamingTestCase(TestCase):
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
 
-    def configure_valid_response(
-        self,
-        *args,
-        **kwargs
-    ):
-        self.requests.add_response(
-            create_valid_response(*args, **kwargs))
+    def configure_valid_response(self, *args, **kwargs):
+        self.requests.add_response(create_valid_response(*args, **kwargs))
 
     def test_instrumentation_does_not_break_core_functionality(self):
         self.configure_valid_response(response_text="Yep, it works!")

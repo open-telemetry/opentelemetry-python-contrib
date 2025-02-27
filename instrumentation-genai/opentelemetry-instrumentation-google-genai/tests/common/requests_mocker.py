@@ -32,12 +32,12 @@
 # Because they APIs that need to be mocked are simple enough and well documented
 # enough, it seems approachable to mock the requests library, instead.
 
-from typing import Optional
 import copy
 import functools
 import http.client
 import io
 import json
+from typing import Optional
 
 import requests
 import requests.sessions
@@ -127,15 +127,16 @@ def _to_response_generator(response):
 def _to_stream_response_generator(response_generators):
     if len(response_generators) == 1:
         return response_generators[0]
+
     def combined_generator(args):
         first_response = response_generators[0](args)
         if first_response.status_code != 200:
             return first_response
         result = requests.Response()
         result.status_code = 200
-        result.headers['content-type'] = 'application/json'
-        result.encoding = 'utf-8'
-        result.headers['transfer-encoding'] = 'chunked'
+        result.headers["content-type"] = "application/json"
+        result.encoding = "utf-8"
+        result.headers["transfer-encoding"] = "chunked"
         contents = []
         for generator in response_generators:
             response = generator(args)
@@ -143,11 +144,12 @@ def _to_stream_response_generator(response_generators):
                 continue
             response_json = response.json()
             response_json_str = json.dumps(response_json)
-            contents.append(f'data: {response_json_str}')
-        contents_str = '\r\n'.join(contents)
-        full_contents = f'{contents_str}\r\n\r\n'
+            contents.append(f"data: {response_json_str}")
+        contents_str = "\r\n".join(contents)
+        full_contents = f"{contents_str}\r\n\r\n"
         result.raw = io.BytesIO(full_contents.encode())
         return result
+
     return combined_generator
 
 
@@ -188,7 +190,7 @@ class RequestsMocker:
         request: requests.PreparedRequest,
         **kwargs,
     ):
-        stream=kwargs.get('stream', False)
+        stream = kwargs.get("stream", False)
         if not stream:
             return self._do_send_non_streaming(session, request, **kwargs)
         return self._do_send_streaming(session, request, **kwargs)
