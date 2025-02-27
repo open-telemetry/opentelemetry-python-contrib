@@ -76,7 +76,7 @@ class NonStreamingTestCase(TestCase):
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.system"], "gemini")
         self.assertEqual(
-            span.attributes["gen_ai.operation.name"], "GenerateContent"
+            span.attributes["gen_ai.operation.name"], "generate_content"
         )
 
     def test_generated_span_has_correct_function_name(self):
@@ -100,7 +100,7 @@ class NonStreamingTestCase(TestCase):
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.system"], "vertex_ai")
         self.assertEqual(
-            span.attributes["gen_ai.operation.name"], "GenerateContent"
+            span.attributes["gen_ai.operation.name"], "generate_content"
         )
 
     def test_generated_span_counts_tokens(self):

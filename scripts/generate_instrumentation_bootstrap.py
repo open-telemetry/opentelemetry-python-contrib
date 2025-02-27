@@ -60,7 +60,6 @@ packages_to_exclude = [
     # by manually adding it to their environment.
     # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
     "opentelemetry-instrumentation-aws-lambda",
-
     # Google GenAI instrumentation is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.

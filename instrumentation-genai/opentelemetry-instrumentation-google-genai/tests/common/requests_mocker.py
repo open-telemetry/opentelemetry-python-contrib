@@ -32,6 +32,7 @@
 # Because they APIs that need to be mocked are simple enough and well documented
 # enough, it seems approachable to mock the requests library, instead.
 
+from typing import Optional
 import copy
 import functools
 import http.client
@@ -81,7 +82,7 @@ class RequestsCall:
 
 
 def _return_error_status(
-    args: RequestsCallArgs, status_code: int, reason: str = None
+    args: RequestsCallArgs, status_code: int, reason: Optional[str] = None
 ):
     result = requests.Response()
     result.url = args.request.url
@@ -198,6 +199,7 @@ class RequestsMocker:
         request: requests.PreparedRequest,
         **kwargs,
     ):
+        args = RequestsCallArgs(session, request, **kwargs)
         response_generators = []
         for matcher, response_generator in self._handlers:
             if matcher is None:
@@ -206,7 +208,6 @@ class RequestsMocker:
                 response_generators.append(response_generator)
         if not response_generators:
             response_generators.append(_return_404)
-        args = RequestsCallArgs(session, request, **kwargs)
         response_generator = _to_stream_response_generator(response_generators)
         call = RequestsCall(args, response_generator)
         result = call.response
