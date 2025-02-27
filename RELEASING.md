@@ -21,6 +21,7 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-vertexai
 >
 > These libraries are also excluded from the general release.
 
