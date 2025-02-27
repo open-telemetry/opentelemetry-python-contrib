@@ -1,0 +1,81 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '170'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250206T051231Z
+      X-Amzn-Trace-Id:
+      - Root=1-c114b02b-84cec2d763a71299ae73fb9f;Parent=6f540fd45e1dc3b3;Sampled=1
+      amz-sdk-invocation-id:
+      - a8c71d0c-ae7b-4685-b696-6ba0ded398ef
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse
+  response:
+    body:
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 608
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Hi, how can I help you"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 8,
+            "outputTokens": 10,
+            "totalTokens": 18
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 06 Feb 2025 05:12:33 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-RequestId:
+      - 180bdcbc-0fea-4b99-a0f0-b858dd830a83
+    status:
+      code: 200
+      message: OK
+version: 1

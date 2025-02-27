@@ -29,7 +29,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-openai-v2
@@ -47,10 +47,28 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-vertexai
+
+  lint-instrumentation-google-genai:
+    name: instrumentation-google-genai
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-google-genai
 
   lint-resource-detector-container:
     name: resource-detector-container
@@ -65,7 +83,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-resource-detector-container
@@ -83,7 +101,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-resource-detector-azure
@@ -101,7 +119,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-sdk-extension-aws
@@ -119,7 +137,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-distro
@@ -137,7 +155,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-opentelemetry-instrumentation
@@ -155,7 +173,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aiohttp-client
@@ -173,7 +191,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aiohttp-server
@@ -191,7 +209,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aiopg
@@ -209,7 +227,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aws-lambda
@@ -227,7 +245,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-botocore
@@ -245,7 +263,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-boto3sqs
@@ -263,7 +281,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-django
@@ -281,7 +299,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-dbapi
@@ -299,7 +317,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-boto
@@ -317,7 +335,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-click
@@ -335,7 +353,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-elasticsearch
@@ -353,7 +371,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-falcon
@@ -371,7 +389,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-fastapi
@@ -389,7 +407,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-flask
@@ -407,7 +425,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-urllib
@@ -425,7 +443,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-urllib3
@@ -443,7 +461,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-requests
@@ -461,7 +479,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-starlette
@@ -479,7 +497,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-jinja2
@@ -497,7 +515,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-logging
@@ -515,7 +533,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-exporter-richconsole
@@ -533,7 +551,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-exporter-prometheus-remote-write
@@ -551,7 +569,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-mysql
@@ -569,7 +587,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-mysqlclient
@@ -587,7 +605,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-psycopg2
@@ -605,7 +623,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-psycopg
@@ -623,7 +641,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-pymemcache
@@ -641,7 +659,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-pymongo
@@ -659,10 +677,28 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-pymysql
+
+  lint-instrumentation-pymssql:
+    name: instrumentation-pymssql
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-pymssql
 
   lint-instrumentation-pyramid:
     name: instrumentation-pyramid
@@ -677,7 +713,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-pyramid
@@ -695,7 +731,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-asgi
@@ -713,7 +749,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-asyncpg
@@ -731,7 +767,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-sqlite3
@@ -749,7 +785,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-wsgi
@@ -767,7 +803,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-grpc
@@ -785,7 +821,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-sqlalchemy
@@ -803,7 +839,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-redis
@@ -821,7 +857,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-remoulade
@@ -839,7 +875,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-celery
@@ -857,7 +893,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-system-metrics
@@ -875,7 +911,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-threading
@@ -893,7 +929,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-tornado
@@ -911,7 +947,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-tortoiseorm
@@ -929,7 +965,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-httpx
@@ -947,7 +983,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-util-http
@@ -965,7 +1001,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-propagator-aws-xray
@@ -983,7 +1019,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-propagator-ot-trace
@@ -1001,7 +1037,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-sio-pika
@@ -1019,7 +1055,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aio-pika
@@ -1037,7 +1073,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-aiokafka
@@ -1055,7 +1091,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-kafka-python
@@ -1073,7 +1109,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-confluent-kafka
@@ -1091,7 +1127,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-asyncio
@@ -1109,7 +1145,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-instrumentation-cassandra
@@ -1127,7 +1163,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e lint-processor-baggage

@@ -19,23 +19,31 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
 
 ## Index
 
-* [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
-* [Development](#development)
-  * [Troubleshooting](#troubleshooting)
-  * [Benchmarks](#benchmarks)
-* [Pull requests](#pull-requests)
-  * [How to Send Pull Requests](#how-to-send-pull-requests)
-  * [How to Receive Comments](#how-to-receive-comments)
-  * [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
-  * [How to Get PRs Merged](#how-to-get-prs-merged)
-* [Design Choices](#design-choices)
-  * [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
-* [Running Tests Locally](#running-tests-locally)
-  * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
-* [Style Guide](#style-guide)
-* [Guideline for instrumentations](#guideline-for-instrumentations)
-* [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
-* [Expectations from contributors](#expectations-from-contributors)
+- [Contributing to opentelemetry-python-contrib](#contributing-to-opentelemetry-python-contrib)
+  - [Index](#index)
+  - [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
+  - [Development](#development)
+    - [Virtual Environment](#virtual-environment)
+    - [Troubleshooting](#troubleshooting)
+    - [Benchmarks](#benchmarks)
+  - [Pull Requests](#pull-requests)
+    - [How to Send Pull Requests](#how-to-send-pull-requests)
+    - [How to Receive Comments](#how-to-receive-comments)
+    - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
+    - [How to Get PRs Merged](#how-to-get-prs-merged)
+  - [Design Choices](#design-choices)
+    - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
+  - [Running Tests Locally](#running-tests-locally)
+    - [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
+  - [Style Guide](#style-guide)
+  - [Guideline for instrumentations](#guideline-for-instrumentations)
+    - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
+  - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
+    - [Get Involved](#get-involved)
+  - [Expectations from contributors](#expectations-from-contributors)
+  - [Updating supported Python versions](#updating-supported-python-versions)
+    - [Bumping the Python baseline](#bumping-the-python-baseline)
+    - [Adding support for a new Python release](#adding-support-for-a-new-python-release)
 
 ## Find a Buddy and get Started Quickly
 
@@ -57,6 +65,12 @@ To install `tox`, run:
 
 ```sh
 pip install tox
+```
+
+You can also run tox with `uv` support. By default [tox.ini](./tox.ini) will automatically create a provisioned tox environment with `tox-uv`, but you can install it at host level:
+
+```sh
+pip install tox-uv
 ```
 
 You can run `tox` with the following arguments:
@@ -87,9 +101,23 @@ See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
 
+### Virtual Environment
+
+You can also create a single virtual environment to make it easier to run local tests.
+
+For that, you'll need to install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+
+After installing `uv`, you can run the following command:
+
+```sh
+uv sync
+```
+
+This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
+
 ### Troubleshooting
 
-Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for. 
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
@@ -139,7 +167,7 @@ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python
 make sure you have all supported versions of Python installed, install `tox` only for the first time:
 
 ```sh
-pip install tox
+pip install tox tox-uv
 ```
 
 Run tests in the root of the repository (this will run all tox environments and may take some time):

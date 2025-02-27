@@ -1,0 +1,6 @@
+boto3~=1.35.99
+
+opentelemetry-sdk~=1.30.0
+opentelemetry-exporter-otlp-proto-grpc~=1.30.0
+opentelemetry-distro~=0.51b0
+opentelemetry-instrumentation-botocore~=0.51b0

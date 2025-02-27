@@ -1,0 +1,70 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '141'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "Okay, I understand.  I'm ready for your test.  Please proceed.\n"
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -0.005692833348324424
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 5,
+            "candidatesTokenCount": 19,
+            "totalTokenCount": 24
+          },
+          "modelVersion": "gemini-1.5-flash-002"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '453'
+    status:
+      code: 200
+      message: OK
+version: 1

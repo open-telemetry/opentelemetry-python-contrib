@@ -61,6 +61,9 @@ components:
   instrumentation/opentelemetry-instrumentation-psycopg:
     - federicobond
 
+  instrumentation/opentelemetry-instrumentation-pymssql:
+    - guillaumep
+
   instrumentation/opentelemetry-instrumentation-aiokafka:
     - dimastbk
 

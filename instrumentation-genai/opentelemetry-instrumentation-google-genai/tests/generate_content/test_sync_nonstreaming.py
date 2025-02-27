@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: adapt tests from OpenLLMetry here along with tests from
-# instrumentation-genai/opentelemetry-instrumentation-openai-v2/tests/test_chat_completions.py
+
+from .nonstreaming_base import NonStreamingTestCase
 
 
-def test_placeholder():
-    assert True
+class TestGenerateContentSyncNonstreaming(NonStreamingTestCase):
+    def generate_content(self, *args, **kwargs):
+        return self.client.models.generate_content(*args, **kwargs)
+
+    @property
+    def expected_function_name(self):
+        return "google.genai.Models.generate_content"
