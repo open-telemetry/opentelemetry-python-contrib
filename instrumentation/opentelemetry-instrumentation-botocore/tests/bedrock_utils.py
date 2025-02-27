@@ -14,15 +14,87 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+from botocore.response import StreamingBody
+
 from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.semconv._incubating.attributes import (
+    event_attributes as EventAttributes,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
 
-def assert_completion_attributes(
+# pylint: disable=too-many-branches, too-many-locals
+def assert_completion_attributes_from_streaming_body(
+    span: ReadableSpan,
+    request_model: str,
+    response: StreamingBody | None,
+    operation_name: str = "chat",
+    request_top_p: int | None = None,
+    request_temperature: int | None = None,
+    request_max_tokens: int | None = None,
+    request_stop_sequences: list[str] | None = None,
+):
+    input_tokens = None
+    output_tokens = None
+    finish_reason = None
+    if response is not None:
+        original_body = response["body"]
+        body_content = original_body.read()
+        response = json.loads(body_content.decode("utf-8"))
+        assert response
+
+        if "amazon.titan" in request_model:
+            input_tokens = response.get("inputTextTokenCount")
+            results = response.get("results")
+            if results:
+                first_result = results[0]
+                output_tokens = first_result.get("tokenCount")
+                finish_reason = (first_result["completionReason"],)
+        elif "amazon.nova" in request_model:
+            if usage := response.get("usage"):
+                input_tokens = usage["inputTokens"]
+                output_tokens = usage["outputTokens"]
+            else:
+                input_tokens, output_tokens = None, None
+
+            if "stopReason" in response:
+                finish_reason = (response["stopReason"],)
+            else:
+                finish_reason = None
+        elif "anthropic.claude" in request_model:
+            if usage := response.get("usage"):
+                input_tokens = usage["input_tokens"]
+                output_tokens = usage["output_tokens"]
+            else:
+                input_tokens, output_tokens = None, None
+
+            if "stop_reason" in response:
+                finish_reason = (response["stop_reason"],)
+            else:
+                finish_reason = None
+
+    return assert_all_attributes(
+        span,
+        request_model,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        operation_name,
+        request_top_p,
+        request_temperature,
+        request_max_tokens,
+        tuple(request_stop_sequences)
+        if request_stop_sequences is not None
+        else request_stop_sequences,
+    )
+
+
+def assert_converse_completion_attributes(
     span: ReadableSpan,
     request_model: str,
     response: dict[str, Any] | None,
@@ -38,7 +110,7 @@ def assert_completion_attributes(
     else:
         input_tokens, output_tokens = None, None
 
-    if response:
+    if response and "stopReason" in response:
         finish_reason = (response["stopReason"],)
     else:
         finish_reason = None
@@ -59,11 +131,42 @@ def assert_completion_attributes(
     )
 
 
+def assert_stream_completion_attributes(
+    span: ReadableSpan,
+    request_model: str,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    finish_reason: tuple[str] | None = None,
+    operation_name: str = "chat",
+    request_top_p: int | None = None,
+    request_temperature: int | None = None,
+    request_max_tokens: int | None = None,
+    request_stop_sequences: list[str] | None = None,
+):
+    return assert_all_attributes(
+        span,
+        request_model,
+        input_tokens,
+        output_tokens,
+        finish_reason,
+        operation_name,
+        request_top_p,
+        request_temperature,
+        request_max_tokens,
+        tuple(request_stop_sequences)
+        if request_stop_sequences is not None
+        else request_stop_sequences,
+    )
+
+
 def assert_equal_or_not_present(value, attribute_name, span):
-    if value:
-        assert value == span.attributes[attribute_name]
+    if value is not None:
+        assert attribute_name in span.attributes
+        assert value == span.attributes[attribute_name], span.attributes[
+            attribute_name
+        ]
     else:
-        assert attribute_name not in span.attributes
+        assert attribute_name not in span.attributes, attribute_name
 
 
 def assert_all_attributes(
@@ -114,3 +217,43 @@ def assert_all_attributes(
         GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES,
         span,
     )
+
+
+def remove_none_values(body):
+    result = {}
+    for key, value in body.items():
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            result[key] = remove_none_values(value)
+        elif isinstance(value, list):
+            result[key] = [remove_none_values(i) for i in value]
+        else:
+            result[key] = value
+    return result
+
+
+def assert_log_parent(log, span):
+    if span:
+        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.span_id == span.get_span_context().span_id
+        assert (
+            log.log_record.trace_flags == span.get_span_context().trace_flags
+        )
+
+
+def assert_message_in_logs(log, event_name, expected_content, parent_span):
+    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    assert (
+        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
+    )
+
+    if not expected_content:
+        assert not log.log_record.body
+    else:
+        assert log.log_record.body
+        assert dict(log.log_record.body) == remove_none_values(
+            expected_content
+        ), dict(log.log_record.body)
+    assert_log_parent(log, parent_span)

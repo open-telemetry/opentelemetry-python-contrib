@@ -63,10 +63,8 @@ def environment():
         os.environ["AWS_ACCESS_KEY_ID"] = "test_aws_access_key_id"
     if not os.getenv("AWS_SECRET_ACCESS_KEY"):
         os.environ["AWS_SECRET_ACCESS_KEY"] = "test_aws_secret_key"
-    if not os.getenv("AWS_SESSION_TOKEN"):
-        os.environ["AWS_SESSION_TOKEN"] = "test_aws_session_token"
     if not os.getenv("AWS_DEFAULT_REGION"):
-        os.environ["AWS_DEFAULT_REGION"] = "eu-central-1"
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
 @pytest.fixture(scope="module")
@@ -115,6 +113,17 @@ def instrument_with_content(tracer_provider, event_logger_provider):
     instrumentor.uninstrument()
 
 
+def scrub_response_headers(response):
+    """
+    This scrubs sensitive response headers. Note they are case-sensitive!
+    """
+    response["headers"]["Set-Cookie"] = "test_set_cookie"
+    # SDK validates response length which we modify by pretty-printing JSON.
+    # Content length does not affect our instrumentation so just drop it.
+    response["headers"].pop("Content-Length", None)
+    return response
+
+
 class LiteralBlockScalar(str):
     """Formats the string as a literal block scalar, preserving whitespace and
     without interpreting escape characters"""
@@ -130,6 +139,8 @@ yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
 
 def process_string_value(string_value):
     """Pretty-prints JSON or returns long strings as a LiteralBlockScalar"""
+    if isinstance(string_value, bytes):
+        return string_value
     try:
         json_data = json.loads(string_value)
         return LiteralBlockScalar(json.dumps(json_data, indent=2))
@@ -158,6 +169,15 @@ def convert_body_to_literal(data):
         for idx, choice in enumerate(data):
             data[idx] = convert_body_to_literal(choice)
 
+    # botocore uses bytes types for string values in headers, making recordings
+    # of them unreadable. It is fine to convert to strings where possible as vcr
+    # will still match them correctly.
+    elif isinstance(data, bytes):
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+
     return data
 
 
@@ -180,11 +200,3 @@ class PrettyPrintJSONBody:
 def fixture_vcr(vcr):
     vcr.register_serializer("yaml", PrettyPrintJSONBody)
     return vcr
-
-
-def scrub_response_headers(response):
-    """
-    This scrubs sensitive response headers. Note they are case-sensitive!
-    """
-    response["headers"]["Set-Cookie"] = "test_set_cookie"
-    return response

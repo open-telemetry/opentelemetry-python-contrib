@@ -10,6 +10,28 @@ This library allows tracing LLM requests and logging of messages made by the
 `OpenAI Python API library <https://pypi.org/project/openai/>`_. It also captures
 the duration of the operations and the number of tokens used as metrics.
 
+Many LLM platforms support the OpenAI SDK. This means systems such as the following are observable with this instrumentation when accessed using it:
+
+.. list-table:: OpenAI Compatible Platforms
+   :widths: 40 25
+   :header-rows: 1
+
+   * - Name
+     - gen_ai.system
+   * - `Azure OpenAI <https://github.com/openai/openai-python?tab=readme-ov-file#microsoft-azure-openai>`_
+     - ``az.ai.openai``
+   * - `Gemini <https://developers.googleblog.com/en/gemini-is-now-accessible-from-the-openai-library/>`_
+     - ``gemini``
+   * - `Perplexity <https://docs.perplexity.ai/api-reference/chat-completions>`_
+     - ``perplexity``
+   * - `xAI <https://x.ai/api>`_ (Compatible with Anthropic)
+     - ``xai``
+   * - `DeepSeek <https://api-docs.deepseek.com/>`_
+     - ``deepseek``
+   * - `Groq <https://console.groq.com/docs/openai>`_
+     - ``groq``
+   * - `MistralAI <https://docs.mistral.ai/api/>`_
+     - ``mistral_ai``
 
 Installation
 ------------
@@ -75,51 +97,9 @@ To uninstrument clients, call the uninstrument method:
     # Uninstrument all clients
     OpenAIInstrumentor().uninstrument()
 
-Bucket Boundaries
------------------
-
-This section describes the explicit bucket boundaries for metrics such as token usage and operation duration, and guides users to create Views to implement them according to the semantic conventions.
-
-The bucket boundaries are defined as follows:
-
-- For `gen_ai.client.token.usage`: [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]
-- For `gen_ai.client.operation.duration`: [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92]
-
-To implement these bucket boundaries, you can create Views in your OpenTelemetry SDK setup. Here is an example:
-
-.. code-block:: python
-
-    from opentelemetry.sdk.metrics import MeterProvider, View
-    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-    from opentelemetry.sdk.metrics.aggregation import ExplicitBucketHistogramAggregation
-
-    views = [
-        View(
-            instrument_name="gen_ai.client.token.usage",
-            aggregation=ExplicitBucketHistogramAggregation([1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]),
-        ),
-        View(
-            instrument_name="gen_ai.client.operation.duration",
-            aggregation=ExplicitBucketHistogramAggregation([0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92]),
-        ),
-    ]
-
-    metric_exporter = OTLPMetricExporter(endpoint="http://localhost:4317")
-    metric_reader = PeriodicExportingMetricReader(metric_exporter)
-    provider = MeterProvider(
-        metric_readers=[metric_reader],
-        views=views
-    )
-
-    from opentelemetry.sdk.metrics import set_meter_provider
-    set_meter_provider(provider)
-
-For more details, refer to the `OpenTelemetry GenAI Metrics documentation <https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/>`_.
-
 References
 ----------
-* `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/openai/openai.html>`_
+* `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation-genai/openai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
 

@@ -7,14 +7,14 @@ attrs==23.2.0
 bcrypt==4.1.2
 billiard==4.2.0
 celery==5.3.6
-certifi==2024.2.2
+certifi==2024.7.4
 cffi==1.16.0
 chardet==3.0.4
 click==8.1.7
 click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.3.0
-cryptography==42.0.5
+cryptography==44.0.1
 Deprecated==1.2.14
 distro==1.9.0
 dnspython==2.6.1
@@ -25,7 +25,7 @@ docopt==0.6.2
 exceptiongroup==1.2.0
 flaky==3.7.0
 greenlet==3.0.3
-grpcio==1.62.1
+grpcio==1.63.2
 idna==2.10
 iniconfig==2.0.0
 jsonschema==3.2.0
