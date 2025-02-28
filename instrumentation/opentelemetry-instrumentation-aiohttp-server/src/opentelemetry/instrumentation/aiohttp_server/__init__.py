@@ -12,6 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+The opentelemetry-instrumentation-aiohttp-server package allows tracing HTTP
+requests made by the aiohttp server library.
+
+Usage
+-----
+
+.. code:: python
+
+    from aiohttp import web
+    from opentelemetry.instrumentation.aiohttp_server import (
+        AioHttpServerInstrumentor
+    )
+
+    AioHttpServerInstrumentor().instrument()
+
+    async def hello(request):
+        return web.Response(text="Hello, world")
+
+    app = web.Application()
+    app.add_routes([web.get('/', hello)])
+
+    web.run_app(app)
+"""
+
 import urllib
 from timeit import default_timer
 from typing import Dict, List, Tuple, Union
