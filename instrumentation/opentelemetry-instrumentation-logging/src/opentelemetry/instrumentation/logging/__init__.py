@@ -14,6 +14,23 @@
 
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
+"""
+The OpenTelemetry `logging` integration automatically injects tracing context into
+log statements.
+
+Usage
+-----
+.. code-block:: python
+
+    import logging
+
+    from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+    LoggingInstrumentor().instrument()
+
+    logging.warning('OTel test')
+"""
+
 import logging  # pylint: disable=import-self
 from os import environ
 from typing import Collection
