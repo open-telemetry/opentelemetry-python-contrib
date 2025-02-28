@@ -29,6 +29,11 @@ Usage
     LoggingInstrumentor().instrument()
 
     logging.warning('OTel test')
+
+When running the above example you will see the following output:
+```
+WARNING:root:OTel test
+```
 """
 
 import logging  # pylint: disable=import-self
