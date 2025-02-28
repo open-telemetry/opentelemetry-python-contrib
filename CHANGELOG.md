@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
+  ([#3279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3279))
 - `opentelemetry-instrumentation-system-metrics` Add `process` metrics and deprecated `process.runtime` prefixed ones 
   ([#3250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3250))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI user events and lazy initialize tracer
@@ -21,8 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3266](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3266))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI choice events
   ([#3275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3275))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI tool events
+  ([#3302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3302))
 - `opentelemetry-instrumentation` make it simpler to initialize auto-instrumentation programmatically
   ([#3273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3273))
+- Add `opentelemetry-instrumentation-vertexai>=2.0b0` to `opentelemetry-bootstrap`
+  ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
+
 
 ### Fixed
 

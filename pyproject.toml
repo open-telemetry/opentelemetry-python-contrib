@@ -144,6 +144,10 @@ members = [
   "propagator/*",
   "util/opentelemetry-util-http",
 ]
+# TODO: remove after https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3300
+exclude = [
+  "instrumentation-genai/opentelemetry-instrumentation-google-genai",
+]
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
