@@ -248,7 +248,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         messages = self._get_request_messages()
         for message in messages:
             event_logger = instrumentor_context.event_logger
-            event_logger.emit(message_to_event(message, capture_content))
+            for event in message_to_event(message, capture_content):
+                event_logger.emit(event)
 
         if not span.is_recording():
             return
