@@ -216,7 +216,9 @@ class _GenerateContentInstrumentationHelper:
         self._response_index = 0
         self._candidate_index = 0
 
-    def start_span_as_current_span(self, model_name, function_name, end_on_exit=True):
+    def start_span_as_current_span(
+        self, model_name, function_name, end_on_exit=True
+    ):
         return self._otel_wrapper.start_as_current_span(
             f"{_GENERATE_CONTENT_OP_NAME} {model_name}",
             start_time=self._start_time,
@@ -226,7 +228,7 @@ class _GenerateContentInstrumentationHelper:
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
-            end_on_exit=end_on_exit
+            end_on_exit=end_on_exit,
         )
 
     def process_request(
@@ -637,21 +639,22 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         with helper.start_span_as_current_span(
             model,
             "google.genai.AsyncModels.generate_content_stream",
-            end_on_exit=False) as span:
-         helper.process_request(contents, config)
+            end_on_exit=False,
+        ) as span:
+            helper.process_request(contents, config)
         try:
             response_async_generator = await wrapped_func(
-                    self,
-                    model=model,
-                    contents=contents,
-                    config=config,
-                    **kwargs,
-                )
+                self,
+                model=model,
+                contents=contents,
+                config=config,
+                **kwargs,
+            )
         except Exception as error:
-         helper.process_error(error)
-         helper.finalize_processing()
-         with trace.use_span(span, end_on_exit=True):
-            raise
+            helper.process_error(error)
+            helper.finalize_processing()
+            with trace.use_span(span, end_on_exit=True):
+                raise
 
         async def _response_async_generator_wrapper():
             with trace.use_span(span, end_on_exit=True):
@@ -666,7 +669,6 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
                     helper.finalize_processing()
 
         class _GeneratorProvider:
-
             def __aiter__(self):
                 return _response_async_generator_wrapper()
 
