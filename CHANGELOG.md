@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3302))
 - `opentelemetry-instrumentation` make it simpler to initialize auto-instrumentation programmatically
   ([#3273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3273))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: Add sqlcommenter support for `instrument_connection`
+  ([#3071](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3071))
 
 ### Fixed
 
