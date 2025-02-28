@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
 - `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
   ([#3253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3253))
+- `opentelemetry-instrumentation` Fix a traceback in sqlcommenter when psycopg connection pooling is enabled.
+  ([#3309](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3309))
 
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
