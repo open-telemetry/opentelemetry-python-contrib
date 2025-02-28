@@ -4,16 +4,16 @@
 
 Here are some TODO items required to achieve stability for this package:
 
-  1. Add more span-level attributes for request configuration
-  2. Add more span-level attributes for response information
-  3. Verify and correct formatting of events:
-     - Including the 'role' field for message events
-     - Including tool invocation information
-  4. Emit events for safety ratings when they block responses
-  5. Additional cleanup/improvement tasks such as:
-     - Adoption of 'wrapt' instead of 'functools.wraps'
-     - Bolstering test coverage
-  6. Migrate tests to use VCR.py
+ - Add more span-level attributes for request configuration
+ - Add more span-level attributes for response information
+ - Verify and correct formatting of events:
+   - Including the 'role' field for message events
+   - Including tool invocation information
+ - Emit events for safety ratings when they block responses
+ - Additional cleanup/improvement tasks such as:
+   - Adoption of 'wrapt' instead of 'functools.wraps'
+   - Bolstering test coverage
+ - Migrate tests to use VCR.py
 
 ## Future
 
