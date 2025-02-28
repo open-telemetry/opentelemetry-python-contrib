@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import subprocess
 from subprocess import CalledProcessError
@@ -24,8 +26,10 @@ instrumentations_path = os.path.join(root_path, "instrumentation")
 genai_instrumentations_path = os.path.join(root_path, "instrumentation-genai")
 
 
-def get_instrumentation_packages(unversioned_packages=None):
-    unversioned_packages = unversioned_packages or []
+def get_instrumentation_packages(
+    independent_packages: dict[str, str] | None = None,
+):
+    independent_packages = independent_packages or {}
     pkg_paths = []
     for pkg in os.listdir(instrumentations_path):
         pkg_path = os.path.join(instrumentations_path, pkg)
@@ -63,8 +67,11 @@ def get_instrumentation_packages(unversioned_packages=None):
                 "instruments"
             ],
         }
-        if instrumentation["name"] in unversioned_packages:
-            instrumentation["requirement"] = instrumentation["name"]
+        if instrumentation["name"] in independent_packages:
+            specifier = independent_packages[instrumentation["name"]]
+            instrumentation["requirement"] = (
+                f"{instrumentation['name']}{specifier}"
+            )
         else:
             instrumentation["requirement"] = "==".join(
                 (
