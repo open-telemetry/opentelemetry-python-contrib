@@ -53,21 +53,25 @@ gen_path = os.path.join(
     "bootstrap_gen.py",
 )
 
-# AWS Lambda instrumentation is excluded from the default list because it often
-# requires specific configurations and dependencies that may not be set up
-# in all environments. Instead, users who need AWS Lambda support can opt-in
-# by manually adding it to their environment.
-# See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
 packages_to_exclude = [
+    # AWS Lambda instrumentation is excluded from the default list because it often
+    # requires specific configurations and dependencies that may not be set up
+    # in all environments. Instead, users who need AWS Lambda support can opt-in
+    # by manually adding it to their environment.
+    # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2787
     "opentelemetry-instrumentation-aws-lambda",
-    "opentelemetry-instrumentation-vertexai",  # not released yet
+    # Google GenAI instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-google-genai",
 ]
 
-# We should not put any version limit for instrumentations that are released independently
-unversioned_packages = [
-    "opentelemetry-instrumentation-openai-v2",
-    "opentelemetry-instrumentation-vertexai",
-]
+# Static version specifiers for instrumentations that are released independently
+independent_packages = {
+    "opentelemetry-instrumentation-openai-v2": "",
+    "opentelemetry-instrumentation-vertexai": ">=2.0b0",
+    "opentelemetry-instrumentation-google-genai": "",
+}
 
 
 def main():
@@ -75,7 +79,7 @@ def main():
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages(
-        unversioned_packages=unversioned_packages
+        independent_packages=independent_packages
     ):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
