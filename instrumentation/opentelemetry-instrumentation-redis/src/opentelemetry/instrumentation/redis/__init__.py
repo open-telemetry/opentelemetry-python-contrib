@@ -177,7 +177,6 @@ if TYPE_CHECKING:
 
 _DEFAULT_SERVICE = "redis"
 _logger = logging.getLogger(__name__)
-assert hasattr(redis, "VERSION")
 
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
