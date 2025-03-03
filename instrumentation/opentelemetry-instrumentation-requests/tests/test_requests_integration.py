@@ -834,9 +834,6 @@ class TestRequestsIntergrationMetric(TestBase):
                         self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_non_recording_span(self):
-        # tracer_provider = trace.NoOpTracerProvider()
-        # trace.set_tracer_provider(tracer_provider=tracer_provider)
-
         expected_attributes = {
             SpanAttributes.HTTP_STATUS_CODE: 200,
             SpanAttributes.HTTP_HOST: "examplehost",
