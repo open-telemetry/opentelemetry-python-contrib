@@ -832,3 +832,42 @@ class TestRequestsIntergrationMetric(TestBase):
                                 dict(data_point.attributes),
                             )
                         self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_non_recording_span(self):
+        # tracer_provider = trace.NoOpTracerProvider()
+        # trace.set_tracer_provider(tracer_provider=tracer_provider)
+
+        expected_attributes = {
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "examplehost",
+            SpanAttributes.NET_PEER_PORT: 8000,
+            SpanAttributes.NET_PEER_NAME: "examplehost",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+            RequestsInstrumentor().uninstrument()
+            RequestsInstrumentor().instrument(
+                tracer_provider=trace.NoOpTracerProvider()
+            )
+            mock_span.is_recording.return_value = False
+            result = self.perform_request(self.URL)
+            self.assertEqual(result.text, "Hello!")
+
+            # self.assert_span(None, 0)
+            self.assertFalse(mock_span.is_recording())
+            self.assertTrue(mock_span.is_recording.called)
+            self.assertFalse(mock_span.set_attribute.called)
+            self.assertFalse(mock_span.set_status.called)
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            # pylint: disable=too-many-nested-blocks
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metrics in resource_metric.scope_metrics:
+                    for metric in scope_metrics.metrics:
+                        for point in list(metric.data.data_points):
+                            self.assertDictEqual(
+                                expected_attributes, dict(point.attributes)
+                            )
+                            self.assertEqual(point.count, 1)
