@@ -853,7 +853,6 @@ class TestRequestsIntergrationMetric(TestBase):
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
 
-            # self.assert_span(None, 0)
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
