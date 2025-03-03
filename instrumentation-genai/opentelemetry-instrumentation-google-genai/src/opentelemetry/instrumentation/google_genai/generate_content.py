@@ -668,11 +668,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
                 finally:
                     helper.finalize_processing()
 
-        class _GeneratorProvider:
-            def __aiter__(self):
-                return _response_async_generator_wrapper()
-
-        return _GeneratorProvider()
+        return _response_async_generator_wrapper()
 
     return instrumented_generate_content_stream
 
