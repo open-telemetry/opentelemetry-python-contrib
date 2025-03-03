@@ -57,12 +57,15 @@ for example:
 
     def request_hook(span, event):
         # request hook logic
+        pass
 
     def response_hook(span, event):
         # response hook logic
+        pass
 
     def failed_hook(span, event):
         # failed hook logic
+        pass
 
     # Instrument pymongo with hooks
     PymongoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook, failed_hook=failed_hook)
