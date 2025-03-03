@@ -1,0 +1,8 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+requests~=2.32
+httpx~=0.28
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-asgi
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-starlette[instruments]
