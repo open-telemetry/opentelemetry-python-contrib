@@ -43,7 +43,9 @@ class TestKafka(TestCase):
         )
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
-    def test_instrumentation_dependencies_kafka_python_installed(self, mock_distribution) -> None:
+    def test_instrumentation_dependencies_kafka_python_installed(
+        self, mock_distribution
+    ) -> None:
         instrumentation = KafkaInstrumentor()
 
         def _distribution(name):
@@ -55,14 +57,19 @@ class TestKafka(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 2)
-        self.assertEqual(mock_distribution.mock_calls, [
-            call("kafka-python-ng"),
-            call("kafka-python"),
-        ])
+        self.assertEqual(
+            mock_distribution.mock_calls,
+            [
+                call("kafka-python-ng"),
+                call("kafka-python"),
+            ],
+        )
         self.assertEqual(package_to_instrument, (_instruments_kafka_python,))
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
-    def test_instrumentation_dependencies_kafka_python_ng_installed(self, mock_distribution) -> None:
+    def test_instrumentation_dependencies_kafka_python_ng_installed(
+        self, mock_distribution
+    ) -> None:
         instrumentation = KafkaInstrumentor()
 
         def _distribution(name):
@@ -74,13 +81,17 @@ class TestKafka(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 1)
-        self.assertEqual(mock_distribution.mock_calls, [
-            call("kafka-python-ng")
-        ])
-        self.assertEqual(package_to_instrument, (_instruments_kafka_python_ng,))
+        self.assertEqual(
+            mock_distribution.mock_calls, [call("kafka-python-ng")]
+        )
+        self.assertEqual(
+            package_to_instrument, (_instruments_kafka_python_ng,)
+        )
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
-    def test_instrumentation_dependencies_both_installed(self, mock_distribution) -> None:
+    def test_instrumentation_dependencies_both_installed(
+        self, mock_distribution
+    ) -> None:
         instrumentation = KafkaInstrumentor()
 
         def _distribution(name):
@@ -93,13 +104,17 @@ class TestKafka(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 1)
-        self.assertEqual(mock_distribution.mock_calls, [
-            call("kafka-python-ng")
-        ])
-        self.assertEqual(package_to_instrument, (_instruments_kafka_python_ng,))
+        self.assertEqual(
+            mock_distribution.mock_calls, [call("kafka-python-ng")]
+        )
+        self.assertEqual(
+            package_to_instrument, (_instruments_kafka_python_ng,)
+        )
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
-    def test_instrumentation_dependencies_none_installed(self, mock_distribution) -> None:
+    def test_instrumentation_dependencies_none_installed(
+        self, mock_distribution
+    ) -> None:
         instrumentation = KafkaInstrumentor()
 
         def _distribution(name):
@@ -120,8 +135,11 @@ class TestKafka(TestCase):
         assert package_to_instrument == _instruments
 
         self.assertEqual(mock_distribution.call_count, 2)
-        self.assertEqual(mock_distribution.mock_calls, [
-            call("kafka-python-ng"),
-            call("kafka-python"),
-        ])
+        self.assertEqual(
+            mock_distribution.mock_calls,
+            [
+                call("kafka-python-ng"),
+                call("kafka-python"),
+            ],
+        )
         self.assertEqual(package_to_instrument, _instruments)
