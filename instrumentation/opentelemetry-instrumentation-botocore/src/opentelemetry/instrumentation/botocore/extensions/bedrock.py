@@ -39,10 +39,13 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotoClientErrorT,
     _BotocoreInstrumentorContext,
 )
+from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_CLIENT_OPERATION_DURATION,
+    GEN_AI_CLIENT_TOKEN_USAGE,
     GEN_AI_OPERATION_NAME,
     GEN_AI_REQUEST_MAX_TOKENS,
     GEN_AI_REQUEST_MODEL,
@@ -60,6 +63,40 @@ from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 _logger = logging.getLogger(__name__)
+
+_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS = [
+    0.01,
+    0.02,
+    0.04,
+    0.08,
+    0.16,
+    0.32,
+    0.64,
+    1.28,
+    2.56,
+    5.12,
+    10.24,
+    20.48,
+    40.96,
+    81.92,
+]
+
+_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
+    1,
+    4,
+    16,
+    64,
+    256,
+    1024,
+    4096,
+    16384,
+    65536,
+    262144,
+    1048576,
+    4194304,
+    16777216,
+    67108864,
+]
 
 _MODEL_ID_KEY: str = "modelId"
 
@@ -86,6 +123,20 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         return (
             self._call_context.operation
             not in self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
+        )
+
+    def setup_metrics(self, meter: Meter, metrics: dict[str, Instrument]):
+        metrics[GEN_AI_CLIENT_OPERATION_DURATION] = meter.create_histogram(
+            name=GEN_AI_CLIENT_OPERATION_DURATION,
+            description="GenAI operation duration",
+            unit="s",
+            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
+        )
+        metrics[GEN_AI_CLIENT_TOKEN_USAGE] = meter.create_histogram(
+            name=GEN_AI_CLIENT_TOKEN_USAGE,
+            description="Measures number of input and output tokens used",
+            unit="{token}",
+            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
         )
 
     def extract_attributes(self, attributes: _AttributeMapT):
