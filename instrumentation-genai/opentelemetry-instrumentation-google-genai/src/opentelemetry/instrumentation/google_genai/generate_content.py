@@ -650,7 +650,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
                 config=config,
                 **kwargs,
             )
-        except Exception as error:
+        except Exception as error:  # pylint: disable=broad-exception-caught
             helper.process_error(error)
             helper.finalize_processing()
             with trace.use_span(span, end_on_exit=True):
