@@ -13,7 +13,7 @@
 # limitations under the License.
 from importlib.metadata import PackageNotFoundError
 from unittest import TestCase
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 from kafka import KafkaConsumer, KafkaProducer
 from wrapt import BoundFunctionWrapper
@@ -24,6 +24,7 @@ from opentelemetry.instrumentation.kafka.package import (
     _instruments_kafka_python,
     _instruments_kafka_python_ng,
 )
+
 
 class TestKafka(TestCase):
     def test_instrument_api(self) -> None:
@@ -53,12 +54,12 @@ class TestKafka(TestCase):
         mock_distribution.side_effect = _distribution
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
-        assert mock_distribution.call_count == 2
-        assert mock_distribution.mock_calls == [
+        self.assertEqual(mock_distribution.call_count, 2)
+        self.assertEqual(mock_distribution.mock_calls, [
             call("kafka-python-ng"),
             call("kafka-python"),
-        ]
-        assert package_to_instrument == (_instruments_kafka_python,)
+        ])
+        self.assertEqual(package_to_instrument, (_instruments_kafka_python,))
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
     def test_instrumentation_dependencies_kafka_python_ng_installed(self, mock_distribution) -> None:
@@ -72,11 +73,11 @@ class TestKafka(TestCase):
         mock_distribution.side_effect = _distribution
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
-        assert mock_distribution.call_count == 1
-        assert mock_distribution.mock_calls == [
+        self.assertEqual(mock_distribution.call_count, 1)
+        self.assertEqual(mock_distribution.mock_calls, [
             call("kafka-python-ng")
-        ]
-        assert package_to_instrument == (_instruments_kafka_python_ng,)
+        ])
+        self.assertEqual(package_to_instrument, (_instruments_kafka_python_ng,))
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
     def test_instrumentation_dependencies_both_installed(self, mock_distribution) -> None:
@@ -91,11 +92,11 @@ class TestKafka(TestCase):
         mock_distribution.side_effect = _distribution
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
-        assert mock_distribution.call_count == 1
-        assert mock_distribution.mock_calls == [
+        self.assertEqual(mock_distribution.call_count, 1)
+        self.assertEqual(mock_distribution.mock_calls, [
             call("kafka-python-ng")
-        ]
-        assert package_to_instrument == (_instruments_kafka_python_ng,)
+        ])
+        self.assertEqual(package_to_instrument, (_instruments_kafka_python_ng,))
 
     @patch("opentelemetry.instrumentation.kafka.distribution")
     def test_instrumentation_dependencies_none_installed(self, mock_distribution) -> None:
@@ -117,3 +118,10 @@ class TestKafka(TestCase):
             call("kafka-python"),
         ]
         assert package_to_instrument == _instruments
+
+        self.assertEqual(mock_distribution.call_count, 2)
+        self.assertEqual(mock_distribution.mock_calls, [
+            call("kafka-python-ng"),
+            call("kafka-python"),
+        ])
+        self.assertEqual(package_to_instrument, _instruments)
