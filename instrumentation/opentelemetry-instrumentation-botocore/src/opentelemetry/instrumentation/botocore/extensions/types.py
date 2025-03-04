@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from opentelemetry._events import EventLogger
 from opentelemetry.metrics import Instrument, Meter
@@ -24,11 +26,11 @@ from opentelemetry.util.types import AttributeValue
 _logger = logging.getLogger(__name__)
 
 _BotoClientT = "botocore.client.BaseClient"
-_BotoResultT = Dict[str, Any]
+_BotoResultT = dict[str, Any]
 _BotoClientErrorT = "botocore.exceptions.ClientError"
 
-_OperationParamsT = Dict[str, Any]
-_AttributeMapT = Dict[str, AttributeValue]
+_OperationParamsT = dict[str, Any]
+_AttributeMapT = dict[str, AttributeValue]
 
 
 class _AwsSdkCallContext:
@@ -48,7 +50,7 @@ class _AwsSdkCallContext:
         span_kind: the kind used to create the span.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(self, client: _BotoClientT, args: Tuple[str, dict[str, Any]]):
         operation = args[0]
         try:
             params = args[1]
@@ -95,7 +97,7 @@ class _BotocoreInstrumentorContext:
     def __init__(
         self,
         event_logger: EventLogger,
-        metrics: Optional[Dict[str, Instrument]] = None,
+        metrics: dict[str, Instrument] | None = None,
     ):
         self.event_logger = event_logger
         self.metrics = metrics or {}
