@@ -179,6 +179,16 @@ class OTelMocker:
                 return event
         return None
 
+    def get_events_named(self, event_name):
+        result = []
+        for event in self.get_finished_logs():
+            event_name_attr = event.attributes.get("event.name")
+            if event_name_attr is None:
+                continue
+            if event_name_attr == event_name:
+                result.append(event)
+        return result
+
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
