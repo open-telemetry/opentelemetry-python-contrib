@@ -149,7 +149,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
-            return
+            return attributes
 
         attributes[GEN_AI_REQUEST_MODEL] = model_id
 
@@ -335,9 +335,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.update_name(f"{operation_name} {request_model}")
 
         # this is used to calculate the operation duration metric, duration may be skewed by request_hook
+        # pylint: disable=attribute-defined-outside-init
         self._operation_start = default_timer()
 
-    # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,too-many-locals
     def _converse_on_success(
         self,
         span: Span,
@@ -546,7 +547,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 )
                 return
 
-    # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,too-many-locals
     def _handle_amazon_titan_response(
         self,
         span: Span,
@@ -607,7 +608,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                             output_tokens, output_attributes
                         )
 
-    # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,too-many-locals
     def _handle_amazon_nova_response(
         self,
         span: Span,

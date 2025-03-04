@@ -56,6 +56,7 @@ def test_converse_with_content(
     bedrock_runtime_client,
     instrument_with_content,
 ):
+    # pylint:disable=too-many-locals
     messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
 
     llm_model_value = "amazon.titan-text-lite-v1"
