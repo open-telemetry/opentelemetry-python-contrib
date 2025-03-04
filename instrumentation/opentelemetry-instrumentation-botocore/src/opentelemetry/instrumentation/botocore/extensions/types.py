@@ -95,7 +95,7 @@ class _BotocoreInstrumentorContext:
     def __init__(
         self,
         event_logger: EventLogger,
-        metrics: Optional[dict[str, Instrument]] = None,
+        metrics: Optional[Dict[str, Instrument]] = None,
     ):
         self.event_logger = event_logger
         self.metrics = metrics or {}
