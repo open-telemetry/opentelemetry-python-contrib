@@ -44,8 +44,6 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
-    GEN_AI_CLIENT_OPERATION_DURATION,
-    GEN_AI_CLIENT_TOKEN_USAGE,
     GEN_AI_OPERATION_NAME,
     GEN_AI_REQUEST_MAX_TOKENS,
     GEN_AI_REQUEST_MODEL,
@@ -54,10 +52,16 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_REQUEST_TOP_P,
     GEN_AI_RESPONSE_FINISH_REASONS,
     GEN_AI_SYSTEM,
+    GEN_AI_TOKEN_TYPE,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GenAiOperationNameValues,
     GenAiSystemValues,
+    GenAiTokenTypeValues,
+)
+from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
+    GEN_AI_CLIENT_OPERATION_DURATION,
+    GEN_AI_CLIENT_TOKEN_USAGE,
 )
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
@@ -138,6 +142,26 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             unit="{token}",
             explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
         )
+
+    def _extract_metrics_attributes(self) -> _AttributeMapT:
+        attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+
+        model_id = self._call_context.params.get(_MODEL_ID_KEY)
+        if not model_id:
+            return
+
+        attributes[GEN_AI_REQUEST_MODEL] = model_id
+
+        # titan in invoke model is a text completion one
+        if "body" in self._call_context.params and "amazon.titan" in model_id:
+            attributes[GEN_AI_OPERATION_NAME] = (
+                GenAiOperationNameValues.TEXT_COMPLETION.value
+            )
+        else:
+            attributes[GEN_AI_OPERATION_NAME] = (
+                GenAiOperationNameValues.CHAT.value
+            )
+        return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
@@ -351,6 +375,28 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             )
         )
 
+        metrics = instrumentor_context.metrics
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := result.get("usage"):
+                metrics_attributes = self._extract_metrics_attributes()
+                if input_tokens := usage.get("inputTokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("outputTokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
+
     def _invoke_model_on_success(
         self,
         span: Span,
@@ -496,6 +542,28 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             )
             event_logger.emit(choice.to_choice_event())
 
+            metrics = instrumentor_context.metrics
+            if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+                metrics_attributes = self._extract_metrics_attributes()
+                if input_tokens := response_body.get("inputTextTokenCount"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if results := response_body.get("results"):
+                    if output_tokens := results[0].get("tokenCount"):
+                        output_attributes = {
+                            **metrics_attributes,
+                            GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                        }
+                        token_usage_histogram.record(
+                            output_tokens, output_attributes
+                        )
+
     # pylint: disable=no-self-use
     def _handle_amazon_nova_response(
         self,
@@ -522,6 +590,28 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_converse(response_body, capture_content)
         event_logger.emit(choice.to_choice_event())
+
+        metrics = instrumentor_context.metrics
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := response_body.get("usage"):
+                metrics_attributes = self._extract_metrics_attributes()
+                if input_tokens := usage.get("inputTokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("outputTokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
 
     # pylint: disable=no-self-use
     def _handle_anthropic_claude_response(
@@ -550,6 +640,28 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             response_body, capture_content
         )
         event_logger.emit(choice.to_choice_event())
+
+        metrics = instrumentor_context.metrics
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := response_body.get("usage"):
+                metrics_attributes = self._extract_metrics_attributes()
+                if input_tokens := usage.get("input_tokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("output_tokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
 
     def on_error(
         self,
