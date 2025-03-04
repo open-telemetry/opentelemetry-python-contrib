@@ -93,10 +93,12 @@ class _AwsSdkCallContext:
 
 class _BotocoreInstrumentorContext:
     def __init__(
-        self, event_logger: EventLogger, metrics: dict[str, Instrument]
+        self,
+        event_logger: EventLogger,
+        metrics: Optional[dict[str, Instrument]] = None,
     ):
         self.event_logger = event_logger
-        self.metrics = metrics
+        self.metrics = metrics or {}
 
 
 class _AwsSdkExtension:
