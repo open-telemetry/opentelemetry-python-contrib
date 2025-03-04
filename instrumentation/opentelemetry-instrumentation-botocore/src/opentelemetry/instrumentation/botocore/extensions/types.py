@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from opentelemetry._events import EventLogger
 from opentelemetry.metrics import Instrument, Meter
@@ -26,11 +26,11 @@ from opentelemetry.util.types import AttributeValue
 _logger = logging.getLogger(__name__)
 
 _BotoClientT = "botocore.client.BaseClient"
-_BotoResultT = dict[str, Any]
+_BotoResultT = Dict[str, Any]
 _BotoClientErrorT = "botocore.exceptions.ClientError"
 
-_OperationParamsT = dict[str, Any]
-_AttributeMapT = dict[str, AttributeValue]
+_OperationParamsT = Dict[str, Any]
+_AttributeMapT = Dict[str, AttributeValue]
 
 
 class _AwsSdkCallContext:
@@ -50,7 +50,7 @@ class _AwsSdkCallContext:
         span_kind: the kind used to create the span.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, dict[str, Any]]):
+    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
         operation = args[0]
         try:
             params = args[1]
@@ -97,7 +97,7 @@ class _BotocoreInstrumentorContext:
     def __init__(
         self,
         event_logger: EventLogger,
-        metrics: dict[str, Instrument] | None = None,
+        metrics: Dict[str, Instrument] | None = None,
     ):
         self.event_logger = event_logger
         self.metrics = metrics or {}
@@ -138,7 +138,7 @@ class _AwsSdkExtension:
         """
         return True
 
-    def setup_metrics(self, meter: Meter, metrics: dict[str, Instrument]):
+    def setup_metrics(self, meter: Meter, metrics: Dict[str, Instrument]):
         """Callback which gets invoked to setup metrics.
 
         Extensions might override this function to add to the metrics dictionary all the metrics
