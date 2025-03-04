@@ -34,6 +34,7 @@ from .bedrock_utils import (
     assert_completion_attributes_from_streaming_body,
     assert_converse_completion_attributes,
     assert_message_in_logs,
+    assert_metrics,
     assert_stream_completion_attributes,
 )
 
@@ -51,6 +52,7 @@ def filter_message_keys(message, keys):
 def test_converse_with_content(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -95,6 +97,13 @@ def test_converse_with_content(
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
+    input_tokens = response["usage"]["inputTokens"]
+    output_tokens = response["usage"]["outputTokens"]
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
@@ -103,6 +112,7 @@ def test_converse_with_content(
 def test_converse_with_content_different_events(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -149,6 +159,13 @@ def test_converse_with_content_different_events(
         },
     }
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
+
+    input_tokens = response["usage"]["inputTokens"]
+    output_tokens = response["usage"]["outputTokens"]
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
 
 
 def converse_tool_call(
@@ -452,6 +469,7 @@ def test_converse_tool_call_no_content(
 def test_converse_with_invalid_model(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -479,6 +497,9 @@ def test_converse_with_invalid_model(
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "chat", llm_model_value)
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
@@ -487,6 +508,7 @@ def test_converse_with_invalid_model(
 def test_converse_stream_with_content(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -553,6 +575,11 @@ def test_converse_stream_with_content(
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
@@ -561,6 +588,7 @@ def test_converse_stream_with_content(
 def test_converse_stream_with_content_different_events(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -613,6 +641,9 @@ def test_converse_stream_with_content_different_events(
         },
     }
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "chat", llm_model_value, mock.ANY, mock.ANY)
 
 
 def _rebuild_stream_message(response):
@@ -986,6 +1017,7 @@ def test_converse_stream_no_content_tool_call(
 def test_converse_stream_handles_event_stream_error(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -1038,6 +1070,9 @@ def test_converse_stream_handles_event_stream_error(
     assert len(logs) == 1
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "chat", llm_model_value)
 
 
 @pytest.mark.skipif(

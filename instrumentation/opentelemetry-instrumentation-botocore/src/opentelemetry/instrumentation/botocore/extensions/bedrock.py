@@ -446,11 +446,30 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             if original_body is not None:
                 original_body.close()
 
-    def _on_stream_error_callback(self, span: Span, exception):
+    def _on_stream_error_callback(
+        self,
+        span: Span,
+        exception,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         span.set_status(Status(StatusCode.ERROR, str(exception)))
         if span.is_recording():
             span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
         span.end()
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = {
+            **self._extract_metrics_attributes(),
+            ERROR_TYPE: type(exception).__qualname__,
+        }
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
 
     def on_success(
         self,
@@ -475,7 +494,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     span.end()
 
                 def stream_error_callback(exception):
-                    self._on_stream_error_callback(span, exception)
+                    self._on_stream_error_callback(
+                        span, exception, instrumentor_context
+                    )
 
                 result["stream"] = ConverseStreamWrapper(
                     result["stream"],
@@ -513,7 +534,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     span.end()
 
                 def invoke_model_stream_error_callback(exception):
-                    self._on_stream_error_callback(span, exception)
+                    self._on_stream_error_callback(
+                        span, exception, instrumentor_context
+                    )
 
                 result["body"] = InvokeModelWithResponseStreamWrapper(
                     result["body"],
@@ -716,3 +739,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         if not self.should_end_span_on_exit():
             span.end()
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = {
+            **self._extract_metrics_attributes(),
+            ERROR_TYPE: type(exception).__qualname__,
+        }
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
