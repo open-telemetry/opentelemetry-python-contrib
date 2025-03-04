@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+from timeit import default_timer
 from typing import Any
 
 from botocore.eventstream import EventStream
@@ -326,14 +327,15 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             for event in message_to_event(message, capture_content):
                 event_logger.emit(event)
 
-        if not span.is_recording():
-            return
+        if span.is_recording():
+            operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
+            request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
+            # avoid setting to an empty string if are not available
+            if operation_name and request_model:
+                span.update_name(f"{operation_name} {request_model}")
 
-        operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
-        request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
-        # avoid setting to an empty string if are not available
-        if operation_name and request_model:
-            span.update_name(f"{operation_name} {request_model}")
+        # this is used to calculate the operation duration metric, duration may be skewed by request_hook
+        self._operation_start = default_timer()
 
     # pylint: disable=no-self-use
     def _converse_on_success(
@@ -376,9 +378,18 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         )
 
         metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
         if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
             if usage := result.get("usage"):
-                metrics_attributes = self._extract_metrics_attributes()
                 if input_tokens := usage.get("inputTokens"):
                     input_attributes = {
                         **metrics_attributes,
@@ -543,8 +554,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             event_logger.emit(choice.to_choice_event())
 
             metrics = instrumentor_context.metrics
+            metrics_attributes = self._extract_metrics_attributes()
+            if operation_duration_histogram := metrics.get(
+                GEN_AI_CLIENT_OPERATION_DURATION
+            ):
+                duration = max((default_timer() - self._operation_start), 0)
+                operation_duration_histogram.record(
+                    duration,
+                    attributes=metrics_attributes,
+                )
+
             if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
-                metrics_attributes = self._extract_metrics_attributes()
                 if input_tokens := response_body.get("inputTextTokenCount"):
                     input_attributes = {
                         **metrics_attributes,
@@ -592,9 +612,18 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         event_logger.emit(choice.to_choice_event())
 
         metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
         if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
             if usage := response_body.get("usage"):
-                metrics_attributes = self._extract_metrics_attributes()
                 if input_tokens := usage.get("inputTokens"):
                     input_attributes = {
                         **metrics_attributes,
@@ -642,9 +671,18 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         event_logger.emit(choice.to_choice_event())
 
         metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
         if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
             if usage := response_body.get("usage"):
-                metrics_attributes = self._extract_metrics_attributes()
                 if input_tokens := usage.get("input_tokens"):
                     input_attributes = {
                         **metrics_attributes,
