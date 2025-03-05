@@ -92,22 +92,22 @@ for the following AWS services:
 Bedrock Runtime
 ***************
 
-This extensions implements the GenAI semantic conventions for the following API calls :
+This extension implements the GenAI semantic conventions for the following API calls:
 
 - Converse
-- ConverStream
+- ConverseStream
 - InvokeModel
-- InvokeModelWithStreamResponse
+- InvokeModelWithResponseStream
 
 For the Converse and ConverseStream APIs tracing, events and metrics are implemented.
 
-For the InvokeModel and InvokeModelWithStreamResponse APIs tracing, events and metrics implemented only for a subset of
+For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
 the available models, namely:
 - Amazon Titan models
 - Amazon Nova models
 - Anthropic Claude
 
-There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithStreamResponse APIs.
+There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
 """
 
 import logging
