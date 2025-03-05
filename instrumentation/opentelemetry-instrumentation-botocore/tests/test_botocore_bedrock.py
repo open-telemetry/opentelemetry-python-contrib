@@ -499,7 +499,9 @@ def test_converse_with_invalid_model(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(metrics, "chat", llm_model_value)
+    assert_metrics(
+        metrics, "chat", llm_model_value, error_type="ValidationException"
+    )
 
 
 @pytest.mark.skipif(
@@ -1073,7 +1075,9 @@ def test_converse_stream_handles_event_stream_error(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
     metrics = metric_reader.get_metrics_data().resource_metrics
-    assert_metrics(metrics, "chat", llm_model_value)
+    assert_metrics(
+        metrics, "chat", llm_model_value, error_type="EventStreamError"
+    )
 
 
 @pytest.mark.skipif(

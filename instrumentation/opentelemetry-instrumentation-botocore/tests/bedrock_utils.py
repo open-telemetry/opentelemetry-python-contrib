@@ -31,6 +31,9 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
+)
 from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
@@ -270,7 +273,9 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert_log_parent(log, parent_span)
 
 
-def assert_all_metric_attributes(data_point, operation_name, model):
+def assert_all_metric_attributes(
+    data_point, operation_name: str, model: str, error_type: str | None = None
+):
     assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
     assert (
         data_point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
@@ -284,6 +289,12 @@ def assert_all_metric_attributes(data_point, operation_name, model):
     assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
     assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
 
+    if error_type is not None:
+        assert ERROR_TYPE in data_point.attributes
+        assert data_point.attributes[ERROR_TYPE] == error_type
+    else:
+        assert ERROR_TYPE not in data_point.attributes
+
 
 def assert_metrics(
     resource_metrics: ResourceMetrics,
@@ -291,6 +302,7 @@ def assert_metrics(
     model: str,
     input_tokens: float | None = None,
     output_tokens: float | None = None,
+    error_type: str | None = None,
 ):
     assert len(resource_metrics) == 1
 
@@ -309,7 +321,9 @@ def assert_metrics(
 
     duration_point = duration_metric.data.data_points[0]
     assert duration_point.sum > 0
-    assert_all_metric_attributes(duration_point, operation_name, model)
+    assert_all_metric_attributes(
+        duration_point, operation_name, model, error_type
+    )
     assert duration_point.explicit_bounds == tuple(
         _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS
     )
