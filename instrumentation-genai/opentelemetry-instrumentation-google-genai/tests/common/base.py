@@ -17,13 +17,9 @@ import unittest
 
 import google.genai
 
+from .auth import FakeCredentials
 from .instrumentation_context import InstrumentationContext
 from .otel_mocker import OTelMocker
-
-
-class _FakeCredentials(google.auth.credentials.AnonymousCredentials):
-    def refresh(self, request):
-        pass
 
 
 class TestCase(unittest.TestCase):
@@ -36,7 +32,7 @@ class TestCase(unittest.TestCase):
         self._location = "test-location"
         self._client = None
         self._uses_vertex = False
-        self._credentials = _FakeCredentials()
+        self._credentials = FakeCredentials()
 
     def _lazy_init(self):
         self._instrumentation_context = InstrumentationContext()
