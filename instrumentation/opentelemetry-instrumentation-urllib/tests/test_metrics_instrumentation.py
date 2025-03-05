@@ -412,7 +412,6 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 client_request_size,
                 client_response_size,
             ) = metrics[:3]
-            print(client_duration, client_request_size, client_response_size)
             self.assertEqual(
                 (client_duration.data.data_points[0].bucket_counts[1]),
                 1,
