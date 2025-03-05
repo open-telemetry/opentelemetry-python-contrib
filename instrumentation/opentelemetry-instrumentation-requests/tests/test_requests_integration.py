@@ -852,18 +852,14 @@ class TestRequestsIntergrationMetric(TestBase):
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
-
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
-            metrics_list = self.memory_metrics_reader.get_metrics_data()
-            # pylint: disable=too-many-nested-blocks
-            for resource_metric in metrics_list.resource_metrics:
-                for scope_metrics in resource_metric.scope_metrics:
-                    for metric in scope_metrics.metrics:
-                        for point in list(metric.data.data_points):
-                            self.assertDictEqual(
-                                expected_attributes, dict(point.attributes)
-                            )
-                            self.assertEqual(point.count, 1)
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertDictEqual(
+                expected_attributes, dict(duration_data_point.attributes)
+            )
+            self.assertEqual(duration_data_point.count, 1)
