@@ -150,7 +150,7 @@ class ThreadingInstrumentor(BaseInstrumentor):
             token = context.attach(instance._otel_context)
             return call_wrapped(*args, **kwargs)
         finally:
-            context.detach(token)
+            context.detach(token)  # type: ignore[reportArgumentType] remove with https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3321
 
     @staticmethod
     def __wrap_thread_pool_submit(
@@ -169,7 +169,7 @@ class ThreadingInstrumentor(BaseInstrumentor):
                 token = context.attach(otel_context)
                 return original_func(*func_args, **func_kwargs)
             finally:
-                context.detach(token)
+                context.detach(token)  # type: ignore[reportArgumentType] remove with https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3321
 
         # replace the original function with the wrapped function
         new_args: tuple[Callable[..., Any], ...] = (wrapped_func,) + args[1:]

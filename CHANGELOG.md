@@ -25,10 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3275))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI tool events
   ([#3302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3302))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI metrics
+  ([#3326](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3326))
 - `opentelemetry-instrumentation` make it simpler to initialize auto-instrumentation programmatically
   ([#3273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3273))
 - Add `opentelemetry-instrumentation-vertexai>=2.0b0` to `opentelemetry-bootstrap`
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
+- Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
+  ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
 
 
 ### Fixed
