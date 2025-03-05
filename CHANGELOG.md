@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3273](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3273))
 - Add `opentelemetry-instrumentation-vertexai>=2.0b0` to `opentelemetry-bootstrap`
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
+- Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
+  ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
 
 
 ### Fixed
