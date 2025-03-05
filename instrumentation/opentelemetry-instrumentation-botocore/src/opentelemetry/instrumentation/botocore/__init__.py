@@ -169,7 +169,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         self._event_loggers = {}
         # meters are lazy initialized per-extension in _get_meter
         self._meters = {}
-        # metrics are lazy initial per-extension in _get_metrics
+        # metrics are lazy initialized per-extension in _get_metrics
         self._metrics: Dict[str, Dict[str, Instrument]] = {}
 
         self.request_hook = kwargs.get("request_hook")
@@ -240,7 +240,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         return self._event_loggers[instrumentation_name]
 
     def _get_meter(self, extension: _AwsSdkExtension):
-        """This is a multiplexer in order to have an event logger per extension"""
+        """This is a multiplexer in order to have a meter per extension"""
 
         instrumentation_name = self._get_instrumentation_name(extension)
         meter = self._meters.get(instrumentation_name)
@@ -260,7 +260,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
     def _get_metrics(
         self, extension: _AwsSdkExtension, meter: Meter
     ) -> Dict[str, Instrument]:
-        """This is a multiplexer for lazy initial metrics required by extensions"""
+        """This is a multiplexer for lazy initialization of metrics required by extensions"""
         instrumentation_name = self._get_instrumentation_name(extension)
         metrics = self._metrics.get(instrumentation_name)
         if metrics is not None:
