@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 from typing import Any, Dict, Optional, Tuple
 
 from opentelemetry._events import EventLogger
+from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
@@ -91,8 +94,13 @@ class _AwsSdkCallContext:
 
 
 class _BotocoreInstrumentorContext:
-    def __init__(self, event_logger: EventLogger):
+    def __init__(
+        self,
+        event_logger: EventLogger,
+        metrics: Dict[str, Instrument] | None = None,
+    ):
         self.event_logger = event_logger
+        self.metrics = metrics or {}
 
 
 class _AwsSdkExtension:
@@ -107,6 +115,11 @@ class _AwsSdkExtension:
     @staticmethod
     def event_logger_schema_version() -> str:
         """Returns the event logger OTel schema version the extension is following"""
+        return "1.30.0"
+
+    @staticmethod
+    def meter_schema_version() -> str:
+        """Returns the meter OTel schema version the extension is following"""
         return "1.30.0"
 
     def should_trace_service_call(self) -> bool:  # pylint:disable=no-self-use
@@ -124,6 +137,12 @@ class _AwsSdkExtension:
         of the span if they need to close it at a later time themselves.
         """
         return True
+
+    def setup_metrics(self, meter: Meter, metrics: Dict[str, Instrument]):
+        """Callback which gets invoked to setup metrics.
+
+        Extensions might override this function to add to the metrics dictionary all the metrics
+        they want to receive later in _BotocoreInstrumentorContext."""
 
     def extract_attributes(self, attributes: _AttributeMapT):
         """Callback which gets invoked before the span is created.
