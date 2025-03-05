@@ -19,7 +19,6 @@ import google.genai
 
 from .instrumentation_context import InstrumentationContext
 from .otel_mocker import OTelMocker
-from .requests_mocker import RequestsMocker
 
 
 class _FakeCredentials(google.auth.credentials.AnonymousCredentials):
@@ -31,8 +30,6 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         self._otel = OTelMocker()
         self._otel.install()
-        self._requests = RequestsMocker()
-        self._requests.install()
         self._instrumentation_context = None
         self._api_key = "test-api-key"
         self._project = "test-project"
@@ -52,15 +49,20 @@ class TestCase(unittest.TestCase):
         return self._client
 
     @property
-    def requests(self):
-        return self._requests
-
-    @property
     def otel(self):
         return self._otel
 
     def set_use_vertex(self, use_vertex):
         self._uses_vertex = use_vertex
+
+    def reset_client(self):
+        self._client = None
+
+    def reset_instrumentation(self):
+        if self._instrumentation_context is None:
+            return
+        self._instrumentation_context.uninstall()
+        self._instrumentation_context = None
 
     def _create_client(self):
         self._lazy_init()
@@ -77,5 +79,4 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         if self._instrumentation_context is not None:
             self._instrumentation_context.uninstall()
-        self._requests.uninstall()
         self._otel.uninstall()
