@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""High level end-to-end test of the generate content mocking.
+"""High level end-to-end test of the generate content instrumentation.
 
 The primary purpose of this test is to verify that the instrumentation
 package does not break the underlying GenAI SDK that it instruments.
