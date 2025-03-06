@@ -5,6 +5,7 @@ Deprecated==1.2.14
 exceptiongroup==1.2.0
 h11==0.12.0
 httpcore==0.13.7
+httpretty==1.1.4
 httpx==0.18.2
 idna==3.7
 iniconfig==2.0.0
