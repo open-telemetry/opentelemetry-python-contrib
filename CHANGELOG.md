@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `exclude urls` feature to HTTPX instrumentation
+  ([#3345](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3345))
 - `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
   ([#3279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3279))
 - `opentelemetry-instrumentation-system-metrics` Add `process` metrics and deprecated `process.runtime` prefixed ones
@@ -537,8 +539,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `exclude urls` feature to HTTPX instrumentation
-  ([#1900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1900))
 - `opentelemetry-resource-detector-azure` Add resource detectors for Azure App Service and VM
   ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
 - `opentelemetry-instrumentation-flask` Add support for Flask 3.0.0
