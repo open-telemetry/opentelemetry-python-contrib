@@ -23,6 +23,12 @@ verifying that instrumentation does not break the GenAI SDK) is a
 secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
+
+import subprocess
+import json
+import yaml
+import google.auth
+import google.auth.credentials
 import google.genai
 from google.genai import types as genai_types
 import os
@@ -45,22 +51,28 @@ def _should_redact_header(header_key):
         return True
     if header_key.startswith('sec-goog'):
         return True
+    if header_key in ['server', 'server-timing']:
+        return True
     return False
 
 
 def _redact_headers(headers):
+    to_redact = []
     for header_key in headers:
         if _should_redact_header(header_key.lower()):
-            del headers[header_key]
-
+            to_redact.append(header_key)
+    for header_key in to_redact:
+        headers[header_key] = "<REDACTED>"
 
 def _before_record_request(request):
-    _redact_headers(request.headers)
+    if request.headers:
+      _redact_headers(request.headers)
     return request
 
 
 def _before_record_response(response):
-    _redact_headers(response.headers)
+    if hasattr(response, "headers") and response.headers:
+      _redact_headers(response.headers)
     return response
 
 
@@ -89,11 +101,89 @@ def vcr_config():
             'key'
         ],
         'filter_headers': [
+            'x-goog-api-key',
             'authorization',
+            'server',
+            'Server'
+            'Server-Timing',
+            'Date',
         ],
         'before_record_request': _before_record_request,
         'before_record_response': _before_record_response,
+        'ignore_hosts': [
+            'oauth2.googleapis.com',
+            'iam.googleapis.com',
+        ],
     }
+
+
+class _LiteralBlockScalar(str):
+    """Formats the string as a literal block scalar, preserving whitespace and
+    without interpreting escape characters"""
+
+
+def _literal_block_scalar_presenter(dumper, data):
+    """Represents a scalar string as a literal block, via '|' syntax"""
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_yaml_pretty_formattinmg():
+    yaml.add_representer(_LiteralBlockScalar, _literal_block_scalar_presenter)
+
+
+def _process_string_value(string_value):
+    """Pretty-prints JSON or returns long strings as a LiteralBlockScalar"""
+    try:
+        json_data = json.loads(string_value)
+        return _LiteralBlockScalar(json.dumps(json_data, indent=2))
+    except (ValueError, TypeError):
+        if len(string_value) > 80:
+            return _LiteralBlockScalar(string_value)
+    return string_value
+
+
+def _convert_body_to_literal(data):
+    """Searches the data for body strings, attempting to pretty-print JSON"""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Handle response body case (e.g., response.body.string)
+            if key == "body" and isinstance(value, dict) and "string" in value:
+                value["string"] = _process_string_value(value["string"])
+
+            # Handle request body case (e.g., request.body)
+            elif key == "body" and isinstance(value, str):
+                data[key] = _process_string_value(value)
+
+            else:
+                _convert_body_to_literal(value)
+
+    elif isinstance(data, list):
+        for idx, choice in enumerate(data):
+            data[idx] = _convert_body_to_literal(choice)
+
+    return data
+
+
+class _PrettyPrintJSONBody:
+    """This makes request and response body recordings more readable."""
+
+    @staticmethod
+    def serialize(cassette_dict):
+        cassette_dict = _convert_body_to_literal(cassette_dict)
+        return yaml.dump(
+            cassette_dict, default_flow_style=False, allow_unicode=True
+        )
+
+    @staticmethod
+    def deserialize(cassette_string):
+        return yaml.load(cassette_string, Loader=yaml.Loader)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_vcr(vcr):
+    vcr.register_serializer("yaml", _PrettyPrintJSONBody)
+    return vcr
 
 
 @pytest.fixture
@@ -116,9 +206,10 @@ def otel_mocker():
     result.uninstall()
 
 
-@pytest.fixture(autouse=True, params=[True, False])
+@pytest.fixture(autouse=True, params=["logcontent", "excludecontent"])
 def setup_content_recording(request):
-    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = str(request.param)
+    enabled = request.param == "logcontent"
+    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = str(enabled)
 
 
 @pytest.fixture
@@ -131,10 +222,29 @@ def in_replay_mode(vcr_record_mode):
     return vcr_record_mode == RecordMode.NONE
 
 
+def _try_get_project_from_gcloud():
+    try:
+        gcloud_call_result = subprocess.run("gcloud config get project", shell=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        return None
+    gcloud_output = gcloud_call_result.stdout.decode()
+    return gcloud_output.strip()
+
+
 @pytest.fixture
 def gcloud_project(in_replay_mode):
     if in_replay_mode:
         return "test-project"
+    project_envs = ["GCLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT"]
+    for project_env in project_envs:
+        project_env_val = os.getenv(project_env)
+        if project_env_val:
+            return project_env_val
+    from_gcloud = _try_get_project_from_gcloud()
+    if from_gcloud:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = from_gcloud
+        os.environ["GCLOUD_PROJECT"] = from_gcloud
+        return from_gcloud
     _, from_creds = google.auth.default()
     return from_creds
     
@@ -151,7 +261,7 @@ def gcloud_credentials(in_replay_mode):
     if in_replay_mode:
         return FakeCredentials()
     creds, _ = google.auth.default()
-    return creds
+    return google.auth.credentials.with_scopes_if_required(creds, ["https://www.googleapis.com/auth/cloud-platform"])
 
 
 @pytest.fixture(autouse=True)
@@ -165,12 +275,13 @@ def gcloud_api_key(in_replay_mode):
 @pytest.fixture
 def nonvertex_client_factory(gcloud_api_key):
     def _factory():
+        print(f"Using API key: {gcloud_api_key}")
         return google.genai.Client(api_key=gcloud_api_key)
     return _factory
 
 
 @pytest.fixture
-def vertex_client_factory(in_replay_mode):
+def vertex_client_factory(in_replay_mode, gcloud_project, gcloud_location, gcloud_credentials):
     def _factory():
         return google.genai.Client(
             vertexai=True,
@@ -180,9 +291,14 @@ def vertex_client_factory(in_replay_mode):
     return _factory
 
 
-@pytest.fixture(params=[True, False])
-def use_vertex(request):
+@pytest.fixture(params=["vertexaiapi", "geminiapi"])
+def genai_sdk_backend(request):
     return request.param
+
+
+@pytest.fixture
+def use_vertex(genai_sdk_backend):
+    return genai_sdk_backend == "vertexaiapi"
 
 
 @pytest.fixture
@@ -192,9 +308,9 @@ def client(vertex_client_factory, nonvertex_client_factory, use_vertex):
     return nonvertex_client_factory()
 
 
-@pytest.fixture(params=[True, False])
+@pytest.fixture(params=["sync", "async"])
 def is_async(request):
-    return request.param
+    return request.param == "async"
 
 
 @pytest.fixture(params=["gemini-1.0-flash", "gemini-2.0-flash"])
