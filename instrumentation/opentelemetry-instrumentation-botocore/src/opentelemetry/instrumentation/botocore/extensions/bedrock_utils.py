@@ -386,6 +386,10 @@ def extract_tool_results(
     if not content:
         return
 
+    # langchain sends content as string with InvokeModel and Anthropic Claude
+    if isinstance(content, str):
+        return
+
     # Converse format
     tool_results = [
         item["toolResult"] for item in content if "toolResult" in item
