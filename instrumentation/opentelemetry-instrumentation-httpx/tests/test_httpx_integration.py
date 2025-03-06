@@ -19,6 +19,7 @@ import asyncio
 import typing
 from unittest import mock
 
+import httpretty
 import httpx
 import respx
 from wrapt import ObjectProxy
@@ -67,10 +68,10 @@ if typing.TYPE_CHECKING:
         ResponseHook,
         ResponseInfo,
     )
-    from opentelemetry.sdk.trace.export import SpanExporter
-    from opentelemetry.trace import TracerProvider
-    from opentelemetry.trace.span import Span
-
+from opentelemetry.sdk.trace.export import SpanExporter
+from opentelemetry.trace import TracerProvider
+from opentelemetry.trace.span import Span
+from opentelemetry.util.http import get_excluded_urls
 
 HTTP_RESPONSE_BODY = "http.response.body"
 
@@ -747,8 +748,22 @@ class BaseTestCases:
 
         def setUp(self):
             super().setUp()
+            self.env_patch = mock.patch.dict(
+                "os.environ",
+                {
+                    "OTEL_PYTHON_HTTPX_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                },
+            )
+            self.env_patch.start()
+
+            self.exclude_patch = mock.patch(
+                "opentelemetry.instrumentation.httpx._excluded_urls_from_env",
+                get_excluded_urls("HTTPX"),
+            )
+            self.exclude_patch.start()
             self.client = self.create_client()
             HTTPXClientInstrumentor().instrument_client(self.client)
+            self.env_patch.stop()
 
         def tearDown(self):
             HTTPXClientInstrumentor().uninstrument()
@@ -954,6 +969,36 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assertEqual(result_no_client.text, "Hello!")
             self.assert_span(num_spans=0)
+
+        def test_excluded_urls_explicit(self):
+            url_404 = "http://mock/status/404"
+            httpretty.register_uri(
+                httpretty.GET,
+                url_404,
+                status=404,
+            )
+
+            HTTPXClientInstrumentor().instrument(excluded_urls=".*/404")
+            client = self.create_client()
+            self.perform_request(self.URL)
+            self.perform_request(url_404)
+
+            self.assert_span(num_spans=1)
+
+        def test_excluded_urls_from_env(self):
+            url = "http://localhost/env_excluded_arg/123"
+            httpretty.register_uri(
+                httpretty.GET,
+                url,
+                status=200,
+            )
+
+            HTTPXClientInstrumentor().instrument()
+            client = self.create_client()
+            self.perform_request(self.URL)
+            self.perform_request(url)
+
+            self.assert_span(num_spans=1)
 
         def test_uninstrument_client(self):
             HTTPXClientInstrumentor().uninstrument_client(self.client)
