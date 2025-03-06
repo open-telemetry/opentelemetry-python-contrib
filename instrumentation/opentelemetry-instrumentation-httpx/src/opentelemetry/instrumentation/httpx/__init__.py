@@ -781,7 +781,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         )
 
         if excluded_urls and excluded_urls.url_disabled(url):
-            return wrapeed(*args, **kwargs)
+            return wrapped(*args, **kwargs)
 
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
@@ -860,7 +860,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         )
         
         if excluded_urls and excluded_urls.url_disabled(url):
-            return await wrapeed(*args, **kwargs)
+            return await wrapped(*args, **kwargs)
         
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)

@@ -58,6 +58,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import get_excluded_urls
 
 if typing.TYPE_CHECKING:
     from opentelemetry.instrumentation.httpx import (
@@ -68,10 +69,10 @@ if typing.TYPE_CHECKING:
         ResponseHook,
         ResponseInfo,
     )
-from opentelemetry.sdk.trace.export import SpanExporter
-from opentelemetry.trace import TracerProvider
-from opentelemetry.trace.span import Span
-from opentelemetry.util.http import get_excluded_urls
+    from opentelemetry.sdk.trace.export import SpanExporter
+    from opentelemetry.trace import TracerProvider
+    from opentelemetry.trace.span import Span
+
 
 HTTP_RESPONSE_BODY = "http.response.body"
 
