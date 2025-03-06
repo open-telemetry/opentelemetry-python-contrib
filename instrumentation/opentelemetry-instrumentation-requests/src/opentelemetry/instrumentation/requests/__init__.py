@@ -41,19 +41,21 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    import requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
     # `request_obj` is an instance of requests.PreparedRequest
     def request_hook(span, request_obj):
         pass
 
     # `request_obj` is an instance of requests.PreparedRequest
     # `response` is an instance of requests.Response
-    def response_hook(span, request_obj, response)
+    def response_hook(span, request_obj, response):
         pass
 
     RequestsInstrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook)
+        request_hook=request_hook, response_hook=response_hook
     )
-
 
 Exclude lists
 *************
