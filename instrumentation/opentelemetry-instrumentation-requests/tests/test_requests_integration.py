@@ -832,3 +832,34 @@ class TestRequestsIntergrationMetric(TestBase):
                                 dict(data_point.attributes),
                             )
                         self.assertEqual(data_point.count, 1)
+
+    def test_basic_metric_non_recording_span(self):
+        expected_attributes = {
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_HOST: "examplehost",
+            SpanAttributes.NET_PEER_PORT: 8000,
+            SpanAttributes.NET_PEER_NAME: "examplehost",
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            SpanAttributes.HTTP_SCHEME: "http",
+        }
+
+        with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+            RequestsInstrumentor().uninstrument()
+            RequestsInstrumentor().instrument(
+                tracer_provider=trace.NoOpTracerProvider()
+            )
+            mock_span.is_recording.return_value = False
+            result = self.perform_request(self.URL)
+            self.assertEqual(result.text, "Hello!")
+            self.assertFalse(mock_span.is_recording())
+            self.assertTrue(mock_span.is_recording.called)
+            self.assertFalse(mock_span.set_attribute.called)
+            self.assertFalse(mock_span.set_status.called)
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertDictEqual(
+                expected_attributes, dict(duration_data_point.attributes)
+            )
+            self.assertEqual(duration_data_point.count, 1)
