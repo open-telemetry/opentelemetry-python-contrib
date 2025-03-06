@@ -404,144 +404,78 @@ class TestUrllibMetricsInstrumentation(TestBase):
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 3)
+
+            (
+                client_duration,
+                client_request_size,
+                client_response_size,
+            ) = metrics[:3]
+
             self.assertEqual(
-                len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
-                ),
-                3,
+                sum(client_duration.data.data_points[0].bucket_counts),
+                1,
             )
 
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[0]
-                    .data.data_points[0]
-                    .bucket_counts[1]
-                ),
+                sum(client_request_size.data.data_points[0].bucket_counts),
                 1,
             )
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[1]
-                    .data.data_points[0]
-                    .bucket_counts[0]
-                ),
-                1,
-            )
-            self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[2]
-                    .data.data_points[0]
-                    .bucket_counts[2]
-                ),
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 1,
             )
 
         with request.urlopen(self.URL):
-            self.assertEqual(
-                len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
-                ),
-                3,
-            )
+            metrics = self.get_sorted_metrics()
+
+            self.assertEqual(len(metrics), 3)
+
+            (
+                client_duration,
+                client_request_size,
+                client_response_size,
+            ) = metrics[:3]
 
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[0]
-                    .data.data_points[0]
-                    .bucket_counts[1]
-                ),
+                sum(client_duration.data.data_points[0].bucket_counts),
                 2,
             )
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[1]
-                    .data.data_points[0]
-                    .bucket_counts[0]
-                ),
+                sum(client_request_size.data.data_points[0].bucket_counts),
                 2,
             )
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[2]
-                    .data.data_points[0]
-                    .bucket_counts[2]
-                ),
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 2,
             )
 
         URLLibInstrumentor().uninstrument()
 
         with request.urlopen(self.URL):
+            metrics = self.get_sorted_metrics()
+
+            self.assertEqual(len(metrics), 3)
+
+            (
+                client_duration,
+                client_request_size,
+                client_response_size,
+            ) = metrics[:3]
+
+            self.assertEqual(len(metrics), 3)
+
             self.assertEqual(
-                len(
-                    (
-                        self.memory_metrics_reader.get_metrics_data()
-                        .resource_metrics[0]
-                        .scope_metrics[0]
-                        .metrics
-                    )
-                ),
-                3,
+                sum(client_duration.data.data_points[0].bucket_counts),
+                2,
+            )
+            self.assertEqual(
+                sum(client_request_size.data.data_points[0].bucket_counts),
+                2,
             )
 
             self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[0]
-                    .data.data_points[0]
-                    .bucket_counts[1]
-                ),
-                2,
-            )
-            self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[1]
-                    .data.data_points[0]
-                    .bucket_counts[0]
-                ),
-                2,
-            )
-            self.assertEqual(
-                (
-                    self.memory_metrics_reader.get_metrics_data()
-                    .resource_metrics[0]
-                    .scope_metrics[0]
-                    .metrics[2]
-                    .data.data_points[0]
-                    .bucket_counts[2]
-                ),
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 2,
             )
