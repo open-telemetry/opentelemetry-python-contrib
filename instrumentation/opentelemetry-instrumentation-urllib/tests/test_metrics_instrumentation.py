@@ -414,16 +414,16 @@ class TestUrllibMetricsInstrumentation(TestBase):
             ) = metrics[:3]
 
             self.assertEqual(
-                client_duration.data.data_points[0].bucket_counts[1],
+                sum(client_duration.data.data_points[0].bucket_counts),
                 1,
             )
 
             self.assertEqual(
-                client_request_size.data.data_points[0].bucket_counts[0],
+                sum(client_request_size.data.data_points[0].bucket_counts),
                 1,
             )
             self.assertEqual(
-                client_response_size.data.data_points[0].bucket_counts[2],
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 1,
             )
 
@@ -439,15 +439,15 @@ class TestUrllibMetricsInstrumentation(TestBase):
             ) = metrics[:3]
 
             self.assertEqual(
-                client_duration.data.data_points[0].bucket_counts[1],
+                sum(client_duration.data.data_points[0].bucket_counts),
                 2,
             )
             self.assertEqual(
-                client_request_size.data.data_points[0].bucket_counts[0],
+                sum(client_request_size.data.data_points[0].bucket_counts),
                 2,
             )
             self.assertEqual(
-                client_response_size.data.data_points[0].bucket_counts[2],
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 2,
             )
 
@@ -467,15 +467,15 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assertEqual(len(metrics), 3)
 
             self.assertEqual(
-                client_duration.data.data_points[0].bucket_counts[1],
+                sum(client_duration.data.data_points[0].bucket_counts),
                 2,
             )
             self.assertEqual(
-                client_request_size.data.data_points[0].bucket_counts[0],
+                sum(client_request_size.data.data_points[0].bucket_counts),
                 2,
             )
 
             self.assertEqual(
-                client_response_size.data.data_points[0].bucket_counts[2],
+                sum(client_response_size.data.data_points[0].bucket_counts),
                 2,
             )
