@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""High level end-to-end test of the generate content mocking.
+
+The primary purpose of this test is to verify that the instrumentation
+package does not break the underlying GenAI SDK that it instruments.
+
+This test suite also has some minimal validation of the instrumentation
+outputs; however, validating the instrumentation output (other than
+verifying that instrumentation does not break the GenAI SDK) is a
+secondary goal of this test. Detailed testing of the instrumentation
+output is the purview of the other tests in this directory."""
 
 import google.genai
 from google.genai import types as genai_types
@@ -23,10 +33,67 @@ import asyncio
 import pytest
 
 from ..common.auth import FakeCredentials
+from ..common.otel_mocker import OTelMocker
 
 from opentelemetry.instrumentation.google_genai import (
     GoogleGenAiSdkInstrumentor,
 )
+
+
+def _should_redact_header(header_key):
+    if header_key.startswith('x-goog'):
+        return True
+    if header_key.startswith('sec-goog'):
+        return True
+    return False
+
+
+def _redact_headers(headers):
+    for header_key in headers:
+        if _should_redact_header(header_key.lower()):
+            del headers[header_key]
+
+
+def _before_record_request(request):
+    _redact_headers(request.headers)
+    return request
+
+
+def _before_record_response(response):
+    _redact_headers(response.headers)
+    return response
+
+
+@pytest.fixture(scope='module')
+def vcr_config():
+    return {
+        'filter_query_parameters': [
+            'key',
+            'apiKey',
+            'quotaUser',
+            'userProject',
+            'token',
+            'access_token',
+            'accessToken',
+            'refesh_token',
+            'refreshToken',
+            'authuser',
+            'bearer',
+            'bearer_token',
+            'bearerToken',
+            'userIp',
+        ],
+        'filter_post_data_parameters': [
+            'apikey',
+            'api_key',
+            'key'
+        ],
+        'filter_headers': [
+            'authorization',
+        ],
+        'before_record_request': _before_record_request,
+        'before_record_response': _before_record_response,
+    }
 
 
 @pytest.fixture
@@ -39,6 +106,14 @@ def setup_instrumentation(instrumentor):
     instrumentor.instrument()
     yield
     instrumentor.uninstrument()
+
+
+@pytest.fixture(autouse=True)
+def otel_mocker():
+    result = OTelMocker()
+    result.install()
+    yield result
+    result.uninstall()
 
 
 @pytest.fixture(autouse=True, params=[True, False])
@@ -162,17 +237,18 @@ def generate_content_stream(client, is_async):
 
 
 @pytest.mark.vcr
-def test_single_response(generate_content, model):
+def test_single_response(generate_content, model, otel_mocker):
     response = generate_content(
         model=model,
         contents="Create a poem about Open Telemetry.")
     assert response is not None
     assert response.text is not None
     assert len(response.text) > 0
+    otel_mocker.assert_has_span_named(f"generate_content {model}")
 
 
 @pytest.mark.vcr
-def test_multiple_responses(generate_content_stream, model):
+def test_multiple_responses(generate_content_stream, model, otel_mocker):
     count = 0
     for response in generate_content_stream(
             model=model,
@@ -183,4 +259,4 @@ def test_multiple_responses(generate_content_stream, model):
         assert len(response.text) > 0
         count += 1
     assert count == 2
-
+    otel_mocker.assert_has_span_named(f"generate_content {model}")
