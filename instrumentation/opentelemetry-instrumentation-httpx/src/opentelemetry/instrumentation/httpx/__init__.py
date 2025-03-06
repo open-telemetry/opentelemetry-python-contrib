@@ -233,11 +233,12 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
-from opentelemetry.utils.http import (
+from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
+    remove_url_credentials, 
+    sanitize_method,
 )
 
 _excluded_urls_from_env = get_excluded_urls("HTTPX")
@@ -473,7 +474,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             args, kwargs
         )
         
-        if self._excluded_urls and self._excluded_urls.url_disabled(url):
+        if self._excluded_urls and self._excluded_urls.url_disabled(str(url)):
             return self._transport.handle_request(*args, **kwargs)
 
         method_original = method.decode()
@@ -603,7 +604,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             args, kwargs
         )
         
-        if self._excluded_urls and self._excluded_urls.url_disabled(url):
+        if self._excluded_urls and self._excluded_urls.url_disabled(str(url)):
             return await self._transport.handle_async_request(*args, **kwargs)
 
         method_original = method.decode()
@@ -778,7 +779,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             args, kwargs
         )
 
-        if excluded_urls and excluded_urls.url_disabled(url):
+        if excluded_urls and excluded_urls.url_disabled(str(url)):
             return wrapped(*args, **kwargs)
 
         method_original = method.decode()
@@ -857,7 +858,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             args, kwargs
         )
         
-        if excluded_urls and excluded_urls.url_disabled(url):
+        if excluded_urls and excluded_urls.url_disabled(str(url)):
             return await wrapped(*args, **kwargs)
         
         method_original = method.decode()
