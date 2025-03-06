@@ -468,6 +468,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
+
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
