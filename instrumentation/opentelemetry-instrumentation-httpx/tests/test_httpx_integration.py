@@ -19,7 +19,6 @@ import asyncio
 import typing
 from unittest import mock
 
-import httpretty
 import httpx
 import respx
 from wrapt import ObjectProxy
