@@ -16,6 +16,7 @@ import unittest
 
 from .base import TestCase
 
+
 class StreamingTestCase(TestCase):
     # The "setUp" function is defined by "unittest.TestCase" and thus
     # this name must be used. Uncertain why pylint doesn't seem to
@@ -31,7 +32,6 @@ class StreamingTestCase(TestCase):
     @property
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
-
 
     def test_instrumentation_does_not_break_core_functionality(self):
         self.configure_valid_response(text="Yep, it works!")

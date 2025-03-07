@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import unittest
 import unittest.mock
 
-from google.genai.models import Models, AsyncModels
+from google.genai.models import AsyncModels, Models
+
 from ..common.base import TestCase as CommonTestCaseBase
 from .util import convert_to_response, create_response
 
@@ -45,7 +45,7 @@ class TestCase(CommonTestCaseBase):
         if self._generate_content_mock is None:
             self._create_and_install_mocks()
         return self._generate_content_mock
-    
+
     @property
     def mock_generate_content_stream(self):
         if self._generate_content_stream_mock is None:
@@ -68,6 +68,7 @@ class TestCase(CommonTestCaseBase):
 
     def _create_nonstream_mock(self):
         mock = unittest.mock.MagicMock()
+
         def _default_impl(*args, **kwargs):
             if not self._responses:
                 return create_response(text="Some response")
@@ -75,39 +76,49 @@ class TestCase(CommonTestCaseBase):
             result = self._responses[index]
             self._response_index += 1
             return result
+
         mock.side_effect = _default_impl
         return mock
 
     def _create_stream_mock(self):
         mock = unittest.mock.MagicMock()
+
         def _default_impl(*args, **kwargs):
             for response in self._responses:
                 yield response
+
         mock.side_effect = _default_impl
         return mock
 
     def _install_mocks(self):
         output_wrapped = self._wrap_output(self._generate_content_mock)
-        output_wrapped_stream = self._wrap_output_stream(self._generate_content_stream_mock)
+        output_wrapped_stream = self._wrap_output_stream(
+            self._generate_content_stream_mock
+        )
         Models.generate_content = output_wrapped
         Models.generate_content_stream = output_wrapped_stream
         AsyncModels.generate_content = self._async_wrapper(output_wrapped)
-        AsyncModels.generate_content_stream = self._async_stream_wrapper(output_wrapped_stream)
-    
+        AsyncModels.generate_content_stream = self._async_stream_wrapper(
+            output_wrapped_stream
+        )
+
     def _wrap_output(self, mock_generate_content):
         def _wrapped(*args, **kwargs):
             return convert_to_response(mock_generate_content(*args, **kwargs))
+
         return _wrapped
 
     def _wrap_output_stream(self, mock_generate_content_stream):
         def _wrapped(*args, **kwargs):
             for output in mock_generate_content_stream(*args, **kwargs):
-               yield convert_to_response(output)
+                yield convert_to_response(output)
+
         return _wrapped
 
     def _async_wrapper(self, mock_generate_content):
         async def _wrapped(*args, **kwargs):
             return mock_generate_content(*args, **kwargs)
+
         return _wrapped
 
     def _async_stream_wrapper(self, mock_generate_content_stream):
@@ -115,16 +126,27 @@ class TestCase(CommonTestCaseBase):
             async def _internal_generator():
                 for result in mock_generate_content_stream(*args, **kwargs):
                     yield result
+
             return _internal_generator()
+
         return _wrapped
 
     def tearDown(self):
         super().tearDown()
         if self._generate_content_mock is None:
             assert Models.generate_content == self._original_generate_content
-            assert Models.generate_content_stream == self._original_generate_content_stream
-            assert AsyncModels.generate_content == self._original_async_generate_content
-            assert AsyncModels.generate_content_stream == self._original_async_generate_content_stream
+            assert (
+                Models.generate_content_stream
+                == self._original_generate_content_stream
+            )
+            assert (
+                AsyncModels.generate_content
+                == self._original_async_generate_content
+            )
+            assert (
+                AsyncModels.generate_content_stream
+                == self._original_async_generate_content_stream
+            )
         Models.generate_content = self._original_generate_content
         Models.generate_content_stream = self._original_generate_content_stream
         AsyncModels.generate_content = self._original_async_generate_content

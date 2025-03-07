@@ -14,7 +14,6 @@
 
 from typing import Optional, Union
 
-import google.genai
 import google.genai.types as genai_types
 
 
@@ -25,20 +24,23 @@ def create_response(
     candidate: Optional[genai_types.Candidate] = None,
     candidates: Optional[list[genai_types.Candidate]] = None,
     text: Optional[str] = None,
-    input_tokens: Optional[int]=None,
-    output_tokens: Optional[int]=None,
-    model_version: Optional[str]=None,
-    usage_metadata: Optional[genai_types.GenerateContentResponseUsageMetadata]=None,
-    **kwargs) -> genai_types.GenerateContentResponse:
+    input_tokens: Optional[int] = None,
+    output_tokens: Optional[int] = None,
+    model_version: Optional[str] = None,
+    usage_metadata: Optional[
+        genai_types.GenerateContentResponseUsageMetadata
+    ] = None,
+    **kwargs,
+) -> genai_types.GenerateContentResponse:
     # Build up the "candidates" subfield
     if text is None:
-        text = 'Some response text'
+        text = "Some response text"
     if part is None:
         part = genai_types.Part(text=text)
     if parts is None:
         parts = [part]
     if content is None:
-        content = genai_types.Content(parts=parts, role='model')
+        content = genai_types.Content(parts=parts, role="model")
     if candidate is None:
         candidate = genai_types.Candidate(content=content)
     if candidates is None:
@@ -55,15 +57,19 @@ def create_response(
         candidates=candidates,
         usage_metadata=usage_metadata,
         model_version=model_version,
-        **kwargs)
+        **kwargs,
+    )
 
 
 def convert_to_response(
-    arg: Union[str, genai_types.GenerateContentResponse, dict]) -> genai_types.GenerateContentResponse:
+    arg: Union[str, genai_types.GenerateContentResponse, dict],
+) -> genai_types.GenerateContentResponse:
     if isinstance(arg, str):
         return create_response(text=arg)
     if isinstance(arg, genai_types.GenerateContentResponse):
         return arg
     if isinstance(arg, dict):
         return create_response(**arg)
-    raise ValueError(f"Unsure how to convert {arg} of type {arg.__class__.__name__} to response.")
+    raise ValueError(
+        f"Unsure how to convert {arg} of type {arg.__class__.__name__} to response."
+    )

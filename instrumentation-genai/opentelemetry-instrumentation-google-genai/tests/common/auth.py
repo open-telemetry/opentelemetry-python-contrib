@@ -16,6 +16,5 @@ import google.auth.credentials
 
 
 class FakeCredentials(google.auth.credentials.AnonymousCredentials):
-
     def refresh(self, request):
         pass
