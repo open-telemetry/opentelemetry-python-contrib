@@ -155,6 +155,7 @@ class BaseTestCases:
             self.env_patch = mock.patch.dict(
                 "os.environ",
                 {
+                    "OTEL_PYTHON_HTTPX_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
                     OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
                 },
             )
@@ -749,22 +750,8 @@ class BaseTestCases:
 
         def setUp(self):
             super().setUp()
-            self.env_patch = mock.patch.dict(
-                "os.environ",
-                {
-                    "OTEL_PYTHON_HTTPX_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
-                },
-            )
-            self.env_patch.start()
-
-            self.exclude_patch = mock.patch(
-                "opentelemetry.instrumentation.httpx._excluded_urls_from_env",
-                get_excluded_urls("HTTPX"),
-            )
-            self.exclude_patch.start()
             self.client = self.create_client()
             HTTPXClientInstrumentor().instrument_client(self.client)
-            self.env_patch.stop()
 
         def tearDown(self):
             HTTPXClientInstrumentor().uninstrument()
@@ -973,31 +960,22 @@ class BaseTestCases:
 
         def test_excluded_urls_explicit(self):
             url_404 = "http://mock/status/404"
-            httpretty.register_uri(
-                httpretty.GET,
-                url_404,
-                status=404,
-            )
+            respx.get(url_404).mock(httpx.Response(404))
 
             HTTPXClientInstrumentor().instrument(excluded_urls=".*/404")
             client = self.create_client()
-            self.perform_request(self.URL)
-            self.perform_request(url_404)
+            self.perform_request(self.URL, client=client)
+            self.perform_request(url_404, client=client)
 
             self.assert_span(num_spans=1)
 
         def test_excluded_urls_from_env(self):
             url = "http://localhost/env_excluded_arg/123"
-            httpretty.register_uri(
-                httpretty.GET,
-                url,
-                status=200,
-            )
-
+            respx.get(url=url).mock(httpx.Response(200))
             HTTPXClientInstrumentor().instrument()
             client = self.create_client()
-            self.perform_request(self.URL)
-            self.perform_request(url)
+            self.perform_request(self.URL, client=client)
+            self.perform_request(url, client=client)
 
             self.assert_span(num_spans=1)
 

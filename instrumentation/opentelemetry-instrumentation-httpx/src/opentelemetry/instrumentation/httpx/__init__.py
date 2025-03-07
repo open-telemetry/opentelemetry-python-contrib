@@ -714,9 +714,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             else None
         )
         
+        excluded_urls_raw = kwargs.get("excluded_urls")
+        
         excluded_urls = (
-            parse_excluded_urls(excluded_urls) 
-            if kwargs.get("excluded_urls") 
+            parse_excluded_urls(excluded_urls_raw) 
+            if excluded_urls_raw
             else _excluded_urls_from_env
         )
 
