@@ -78,6 +78,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
+    _wrap_getmany,
     _wrap_getone,
     _wrap_send,
 )
@@ -131,7 +132,13 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
             "getone",
             _wrap_getone(tracer, async_consume_hook),
         )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaConsumer,
+            "getmany",
+            _wrap_getmany(tracer, async_consume_hook),
+        )
 
     def _uninstrument(self, **kwargs):
         unwrap(aiokafka.AIOKafkaProducer, "send")
         unwrap(aiokafka.AIOKafkaConsumer, "getone")
+        unwrap(aiokafka.AIOKafkaConsumer, "getmany")
