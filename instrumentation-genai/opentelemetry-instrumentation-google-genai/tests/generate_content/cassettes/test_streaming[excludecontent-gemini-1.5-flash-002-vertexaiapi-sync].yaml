@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '92'
+      Content-Type:
+      - application/json
+      user-agent:
+      - google-genai-sdk/1.0.0 gl-python/3.12.8
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-1.5-flash-002:streamGenerateContent?alt=sse
+  response:
+    body:
+      string: "data: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"The\"}]}}],\"usageMetadata\": {},\"modelVersion\": \"gemini-1.5-flash-002\"\
+        ,\"createTime\": \"2025-03-07T22:19:26.378633Z\",\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" black box whispers, secrets deep,\\nOf failing systems, promises\
+        \ to keep.\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\"\
+        : \"2025-03-07T22:19:26.378633Z\",\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"\\nBut tracing's light, a guiding hand,\\nReveals the path\"\
+        }]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:26.378633Z\"\
+        ,\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \", across the\
+        \ land.\\n\\nOpen Telemetry, a beacon bright,\\nIlluminating pathways, day\
+        \ and night.\\nFrom spans and traces, stories told,\"}]}}],\"modelVersion\"\
+        : \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:26.378633Z\"\
+        ,\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \"\\nOf requests\
+        \ flowing, brave and bold.\\n\\nThe metrics rise, a vibrant chart,\\nDisplaying\
+        \ latency, a work of art.\\nEach request'\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\"\
+        ,\"createTime\": \"2025-03-07T22:19:26.378633Z\",\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"s journey, clearly shown,\\nWhere bottlenecks slumber, seeds\
+        \ are sown.\\n\\nWith logs appended, context clear,\\nThe root of problems,\
+        \ drawing near.\\nObservability's embrace, so wide,\\nUnraveling mysteries,\"\
+        }]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:26.378633Z\"\
+        ,\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \" deep inside.\\\
+        n\\nFrom simple apps to complex weaves,\\nOpen Telemetry's power achieves,\\\
+        nA unified vision, strong and true,\\nMonitoring systems, old and new.\\n\\\
+        nNo vendor lock-in, free to roam,\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\"\
+        ,\"createTime\": \"2025-03-07T22:19:26.378633Z\",\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"\\nAcross the clouds, and find your home.\\nA standard rising,\
+        \ strong and bold,\\nA future brighter, to behold.\\n\\nSo let the traces\
+        \ flow and gleam,\\nOpen Telemetry, a vibrant dream.\\nOf healthy systems,\
+        \ running free,\\nFor all to see, for all to be.\"}]}}],\"modelVersion\":\
+        \ \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:26.378633Z\"\
+        ,\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \"\\n\"}]},\"\
+        finishReason\": \"STOP\"}],\"usageMetadata\": {\"promptTokenCount\": 8,\"\
+        candidatesTokenCount\": 258,\"totalTokenCount\": 266,\"promptTokensDetails\"\
+        : [{\"modality\": \"TEXT\",\"tokenCount\": 8}],\"candidatesTokensDetails\"\
+        : [{\"modality\": \"TEXT\",\"tokenCount\": 258}]},\"modelVersion\": \"gemini-1.5-flash-002\"\
+        ,\"createTime\": \"2025-03-07T22:19:26.378633Z\",\"responseId\": \"7nDLZ4mOF_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\n"
+    headers:
+      Content-Disposition:
+      - attachment
+      Content-Type:
+      - text/event-stream
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
