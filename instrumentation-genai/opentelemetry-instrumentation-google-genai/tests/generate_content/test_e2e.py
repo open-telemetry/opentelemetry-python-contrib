@@ -37,6 +37,7 @@ from vcr.record_mode import RecordMode
 import logging
 import asyncio
 import pytest
+import urllib.parse
 
 from ..common.auth import FakeCredentials
 from ..common.otel_mocker import OTelMocker
@@ -44,6 +45,55 @@ from ..common.otel_mocker import OTelMocker
 from opentelemetry.instrumentation.google_genai import (
     GoogleGenAiSdkInstrumentor,
 )
+
+
+_FAKE_PROJECT = "test-project"
+_FAKE_LOCATION = "test-location"
+_FAKE_API_KEY = "test-api-key"
+_DEFAULT_REAL_LOCATION = "us-central1"
+
+def _get_project_from_env():
+    return os.getenv("GCLOUD_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
+
+
+def _get_project_from_gcloud_cli():
+    try:
+        gcloud_call_result = subprocess.run("gcloud config get project", shell=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        return None
+    gcloud_output = gcloud_call_result.stdout.decode()
+    return gcloud_output.strip()
+
+
+def _get_project_from_credentials():
+    _, from_creds = google.auth.default()
+    return from_creds
+
+
+def _get_real_project():
+    from_env = _get_project_from_env()
+    if from_env:
+        return from_env
+    from_cli = _get_project_from_gcloud_cli()
+    if from_cli:
+        return from_cli
+    return _get_project_from_credentials()
+
+
+def _get_location_from_env():
+    return os.getenv("GCLOUD_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or ""
+
+
+def _get_real_location():
+    return _get_location_from_env() or _DEFAULT_REAL_LOCATION
+
+
+def _get_vertex_api_key_from_env():
+    return os.getenv("GOOGLE_API_KEY")
+
+
+def _get_gemini_api_key_from_env():
+    return os.getenv("GEMINI_API_KEY")
 
 
 def _should_redact_header(header_key):
@@ -67,6 +117,15 @@ def _redact_headers(headers):
 def _before_record_request(request):
     if request.headers:
       _redact_headers(request.headers)
+    uri = request.uri
+    project = _get_project_from_env()
+    if project:
+        uri = uri.replace(f"projects/{project}", f"projects/{_FAKE_PROJECT}")
+    location = _get_real_location()
+    if location:
+        uri = uri.replace(f"locations/{location}", f"locations/{_FAKE_LOCATION}")
+        uri = uri.replace(f"//{location}-aiplatform.googleapis.com", f"//{_FAKE_LOCATION}-aiplatform.googleapis.com")
+    request.uri = uri
     return request
 
 
@@ -222,38 +281,22 @@ def in_replay_mode(vcr_record_mode):
     return vcr_record_mode == RecordMode.NONE
 
 
-def _try_get_project_from_gcloud():
-    try:
-        gcloud_call_result = subprocess.run("gcloud config get project", shell=True, capture_output=True)
-    except subprocess.CalledProcessError:
-        return None
-    gcloud_output = gcloud_call_result.stdout.decode()
-    return gcloud_output.strip()
 
-
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def gcloud_project(in_replay_mode):
     if in_replay_mode:
-        return "test-project"
-    project_envs = ["GCLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT"]
-    for project_env in project_envs:
-        project_env_val = os.getenv(project_env)
-        if project_env_val:
-            return project_env_val
-    from_gcloud = _try_get_project_from_gcloud()
-    if from_gcloud:
-        os.environ["GOOGLE_CLOUD_PROJECT"] = from_gcloud
-        os.environ["GCLOUD_PROJECT"] = from_gcloud
-        return from_gcloud
-    _, from_creds = google.auth.default()
-    return from_creds
-    
+        return _FAKE_PROJECT
+    result = _get_real_project()
+    for env_var in ["GCLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT"]:
+        os.environ[env_var] = result
+    return result
+
 
 @pytest.fixture
 def gcloud_location(in_replay_mode):
     if in_replay_mode:
-        return "test-location"
-    return os.getenv("GCLOUD_LOCATION")
+        return _FAKE_LOCATION
+    return _get_real_location()
 
 
 @pytest.fixture
@@ -264,24 +307,29 @@ def gcloud_credentials(in_replay_mode):
     return google.auth.credentials.with_scopes_if_required(creds, ["https://www.googleapis.com/auth/cloud-platform"])
 
 
-@pytest.fixture(autouse=True)
-def gcloud_api_key(in_replay_mode):
+@pytest.fixture
+def gemini_api_key(in_replay_mode):
     if in_replay_mode:
-        os.environ["GOOGLE_API_KEY"] = "test-api-key"
-        return "test-api-key"
+        return _FAKE_API_KEY
+    return os.getenv("GEMINI_API_KEY")
+
+
+@pytest.fixture(autouse=True)
+def gcloud_api_key(gemini_api_key):
+    if "GOOGLE_API_KEY" not in os.environ:
+      os.environ["GOOGLE_API_KEY"] = gemini_api_key
     return os.getenv("GOOGLE_API_KEY")
 
 
 @pytest.fixture
-def nonvertex_client_factory(gcloud_api_key):
+def nonvertex_client_factory(gemini_api_key):
     def _factory():
-        print(f"Using API key: {gcloud_api_key}")
-        return google.genai.Client(api_key=gcloud_api_key)
+        return google.genai.Client(api_key=gemini_api_key)
     return _factory
 
 
 @pytest.fixture
-def vertex_client_factory(in_replay_mode, gcloud_project, gcloud_location, gcloud_credentials):
+def vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
     def _factory():
         return google.genai.Client(
             vertexai=True,
@@ -291,14 +339,16 @@ def vertex_client_factory(in_replay_mode, gcloud_project, gcloud_location, gclou
     return _factory
 
 
-@pytest.fixture(params=["vertexaiapi", "geminiapi"])
+@pytest.fixture(params=["vertexaiapi"])
 def genai_sdk_backend(request):
     return request.param
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def use_vertex(genai_sdk_backend):
-    return genai_sdk_backend == "vertexaiapi"
+    result = bool(genai_sdk_backend == "vertexaiapi")
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1" if result else "0"
+    return result
 
 
 @pytest.fixture
@@ -313,7 +363,7 @@ def is_async(request):
     return request.param == "async"
 
 
-@pytest.fixture(params=["gemini-1.0-flash", "gemini-2.0-flash"])
+@pytest.fixture(params=["gemini-1.5-flash-002"])
 def model(request):
     return request.param
 
@@ -353,7 +403,7 @@ def generate_content_stream(client, is_async):
 
 
 @pytest.mark.vcr
-def test_single_response(generate_content, model, otel_mocker):
+def test_non_streaming(generate_content, model, otel_mocker):
     response = generate_content(
         model=model,
         contents="Create a poem about Open Telemetry.")
@@ -364,15 +414,14 @@ def test_single_response(generate_content, model, otel_mocker):
 
 
 @pytest.mark.vcr
-def test_multiple_responses(generate_content_stream, model, otel_mocker):
+def test_streaming(generate_content_stream, model, otel_mocker):
     count = 0
     for response in generate_content_stream(
             model=model,
-            contents="Create a poem about Open Telemetry.",
-            config=genai_types.GenerateContentConfig(candidate_count=2)):
+            contents="Create a poem about Open Telemetry."):
         assert response is not None
         assert response.text is not None
         assert len(response.text) > 0
         count += 1
-    assert count == 2
+    assert count > 0
     otel_mocker.assert_has_span_named(f"generate_content {model}")

@@ -70,7 +70,7 @@ class TestCase(unittest.TestCase):
                 location=self._location,
                 credentials=self._credentials,
             )
-        return google.genai.Client(api_key=self._api_key)
+        return google.genai.Client(vertexai=False, api_key=self._api_key)
 
     def tearDown(self):
         if self._instrumentation_context is not None:
