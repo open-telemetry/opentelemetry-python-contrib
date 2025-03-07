@@ -71,7 +71,7 @@ The hooks can be configured as follows:
 
     URLLib3Instrumentor().instrument(
         request_hook=request_hook,
-        response_hook=response_hook
+        response_hook=response_hook,
     )
 
 Exclude lists
