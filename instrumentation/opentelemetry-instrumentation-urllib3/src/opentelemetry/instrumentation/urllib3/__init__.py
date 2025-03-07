@@ -47,22 +47,31 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from typing import Any
+
+    from urllib3.connectionpool import HTTPConnectionPool
+    from urllib3.response import HTTPResponse
+
+    from opentelemetry.instrumentation.urllib3 import RequestInfo, URLLib3Instrumentor
+    from opentelemetry.trace import Span
+
     def request_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
+        pool: HTTPConnectionPool,
         request_info: RequestInfo,
     ) -> Any:
-        ...
+        pass
 
     def response_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
-        response: urllib3.response.HTTPResponse,
+        pool: HTTPConnectionPool,
+        response: HTTPResponse,
     ) -> Any:
-        ...
+        pass
 
     URLLib3Instrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook
+        request_hook=request_hook,
+        response_hook=response_hook,
     )
 
 Exclude lists
