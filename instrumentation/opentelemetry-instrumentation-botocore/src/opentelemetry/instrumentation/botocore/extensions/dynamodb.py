@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
     _BotoResultT,
 )
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
@@ -370,7 +371,9 @@ class _DynamoDbExtension(_AwsSdkExtension):
     def _get_peer_name(self) -> str:
         return urlparse(self._call_context.endpoint_url).netloc
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if not span.is_recording() or self._op is None:
             return
 
@@ -380,7 +383,12 @@ class _DynamoDbExtension(_AwsSdkExtension):
             span.set_attribute,
         )
 
-    def on_success(self, span: Span, result: _BotoResultT):
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         if not span.is_recording():
             return
 

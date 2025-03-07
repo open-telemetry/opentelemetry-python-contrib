@@ -1,0 +1,83 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '170'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250211T141035Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-459d61b3-c785d242640df661d315555d;Parent=384fac3cd601ebb0;Sampled=1
+      amz-sdk-invocation-id:
+      - 1de3c974-3f70-4126-85a8-d4b9bcc2e1b1
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/converse
+  response:
+    body:
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 683
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "Hello, how are you doing"
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "max_tokens",
+          "usage": {
+            "inputTokens": 8,
+            "outputTokens": 10,
+            "totalTokens": 18
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 11 Feb 2025 14:10:36 GMT
+      Set-Cookie: test_set_cookie
+      x-amzn-RequestId:
+      - ff8f385b-009e-49da-b124-1359bc244f10
+    status:
+      code: 200
+      message: OK
+version: 1

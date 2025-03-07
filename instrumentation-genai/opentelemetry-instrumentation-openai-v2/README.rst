@@ -10,6 +10,28 @@ This library allows tracing LLM requests and logging of messages made by the
 `OpenAI Python API library <https://pypi.org/project/openai/>`_. It also captures
 the duration of the operations and the number of tokens used as metrics.
 
+Many LLM platforms support the OpenAI SDK. This means systems such as the following are observable with this instrumentation when accessed using it:
+
+.. list-table:: OpenAI Compatible Platforms
+   :widths: 40 25
+   :header-rows: 1
+
+   * - Name
+     - gen_ai.system
+   * - `Azure OpenAI <https://github.com/openai/openai-python?tab=readme-ov-file#microsoft-azure-openai>`_
+     - ``az.ai.openai``
+   * - `Gemini <https://developers.googleblog.com/en/gemini-is-now-accessible-from-the-openai-library/>`_
+     - ``gemini``
+   * - `Perplexity <https://docs.perplexity.ai/api-reference/chat-completions>`_
+     - ``perplexity``
+   * - `xAI <https://x.ai/api>`_ (Compatible with Anthropic)
+     - ``xai``
+   * - `DeepSeek <https://api-docs.deepseek.com/>`_
+     - ``deepseek``
+   * - `Groq <https://console.groq.com/docs/openai>`_
+     - ``groq``
+   * - `MistralAI <https://docs.mistral.ai/api/>`_
+     - ``mistral_ai``
 
 Installation
 ------------

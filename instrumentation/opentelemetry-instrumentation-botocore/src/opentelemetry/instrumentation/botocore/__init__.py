@@ -76,6 +76,38 @@ for example:
     )
     ec2 = self.session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
+
+Extensions
+----------
+
+The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
+for the following AWS services:
+
+- Bedrock Runtime
+- DynamoDB
+- Lambda
+- SNS
+- SQS
+
+Bedrock Runtime
+***************
+
+This extension implements the GenAI semantic conventions for the following API calls:
+
+- Converse
+- ConverseStream
+- InvokeModel
+- InvokeModelWithResponseStream
+
+For the Converse and ConverseStream APIs tracing, events and metrics are implemented.
+
+For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
+the available models, namely:
+- Amazon Titan models
+- Amazon Nova models
+- Anthropic Claude
+
+There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
 """
 
 import logging
@@ -86,9 +118,15 @@ from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
-from opentelemetry.instrumentation.botocore.extensions import _find_extension
+from opentelemetry._events import get_event_logger
+from opentelemetry.instrumentation.botocore.extensions import (
+    _find_extension,
+    _has_extension,
+)
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
+    _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.package import _instruments
 from opentelemetry.instrumentation.botocore.version import __version__
@@ -98,6 +136,7 @@ from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     unwrap,
 )
+from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
@@ -123,12 +162,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         # pylint: disable=attribute-defined-outside-init
-        self._tracer = get_tracer(
-            __name__,
-            __version__,
-            kwargs.get("tracer_provider"),
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
-        )
+
+        # tracers are lazy initialized per-extension in _get_tracer
+        self._tracers = {}
+        # event_loggers are lazy initialized per-extension in _get_event_logger
+        self._event_loggers = {}
+        # meters are lazy initialized per-extension in _get_meter
+        self._meters = {}
+        # metrics are lazy initialized per-extension in _get_metrics
+        self._metrics: Dict[str, Dict[str, Instrument]] = {}
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
@@ -136,6 +178,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
         propagator = kwargs.get("propagator")
         if propagator is not None:
             self.propagator = propagator
+
+        self.tracer_provider = kwargs.get("tracer_provider")
+        self.event_logger_provider = kwargs.get("event_logger_provider")
+        self.meter_provider = kwargs.get("meter_provider")
 
         wrap_function_wrapper(
             "botocore.client",
@@ -148,6 +194,82 @@ class BotocoreInstrumentor(BaseInstrumentor):
             "Endpoint.prepare_request",
             self._patched_endpoint_prepare_request,
         )
+
+    @staticmethod
+    def _get_instrumentation_name(extension: _AwsSdkExtension) -> str:
+        has_extension = _has_extension(extension._call_context)
+        return (
+            f"{__name__}.{extension._call_context.service}"
+            if has_extension
+            else __name__
+        )
+
+    def _get_tracer(self, extension: _AwsSdkExtension):
+        """This is a multiplexer in order to have a tracer per extension"""
+
+        instrumentation_name = self._get_instrumentation_name(extension)
+        tracer = self._tracers.get(instrumentation_name)
+        if tracer:
+            return tracer
+
+        schema_version = extension.tracer_schema_version()
+        self._tracers[instrumentation_name] = get_tracer(
+            instrumentation_name,
+            __version__,
+            self.tracer_provider,
+            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
+        )
+        return self._tracers[instrumentation_name]
+
+    def _get_event_logger(self, extension: _AwsSdkExtension):
+        """This is a multiplexer in order to have an event logger per extension"""
+
+        instrumentation_name = self._get_instrumentation_name(extension)
+        event_logger = self._event_loggers.get(instrumentation_name)
+        if event_logger:
+            return event_logger
+
+        schema_version = extension.event_logger_schema_version()
+        self._event_loggers[instrumentation_name] = get_event_logger(
+            instrumentation_name,
+            "",
+            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
+            event_logger_provider=self.event_logger_provider,
+        )
+
+        return self._event_loggers[instrumentation_name]
+
+    def _get_meter(self, extension: _AwsSdkExtension):
+        """This is a multiplexer in order to have a meter per extension"""
+
+        instrumentation_name = self._get_instrumentation_name(extension)
+        meter = self._meters.get(instrumentation_name)
+        if meter:
+            return meter
+
+        schema_version = extension.meter_schema_version()
+        self._meters[instrumentation_name] = get_meter(
+            instrumentation_name,
+            "",
+            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
+            meter_provider=self.meter_provider,
+        )
+
+        return self._meters[instrumentation_name]
+
+    def _get_metrics(
+        self, extension: _AwsSdkExtension, meter: Meter
+    ) -> Dict[str, Instrument]:
+        """This is a multiplexer for lazy initialization of metrics required by extensions"""
+        instrumentation_name = self._get_instrumentation_name(extension)
+        metrics = self._metrics.get(instrumentation_name)
+        if metrics is not None:
+            return metrics
+
+        self._metrics.setdefault(instrumentation_name, {})
+        metrics = self._metrics[instrumentation_name]
+        _safe_invoke(extension.setup_metrics, meter, metrics)
+        return metrics
 
     def _uninstrument(self, **kwargs):
         unwrap(BaseClient, "_make_api_call")
@@ -190,7 +312,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
         _safe_invoke(extension.extract_attributes, attributes)
         end_span_on_exit = extension.should_end_span_on_exit()
 
-        with self._tracer.start_as_current_span(
+        tracer = self._get_tracer(extension)
+        event_logger = self._get_event_logger(extension)
+        meter = self._get_meter(extension)
+        metrics = self._get_metrics(extension, meter)
+        instrumentor_ctx = _BotocoreInstrumentorContext(
+            event_logger=event_logger,
+            metrics=metrics,
+        )
+        with tracer.start_as_current_span(
             call_context.span_name,
             kind=call_context.span_kind,
             attributes=attributes,
@@ -198,7 +328,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             # at a later time after the stream has been consumed
             end_on_exit=end_span_on_exit,
         ) as span:
-            _safe_invoke(extension.before_service_call, span)
+            _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
             self._call_request_hook(span, call_context)
 
             try:
@@ -209,12 +339,16 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(extension.on_error, span, error)
+                        _safe_invoke(
+                            extension.on_error, span, error, instrumentor_ctx
+                        )
                         raise
                     _apply_response_attributes(span, result)
-                    _safe_invoke(extension.on_success, span, result)
+                    _safe_invoke(
+                        extension.on_success, span, result, instrumentor_ctx
+                    )
             finally:
-                _safe_invoke(extension.after_service_call)
+                _safe_invoke(extension.after_service_call, instrumentor_ctx)
                 self._call_response_hook(span, call_context, result)
 
             return result

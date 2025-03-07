@@ -16,8 +16,8 @@ env:
 
 jobs:
 
-  py38-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.8 Ubuntu
+  py38-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -32,10 +32,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py38-test-instrumentation-openai-v2-oldest -- -ra
 
-  py38-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.8 Ubuntu
+  py38-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -50,10 +50,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py38-test-instrumentation-openai-v2-latest -- -ra
 
-  py39-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.9 Ubuntu
+  py39-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -68,10 +68,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py39-test-instrumentation-openai-v2-oldest -- -ra
 
-  py39-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.9 Ubuntu
+  py39-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -86,10 +86,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py39-test-instrumentation-openai-v2-latest -- -ra
 
-  py310-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.10 Ubuntu
+  py310-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -104,10 +104,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py310-test-instrumentation-openai-v2-oldest -- -ra
 
-  py310-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.10 Ubuntu
+  py310-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -122,10 +122,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py310-test-instrumentation-openai-v2-latest -- -ra
 
-  py311-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.11 Ubuntu
+  py311-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -140,10 +140,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py311-test-instrumentation-openai-v2-oldest -- -ra
 
-  py311-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.11 Ubuntu
+  py311-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -158,10 +158,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py311-test-instrumentation-openai-v2-latest -- -ra
 
-  py312-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.12 Ubuntu
+  py312-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -176,10 +176,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py312-test-instrumentation-openai-v2-oldest -- -ra
 
-  py312-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.12 Ubuntu
+  py312-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -194,10 +194,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py312-test-instrumentation-openai-v2-latest -- -ra
 
-  py313-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 3.13 Ubuntu
+  py313-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -212,10 +212,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e py313-test-instrumentation-openai-v2-oldest -- -ra
 
-  py313-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 3.13 Ubuntu
+  py313-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -230,10 +230,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e py313-test-instrumentation-openai-v2-latest -- -ra
 
-  pypy3-test-instrumentation-openai-v2-0_ubuntu-latest:
-    name: instrumentation-openai-v2-0 pypy-3.8 Ubuntu
+  pypy3-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -248,10 +248,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-openai-v2-0 -- -ra
+        run: tox -e pypy3-test-instrumentation-openai-v2-oldest -- -ra
 
-  pypy3-test-instrumentation-openai-v2-1_ubuntu-latest:
-    name: instrumentation-openai-v2-1 pypy-3.8 Ubuntu
+  pypy3-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -266,10 +266,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-openai-v2-1 -- -ra
+        run: tox -e pypy3-test-instrumentation-openai-v2-latest -- -ra
 
-  py38-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.8 Ubuntu
+  py38-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -284,10 +284,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py38-test-instrumentation-vertexai-oldest -- -ra
 
-  py38-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.8 Ubuntu
+  py38-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.8 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -302,10 +302,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py38-test-instrumentation-vertexai-latest -- -ra
 
-  py39-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.9 Ubuntu
+  py39-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -320,10 +320,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py39-test-instrumentation-vertexai-oldest -- -ra
 
-  py39-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.9 Ubuntu
+  py39-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.9 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -338,10 +338,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py39-test-instrumentation-vertexai-latest -- -ra
 
-  py310-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.10 Ubuntu
+  py310-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -356,10 +356,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py310-test-instrumentation-vertexai-oldest -- -ra
 
-  py310-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.10 Ubuntu
+  py310-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -374,10 +374,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py310-test-instrumentation-vertexai-latest -- -ra
 
-  py311-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.11 Ubuntu
+  py311-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -392,10 +392,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py311-test-instrumentation-vertexai-oldest -- -ra
 
-  py311-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.11 Ubuntu
+  py311-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -410,10 +410,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py311-test-instrumentation-vertexai-latest -- -ra
 
-  py312-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.12 Ubuntu
+  py312-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -428,10 +428,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py312-test-instrumentation-vertexai-oldest -- -ra
 
-  py312-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.12 Ubuntu
+  py312-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -446,10 +446,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py312-test-instrumentation-vertexai-latest -- -ra
 
-  py313-test-instrumentation-vertexai-0_ubuntu-latest:
-    name: instrumentation-vertexai-0 3.13 Ubuntu
+  py313-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -464,10 +464,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-vertexai-0 -- -ra
+        run: tox -e py313-test-instrumentation-vertexai-oldest -- -ra
 
-  py313-test-instrumentation-vertexai-1_ubuntu-latest:
-    name: instrumentation-vertexai-1 3.13 Ubuntu
+  py313-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
@@ -482,7 +482,187 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-vertexai-1 -- -ra
+        run: tox -e py313-test-instrumentation-vertexai-latest -- -ra
+
+  py39-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-google-genai-oldest -- -ra
+
+  py39-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-google-genai-latest -- -ra
+
+  py310-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-google-genai-oldest -- -ra
+
+  py310-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-google-genai-latest -- -ra
+
+  py311-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-google-genai-oldest -- -ra
+
+  py311-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-google-genai-latest -- -ra
+
+  py312-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-google-genai-oldest -- -ra
+
+  py312-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-google-genai-latest -- -ra
+
+  py313-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-google-genai-oldest -- -ra
+
+  py313-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-google-genai-latest -- -ra
 
   py38-test-resource-detector-container_ubuntu-latest:
     name: resource-detector-container 3.8 Ubuntu
@@ -4335,183 +4515,3 @@ jobs:
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-urllib3-0 -- -ra
-
-  py310-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-urllib3-1 -- -ra
-
-  py311-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-urllib3-0 -- -ra
-
-  py311-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-urllib3-1 -- -ra
-
-  py312-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-urllib3-0 -- -ra
-
-  py312-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-urllib3-1 -- -ra
-
-  py313-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 3.13 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py313-test-instrumentation-urllib3-0 -- -ra
-
-  py313-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 3.13 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py313-test-instrumentation-urllib3-1 -- -ra
-
-  pypy3-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-urllib3-0 -- -ra
-
-  pypy3-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 pypy-3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.8"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-urllib3-1 -- -ra
-
-  py38-test-instrumentation-requests_ubuntu-latest:
-    name: instrumentation-requests 3.8 Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py38-test-instrumentation-requests -- -ra
