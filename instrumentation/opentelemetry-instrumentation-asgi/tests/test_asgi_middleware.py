@@ -1660,16 +1660,17 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
-    def test_put_request_with_user_id(self):
-        app = otel_asgi.OpenTelemetryMiddleware(user_update_app)
-        self.seed_app(app)
+    async def test_put_request_with_user_id(self):
         self.scope["method"] = "PUT"
         self.scope["path"] = "/api/v3/io/users/123"
-        self.send_input(
+
+        app = otel_asgi.OpenTelemetryMiddleware(user_update_app)
+        self.seed_app(app)
+        await self.send_input(
             {"type": "http.request", "body": b'{"name": "John Doe"}'}
         )
 
-        outputs = self.get_all_output()
+        outputs = await self.get_all_output()
         self.assertEqual(len(outputs), 2)
         self.assertEqual(outputs[0]["type"], "http.response.start")
         self.assertEqual(outputs[0]["status"], 200)
@@ -1690,17 +1691,17 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             server_span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200
         )
 
-    def skip_test_websocket_connection_with_session_id(self):
+    async def skip_test_websocket_connection_with_session_id(self):
         app = otel_asgi.OpenTelemetryMiddleware(websocket_session_app)
         self.seed_app(app)
         self.scope["type"] = "websocket"
         self.scope["path"] = "/ws/05b55f3f66aa31cbe6a25e7027f7c2cc"
 
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
 
-        outputs = self.get_all_output()
+        outputs = await self.get_all_output()
         self.assertEqual(len(outputs), 2)
         self.assertEqual(outputs[0]["type"], "websocket.accept")
         self.assertEqual(outputs[1]["type"], "websocket.send")

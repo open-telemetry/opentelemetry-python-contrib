@@ -838,7 +838,7 @@ class OpenTelemetryMiddleware:
     ):
         """Set send span attributes and status code."""
         with self.tracer.start_as_current_span(
-            " ".join((server_span_name, scope["type"], "send"))
+            " ".join((server_span_name, "send"))
         ) as send_span:
             if callable(self.client_response_hook):
                 self.client_response_hook(send_span, scope, message)
