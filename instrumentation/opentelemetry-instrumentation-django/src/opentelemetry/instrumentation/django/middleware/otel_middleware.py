@@ -25,13 +25,13 @@ from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
-    _HTTPStabilityMode,
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -40,7 +40,10 @@ from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     extract_attributes_from_object,
 )
-from opentelemetry.instrumentation.wsgi import add_response_attributes
+from opentelemetry.instrumentation.wsgi import (
+    add_response_attributes,
+    wsgi_getter,
+)
 from opentelemetry.instrumentation.wsgi import (
     collect_custom_request_headers_attributes as wsgi_collect_custom_request_headers_attributes,
 )
@@ -50,7 +53,6 @@ from opentelemetry.instrumentation.wsgi import (
 from opentelemetry.instrumentation.wsgi import (
     collect_request_attributes as wsgi_collect_request_attributes,
 )
-from opentelemetry.instrumentation.wsgi import wsgi_getter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
@@ -107,14 +109,17 @@ else:
 
 # try/except block exclusive for optional ASGI imports.
 try:
-    from opentelemetry.instrumentation.asgi import asgi_getter, asgi_setter
+    from opentelemetry.instrumentation.asgi import (
+        asgi_getter,
+        asgi_setter,
+        set_status_code,
+    )
     from opentelemetry.instrumentation.asgi import (
         collect_custom_headers_attributes as asgi_collect_custom_headers_attributes,
     )
     from opentelemetry.instrumentation.asgi import (
         collect_request_attributes as asgi_collect_request_attributes,
     )
-    from opentelemetry.instrumentation.asgi import set_status_code
 
     _is_asgi_supported = True
 except ImportError:
@@ -153,7 +158,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     _duration_histogram_old = None
     _duration_histogram_new = None
     _active_request_counter = None
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
@@ -333,6 +338,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def process_response(self, request, response):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
@@ -424,14 +430,18 @@ class _DjangoMiddleware(MiddlewareMixin):
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.DEFAULT
+                    duration_attrs, _StabilityMode.DEFAULT
                 )
+                # http.target to be included in old semantic conventions
+                target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
+                if target:
+                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.HTTP
+                    duration_attrs, _StabilityMode.HTTP
                 )
                 self._duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
@@ -445,7 +455,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
 
 def _parse_duration_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
@@ -456,7 +466,7 @@ def _parse_duration_attrs(
 
 
 def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_active_request_count_attr(
         req_attrs,

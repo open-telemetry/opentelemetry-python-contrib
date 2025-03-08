@@ -132,10 +132,10 @@ class PostgresqlIntegrationTestMixin:
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.pg_cursor", MockCursor
+            "opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor
         )
         self.cursor_async_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.pg_async_cursor",
+            "opentelemetry.instrumentation.psycopg.psycopg.AsyncCursor",
             MockAsyncCursor,
         )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
@@ -182,7 +182,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg
         )
 
@@ -213,7 +213,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg
         )
 
@@ -407,7 +407,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg
         )
 
@@ -435,7 +435,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg
         )
 

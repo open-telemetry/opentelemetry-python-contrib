@@ -45,26 +45,12 @@ components:
 
   instrumentation/opentelemetry-instrumentation-urllib:
     - shalevr
-    - ocelotl
 
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
-    - ocelotl
 
   instrumentation/opentelemetry-instrumentation-sqlalchemy:
     - shalevr
-
-  instrumentation/opentelemetry-instrumentation-flask:
-    - ocelotl
-
-  instrumentation/opentelemetry-instrumentation-jinja2:
-    - ocelotl
-
-  instrumentation/opentelemetry-instrumentation-logging:
-    - ocelotl
-
-  instrumentation/opentelemetry-instrumentation-requests:
-    - ocelotl
 
   instrumentation/opentelemetry-instrumentation-cassandra:
     - mattcontinisio
@@ -75,5 +61,20 @@ components:
   instrumentation/opentelemetry-instrumentation-psycopg:
     - federicobond
 
+  instrumentation/opentelemetry-instrumentation-pymssql:
+    - guillaumep
+
+  instrumentation/opentelemetry-instrumentation-aiokafka:
+    - dimastbk
+
   processor/opentelemetry-processor-baggage:
     - codeboten
+
+  instrumentation-genai/:
+    - karthikscale3
+    - lmolkova
+    - lzchen
+    - gyliu513
+    - nirga
+    - alizenhom
+    - codefromthecrypt

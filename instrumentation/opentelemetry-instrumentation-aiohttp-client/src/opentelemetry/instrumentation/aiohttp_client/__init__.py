@@ -22,6 +22,7 @@ Explicitly instrumenting a single client session:
 
 .. code:: python
 
+    import asyncio
     import aiohttp
     from opentelemetry.instrumentation.aiohttp_client import create_trace_config
     import yarl
@@ -29,17 +30,21 @@ Explicitly instrumenting a single client session:
     def strip_query_params(url: yarl.URL) -> str:
         return str(url.with_query(None))
 
-    async with aiohttp.ClientSession(trace_configs=[create_trace_config(
+    async def get(url):
+        async with aiohttp.ClientSession(trace_configs=[create_trace_config(
             # Remove all query params from the URL attribute on the span.
             url_filter=strip_query_params,
-    )]) as session:
-        async with session.get(url) as response:
-            await response.text()
+        )]) as session:
+            async with session.get(url) as response:
+                await response.text()
+
+    asyncio.run(get("https://example.com"))
 
 Instrumenting all client sessions:
 
 .. code:: python
 
+    import asyncio
     import aiohttp
     from opentelemetry.instrumentation.aiohttp_client import (
         AioHttpClientInstrumentor
@@ -49,9 +54,12 @@ Instrumenting all client sessions:
     AioHttpClientInstrumentor().instrument()
 
     # Create a session and make an HTTP get request
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            await response.text()
+    async def get(url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                await response.text()
+
+    asyncio.run(get("https://example.com"))
 
 Configuration
 -------------
@@ -92,13 +100,13 @@ from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _set_http_method,
     _set_http_url,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
@@ -142,7 +150,7 @@ def _set_http_status_code_attribute(
     span,
     status_code,
     metric_attributes=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     status_code_str = str(status_code)
     try:
@@ -169,7 +177,7 @@ def create_trace_config(
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     tracer_provider: TracerProvider = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
 
@@ -326,7 +334,7 @@ def _instrument(
     trace_configs: typing.Optional[
         typing.Sequence[aiohttp.TraceConfig]
     ] = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all ClientSessions
 

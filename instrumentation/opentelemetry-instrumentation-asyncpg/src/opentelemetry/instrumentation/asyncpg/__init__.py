@@ -96,7 +96,6 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 
 class AsyncPGInstrumentor(BaseInstrumentor):
-
     _leading_comment_remover = re.compile(r"^/\*.*?\*/")
     _tracer = None
 
@@ -151,8 +150,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
-        params = getattr(instance, "_params", {})
-        name = args[0] if args[0] else params.get("database", "postgresql")
+        params = getattr(instance, "_params", None)
+        name = (
+            args[0] if args[0] else getattr(params, "database", "postgresql")
+        )
 
         try:
             # Strip leading comments so we get the operation name.
@@ -186,11 +187,11 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     async def _do_cursor_execute(self, func, instance, args, kwargs):
         """Wrap cursor based functions. For every call this will generate a new span."""
         exception = None
-        params = getattr(instance._connection, "_params", {})
+        params = getattr(instance._connection, "_params", None)
         name = (
             instance._query
             if instance._query
-            else params.get("database", "postgresql")
+            else getattr(params, "database", "postgresql")
         )
 
         try:

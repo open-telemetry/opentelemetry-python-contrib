@@ -1,0 +1,121 @@
+name: "[Package] Prepare patch release"
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        options:
+        - opentelemetry-propagator-aws-xray
+        - opentelemetry-resource-detector-azure
+        - opentelemetry-sdk-extension-aws
+        - opentelemetry-instrumentation-openai-v2
+        - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-google-genai
+        description: 'Package to be released'
+        required: true
+run-name: "[Package][${{ inputs.package }}] Prepare patch release"
+
+jobs:
+  prepare-patch-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify prerequisites
+        run: |
+          if [[ $GITHUB_REF_NAME != package-release/${{ inputs.package }}/v* ]]; then
+            echo this workflow should only be run against package-release/${{ inputs.package }}* branches, but is running on $GITHUB_REF_NAME
+            exit 1
+          fi
+
+          path=./$(./scripts/eachdist.py find-package --package ${{ inputs.package }})
+          changelog=$path/CHANGELOG.md
+
+          if [ ! -f $changelog ]; then
+            echo "missing $changelog file"
+            exit 1
+          fi
+
+          if ! grep --quiet "^## Unreleased$" CHANGELOG.md; then
+            echo the $changelog is missing an \"Unreleased\" section
+            exit 1
+          fi
+
+          version=$(./scripts/eachdist.py version --package ${{ inputs.package }})
+
+          version_file=$(find $path -type f -path "*version*.py")
+          file_count=$(echo "$version_file" | wc -l)
+
+          if [ "$file_count" -ne 1 ]; then
+            echo "Error: expected one version file, found $file_count"
+            echo "$version_file"
+            exit 1
+          fi
+
+          if [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # 1.2.3 or 1.2.3rc1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+            next_version="$major.$minor.$((patch + 1))"
+            release_branch_name="package-release/${{ inputs.package }}/v$major.$minor.x"
+          elif [[ $version =~ ^([0-9]+)\.([0-9]+)b([0-9]+)$ ]]; then
+            # 0.1b1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+            next_version="$major.${minor}b$((patch + 1))"
+            release_branch_name="package-release/${{ inputs.package }}/v$major.${minor}bx"
+          else
+            echo "unexpected version: '$version'"
+            exit 1
+          fi
+
+          if [[ $GITHUB_REF_NAME != $release_branch_name ]]; then
+            echo this workflow should only be run against $release_branch_name branch, but is running on $GITHUB_REF_NAME
+            exit 1
+          fi
+
+          echo "PACKAGE_NAME=${{ inputs.package }}" >> $GITHUB_ENV
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "NEXT_VERSION=$next_version" >> $GITHUB_ENV
+          echo "CHANGELOG=$changelog" >> $GITHUB_ENV
+          echo "VERSION_FILE=$version_file" >> $GITHUB_ENV
+
+      - name: Update version
+        run: |
+          # replace the version in the version file (1.2.3 -> 1.2.4)
+          sed -i -E "s/__version__\s*=\s*\"${VERSION}\"/__version__ = \"${NEXT_VERSION}\"/g" $VERSION_FILE
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install tox
+        run: pip install tox
+      - name: run tox
+        run: tox -e generate
+
+      - name: Update the change log with the approximate release date
+        run: |
+          # the actual release date on main will be updated at the end of the release workflow
+          date=$(date "+%Y-%m-%d")
+          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${NEXT_VERSION} ($date)/" ${CHANGELOG}
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - name: Create pull request
+        env:
+          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
+          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+        run: |
+          message="Prepare patch release for ${PACKAGE_NAME} v${NEXT_VERSION}"
+          branch="opentelemetrybot/patch-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
+
+          git commit -a -m "$message"
+          git push origin HEAD:$branch
+          gh pr create --title "[$GITHUB_REF_NAME] $message" \
+                       --body "$message." \
+                       --head $branch \
+                       --base $GITHUB_REF_NAME

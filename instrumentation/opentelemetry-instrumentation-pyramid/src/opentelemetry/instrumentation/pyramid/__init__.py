@@ -184,6 +184,7 @@ Note:
 API
 ---
 """
+
 import platform
 from typing import Collection
 

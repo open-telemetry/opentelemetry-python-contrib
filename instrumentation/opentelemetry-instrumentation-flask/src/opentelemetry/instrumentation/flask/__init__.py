@@ -238,6 +238,7 @@ Note:
 API
 ---
 """
+
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -245,18 +246,17 @@ from timeit import default_timer
 from typing import Collection
 
 import flask
-import importlib_metadata as metadata
 from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
@@ -272,6 +272,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -288,7 +289,7 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-flask_version = metadata.version("flask")
+flask_version = version("flask")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
@@ -320,7 +321,7 @@ def _rewrapped_app(
     duration_histogram_old=None,
     response_hook=None,
     excluded_urls=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -391,10 +392,11 @@ def _rewrapped_app(
         duration_s = default_timer() - start
         if duration_histogram_old:
             duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.DEFAULT
+                attributes, _StabilityMode.DEFAULT
             )
 
             if request_route:
+                # http.target to be included in old semantic conventions
                 duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
                     request_route
                 )
@@ -404,7 +406,7 @@ def _rewrapped_app(
             )
         if duration_histogram_new:
             duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.HTTP
+                attributes, _StabilityMode.HTTP
             )
 
             if request_route:
@@ -425,7 +427,7 @@ def _wrapped_before_request(
     excluded_urls=None,
     enable_commenter=True,
     commenter_options=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -546,7 +548,7 @@ class _InstrumentedFlask(flask.Flask):
     _enable_commenter = True
     _commenter_options = None
     _meter_provider = None
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -567,14 +569,14 @@ class _InstrumentedFlask(flask.Flask):
             duration_histogram_old = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
-                description="measures the duration of the inbound HTTP request",
+                description="Measures the duration of inbound HTTP requests.",
             )
         duration_histogram_new = None
         if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
             duration_histogram_new = meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
-                description="measures the duration of the inbound HTTP request",
+                description="Duration of HTTP server requests.",
             )
         active_requests_counter = meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -700,14 +702,14 @@ class FlaskInstrumentor(BaseInstrumentor):
                 duration_histogram_old = meter.create_histogram(
                     name=MetricInstruments.HTTP_SERVER_DURATION,
                     unit="ms",
-                    description="measures the duration of the inbound HTTP request",
+                    description="Measures the duration of inbound HTTP requests.",
                 )
             duration_histogram_new = None
             if _report_new(sem_conv_opt_in_mode):
                 duration_histogram_new = meter.create_histogram(
                     name=HTTP_SERVER_REQUEST_DURATION,
                     unit="s",
-                    description="measures the duration of the inbound HTTP request",
+                    description="Duration of HTTP server requests.",
                 )
             active_requests_counter = meter.create_up_down_counter(
                 name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,

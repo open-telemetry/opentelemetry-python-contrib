@@ -43,19 +43,23 @@ class TestAsyncioAnext(TestBase):
 
     # Asyncio anext() does not have __name__ attribute, which is used to determine if the coroutine should be traced.
     # This test is to ensure that the instrumentation does not break when the coroutine does not have __name__ attribute.
+    # Additionally, ensure the coroutine is actually awaited.
     @skipIf(
         sys.version_info < (3, 10), "anext is only available in Python 3.10+"
     )
     def test_asyncio_anext(self):
         async def main():
             async def async_gen():
-                for it in range(2):
+                # nothing special about this range other than to avoid returning a zero
+                # from a function named 'main' (which might cause confusion about intent)
+                for it in range(2, 4):
                     yield it
 
             async_gen_instance = async_gen()
-            agen = anext(async_gen_instance)
-            await asyncio.create_task(agen)
+            agen = anext(async_gen_instance)  # noqa: F821
+            return await asyncio.create_task(agen)
 
-        asyncio.run(main())
+        ret = asyncio.run(main())
+        self.assertEqual(ret, 2)  # first iteration from range()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)

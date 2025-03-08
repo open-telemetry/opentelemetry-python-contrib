@@ -32,11 +32,16 @@ def _lazy_load(module, cls):
 
 
 _KNOWN_EXTENSIONS = {
+    "bedrock-runtime": _lazy_load(".bedrock", "_BedrockRuntimeExtension"),
     "dynamodb": _lazy_load(".dynamodb", "_DynamoDbExtension"),
     "lambda": _lazy_load(".lmbd", "_LambdaExtension"),
     "sns": _lazy_load(".sns", "_SnsExtension"),
     "sqs": _lazy_load(".sqs", "_SqsExtension"),
 }
+
+
+def _has_extension(call_context: _AwsSdkCallContext) -> bool:
+    return call_context.service in _KNOWN_EXTENSIONS
 
 
 def _find_extension(call_context: _AwsSdkCallContext) -> _AwsSdkExtension:

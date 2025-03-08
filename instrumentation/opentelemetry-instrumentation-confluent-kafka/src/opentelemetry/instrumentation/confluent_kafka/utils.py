@@ -25,11 +25,9 @@ class KafkaPropertiesExtractor:
         return kwargs.get(key, default_value)
 
     @staticmethod
-    def extract_produce_topic(args):
+    def extract_produce_topic(args, kwargs):
         """extract topic from `produce` method arguments in Producer class"""
-        if len(args) > 0:
-            return args[0]
-        return "unknown"
+        return kwargs.get("topic") or (args[0] if args else "unknown")
 
     @staticmethod
     def extract_produce_headers(args, kwargs):

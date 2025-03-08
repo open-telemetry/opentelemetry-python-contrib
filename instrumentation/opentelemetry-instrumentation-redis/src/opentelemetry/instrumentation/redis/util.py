@@ -15,6 +15,7 @@
 """
 Some utils used by the redis integration
 """
+
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
@@ -68,3 +69,15 @@ def _format_command_args(args):
         out_str = ""
 
     return out_str
+
+
+def _set_span_attribute_if_value(span, name, value):
+    if value is not None and value != "":
+        span.set_attribute(name, value)
+
+
+def _value_or_none(values, n):
+    try:
+        return values[n]
+    except IndexError:
+        return None

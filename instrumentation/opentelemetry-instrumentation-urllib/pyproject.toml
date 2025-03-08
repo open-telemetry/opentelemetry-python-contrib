@@ -23,12 +23,13 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.48b0.dev",
-  "opentelemetry-semantic-conventions == 0.48b0.dev",
-  "opentelemetry-util-http == 0.48b0.dev",
+  "opentelemetry-instrumentation == 0.52b0.dev",
+  "opentelemetry-semantic-conventions == 0.52b0.dev",
+  "opentelemetry-util-http == 0.52b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +40,7 @@ urllib = "opentelemetry.instrumentation.urllib:URLLibInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-urllib"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/urllib/version.py"

@@ -520,7 +520,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
                             self.assertAlmostEqual(
-                                duration_s, point.sum, places=2
+                                duration_s, point.sum, places=1
                             )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):

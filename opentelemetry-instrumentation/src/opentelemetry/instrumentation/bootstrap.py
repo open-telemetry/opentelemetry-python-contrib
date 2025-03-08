@@ -22,14 +22,21 @@ from subprocess import (
     SubprocessError,
     check_call,
 )
+from typing import Optional
 
-import pkg_resources
+from packaging.requirements import Requirement
 
 from opentelemetry.instrumentation.bootstrap_gen import (
-    default_instrumentations,
-    libraries,
+    default_instrumentations as gen_default_instrumentations,
+)
+from opentelemetry.instrumentation.bootstrap_gen import (
+    libraries as gen_libraries,
 )
 from opentelemetry.instrumentation.version import __version__
+from opentelemetry.util._importlib_metadata import (
+    PackageNotFoundError,
+    version,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +78,7 @@ def _sys_pip_install(package):
         print(error)
 
 
-def _pip_check():
+def _pip_check(libraries):
     """Ensures none of the instrumentations have dependency conflicts.
     Clean check reported as:
     'No broken requirements found.'
@@ -91,24 +98,25 @@ def _pip_check():
 
 
 def _is_installed(req):
-    if req in sys.modules:
-        return True
+    req = Requirement(req)
 
     try:
-        pkg_resources.get_distribution(req)
-    except pkg_resources.DistributionNotFound:
+        dist_version = version(req.name)
+    except PackageNotFoundError:
         return False
-    except pkg_resources.VersionConflict as exc:
+
+    if not req.specifier.filter(dist_version):
         logger.warning(
-            "instrumentation for package %s is available but version %s is installed. Skipping.",
-            exc.req,
-            exc.dist.as_requirement(),  # pylint: disable=no-member
+            "instrumentation for package %s is available"
+            " but version %s is installed. Skipping.",
+            req,
+            dist_version,
         )
         return False
     return True
 
 
-def _find_installed_libraries():
+def _find_installed_libraries(default_instrumentations, libraries):
     for lib in default_instrumentations:
         yield lib
 
@@ -117,18 +125,25 @@ def _find_installed_libraries():
             yield lib["instrumentation"]
 
 
-def _run_requirements():
+def _run_requirements(default_instrumentations, libraries):
     logger.setLevel(logging.ERROR)
-    print("\n".join(_find_installed_libraries()), end="")
+    print(
+        "\n".join(
+            _find_installed_libraries(default_instrumentations, libraries)
+        )
+    )
 
 
-def _run_install():
-    for lib in _find_installed_libraries():
+def _run_install(default_instrumentations, libraries):
+    for lib in _find_installed_libraries(default_instrumentations, libraries):
         _sys_pip_install(lib)
-    _pip_check()
+    _pip_check(libraries)
 
 
-def run() -> None:
+def run(
+    default_instrumentations: Optional[list] = None,
+    libraries: Optional[list] = None,
+) -> None:
     action_install = "install"
     action_requirements = "requirements"
 
@@ -158,8 +173,14 @@ def run() -> None:
     )
     args = parser.parse_args()
 
+    if libraries is None:
+        libraries = gen_libraries
+
+    if default_instrumentations is None:
+        default_instrumentations = gen_default_instrumentations
+
     cmd = {
         action_install: _run_install,
         action_requirements: _run_requirements,
     }[args.action]
-    cmd()
+    cmd(default_instrumentations, libraries)

@@ -35,16 +35,28 @@ context attached, and this context will be re-activated in the thread's
 run method or the executor's worker thread."
 """
 
+from __future__ import annotations
+
 import threading
 from concurrent import futures
-from typing import Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection
 
-from wrapt import wrap_function_wrapper
+from wrapt import (
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+)
 
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.threading.package import _instruments
 from opentelemetry.instrumentation.utils import unwrap
+
+if TYPE_CHECKING:
+    from typing import Protocol, TypeVar
+
+    R = TypeVar("R")
+
+    class HasOtelContext(Protocol):
+        _otel_context: context.Context
 
 
 class ThreadingInstrumentor(BaseInstrumentor):
@@ -55,12 +67,12 @@ class ThreadingInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         self._instrument_thread()
         self._instrument_timer()
         self._instrument_thread_pool()
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         self._uninstrument_thread()
         self._uninstrument_timer()
         self._uninstrument_thread_pool()
@@ -117,33 +129,50 @@ class ThreadingInstrumentor(BaseInstrumentor):
         )
 
     @staticmethod
-    def __wrap_threading_start(call_wrapped, instance, args, kwargs):
+    def __wrap_threading_start(
+        call_wrapped: Callable[[], None],
+        instance: HasOtelContext,
+        args: tuple[()],
+        kwargs: dict[str, Any],
+    ) -> None:
         instance._otel_context = context.get_current()
         return call_wrapped(*args, **kwargs)
 
     @staticmethod
-    def __wrap_threading_run(call_wrapped, instance, args, kwargs):
+    def __wrap_threading_run(
+        call_wrapped: Callable[..., R],
+        instance: HasOtelContext,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> R:
         token = None
         try:
             token = context.attach(instance._otel_context)
             return call_wrapped(*args, **kwargs)
         finally:
-            context.detach(token)
+            if token is not None:
+                context.detach(token)
 
     @staticmethod
-    def __wrap_thread_pool_submit(call_wrapped, instance, args, kwargs):
+    def __wrap_thread_pool_submit(
+        call_wrapped: Callable[..., R],
+        instance: futures.ThreadPoolExecutor,
+        args: tuple[Callable[..., Any], ...],
+        kwargs: dict[str, Any],
+    ) -> R:
         # obtain the original function and wrapped kwargs
         original_func = args[0]
         otel_context = context.get_current()
 
-        def wrapped_func(*func_args, **func_kwargs):
+        def wrapped_func(*func_args: Any, **func_kwargs: Any) -> R:
             token = None
             try:
                 token = context.attach(otel_context)
                 return original_func(*func_args, **func_kwargs)
             finally:
-                context.detach(token)
+                if token is not None:
+                    context.detach(token)
 
         # replace the original function with the wrapped function
-        new_args = (wrapped_func,) + args[1:]
+        new_args: tuple[Callable[..., Any], ...] = (wrapped_func,) + args[1:]
         return call_wrapped(*new_args, **kwargs)

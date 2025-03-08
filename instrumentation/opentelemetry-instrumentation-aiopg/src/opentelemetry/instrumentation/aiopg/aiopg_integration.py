@@ -102,7 +102,7 @@ class AsyncCursorTracer(CursorTracer):
         cursor,
         query_method: typing.Callable[..., typing.Any],
         *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any]
+        **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
         name = ""
         if args:

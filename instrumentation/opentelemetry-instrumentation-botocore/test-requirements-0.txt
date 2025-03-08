@@ -1,0 +1,39 @@
+asgiref==3.8.1
+aws-xray-sdk==2.12.1
+boto3==1.28.80
+botocore==1.31.80
+certifi==2024.7.4
+cffi==1.17.0
+charset-normalizer==3.3.2
+cryptography==43.0.1
+Deprecated==1.2.14
+docker==7.0.0
+idna==3.7
+iniconfig==2.0.0
+Jinja2==3.1.4
+jmespath==1.0.1
+MarkupSafe==2.1.5
+moto==5.0.9
+packaging==24.0
+pluggy==1.5.0
+py-cpuinfo==9.0.0
+pycparser==2.21
+pytest==7.4.4
+pytest-vcr==1.0.2
+python-dateutil==2.8.2
+pytz==2024.1
+PyYAML==6.0.1
+requests==2.32.3
+responses==0.25.0
+s3transfer==0.7.0
+six==1.16.0
+tomli==2.0.1
+typing_extensions==4.12.2
+urllib3==1.26.19
+Werkzeug==3.0.6
+wrapt==1.16.0
+xmltodict==0.13.0
+zipp==3.19.2
+-e opentelemetry-instrumentation
+-e propagator/opentelemetry-propagator-aws-xray
+-e instrumentation/opentelemetry-instrumentation-botocore

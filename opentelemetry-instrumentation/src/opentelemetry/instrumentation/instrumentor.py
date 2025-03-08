@@ -17,9 +17,11 @@
 OpenTelemetry Base Instrumentor
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Collection, Optional
+from typing import Any, Collection
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
@@ -33,7 +35,7 @@ _LOG = getLogger(__name__)
 
 
 class BaseInstrumentor(ABC):
-    """An ABC for instrumentors
+    """An ABC for instrumentors.
 
     Child classes of this ABC should instrument specific third
     party libraries or frameworks either by using the
@@ -74,18 +76,18 @@ class BaseInstrumentor(ABC):
         is present in the environment.
         """
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instrument the library"""
 
     @abstractmethod
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         """Uninstrument the library"""
 
-    def _check_dependency_conflicts(self) -> Optional[DependencyConflict]:
+    def _check_dependency_conflicts(self) -> DependencyConflict | None:
         dependencies = self.instrumentation_dependencies()
         return get_dependency_conflicts(dependencies)
 
-    def instrument(self, **kwargs):
+    def instrument(self, **kwargs: Any):
         """Instrument the library
 
         This method will be called without any optional arguments by the
@@ -117,7 +119,7 @@ class BaseInstrumentor(ABC):
         self._is_instrumented_by_opentelemetry = True
         return result
 
-    def uninstrument(self, **kwargs):
+    def uninstrument(self, **kwargs: Any):
         """Uninstrument the library
 
         See ``BaseInstrumentor.instrument`` for more information regarding the

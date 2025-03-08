@@ -40,7 +40,7 @@ to figure out which instrumentation packages the user might want to install. By 
 prints out a list of the default and detected instrumentation packages that can be added to a
 requirements.txt file. It also supports installing the packages when run with
 :code:`--action=install` or :code:`-a install` flag. All default and detectable
-instrumentation packages are defined `here <https://github.com/flands/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py>`.
+instrumentation packages are defined `here <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap_gen.py>`.
 
 
 opentelemetry-instrument
@@ -129,6 +129,19 @@ start celery with the rest of the arguments.
 
 The above command will configure the global trace provider to use the Random IDs Generator, and then
 pass ``--port=3000`` to ``flask run``.
+
+Programmatic Auto-instrumentation
+--------------------
+
+::
+
+    from opentelemetry.instrumentation import auto_instrumentation
+    auto_instrumentation.initialize()
+
+
+If you are in an environment where you cannot use opentelemetry-instrument to inject auto-instrumentation you can do so programmatically with
+the code above. Please note that some instrumentations may require the ``initialize()`` method to be called before the library they
+instrument is imported.
 
 References
 ----------

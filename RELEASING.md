@@ -9,8 +9,29 @@
       (otherwise the workflow will pick up the version from `main` and just remove the `.dev` suffix).
   * Review the two pull requests that it creates.
     (one is targeted to the release branch and one is targeted to `main`).
-    * Merge the one targeted towards the release branch.
-    * The builds will fail for the `main` pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` builds to pass.
+    * The builds will fail for both the `main` and release pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` and release builds to pass.
+  * Merge the release PR.
+  * Merge the PR to main (this can be done separately from [making the release](#making-the-release))
+
+### Preparing a major or minor release for individual package
+
+> [!NOTE]
+> Per-package release is supported for the following packages only:
+> - opentelemetry-propagator-aws-xray
+> - opentelemetry-resource-detector-azure
+> - opentelemetry-sdk-extension-aws
+> - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-google-genai
+>
+> These libraries are also excluded from the general release.
+
+Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
+to pick a specific package to release. It follows the same versioning strategy and process as the general release.
+
+Long-term package release branch follows `package-release/{package-name}/v{major}.{minor}.x` (or `package-release/{package-name}/v{major}.{minor}bx`) naming pattern.
+
+The workflow will create two pull requests, one against the `main` and one against the `package-release/` branch; both should be merged in order to proceed with the release.
 
 ## Preparing a new patch release
 
@@ -27,6 +48,19 @@
     e.g. `release/v1.9.x`, and click the "Run workflow" button below that.
   * Review and merge the pull request that it creates for updating the version.
 
+### Preparing a patch release for individual package
+
+> [!NOTE]
+> Per-package release is supported only for packages included in the corresponding workflow. Libraries that support per-package release are currently
+> excluded from the general patch release.
+
+Per-package patch release preparation is handled by the [`[Package] Prepare patch release`](./.github/workflows/package-prepare-patch-release.yml) workflow that allows
+to pick a specific package to release.
+
+The workflow can only be run against long-term release branch such as `package-release/{package-name}/v{major}.{minor}.x` or `package-release/{package-name}/v{major}.{minor}bx`.
+
+The workflow will create a pull request that should be merged in order to proceed with the release.
+
 ## Making the release
 
 * Run the [Release workflow](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/release.yml).
@@ -36,6 +70,33 @@
   * Review and merge the pull request that it creates for updating the change log in main
     (note that if this is not a patch release then the change log on main may already be up-to-date,
     in which case no pull request will be created).
+  * Verify that a new [Github release](https://github.com/open-telemetry/opentelemetry-python-contrib/releases) has been created and that the CHANGELOGs look correct.
+
+### Releasing individual package
+
+> [!NOTE]
+> Per-package patch release is supported for the following packages only:
+> - opentelemetry-propagator-aws-xray
+> - opentelemetry-resource-detector-azure
+> - opentelemetry-sdk-extension-aws
+> - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-google-genai
+>
+> These libraries are also excluded from the general patch release.
+
+Per-package release is handled by the [`[Package] Release`](./.github/workflows/package-release.yml) workflow that allows
+to pick a specific package to release.
+
+The workflow can only be run against long-term release branch such as `package-release/{package-name}/v{major}.{minor}.x` or `package-release/{package-name}/v{major}.{minor}bx`.
+
+## After the release
+
+* Check PyPI
+  * This should be handled automatically on release by the [publish action](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/release.yml).
+  * Check the [action logs](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/release.yml) to make sure packages have been uploaded to PyPI
+  * Check the release history (e.g. https://pypi.org/project/opentelemetry-instrumentation/#history) on PyPI
+  * If for some reason the action failed, see [Publish failed](#publish-failed) below
 
 ## Notes about version numbering for stable components
 
@@ -68,27 +129,9 @@
   * The version number for unstable components in the `main` branch will be bumped to the next version,
     e.g. `0.{Y+1}b0.dev`.
 
-## After the release
+## Releasing dev version of new packages to claim namespace
 
-* Check PyPI
-  * This should be handled automatically on release by the [publish action](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/release.yml).
-  * Check the [action logs](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/release.yml) to make sure packages have been uploaded to PyPI
-  * Check the release history (e.g. https://pypi.org/project/opentelemetry-instrumentation/#history) on PyPI
-  * If for some reason the action failed, see [Publish failed](#publish-failed) below
-* Move stable tag
-  * Run the following (TODO automate):
-
-    ```bash
-    git tag -d stable
-    git tag stable
-    git push --delete origin tagname
-    git push origin stable
-    ```
-
-  * This will ensure the docs are pointing at the stable release.
-  * To validate this worked, ensure the stable build has run successfully:
-    <https://readthedocs.org/projects/opentelemetry-python/builds/>.
-    If the build has not run automatically, it can be manually trigger via the readthedocs interface.
+When a contribution introduces a new package, in order to mitigate name-squatting incidents, release the current development version of the new package under the `opentelemetry` user to simply claim the namespace. This should be done shortly after the PR that introduced this package has been merged into `main`.
 
 ## Troubleshooting
 

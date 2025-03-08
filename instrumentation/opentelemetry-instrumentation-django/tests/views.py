@@ -25,9 +25,7 @@ def excluded_noarg2(request):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
-def route_span_name(
-    request, *args, **kwargs
-):  # pylint: disable=unused-argument
+def route_span_name(request, *args, **kwargs):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
@@ -49,9 +47,7 @@ async def async_traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
-async def async_traced_template(
-    request, year
-):  # pylint: disable=unused-argument
+async def async_traced_template(request, year):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
@@ -71,9 +67,7 @@ async def async_excluded_noarg2(request):  # pylint: disable=unused-argument
     return HttpResponse()
 
 
-async def async_route_span_name(
-    request, *args, **kwargs
-):  # pylint: disable=unused-argument
+async def async_route_span_name(request, *args, **kwargs):  # pylint: disable=unused-argument
     return HttpResponse()
 
 

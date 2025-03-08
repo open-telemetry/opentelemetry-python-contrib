@@ -23,16 +23,17 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.48b0.dev",
-  "opentelemetry-instrumentation-dbapi == 0.48b0.dev",
+  "opentelemetry-instrumentation == 0.52b0.dev",
+  "opentelemetry-instrumentation-dbapi == 0.52b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "mysql-connector-python ~= 8.0",
+  "mysql-connector-python >= 8.0, < 10.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -40,6 +41,7 @@ mysql = "opentelemetry.instrumentation.mysql:MySQLInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-mysql"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/mysql/version.py"

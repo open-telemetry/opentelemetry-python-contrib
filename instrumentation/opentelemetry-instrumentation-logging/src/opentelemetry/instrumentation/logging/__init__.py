@@ -36,7 +36,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 
-__doc__ = _MODULE_DOC
+__doc__ = _MODULE_DOC  # noqa: A001
 
 LEVELS = {
     "debug": logging.DEBUG,

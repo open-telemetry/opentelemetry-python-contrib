@@ -15,12 +15,16 @@
 import threading
 import time
 
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from wrapt import wrap_function_wrapper
+
+from opentelemetry import baggage, context
+from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
-from .celery_test_tasks import app, task_add, task_raises
+from .celery_test_tasks import app, task_add, task_raises, task_returns_baggage
 
 
 class TestCeleryInstrumentation(TestBase):
@@ -167,6 +171,56 @@ class TestCeleryInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_baggage(self):
+        CeleryInstrumentor().instrument()
+
+        ctx = baggage.set_baggage("key", "value")
+        context.attach(ctx)
+
+        task = task_returns_baggage.delay()
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not task.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        self.assertEqual(task.result, {"key": "value"})
+
+    def test_task_not_instrumented_does_not_raise(self):
+        def _retrieve_context_wrapper_none_token(
+            wrapped, instance, args, kwargs
+        ):
+            ctx = wrapped(*args, **kwargs)
+            if ctx is None:
+                return ctx
+            span, activation, _ = ctx
+            return span, activation, None
+
+        wrap_function_wrapper(
+            utils,
+            "retrieve_context",
+            _retrieve_context_wrapper_none_token,
+        )
+
+        CeleryInstrumentor().instrument()
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+
+        # TODO: assert we don't have "TypeError: expected an instance of Token, got None" in logs
+        self.assertTrue(result)
+
+        unwrap(utils, "retrieve_context")
 
 
 class TestCelerySignatureTask(TestBase):
