@@ -478,6 +478,7 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
         return method, {}
     return scope.get("type", ""), {}
 
+
 def _collect_target_attribute(
     scope: typing.Dict[str, typing.Any],
 ) -> typing.Optional[str]:
