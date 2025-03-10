@@ -386,20 +386,18 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def server(*args, **kwargs):
+            # set our interceptor as the first
+            interceptor = aio_server_interceptor(
+                tracer_provider=tracer_provider, filter_=self._filter
+            )
+            interceptors = [interceptor]
+
             if "interceptors" in kwargs:
-                # add our interceptor as the first
-                kwargs["interceptors"].insert(
-                    0,
-                    aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    ),
-                )
-            else:
-                kwargs["interceptors"] = [
-                    aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    )
-                ]
+                # Add existing interceptors to the end
+                # CAUTION: `kwargs["interceptors"]` may be a tuple
+                interceptors.extend(kwargs["interceptors"])
+
+            kwargs["interceptors"] = interceptors
             return self._original_func(*args, **kwargs)
 
         grpc.aio.server = server
