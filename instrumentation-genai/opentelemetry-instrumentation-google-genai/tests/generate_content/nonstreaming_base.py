@@ -17,31 +17,7 @@ import os
 import unittest
 
 from ..common.base import TestCase
-
-
-def create_valid_response(
-    response_text="The model response", input_tokens=10, output_tokens=20
-):
-    return {
-        "modelVersion": "gemini-2.0-flash-test123",
-        "usageMetadata": {
-            "promptTokenCount": input_tokens,
-            "candidatesTokenCount": output_tokens,
-            "totalTokenCount": input_tokens + output_tokens,
-        },
-        "candidates": [
-            {
-                "content": {
-                    "role": "model",
-                    "parts": [
-                        {
-                            "text": response_text,
-                        }
-                    ],
-                }
-            }
-        ],
-    }
+from .util import create_valid_response
 
 
 class NonStreamingTestCase(TestCase):
@@ -56,22 +32,12 @@ class NonStreamingTestCase(TestCase):
     def generate_content(self, *args, **kwargs):
         raise NotImplementedError("Must implement 'generate_content'.")
 
+    @property
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
 
-    def configure_valid_response(
-        self,
-        response_text="The model_response",
-        input_tokens=10,
-        output_tokens=20,
-    ):
-        self.requests.add_response(
-            create_valid_response(
-                response_text=response_text,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            )
-        )
+    def configure_valid_response(self, *args, **kwargs):
+        self.requests.add_response(create_valid_response(*args, **kwargs))
 
     def test_instrumentation_does_not_break_core_functionality(self):
         self.configure_valid_response(response_text="Yep, it works!")

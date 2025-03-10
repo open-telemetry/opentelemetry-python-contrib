@@ -19,12 +19,24 @@ from typing import Any
 
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock import (
+    _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
+    _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
+)
+from opentelemetry.sdk.metrics._internal.point import ResourceMetrics
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     event_attributes as EventAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
+)
+from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
+    GEN_AI_CLIENT_OPERATION_DURATION,
+    GEN_AI_CLIENT_TOKEN_USAGE,
 )
 
 
@@ -259,3 +271,107 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
             expected_content
         ), dict(log.log_record.body)
     assert_log_parent(log, parent_span)
+
+
+def assert_all_metric_attributes(
+    data_point, operation_name: str, model: str, error_type: str | None = None
+):
+    assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        == operation_name
+    )
+    assert GenAIAttributes.GEN_AI_SYSTEM in data_point.attributes
+    assert (
+        data_point.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
+    )
+    assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
+    assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+
+    if error_type is not None:
+        assert ERROR_TYPE in data_point.attributes
+        assert data_point.attributes[ERROR_TYPE] == error_type
+    else:
+        assert ERROR_TYPE not in data_point.attributes
+
+
+def assert_metrics(
+    resource_metrics: ResourceMetrics,
+    operation_name: str,
+    model: str,
+    input_tokens: float | None = None,
+    output_tokens: float | None = None,
+    error_type: str | None = None,
+):
+    assert len(resource_metrics) == 1
+
+    metric_data = resource_metrics[0].scope_metrics[0].metrics
+    if input_tokens is not None or output_tokens is not None:
+        expected_metrics_data_len = 2
+    else:
+        expected_metrics_data_len = 1
+    assert len(metric_data) == expected_metrics_data_len
+
+    duration_metric = next(
+        (m for m in metric_data if m.name == GEN_AI_CLIENT_OPERATION_DURATION),
+        None,
+    )
+    assert duration_metric is not None
+
+    duration_point = duration_metric.data.data_points[0]
+    assert duration_point.sum > 0
+    assert_all_metric_attributes(
+        duration_point, operation_name, model, error_type
+    )
+    assert duration_point.explicit_bounds == tuple(
+        _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS
+    )
+
+    if input_tokens is not None:
+        token_usage_metric = next(
+            (m for m in metric_data if m.name == GEN_AI_CLIENT_TOKEN_USAGE),
+            None,
+        )
+        assert token_usage_metric is not None
+
+        input_token_usage = next(
+            (
+                d
+                for d in token_usage_metric.data.data_points
+                if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+                == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
+            ),
+            None,
+        )
+        assert input_token_usage is not None
+        assert input_token_usage.sum == input_tokens
+
+        assert input_token_usage.explicit_bounds == tuple(
+            _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS
+        )
+        assert_all_metric_attributes(input_token_usage, operation_name, model)
+
+    if output_tokens is not None:
+        token_usage_metric = next(
+            (m for m in metric_data if m.name == GEN_AI_CLIENT_TOKEN_USAGE),
+            None,
+        )
+        assert token_usage_metric is not None
+
+        output_token_usage = next(
+            (
+                d
+                for d in token_usage_metric.data.data_points
+                if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+                == GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value
+            ),
+            None,
+        )
+        assert output_token_usage is not None
+        assert output_token_usage.sum == output_tokens
+
+        assert output_token_usage.explicit_bounds == tuple(
+            _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS
+        )
+        assert_all_metric_attributes(output_token_usage, operation_name, model)

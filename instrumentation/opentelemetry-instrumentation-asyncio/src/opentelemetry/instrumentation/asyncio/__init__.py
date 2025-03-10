@@ -41,6 +41,11 @@ Run instrumented application
 
     # export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
 
+    import asyncio
+    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+
+    AsyncioInstrumentor().instrument()
+
     loop = asyncio.get_event_loop()
 
     future = asyncio.Future()
@@ -51,6 +56,8 @@ Run instrumented application
 3. to_thread
 -------------
 .. code:: python
+
+    # export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func
 
     import asyncio
     from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor

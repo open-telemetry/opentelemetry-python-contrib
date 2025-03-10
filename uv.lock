@@ -3773,7 +3773,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-asgi", editable = "instrumentation/opentelemetry-instrumentation-asgi" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-    { name = "starlette", marker = "extra == 'instruments'", specifier = "~=0.13.0" },
+    { name = "starlette", marker = "extra == 'instruments'", specifier = ">=0.13,<0.15" },
 ]
 provides-extras = ["instruments"]
 
