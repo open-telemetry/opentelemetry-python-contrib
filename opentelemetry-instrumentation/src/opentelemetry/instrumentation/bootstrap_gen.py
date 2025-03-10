@@ -185,7 +185,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.52b0.dev",
     },
     {
-        "library": "starlette ~= 0.13.0",
+        "library": "starlette >= 0.13, <0.15",
         "instrumentation": "opentelemetry-instrumentation-starlette==0.52b0.dev",
     },
     {

@@ -47,6 +47,7 @@ from wrapt import (
 
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.vertexai.package import _instruments
 from opentelemetry.instrumentation.vertexai.patch import (
     generate_content_create,
@@ -54,6 +55,23 @@ from opentelemetry.instrumentation.vertexai.patch import (
 from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+
+
+def _client_classes():
+    # This import is very slow, do it lazily in case instrument() is not called
+
+    # pylint: disable=import-outside-toplevel
+    from google.cloud.aiplatform_v1.services.prediction_service import (
+        client,
+    )
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        client as client_v1beta1,
+    )
+
+    return (
+        client.PredictionServiceClient,
+        client_v1beta1.PredictionServiceClient,
+    )
 
 
 class VertexAIInstrumentor(BaseInstrumentor):
@@ -77,20 +95,15 @@ class VertexAIInstrumentor(BaseInstrumentor):
             event_logger_provider=event_logger_provider,
         )
 
-        wrap_function_wrapper(
-            module="google.cloud.aiplatform_v1beta1.services.prediction_service.client",
-            name="PredictionServiceClient.generate_content",
-            wrapper=generate_content_create(
-                tracer, event_logger, is_content_enabled()
-            ),
-        )
-        wrap_function_wrapper(
-            module="google.cloud.aiplatform_v1.services.prediction_service.client",
-            name="PredictionServiceClient.generate_content",
-            wrapper=generate_content_create(
-                tracer, event_logger, is_content_enabled()
-            ),
-        )
+        for client_class in _client_classes():
+            wrap_function_wrapper(
+                client_class,
+                name="generate_content",
+                wrapper=generate_content_create(
+                    tracer, event_logger, is_content_enabled()
+                ),
+            )
 
     def _uninstrument(self, **kwargs: Any) -> None:
-        """TODO: implemented in later PR"""
+        for client_class in _client_classes():
+            unwrap(client_class, "generate_content")
