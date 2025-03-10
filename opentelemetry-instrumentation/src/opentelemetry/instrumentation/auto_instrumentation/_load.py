@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_CONFIGURATOR,
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
+    OTEL_PYTHON_CUSTOMIZER,
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
@@ -133,6 +134,14 @@ def _load_instrumentors(distro):
 
 
 def _load_configurators():
+    customizer = None
+    if environ.get(OTEL_PYTHON_CUSTOMIZER, None):
+        for entry_point in entry_points(
+            group="opentelemetry_customizer",
+            name=environ.get(OTEL_PYTHON_CUSTOMIZER),
+        ):
+            customizer = entry_point.load()()
+            break
     configurator_name = environ.get(OTEL_PYTHON_CONFIGURATOR, None)
     configured = None
     for entry_point in entry_points(group="opentelemetry_configurator"):
@@ -149,7 +158,8 @@ def _load_configurators():
                 or configurator_name == entry_point.name
             ):
                 entry_point.load()().configure(
-                    auto_instrumentation_version=__version__
+                    auto_instrumentation_version=__version__,
+                    customizer=customizer,
                 )  # type: ignore
                 configured = entry_point.name
             else:
