@@ -21,8 +21,6 @@ environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
 
 .. code-block:: python
 
-    # export OTEL_PYTHON_LOG_CORRELATION=true
-
     import logging
 
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
@@ -32,9 +30,10 @@ environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
     logging.warning('OTel test')
 
 When running the above example you will see the following output:
-```
-2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
-```
+
+::
+
+    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
 
 The environment variable `OTEL_PYTHON_LOG_CORRELATION` must be set to `true`
 in order to enable trace context injection into logs by calling
