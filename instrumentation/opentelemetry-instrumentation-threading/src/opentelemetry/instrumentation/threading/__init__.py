@@ -132,8 +132,8 @@ class ThreadingInstrumentor(BaseInstrumentor):
     def __wrap_threading_start(
         call_wrapped: Callable[[], None],
         instance: HasOtelContext,
-        args: ...,
-        kwargs: ...,
+        args: tuple[()],
+        kwargs: dict[str, Any],
     ) -> None:
         instance._otel_context = context.get_current()
         return call_wrapped(*args, **kwargs)
@@ -150,7 +150,8 @@ class ThreadingInstrumentor(BaseInstrumentor):
             token = context.attach(instance._otel_context)
             return call_wrapped(*args, **kwargs)
         finally:
-            context.detach(token)
+            if token is not None:
+                context.detach(token)
 
     @staticmethod
     def __wrap_thread_pool_submit(
@@ -169,7 +170,8 @@ class ThreadingInstrumentor(BaseInstrumentor):
                 token = context.attach(otel_context)
                 return original_func(*func_args, **func_kwargs)
             finally:
-                context.detach(token)
+                if token is not None:
+                    context.detach(token)
 
         # replace the original function with the wrapped function
         new_args: tuple[Callable[..., Any], ...] = (wrapped_func,) + args[1:]

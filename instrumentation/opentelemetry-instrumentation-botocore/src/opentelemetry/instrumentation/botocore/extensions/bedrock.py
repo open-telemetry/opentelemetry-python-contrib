@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+from timeit import default_timer
 from typing import Any
 
 from botocore.eventstream import EventStream
@@ -29,12 +30,17 @@ from botocore.response import StreamingBody
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
+    _Choice,
+    genai_capture_message_content,
+    message_to_event,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
     _BotoClientErrorT,
+    _BotocoreInstrumentorContext,
 )
+from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -47,15 +53,55 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_REQUEST_TOP_P,
     GEN_AI_RESPONSE_FINISH_REASONS,
     GEN_AI_SYSTEM,
+    GEN_AI_TOKEN_TYPE,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GenAiOperationNameValues,
     GenAiSystemValues,
+    GenAiTokenTypeValues,
+)
+from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
+    GEN_AI_CLIENT_OPERATION_DURATION,
+    GEN_AI_CLIENT_TOKEN_USAGE,
 )
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 _logger = logging.getLogger(__name__)
+
+_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS = [
+    0.01,
+    0.02,
+    0.04,
+    0.08,
+    0.16,
+    0.32,
+    0.64,
+    1.28,
+    2.56,
+    5.12,
+    10.24,
+    20.48,
+    40.96,
+    81.92,
+]
+
+_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
+    1,
+    4,
+    16,
+    64,
+    256,
+    1024,
+    4096,
+    16384,
+    65536,
+    262144,
+    1048576,
+    4194304,
+    16777216,
+    67108864,
+]
 
 _MODEL_ID_KEY: str = "modelId"
 
@@ -83,6 +129,40 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             self._call_context.operation
             not in self._DONT_CLOSE_SPAN_ON_END_OPERATIONS
         )
+
+    def setup_metrics(self, meter: Meter, metrics: dict[str, Instrument]):
+        metrics[GEN_AI_CLIENT_OPERATION_DURATION] = meter.create_histogram(
+            name=GEN_AI_CLIENT_OPERATION_DURATION,
+            description="GenAI operation duration",
+            unit="s",
+            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
+        )
+        metrics[GEN_AI_CLIENT_TOKEN_USAGE] = meter.create_histogram(
+            name=GEN_AI_CLIENT_TOKEN_USAGE,
+            description="Measures number of input and output tokens used",
+            unit="{token}",
+            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
+        )
+
+    def _extract_metrics_attributes(self) -> _AttributeMapT:
+        attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+
+        model_id = self._call_context.params.get(_MODEL_ID_KEY)
+        if not model_id:
+            return attributes
+
+        attributes[GEN_AI_REQUEST_MODEL] = model_id
+
+        # titan in invoke model is a text completion one
+        if "body" in self._call_context.params and "amazon.titan" in model_id:
+            attributes[GEN_AI_OPERATION_NAME] = (
+                GenAiOperationNameValues.TEXT_COMPLETION.value
+            )
+        else:
+            attributes[GEN_AI_OPERATION_NAME] = (
+                GenAiOperationNameValues.CHAT.value
+            )
+        return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
@@ -205,41 +285,137 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if value is not None:
             attributes[key] = value
 
-    def before_service_call(self, span: Span):
+    def _get_request_messages(self):
+        """Extracts and normalize system and user / assistant messages"""
+        input_text = None
+        if system := self._call_context.params.get("system", []):
+            system_messages = [{"role": "system", "content": system}]
+        else:
+            system_messages = []
+
+        if not (messages := self._call_context.params.get("messages", [])):
+            if body := self._call_context.params.get("body"):
+                decoded_body = json.loads(body)
+                if system := decoded_body.get("system"):
+                    if isinstance(system, str):
+                        content = [{"text": system}]
+                    else:
+                        content = system
+                    system_messages = [{"role": "system", "content": content}]
+
+                messages = decoded_body.get("messages", [])
+                if not messages:
+                    # transform old school amazon titan invokeModel api to messages
+                    if input_text := decoded_body.get("inputText"):
+                        messages = [
+                            {"role": "user", "content": [{"text": input_text}]}
+                        ]
+
+        return system_messages + messages
+
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
-        if not span.is_recording():
-            return
+        capture_content = genai_capture_message_content()
 
-        operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
-        request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
-        # avoid setting to an empty string if are not available
-        if operation_name and request_model:
-            span.update_name(f"{operation_name} {request_model}")
+        messages = self._get_request_messages()
+        for message in messages:
+            event_logger = instrumentor_context.event_logger
+            for event in message_to_event(message, capture_content):
+                event_logger.emit(event)
 
-    # pylint: disable=no-self-use
-    def _converse_on_success(self, span: Span, result: dict[str, Any]):
-        if usage := result.get("usage"):
-            if input_tokens := usage.get("inputTokens"):
+        if span.is_recording():
+            operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
+            request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
+            # avoid setting to an empty string if are not available
+            if operation_name and request_model:
+                span.update_name(f"{operation_name} {request_model}")
+
+        # this is used to calculate the operation duration metric, duration may be skewed by request_hook
+        # pylint: disable=attribute-defined-outside-init
+        self._operation_start = default_timer()
+
+    # pylint: disable=no-self-use,too-many-locals
+    def _converse_on_success(
+        self,
+        span: Span,
+        result: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content,
+    ):
+        if span.is_recording():
+            if usage := result.get("usage"):
+                if input_tokens := usage.get("inputTokens"):
+                    span.set_attribute(
+                        GEN_AI_USAGE_INPUT_TOKENS,
+                        input_tokens,
+                    )
+                if output_tokens := usage.get("outputTokens"):
+                    span.set_attribute(
+                        GEN_AI_USAGE_OUTPUT_TOKENS,
+                        output_tokens,
+                    )
+
+            if stop_reason := result.get("stopReason"):
                 span.set_attribute(
-                    GEN_AI_USAGE_INPUT_TOKENS,
-                    input_tokens,
-                )
-            if output_tokens := usage.get("outputTokens"):
-                span.set_attribute(
-                    GEN_AI_USAGE_OUTPUT_TOKENS,
-                    output_tokens,
+                    GEN_AI_RESPONSE_FINISH_REASONS,
+                    [stop_reason],
                 )
 
-        if stop_reason := result.get("stopReason"):
-            span.set_attribute(
-                GEN_AI_RESPONSE_FINISH_REASONS,
-                [stop_reason],
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_converse(result, capture_content)
+        # this path is used by streaming apis, in that case we are already out of the span
+        # context so need to add the span context manually
+        span_ctx = span.get_span_context()
+        event_logger.emit(
+            choice.to_choice_event(
+                trace_id=span_ctx.trace_id,
+                span_id=span_ctx.span_id,
+                trace_flags=span_ctx.trace_flags,
+            )
+        )
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
             )
 
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := result.get("usage"):
+                if input_tokens := usage.get("inputTokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("outputTokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
+
     def _invoke_model_on_success(
-        self, span: Span, result: dict[str, Any], model_id: str
+        self,
+        span: Span,
+        result: dict[str, Any],
+        model_id: str,
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content,
     ):
         original_body = None
         try:
@@ -252,12 +428,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
             response_body = json.loads(body_content.decode("utf-8"))
             if "amazon.titan" in model_id:
-                self._handle_amazon_titan_response(span, response_body)
+                self._handle_amazon_titan_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
             elif "amazon.nova" in model_id:
-                self._handle_amazon_nova_response(span, response_body)
+                self._handle_amazon_nova_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
             elif "anthropic.claude" in model_id:
-                self._handle_anthropic_claude_response(span, response_body)
-
+                self._handle_anthropic_claude_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
         except json.JSONDecodeError:
             _logger.debug("Error: Unable to parse the response body as JSON")
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -266,90 +447,174 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             if original_body is not None:
                 original_body.close()
 
-    def _on_stream_error_callback(self, span: Span, exception):
+    def _on_stream_error_callback(
+        self,
+        span: Span,
+        exception,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         span.set_status(Status(StatusCode.ERROR, str(exception)))
         if span.is_recording():
             span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
         span.end()
 
-    def on_success(self, span: Span, result: dict[str, Any]):
+        metrics = instrumentor_context.metrics
+        metrics_attributes = {
+            **self._extract_metrics_attributes(),
+            ERROR_TYPE: type(exception).__qualname__,
+        }
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
+    def on_success(
+        self,
+        span: Span,
+        result: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
-        if not span.is_recording():
-            if not self.should_end_span_on_exit():
-                span.end()
-            return
+        capture_content = genai_capture_message_content()
 
-        # ConverseStream
-        if "stream" in result and isinstance(result["stream"], EventStream):
+        if self._call_context.operation == "ConverseStream":
+            if "stream" in result and isinstance(
+                result["stream"], EventStream
+            ):
 
-            def stream_done_callback(response):
-                self._converse_on_success(span, response)
-                span.end()
+                def stream_done_callback(response):
+                    self._converse_on_success(
+                        span, response, instrumentor_context, capture_content
+                    )
+                    span.end()
 
-            def stream_error_callback(exception):
-                self._on_stream_error_callback(span, exception)
+                def stream_error_callback(exception):
+                    self._on_stream_error_callback(
+                        span, exception, instrumentor_context
+                    )
 
-            result["stream"] = ConverseStreamWrapper(
-                result["stream"], stream_done_callback, stream_error_callback
+                result["stream"] = ConverseStreamWrapper(
+                    result["stream"],
+                    stream_done_callback,
+                    stream_error_callback,
+                )
+                return
+        elif self._call_context.operation == "Converse":
+            self._converse_on_success(
+                span, result, instrumentor_context, capture_content
             )
-            return
-
-        # Converse
-        self._converse_on_success(span, result)
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
             return
 
-        # InvokeModel
-        if "body" in result and isinstance(result["body"], StreamingBody):
-            self._invoke_model_on_success(span, result, model_id)
-            return
+        if self._call_context.operation == "InvokeModel":
+            if "body" in result and isinstance(result["body"], StreamingBody):
+                self._invoke_model_on_success(
+                    span,
+                    result,
+                    model_id,
+                    instrumentor_context,
+                    capture_content,
+                )
+                return
+        elif self._call_context.operation == "InvokeModelWithResponseStream":
+            if "body" in result and isinstance(result["body"], EventStream):
 
-        # InvokeModelWithResponseStream
-        if "body" in result and isinstance(result["body"], EventStream):
+                def invoke_model_stream_done_callback(response):
+                    # the callback gets data formatted as the simpler converse API
+                    self._converse_on_success(
+                        span, response, instrumentor_context, capture_content
+                    )
+                    span.end()
 
-            def invoke_model_stream_done_callback(response):
-                # the callback gets data formatted as the simpler converse API
-                self._converse_on_success(span, response)
-                span.end()
+                def invoke_model_stream_error_callback(exception):
+                    self._on_stream_error_callback(
+                        span, exception, instrumentor_context
+                    )
 
-            def invoke_model_stream_error_callback(exception):
-                self._on_stream_error_callback(span, exception)
+                result["body"] = InvokeModelWithResponseStreamWrapper(
+                    result["body"],
+                    invoke_model_stream_done_callback,
+                    invoke_model_stream_error_callback,
+                    model_id,
+                )
+                return
 
-            result["body"] = InvokeModelWithResponseStreamWrapper(
-                result["body"],
-                invoke_model_stream_done_callback,
-                invoke_model_stream_error_callback,
-                model_id,
-            )
-            return
-
-    # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,too-many-locals
     def _handle_amazon_titan_response(
-        self, span: Span, response_body: dict[str, Any]
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
     ):
         if "inputTextTokenCount" in response_body:
             span.set_attribute(
                 GEN_AI_USAGE_INPUT_TOKENS, response_body["inputTextTokenCount"]
             )
-            if "results" in response_body and response_body["results"]:
-                result = response_body["results"][0]
-                if "tokenCount" in result:
-                    span.set_attribute(
-                        GEN_AI_USAGE_OUTPUT_TOKENS, result["tokenCount"]
-                    )
-                if "completionReason" in result:
-                    span.set_attribute(
-                        GEN_AI_RESPONSE_FINISH_REASONS,
-                        [result["completionReason"]],
+        if "results" in response_body and response_body["results"]:
+            result = response_body["results"][0]
+            if "tokenCount" in result:
+                span.set_attribute(
+                    GEN_AI_USAGE_OUTPUT_TOKENS, result["tokenCount"]
+                )
+            if "completionReason" in result:
+                span.set_attribute(
+                    GEN_AI_RESPONSE_FINISH_REASONS,
+                    [result["completionReason"]],
+                )
+
+            event_logger = instrumentor_context.event_logger
+            choice = _Choice.from_invoke_amazon_titan(
+                response_body, capture_content
+            )
+            event_logger.emit(choice.to_choice_event())
+
+            metrics = instrumentor_context.metrics
+            metrics_attributes = self._extract_metrics_attributes()
+            if operation_duration_histogram := metrics.get(
+                GEN_AI_CLIENT_OPERATION_DURATION
+            ):
+                duration = max((default_timer() - self._operation_start), 0)
+                operation_duration_histogram.record(
+                    duration,
+                    attributes=metrics_attributes,
+                )
+
+            if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+                if input_tokens := response_body.get("inputTextTokenCount"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
                     )
 
-    # pylint: disable=no-self-use
+                if results := response_body.get("results"):
+                    if output_tokens := results[0].get("tokenCount"):
+                        output_attributes = {
+                            **metrics_attributes,
+                            GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                        }
+                        token_usage_histogram.record(
+                            output_tokens, output_attributes
+                        )
+
+    # pylint: disable=no-self-use,too-many-locals
     def _handle_amazon_nova_response(
-        self, span: Span, response_body: dict[str, Any]
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
     ):
         if "usage" in response_body:
             usage = response_body["usage"]
@@ -366,9 +631,48 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stopReason"]]
             )
 
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_converse(response_body, capture_content)
+        event_logger.emit(choice.to_choice_event())
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := response_body.get("usage"):
+                if input_tokens := usage.get("inputTokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("outputTokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
+
     # pylint: disable=no-self-use
     def _handle_anthropic_claude_response(
-        self, span: Span, response_body: dict[str, Any]
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
     ):
         if usage := response_body.get("usage"):
             if "input_tokens" in usage:
@@ -384,7 +688,49 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
             )
 
-    def on_error(self, span: Span, exception: _BotoClientErrorT):
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_anthropic_claude(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = self._extract_metrics_attributes()
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )
+
+        if token_usage_histogram := metrics.get(GEN_AI_CLIENT_TOKEN_USAGE):
+            if usage := response_body.get("usage"):
+                if input_tokens := usage.get("input_tokens"):
+                    input_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.INPUT.value,
+                    }
+                    token_usage_histogram.record(
+                        input_tokens, input_attributes
+                    )
+
+                if output_tokens := usage.get("output_tokens"):
+                    output_attributes = {
+                        **metrics_attributes,
+                        GEN_AI_TOKEN_TYPE: GenAiTokenTypeValues.COMPLETION.value,
+                    }
+                    token_usage_histogram.record(
+                        output_tokens, output_attributes
+                    )
+
+    def on_error(
+        self,
+        span: Span,
+        exception: _BotoClientErrorT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
@@ -394,3 +740,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         if not self.should_end_span_on_exit():
             span.end()
+
+        metrics = instrumentor_context.metrics
+        metrics_attributes = {
+            **self._extract_metrics_attributes(),
+            ERROR_TYPE: type(exception).__qualname__,
+        }
+        if operation_duration_histogram := metrics.get(
+            GEN_AI_CLIENT_OPERATION_DURATION
+        ):
+            duration = max((default_timer() - self._operation_start), 0)
+            operation_duration_histogram.record(
+                duration,
+                attributes=metrics_attributes,
+            )

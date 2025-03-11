@@ -23,6 +23,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
@@ -73,36 +74,35 @@ class _OpPublish(_SnsOperation):
     def extract_attributes(
         cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
     ):
-        destination_name, is_phone_number = cls._extract_destination_name(
+        span_name, destination_name = cls._extract_destination_name(
             call_context
         )
+
+        call_context.span_name = f"{span_name} send"
+
         attributes[SpanAttributes.MESSAGING_DESTINATION_KIND] = (
             MessagingDestinationKindValues.TOPIC.value
         )
         attributes[SpanAttributes.MESSAGING_DESTINATION] = destination_name
-
-        # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when opentelemetry-semantic-conventions 0.42b0 is released
-        attributes["messaging.destination.name"] = cls._extract_input_arn(
-            call_context
-        )
-        call_context.span_name = (
-            f"{'phone_number' if is_phone_number else destination_name} send"
+        attributes[SpanAttributes.MESSAGING_DESTINATION_NAME] = (
+            destination_name
         )
 
     @classmethod
     def _extract_destination_name(
         cls, call_context: _AwsSdkCallContext
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[str, str]:
         arn = cls._extract_input_arn(call_context)
         if arn:
-            return arn.rsplit(":", 1)[-1], False
+            return arn.rsplit(":", 1)[-1], arn
 
         if cls._phone_arg_name:
             phone_number = call_context.params.get(cls._phone_arg_name)
             if phone_number:
-                return phone_number, True
+                # phone number redacted because it's a PII
+                return "phone_number", "phone_number:**"
 
-        return "unknown", False
+        return "unknown", "unknown"
 
     @classmethod
     def _extract_input_arn(
@@ -165,6 +165,8 @@ class _SnsExtension(_AwsSdkExtension):
         if self._op:
             self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._op:
             self._op.before_service_call(self._call_context, span)

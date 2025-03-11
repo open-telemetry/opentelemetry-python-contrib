@@ -1,5 +1,5 @@
 OpenTelemetry VertexAI Instrumentation
-====================================
+======================================
 
 |pypi|
 

@@ -22,6 +22,7 @@ Explicitly instrumenting a single client session:
 
 .. code:: python
 
+    import asyncio
     import aiohttp
     from opentelemetry.instrumentation.aiohttp_client import create_trace_config
     import yarl
@@ -29,17 +30,21 @@ Explicitly instrumenting a single client session:
     def strip_query_params(url: yarl.URL) -> str:
         return str(url.with_query(None))
 
-    async with aiohttp.ClientSession(trace_configs=[create_trace_config(
+    async def get(url):
+        async with aiohttp.ClientSession(trace_configs=[create_trace_config(
             # Remove all query params from the URL attribute on the span.
             url_filter=strip_query_params,
-    )]) as session:
-        async with session.get(url) as response:
-            await response.text()
+        )]) as session:
+            async with session.get(url) as response:
+                await response.text()
+
+    asyncio.run(get("https://example.com"))
 
 Instrumenting all client sessions:
 
 .. code:: python
 
+    import asyncio
     import aiohttp
     from opentelemetry.instrumentation.aiohttp_client import (
         AioHttpClientInstrumentor
@@ -49,9 +54,12 @@ Instrumenting all client sessions:
     AioHttpClientInstrumentor().instrument()
 
     # Create a session and make an HTTP get request
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            await response.text()
+    async def get(url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                await response.text()
+
+    asyncio.run(get("https://example.com"))
 
 Configuration
 -------------

@@ -68,7 +68,7 @@ def main():
             instruments = (name,)
 
         if not semconv_status:
-            semconv_status = "experimental"
+            semconv_status = "development"
 
         metric_column = "Yes" if supports_metrics else "No"
 
