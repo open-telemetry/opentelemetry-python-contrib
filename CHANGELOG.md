@@ -51,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-requests` always record span status code in duration metric
   ([#3323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3323))
 
-
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
 ### Added
