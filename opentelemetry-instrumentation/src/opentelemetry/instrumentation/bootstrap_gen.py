@@ -21,6 +21,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-openai-v2",
     },
     {
+        "library": "google-cloud-aiplatform >= 1.64",
+        "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0",
+    },
+    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.52b0.dev",
     },
@@ -181,7 +185,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-sqlalchemy==0.52b0.dev",
     },
     {
-        "library": "starlette ~= 0.13.0",
+        "library": "starlette >= 0.13, <0.15",
         "instrumentation": "opentelemetry-instrumentation-starlette==0.52b0.dev",
     },
     {

@@ -1,0 +1,74 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": "say this is a test"
+          }
+        ],
+        "max_tokens": 10,
+        "anthropic_version": "bedrock-2023-05-31"
+      }
+    headers:
+      Content-Length:
+      - '126'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250306T091535Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-fcd0825a-03f328cca8cde3e741cd83b4;Parent=5a8eccf8d7b031e7;Sampled=1
+      amz-sdk-invocation-id:
+      - e8a6c9c5-8a45-4ad7-881b-0761d121abc7
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.anthropic.claude-3-5-sonnet-20240620-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_01SjMAZgb8kNMweUzf3moSbU",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-3-5-sonnet-20240620",
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a test."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 12,
+            "output_tokens": 8
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 06 Mar 2025 09:15:36 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '12'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '544'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '8'
+      x-amzn-RequestId:
+      - e97cb4f9-61fe-4a62-a29a-a582ddd17414
+    status:
+      code: 200
+      message: OK
+version: 1
