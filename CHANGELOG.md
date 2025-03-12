@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.31.0/0.52b0 (2025-03-12)
+
 ### Added
 
 - `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
@@ -42,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
+- `opentelemetry-instrumentation-botocore` sns-extension: Change destination name attribute
+  to match topic ARN and redact phone number from attributes
+  ([#3249](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3249))
 - `opentelemetry-instrumentation-asyncpg` Fix fallback for empty queries.
   ([#3253](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3253))
 - `opentelemetry-instrumentation-threading` Fix broken context typehints
