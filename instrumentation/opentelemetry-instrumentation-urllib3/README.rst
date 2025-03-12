@@ -16,6 +16,24 @@ Installation
 
      pip install opentelemetry-instrumentation-urllib3
 
+Usage
+-----
+.. code-block:: python
+
+    import urllib3
+    from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+
+    def strip_query_params(url: str) -> str:
+        return url.split("?")[0]
+
+    URLLib3Instrumentor().instrument(
+        # Remove all query params from the URL attribute on the span.
+        url_filter=strip_query_params,
+    )
+
+    http = urllib3.PoolManager()
+    response = http.request("GET", "https://www.example.org/")
+
 Configuration
 -------------
 
@@ -29,17 +47,31 @@ The hooks can be configured as follows:
 
 .. code:: python
 
-    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
-    def request_hook(span, request):
+    from typing import Any
+
+    from urllib3.connectionpool import HTTPConnectionPool
+    from urllib3.response import HTTPResponse
+
+    from opentelemetry.instrumentation.urllib3 import RequestInfo, URLLib3Instrumentor
+    from opentelemetry.trace import Span
+
+    def request_hook(
+        span: Span,
+        pool: HTTPConnectionPool,
+        request_info: RequestInfo,
+    ) -> Any:
         pass
 
-    # `request` is an instance of urllib3.connectionpool.HTTPConnectionPool
-    # `response` is an instance of urllib3.response.HTTPResponse
-    def response_hook(span, request, response):
+    def response_hook(
+        span: Span,
+        pool: HTTPConnectionPool,
+        response: HTTPResponse,
+    ) -> Any:
         pass
 
     URLLib3Instrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook
+        request_hook=request_hook,
+        response_hook=response_hook,
     )
 
 Exclude lists
