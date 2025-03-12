@@ -354,7 +354,7 @@ def _set_http_host_server(result, host, sem_conv_opt_in_mode):
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, SpanAttributes.HTTP_HOST, host)
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, CLIENT_ADDRESS, host)
+        set_string_attribute(result, SERVER_ADDRESS, host)
 
 
 # net.peer.ip -> net.sock.peer.addr
