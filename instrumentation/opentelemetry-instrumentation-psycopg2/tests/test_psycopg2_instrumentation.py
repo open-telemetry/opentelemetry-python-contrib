@@ -29,18 +29,17 @@
 # limitations under the License.
 from importlib.metadata import PackageNotFoundError
 from unittest import TestCase
-from unittest.mock import call, patch, Mock
+from unittest.mock import Mock, call, patch
 
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
     _instruments,
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
-from opentelemetry.instrumentation.auto_instrumentation._load import (
-    _load_instrumentors,
-)
-
 
 
 class TestPsycopg2InstrumentationDependencies(TestCase):
@@ -99,7 +98,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
             [
                 call("psycopg2"),
                 call("psycopg2-binary"),
-            ]
+            ],
         )
         self.assertEqual(
             package_to_instrument, (_instruments_psycopg2_binary,)
@@ -121,12 +120,8 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 1)
-        self.assertEqual(
-            mock_distribution.mock_calls, [call("psycopg2")]
-        )
-        self.assertEqual(
-            package_to_instrument, (_instruments_psycopg2,)
-        )
+        self.assertEqual(mock_distribution.mock_calls, [call("psycopg2")])
+        self.assertEqual(package_to_instrument, (_instruments_psycopg2,))
 
     @patch("opentelemetry.instrumentation.psycopg2.distribution")
     def test_instrumentation_dependencies_none_installed(
@@ -168,7 +163,6 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
     # psycopg2-binary installed.
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_psycopg2_installed(self, mock_logger):
-
         def _instrumentation_loaded_successfully_call():
             return call("Instrumented %s", "psycopg2")
 
