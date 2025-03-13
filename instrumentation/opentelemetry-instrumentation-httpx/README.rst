@@ -43,7 +43,7 @@ Instrumenting single clients
 ****************************
 
 If you only want to instrument requests for specific client instances, you can
-use the `instrument_client` method.
+use the `HTTPXClientInstrumentor.instrument_client` method.
 
 
 .. code-block:: python
