@@ -49,6 +49,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-asgi==0.53b0.dev",
     },
     {
+        "library": "asyncclick ~= 8.0",
+        "instrumentation": "opentelemetry-instrumentation-asyncclick==0.53b0.dev",
+    },
+    {
         "library": "asyncpg >= 0.12.0",
         "instrumentation": "opentelemetry-instrumentation-asyncpg==0.53b0.dev",
     },

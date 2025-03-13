@@ -36,6 +36,7 @@ dependencies = [
     "opentelemetry-instrumentation-aiokafka==0.53b0.dev",
     "opentelemetry-instrumentation-aiopg==0.53b0.dev",
     "opentelemetry-instrumentation-asgi==0.53b0.dev",
+    "opentelemetry-instrumentation-asyncclick==0.53b0.dev",
     "opentelemetry-instrumentation-asyncio==0.53b0.dev",
     "opentelemetry-instrumentation-asyncpg==0.53b0.dev",
     "opentelemetry-instrumentation-aws-lambda==0.53b0.dev",
