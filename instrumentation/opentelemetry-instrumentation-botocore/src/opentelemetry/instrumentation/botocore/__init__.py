@@ -28,7 +28,7 @@ Usage
 .. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
 
     # Instrument Botocore
@@ -39,7 +39,7 @@ Usage
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
 API
@@ -58,13 +58,15 @@ for example:
 .. code: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
     def request_hook(span, service_name, operation_name, api_params):
         # request hook logic
+        pass
 
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
+        pass
 
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
@@ -74,7 +76,7 @@ for example:
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
 Extensions
