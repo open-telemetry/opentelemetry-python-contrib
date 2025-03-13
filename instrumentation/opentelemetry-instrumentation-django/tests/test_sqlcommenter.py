@@ -107,28 +107,29 @@ class TestMiddleware(WsgiTestBase):
         "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
     )
     def test_query_wrapper(self, trace_capture):
-        requests_mock = MagicMock()
-        requests_mock.resolver_match.view_name = "view"
-        requests_mock.resolver_match.route = "route"
-        requests_mock.resolver_match.app_name = "app"
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.resolver_match.view_name = "view"
+        mock_request.resolver_match.route = "route"
+        mock_request.resolver_match.app_name = "app"
 
         trace_capture.return_value = {
             "traceparent": "*traceparent='00-000000000000000000000000deadbeef-000000000000beef-00"
         }
-        qw_instance = _QueryWrapper(requests_mock)
-        execute_mock_obj = MagicMock()
+        qw_instance = _QueryWrapper(request=mock_request)
+        mock_execute = MagicMock()
         qw_instance(
-            execute_mock_obj,
-            "Select 1;",
-            MagicMock("test"),
-            MagicMock("test1"),
-            MagicMock(),
+            execute=mock_execute,
+            sql="Select 1;",
+            params=MagicMock("test"),
+            many=MagicMock("test1"),
+            context=MagicMock(),
         )
-        output_sql = execute_mock_obj.call_args[0][0]
+        output_sql = mock_execute.call_args[0][0]
         self.assertEqual(
             output_sql,
-            "Select 1 /*app_name='app',controller='view',route='route',traceparent='%%2Atraceparent%%3D%%2700-0000000"
-            "00000000000000000deadbeef-000000000000beef-00'*/;",
+            "Select 1 /*action='GET',app_name='app',application='app',controller='view',route='route',"
+            "traceparent='%%2Atraceparent%%3D%%2700-000000000000000000000000deadbeef-000000000000beef-00'*/;",
         )
 
     @patch(
