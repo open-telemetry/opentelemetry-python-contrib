@@ -49,7 +49,7 @@ def test_map_finish_reason():
     ):
         for finish_reason, expect in [
             # Handled mappings
-            (Enum.FINISH_REASON_UNSPECIFIED, "error"),
+            (Enum.FINISH_REASON_UNSPECIFIED, ""),
             (Enum.OTHER, "error"),
             (Enum.STOP, "stop"),
             (Enum.MAX_TOKENS, "length"),
