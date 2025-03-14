@@ -32,7 +32,7 @@ Usage
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
-
+    from datetime import datetime
 
     # instrument elasticsearch
     ElasticsearchInstrumentor().instrument()
@@ -48,6 +48,8 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 
 .. code-block:: python
+
+    from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
 
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
 
@@ -67,6 +69,7 @@ for example:
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
+    from datetime import datetime
 
     def request_hook(span, method, url, kwargs):
         if span and span.is_recording():
