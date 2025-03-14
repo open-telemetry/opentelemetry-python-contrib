@@ -24,11 +24,11 @@ secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
 import asyncio
+import gzip
 import json
 import os
 import subprocess
 
-import gzip
 import google.auth
 import google.auth.credentials
 import google.genai
@@ -58,7 +58,10 @@ def _get_project_from_env():
 def _get_project_from_gcloud_cli():
     try:
         gcloud_call_result = subprocess.run(
-            "gcloud config get project", shell=True, capture_output=True, check=True
+            "gcloud config get project",
+            shell=True,
+            capture_output=True,
+            check=True,
         )
     except subprocess.CalledProcessError:
         return None
@@ -193,7 +196,9 @@ def _literal_block_scalar_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-@pytest.fixture(name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True)
+@pytest.fixture(
+    name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True
+)
 def fixture_setup_yaml_pretty_formatting():
     yaml.add_representer(_LiteralBlockScalar, _literal_block_scalar_presenter)
 
@@ -251,13 +256,24 @@ def _ensure_casette_gzip(loaded_casette):
     for interaction in loaded_casette["interactions"]:
         response = interaction["response"]
         headers = response["headers"]
-        if "content-encoding" not in headers and "Content-Encoding" not in headers:
+        if (
+            "content-encoding" not in headers
+            and "Content-Encoding" not in headers
+        ):
             continue
-        if "content-encoding" in headers and "gzip" not in headers["content-encoding"]:
+        if (
+            "content-encoding" in headers
+            and "gzip" not in headers["content-encoding"]
+        ):
             continue
-        if "Content-Encoding" in headers and "gzip" not in headers["Content-Encoding"]:
+        if (
+            "Content-Encoding" in headers
+            and "gzip" not in headers["Content-Encoding"]
+        ):
             continue
-        response["body"]["string"] = _ensure_gzip_single_response(response["body"]["string"].encode())
+        response["body"]["string"] = _ensure_gzip_single_response(
+            response["body"]["string"].encode()
+        )
 
 
 class _PrettyPrintJSONBody:
@@ -304,7 +320,11 @@ def fixture_otel_mocker():
     result.uninstall()
 
 
-@pytest.fixture(name="setup_content_recording", autouse=True, params=["logcontent", "excludecontent"])
+@pytest.fixture(
+    name="setup_content_recording",
+    autouse=True,
+    params=["logcontent", "excludecontent"],
+)
 def fixture_setup_content_recording(request):
     enabled = request.param == "logcontent"
     os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = str(
@@ -372,7 +392,9 @@ def fixture_nonvertex_client_factory(gemini_api_key):
 
 
 @pytest.fixture(name="vertex_client_factory")
-def fixture_vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
+def fixture_vertex_client_factory(
+    gcloud_project, gcloud_location, gcloud_credentials
+):
     def _factory():
         return google.genai.Client(
             vertexai=True,
@@ -397,7 +419,9 @@ def fixture_use_vertex(genai_sdk_backend):
 
 
 @pytest.fixture(name="client")
-def fixture_client(vertex_client_factory, nonvertex_client_factory, use_vertex):
+def fixture_client(
+    vertex_client_factory, nonvertex_client_factory, use_vertex
+):
     if use_vertex:
         return vertex_client_factory()
     return nonvertex_client_factory()

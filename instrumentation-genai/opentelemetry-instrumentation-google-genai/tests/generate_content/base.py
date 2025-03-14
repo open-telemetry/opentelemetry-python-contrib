@@ -58,7 +58,6 @@ def _async_stream_wrapper(mock_generate_content_stream):
     return _wrapped
 
 
-
 class TestCase(CommonTestCaseBase):
     # The "setUp" function is defined by "unittest.TestCase" and thus
     # this name must be used. Uncertain why pylint doesn't seem to
