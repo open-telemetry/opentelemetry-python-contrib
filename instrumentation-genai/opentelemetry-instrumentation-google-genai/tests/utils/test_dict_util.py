@@ -20,6 +20,7 @@ def test_flatten_empty_dict():
     d = {}
     assert dict_util.flatten_dict(d) == d
 
+
 def test_flatten_simple_dict():
     d = {
         "int_key": 1,
@@ -28,6 +29,31 @@ def test_flatten_simple_dict():
         "bool_key": True
     }
     assert dict_util.flatten_dict(d) == d
+
+
+def test_flatten_nested_dict():
+    d = {
+        "int_key": 1,
+        "string_key": "somevalue",
+        "float_key": 3.14,
+        "bool_key": True,
+        "object_key": {
+            "nested": {
+                "foo": 1,
+                "bar": "baz",
+            },
+            "qux": 54321
+        }
+    }
+    assert dict_util.flatten_dict(d) == {
+        "int_key": 1,
+        "string_key": "somevalue",
+        "float_key": 3.14,
+        "bool_key": True,
+        "object_key.nested.foo": 1,
+        "object_key.nested.bar": "baz",
+        "object_key.qux": 54321,
+    }
 
 
 def test_flatten_with_key_exclusion():
@@ -79,4 +105,31 @@ def test_flatten_with_prefixing():
         "someprefix.string_key": "somevalue",
         "someprefix.float_key": 3.14,
         "someprefix.bool_key": True
+    }
+
+
+def test_flatten_with_custom_flatten_func():
+    def summarize_int_list(key, value, **kwargs):
+        total = 0
+        for item in value:
+            total += item
+        avg = total / len(value)
+        return f"{len(value)} items (total: {total}, average: {avg})"
+    flatten_functions = {
+         "some.deeply.nested.key": summarize_int_list
+    }
+    d = {
+        "some": {
+            "deeply": {
+                "nested": {
+                    "key": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                },
+            },
+        },
+        "other": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    }
+    output = dict_util.flatten_dict(d, flatten_functions=flatten_functions)
+    assert output == {
+        "some.deeply.nested.key": "9 items (total: 45, average: 5.0)",
+        "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],
     }

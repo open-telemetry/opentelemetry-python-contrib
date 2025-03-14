@@ -41,6 +41,8 @@ from opentelemetry.semconv.attributes import error_attributes
 
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
+from .dict_util import flatten_dict
+from .custom_semconv import CUSTOM_LLM_REQUEST_PREFIX
 
 _logger = logging.getLogger(__name__)
 
@@ -129,21 +131,45 @@ def _determine_genai_system(models_object: Union[Models, AsyncModels]):
     return _get_gemini_system_name()
 
 
-def _get_config_property(
-    config: Optional[GenerateContentConfigOrDict], path: str
-) -> Any:
+def _to_dict(value: object):
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return json.loads(json.dumps(value))
+
+
+def _add_request_options_to_span(span, config: Optional[GenerateContentConfigOrDict]):
     if config is None:
-        return None
-    path_segments = path.split(".")
-    current_context: Any = config
-    for path_segment in path_segments:
-        if current_context is None:
-            return None
-        if isinstance(current_context, dict):
-            current_context = current_context.get(path_segment)
-        else:
-            current_context = getattr(current_context, path_segment)
-    return current_context
+        return
+    span_context = span.get_span_context()
+    if not span_context.trace_flags.sampled:
+        return
+    attributes = flatten_dict(
+        _to_dict(config),
+        key_prefix=CUSTOM_LLM_REQUEST_PREFIX,
+        exclude_keys=[
+            # System instruction can be overly long for a span attribute.
+            # Additionally, it is recorded as an event (log), instead.
+            "gen_ai.gcp.request.system_instruction",
+            # Headers could include sensitive information, therefore it is
+            # best that we not record these options.
+            "gen_ai.gcp.request.http_options.headers",
+        ],
+        rename_keys={
+            # TODO: add more entries here as more semantic conventions are
+            # generalized to cover more of the available config options.
+            "gen_ai.gcp.request.temperature": "gen_ai.request.temperature",
+            "gen_ai.gcp.request.top_k": "gen_ai.request.top_k",
+            "gen_ai.gcp.request.top_p": "gen_ai.request.top_p",
+            "gen_ai.gcp.request.candidate_count": "gen_ai.request.choice.count",
+            "gen_ai.gcp.request.max_output_tokens": "gen_ai.request.max_tokens",
+            "gen_ai.gcp.request.stop_sequences": "gen_ai.request.stop_sequences",
+            "gen_ai.gcp.request.presence_penalty": "gen_ai.request.presence_penalty",
+            "gen_ai.gcp.request.seed": "gen_ai.request.seed",
+        }
+    )
+    span.set_attributes(attributes)
 
 
 def _get_response_property(response: GenerateContentResponse, path: str):
@@ -157,44 +183,6 @@ def _get_response_property(response: GenerateContentResponse, path: str):
         else:
             current_context = getattr(current_context, path_segment)
     return current_context
-
-
-def _get_temperature(config: Optional[GenerateContentConfigOrDict]):
-    return _get_config_property(config, "temperature")
-
-
-def _get_top_k(config: Optional[GenerateContentConfigOrDict]):
-    return _get_config_property(config, "top_k")
-
-
-def _get_top_p(config: Optional[GenerateContentConfigOrDict]):
-    return _get_config_property(config, "top_p")
-
-
-# A map from define attributes to the function that can obtain
-# the relevant information from the request object.
-#
-# TODO: expand this to cover a larger set of the available
-# span attributes from GenAI semantic conventions.
-#
-# TODO: define semantic conventions for attributes that
-# are relevant for the Google GenAI SDK which are not
-# currently covered by the existing semantic conventions.
-#
-# See also: TODOS.md
-_SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR = {
-    gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE: _get_temperature,
-    gen_ai_attributes.GEN_AI_REQUEST_TOP_K: _get_top_k,
-    gen_ai_attributes.GEN_AI_REQUEST_TOP_P: _get_top_p,
-}
-
-
-def _to_dict(value: object):
-    if isinstance(value, dict):
-        return value
-    if hasattr(value, "model_dump"):
-        return value.model_dump()
-    return json.loads(json.dumps(value))
 
 
 class _GenerateContentInstrumentationHelper:
@@ -237,13 +225,7 @@ class _GenerateContentInstrumentationHelper:
         config: Optional[GenerateContentConfigOrDict],
     ):
         span = trace.get_current_span()
-        for (
-            attribute_key,
-            extractor,
-        ) in _SPAN_ATTRIBUTE_TO_CONFIG_EXTRACTOR.items():
-            attribute_value = extractor(config)
-            if attribute_value is not None:
-                span.set_attribute(attribute_key, attribute_value)
+        _add_request_options_to_span(span, config)
         self._maybe_log_system_instruction(config=config)
         self._maybe_log_user_prompt(contents)
 
@@ -317,7 +299,12 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
     ):
-        system_instruction = _get_config_property(config, "system_instruction")
+        system_instruction = None
+        if config is not None:
+            if isinstance(config, dict):
+                system_instruction = config["system_instruction"]
+            else:
+                system_instruction = config.system_instruction
         if not system_instruction:
             return
         attributes = {
