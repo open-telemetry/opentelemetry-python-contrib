@@ -111,7 +111,8 @@ def instrument_no_content(
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    instrumentor.uninstrument()
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
 
 
 @pytest.fixture
@@ -130,7 +131,8 @@ def instrument_with_content(
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    instrumentor.uninstrument()
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
 
 
 @pytest.fixture(scope="module")
