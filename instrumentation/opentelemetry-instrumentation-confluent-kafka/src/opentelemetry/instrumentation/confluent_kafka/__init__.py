@@ -18,6 +18,10 @@ Instrument confluent-kafka-python to report instrumentation-confluent-kafka prod
 Usage
 -----
 
+::
+
+    docker run --name broker -p 9092:9092 apache/kafka:latest
+
 .. code:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
@@ -34,6 +38,9 @@ Usage
     # report a span of type consumer with the default settings
     consumer = Consumer(conf2)
 
+    def msg_process(msg):
+        print(msg)
+
     def basic_consume_loop(consumer, topics):
         try:
             consumer.subscribe(topics)
@@ -44,7 +51,7 @@ Usage
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
                         # End of partition event
-                        sys.stderr.write(f"{msg.topic() [{msg.partition()}] reached end at offset {msg.offset()}}")
+                        sys.stderr.write(f"{msg.topic()} [{msg.partition()}] reached end at offset {msg.offset()}")
                     elif msg.error():
                         raise KafkaException(msg.error())
                 else:
@@ -53,7 +60,7 @@ Usage
             # Close down consumer to commit final offsets.
             consumer.close()
 
-    basic_consume_loop(consumer, "my-topic")
+    basic_consume_loop(consumer, ["my-topic"])
 
 The _instrument method accepts the following keyword args:
   tracer_provider (TracerProvider) - an optional tracer provider
