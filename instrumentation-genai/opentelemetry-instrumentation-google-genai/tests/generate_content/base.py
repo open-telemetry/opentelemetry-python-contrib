@@ -21,6 +21,44 @@ from ..common.base import TestCase as CommonTestCaseBase
 from .util import convert_to_response, create_response
 
 
+# Helper used in "_install_mocks" below.
+def _wrap_output(mock_generate_content):
+    def _wrapped(*args, **kwargs):
+        return convert_to_response(mock_generate_content(*args, **kwargs))
+
+    return _wrapped
+
+
+# Helper used in "_install_mocks" below.
+def _wrap_output_stream(mock_generate_content_stream):
+    def _wrapped(*args, **kwargs):
+        for output in mock_generate_content_stream(*args, **kwargs):
+            yield convert_to_response(output)
+
+    return _wrapped
+
+
+# Helper used in "_install_mocks" below.
+def _async_wrapper(mock_generate_content):
+    async def _wrapped(*args, **kwargs):
+        return mock_generate_content(*args, **kwargs)
+
+    return _wrapped
+
+
+# Helper used in "_install_mocks" below.
+def _async_stream_wrapper(mock_generate_content_stream):
+    async def _wrapped(*args, **kwargs):
+        async def _internal_generator():
+            for result in mock_generate_content_stream(*args, **kwargs):
+                yield result
+
+        return _internal_generator()
+
+    return _wrapped
+
+
+
 class TestCase(CommonTestCaseBase):
     # The "setUp" function is defined by "unittest.TestCase" and thus
     # this name must be used. Uncertain why pylint doesn't seem to
@@ -91,45 +129,16 @@ class TestCase(CommonTestCaseBase):
         return mock
 
     def _install_mocks(self):
-        output_wrapped = self._wrap_output(self._generate_content_mock)
-        output_wrapped_stream = self._wrap_output_stream(
+        output_wrapped = _wrap_output(self._generate_content_mock)
+        output_wrapped_stream = _wrap_output_stream(
             self._generate_content_stream_mock
         )
         Models.generate_content = output_wrapped
         Models.generate_content_stream = output_wrapped_stream
-        AsyncModels.generate_content = self._async_wrapper(output_wrapped)
-        AsyncModels.generate_content_stream = self._async_stream_wrapper(
+        AsyncModels.generate_content = _async_wrapper(output_wrapped)
+        AsyncModels.generate_content_stream = _async_stream_wrapper(
             output_wrapped_stream
         )
-
-    def _wrap_output(self, mock_generate_content):
-        def _wrapped(*args, **kwargs):
-            return convert_to_response(mock_generate_content(*args, **kwargs))
-
-        return _wrapped
-
-    def _wrap_output_stream(self, mock_generate_content_stream):
-        def _wrapped(*args, **kwargs):
-            for output in mock_generate_content_stream(*args, **kwargs):
-                yield convert_to_response(output)
-
-        return _wrapped
-
-    def _async_wrapper(self, mock_generate_content):
-        async def _wrapped(*args, **kwargs):
-            return mock_generate_content(*args, **kwargs)
-
-        return _wrapped
-
-    def _async_stream_wrapper(self, mock_generate_content_stream):
-        async def _wrapped(*args, **kwargs):
-            async def _internal_generator():
-                for result in mock_generate_content_stream(*args, **kwargs):
-                    yield result
-
-            return _internal_generator()
-
-        return _wrapped
 
     def tearDown(self):
         super().tearDown()

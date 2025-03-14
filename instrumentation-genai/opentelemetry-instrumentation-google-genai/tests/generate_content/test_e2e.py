@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 
+import gzip
 import google.auth
 import google.auth.credentials
 import google.genai
@@ -57,7 +58,7 @@ def _get_project_from_env():
 def _get_project_from_gcloud_cli():
     try:
         gcloud_call_result = subprocess.run(
-            "gcloud config get project", shell=True, capture_output=True
+            "gcloud config get project", shell=True, capture_output=True, check=True
         )
     except subprocess.CalledProcessError:
         return None
@@ -145,8 +146,8 @@ def _before_record_response(response):
     return response
 
 
-@pytest.fixture(scope="module")
-def vcr_config():
+@pytest.fixture(name="vcr_config", scope="module")
+def fixture_vcr_config():
     return {
         "filter_query_parameters": [
             "key",
@@ -169,7 +170,8 @@ def vcr_config():
             "x-goog-api-key",
             "authorization",
             "server",
-            "Server" "Server-Timing",
+            "Server",
+            "Server-Timing",
             "Date",
         ],
         "before_record_request": _before_record_request,
@@ -191,8 +193,8 @@ def _literal_block_scalar_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup_yaml_pretty_formattinmg():
+@pytest.fixture(name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True)
+def fixture_setup_yaml_pretty_formatting():
     yaml.add_representer(_LiteralBlockScalar, _literal_block_scalar_presenter)
 
 
@@ -229,6 +231,35 @@ def _convert_body_to_literal(data):
     return data
 
 
+# Helper for enforcing GZIP compression where it was originally.
+def _ensure_gzip_single_response(data: bytes):
+    try:
+        # Attempt to decompress, first, to avoid double compression.
+        gzip.decompress(data)
+        return data
+    except gzip.BadGzipFile:
+        # It must not have been compressed in the first place.
+        return gzip.compress(data)
+
+
+# VCRPy automatically decompresses responses before saving them, but it may forget to
+# re-encode them when the data is loaded. This can create issues with decompression.
+# This is why we re-encode on load; to accurately replay what was originally sent.
+#
+# https://vcrpy.readthedocs.io/en/latest/advanced.html#decode-compressed-response
+def _ensure_casette_gzip(loaded_casette):
+    for interaction in loaded_casette["interactions"]:
+        response = interaction["response"]
+        headers = response["headers"]
+        if "content-encoding" not in headers and "Content-Encoding" not in headers:
+            continue
+        if "content-encoding" in headers and "gzip" not in headers["content-encoding"]:
+            continue
+        if "Content-Encoding" in headers and "gzip" not in headers["Content-Encoding"]:
+            continue
+        response["body"]["string"] = _ensure_gzip_single_response(response["body"]["string"].encode())
+
+
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
@@ -241,55 +272,58 @@ class _PrettyPrintJSONBody:
 
     @staticmethod
     def deserialize(cassette_string):
-        return yaml.load(cassette_string, Loader=yaml.Loader)
+        result = yaml.load(cassette_string, Loader=yaml.Loader)
+        _ensure_casette_gzip(result)
+        return result
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(name="fully_initialized_vcr", scope="module", autouse=True)
 def setup_vcr(vcr):
     vcr.register_serializer("yaml", _PrettyPrintJSONBody)
+    vcr.serializer = "yaml"
     return vcr
 
 
-@pytest.fixture
-def instrumentor():
+@pytest.fixture(name="instrumentor")
+def fixture_instrumentor():
     return GoogleGenAiSdkInstrumentor()
 
 
-@pytest.fixture(autouse=True)
-def setup_instrumentation(instrumentor):
+@pytest.fixture(name="internal_instrumentation_setup", autouse=True)
+def fixture_setup_instrumentation(instrumentor):
     instrumentor.instrument()
     yield
     instrumentor.uninstrument()
 
 
-@pytest.fixture(autouse=True)
-def otel_mocker():
+@pytest.fixture(name="otel_mocker", autouse=True)
+def fixture_otel_mocker():
     result = OTelMocker()
     result.install()
     yield result
     result.uninstall()
 
 
-@pytest.fixture(autouse=True, params=["logcontent", "excludecontent"])
-def setup_content_recording(request):
+@pytest.fixture(name="setup_content_recording", autouse=True, params=["logcontent", "excludecontent"])
+def fixture_setup_content_recording(request):
     enabled = request.param == "logcontent"
     os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = str(
         enabled
     )
 
 
-@pytest.fixture
-def vcr_record_mode(vcr):
+@pytest.fixture(name="vcr_record_mode")
+def fixture_vcr_record_mode(vcr):
     return vcr.record_mode
 
 
-@pytest.fixture
-def in_replay_mode(vcr_record_mode):
+@pytest.fixture(name="in_replay_mode")
+def fixture_in_replay_mode(vcr_record_mode):
     return vcr_record_mode == RecordMode.NONE
 
 
-@pytest.fixture(autouse=True)
-def gcloud_project(in_replay_mode):
+@pytest.fixture(name="gcloud_project", autouse=True)
+def fixture_gcloud_project(in_replay_mode):
     if in_replay_mode:
         return _FAKE_PROJECT
     result = _get_real_project()
@@ -298,15 +332,15 @@ def gcloud_project(in_replay_mode):
     return result
 
 
-@pytest.fixture
-def gcloud_location(in_replay_mode):
+@pytest.fixture(name="gcloud_location")
+def fixture_gcloud_location(in_replay_mode):
     if in_replay_mode:
         return _FAKE_LOCATION
     return _get_real_location()
 
 
-@pytest.fixture
-def gcloud_credentials(in_replay_mode):
+@pytest.fixture(name="gcloud_credentials")
+def fixture_gcloud_credentials(in_replay_mode):
     if in_replay_mode:
         return FakeCredentials()
     creds, _ = google.auth.default()
@@ -315,30 +349,30 @@ def gcloud_credentials(in_replay_mode):
     )
 
 
-@pytest.fixture
-def gemini_api_key(in_replay_mode):
+@pytest.fixture(name="gemini_api_key")
+def fixture_gemini_api_key(in_replay_mode):
     if in_replay_mode:
         return _FAKE_API_KEY
     return os.getenv("GEMINI_API_KEY")
 
 
-@pytest.fixture(autouse=True)
-def gcloud_api_key(gemini_api_key):
+@pytest.fixture(name="gcloud_api_key", autouse=True)
+def fixture_gcloud_api_key(gemini_api_key):
     if "GOOGLE_API_KEY" not in os.environ:
         os.environ["GOOGLE_API_KEY"] = gemini_api_key
     return os.getenv("GOOGLE_API_KEY")
 
 
-@pytest.fixture
-def nonvertex_client_factory(gemini_api_key):
+@pytest.fixture(name="nonvertex_client_factory")
+def fixture_nonvertex_client_factory(gemini_api_key):
     def _factory():
-        return google.genai.Client(api_key=gemini_api_key)
+        return google.genai.Client(api_key=gemini_api_key, vertexai=False)
 
     return _factory
 
 
-@pytest.fixture
-def vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
+@pytest.fixture(name="vertex_client_factory")
+def fixture_vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
     def _factory():
         return google.genai.Client(
             vertexai=True,
@@ -350,37 +384,37 @@ def vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
     return _factory
 
 
-@pytest.fixture(params=["vertexaiapi"])
-def genai_sdk_backend(request):
+@pytest.fixture(name="genai_sdk_backend", params=["vertexaiapi"])
+def fixture_genai_sdk_backend(request):
     return request.param
 
 
-@pytest.fixture(autouse=True)
-def use_vertex(genai_sdk_backend):
+@pytest.fixture(name="use_vertex", autouse=True)
+def fixture_use_vertex(genai_sdk_backend):
     result = bool(genai_sdk_backend == "vertexaiapi")
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1" if result else "0"
     return result
 
 
-@pytest.fixture
-def client(vertex_client_factory, nonvertex_client_factory, use_vertex):
+@pytest.fixture(name="client")
+def fixture_client(vertex_client_factory, nonvertex_client_factory, use_vertex):
     if use_vertex:
         return vertex_client_factory()
     return nonvertex_client_factory()
 
 
-@pytest.fixture(params=["sync", "async"])
-def is_async(request):
+@pytest.fixture(name="is_async", params=["sync", "async"])
+def fixture_is_async(request):
     return request.param == "async"
 
 
-@pytest.fixture(params=["gemini-1.5-flash-002"])
-def model(request):
+@pytest.fixture(name="model", params=["gemini-1.5-flash-002"])
+def fixture_model(request):
     return request.param
 
 
-@pytest.fixture
-def generate_content(client, is_async):
+@pytest.fixture(name="generate_content")
+def fixture_generate_content(client, is_async):
     def _sync_impl(*args, **kwargs):
         return client.models.generate_content(*args, **kwargs)
 
@@ -392,8 +426,8 @@ def generate_content(client, is_async):
     return _sync_impl
 
 
-@pytest.fixture
-def generate_content_stream(client, is_async):
+@pytest.fixture(name="generate_content_stream")
+def fixture_generate_content_stream(client, is_async):
     def _sync_impl(*args, **kwargs):
         results = []
         for result in client.models.generate_content_stream(*args, **kwargs):
