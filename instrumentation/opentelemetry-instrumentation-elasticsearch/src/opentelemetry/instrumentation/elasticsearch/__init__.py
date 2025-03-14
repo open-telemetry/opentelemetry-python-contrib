@@ -39,8 +39,8 @@ Usage
 
     # Using elasticsearch as normal now will automatically generate spans
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 Elasticsearch instrumentation prefixes operation names with the string "Elasticsearch". This
 can be changed to a different string by either setting the OTEL_PYTHON_ELASTICSEARCH_NAME_PREFIX
@@ -85,8 +85,8 @@ for example:
     # Using elasticsearch as normal now will automatically generate spans,
     # including user custom attributes added from the hooks
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 API
 ---
