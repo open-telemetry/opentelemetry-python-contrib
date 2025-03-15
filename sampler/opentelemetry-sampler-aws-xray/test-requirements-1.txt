@@ -1,0 +1,6 @@
+pytest==7.4.4
+pytest-benchmark==4.0.0
+requests==2.32.3
+# test with the latest version of opentelemetry-api, sdk, and semantic conventions
+
+-e sampler/opentelemetry-sampler-aws-xray
