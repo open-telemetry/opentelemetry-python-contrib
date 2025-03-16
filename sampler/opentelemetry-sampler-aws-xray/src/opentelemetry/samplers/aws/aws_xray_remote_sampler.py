@@ -130,7 +130,7 @@ class _AwsXRayRemoteSampler(Sampler):
             )
             polling_interval = DEFAULT_RULES_POLLING_INTERVAL_SECONDS
 
-        self.__client_id = self.__generate_client_id()
+        self.__client_id = self.__generate_client_id()  # pylint: disable=W0238
         self._clock = _Clock()
         self.__xray_client = _AwsXRaySamplingClient(
             endpoint, log_level=log_level
@@ -140,12 +140,12 @@ class _AwsXRayRemoteSampler(Sampler):
         self.__rule_polling_jitter = random.uniform(0.0, 5.0)
 
         if resource is not None:
-            self.__resource = resource
+            self.__resource = resource  # pylint: disable=W0238
         else:
             _logger.warning(
                 "OTel Resource provided is `None`. Defaulting to empty resource"
             )
-            self.__resource = Resource.get_empty()
+            self.__resource = Resource.get_empty()  # pylint: disable=W0238
 
         # Schedule the next rule poll now
         # Python Timers only run once, so they need to be recreated for every poll
@@ -180,7 +180,7 @@ class _AwsXRayRemoteSampler(Sampler):
         return description
 
     def __get_and_update_sampling_rules(self) -> None:
-        sampling_rules = self.__xray_client.get_sampling_rules()  # noqa: F841
+        sampling_rules = self.__xray_client.get_sampling_rules()  # pylint: disable=W0612  # noqa: F841
         # (TODO) update rules cache with sampling rules
 
     def __start_sampling_rule_poller(self) -> None:

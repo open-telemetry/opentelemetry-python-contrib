@@ -35,7 +35,7 @@ class _SamplingRuleApplier:
         statistics: Optional[_SamplingStatisticsDocument] = None,
         target: Optional[_SamplingTarget] = None,
     ):
-        self.__client_id = client_id
+        self.__client_id = client_id  # pylint: disable=W0238
         self._clock = clock
         self.sampling_rule = sampling_rule
 
