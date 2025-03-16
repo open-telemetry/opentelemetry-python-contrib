@@ -20,8 +20,9 @@ import datetime
 from unittest import TestCase
 
 from opentelemetry.samplers.aws._mock_clock import MockClock
-
-from opentelemetry.samplers.aws._sampling_statistics_document import _SamplingStatisticsDocument
+from opentelemetry.samplers.aws._sampling_statistics_document import (
+    _SamplingStatisticsDocument,
+)
 
 
 class TestSamplingStatisticsDocument(TestCase):
@@ -33,7 +34,9 @@ class TestSamplingStatisticsDocument(TestCase):
         self.assertEqual(statistics.SampleCount, 0)
         self.assertEqual(statistics.RequestCount, 0)
 
-        statistics = _SamplingStatisticsDocument("client_id", "rule_name", 1, 2, 3)
+        statistics = _SamplingStatisticsDocument(
+            "client_id", "rule_name", 1, 2, 3
+        )
         self.assertEqual(statistics.ClientID, "client_id")
         self.assertEqual(statistics.RuleName, "rule_name")
         self.assertEqual(statistics.RequestCount, 1)

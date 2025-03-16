@@ -32,17 +32,31 @@ class TestSamplingTarget(TestCase):
         target_response = _SamplingTargetResponse(1.0, [{}], [{}])
         self.assertEqual(target_response.LastRuleModification, 1.0)
         self.assertEqual(len(target_response.SamplingTargetDocuments), 1)
-        self.assertEqual(target_response.SamplingTargetDocuments[0].FixedRate, 0)
-        self.assertEqual(target_response.SamplingTargetDocuments[0].Interval, None)
-        self.assertEqual(target_response.SamplingTargetDocuments[0].ReservoirQuota, None)
-        self.assertEqual(target_response.SamplingTargetDocuments[0].ReservoirQuotaTTL, None)
-        self.assertEqual(target_response.SamplingTargetDocuments[0].RuleName, "")
+        self.assertEqual(
+            target_response.SamplingTargetDocuments[0].FixedRate, 0
+        )
+        self.assertEqual(
+            target_response.SamplingTargetDocuments[0].Interval, None
+        )
+        self.assertEqual(
+            target_response.SamplingTargetDocuments[0].ReservoirQuota, None
+        )
+        self.assertEqual(
+            target_response.SamplingTargetDocuments[0].ReservoirQuotaTTL, None
+        )
+        self.assertEqual(
+            target_response.SamplingTargetDocuments[0].RuleName, ""
+        )
 
         self.assertEqual(len(target_response.UnprocessedStatistics), 1)
-        self.assertEqual(target_response.UnprocessedStatistics[0].ErrorCode, "")
+        self.assertEqual(
+            target_response.UnprocessedStatistics[0].ErrorCode, ""
+        )
         self.assertEqual(target_response.UnprocessedStatistics[0].Message, "")
         self.assertEqual(target_response.UnprocessedStatistics[0].RuleName, "")
 
-        target_response = _SamplingTargetResponse(1.0, [{"foo": "bar"}], [{"dog": "cat"}])
+        target_response = _SamplingTargetResponse(
+            1.0, [{"foo": "bar"}], [{"dog": "cat"}]
+        )
         self.assertEqual(len(target_response.SamplingTargetDocuments), 0)
         self.assertEqual(len(target_response.UnprocessedStatistics), 0)

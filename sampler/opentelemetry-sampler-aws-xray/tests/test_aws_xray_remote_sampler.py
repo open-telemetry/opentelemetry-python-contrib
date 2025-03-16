@@ -18,15 +18,12 @@
 
 import json
 import os
-import threading
-import time
 from logging import DEBUG
-from pytest import mark
 from unittest import TestCase
-from unittest.mock import patch
 
-
-from opentelemetry.samplers.aws.aws_xray_remote_sampler import AwsXRayRemoteSampler
+from opentelemetry.samplers.aws.aws_xray_remote_sampler import (
+    AwsXRayRemoteSampler,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import Decision
 
@@ -34,10 +31,17 @@ TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(TEST_DIR, "data")
 
 
-def create_spans(sampled_array, thread_id, span_attributes, remote_sampler, number_of_spans):
+def create_spans(
+    sampled_array, thread_id, span_attributes, remote_sampler, number_of_spans
+):
     sampled = 0
     for _ in range(0, number_of_spans):
-        if remote_sampler.should_sample(None, 0, "name", attributes=span_attributes).decision != Decision.DROP:
+        if (
+            remote_sampler.should_sample(
+                None, 0, "name", attributes=span_attributes
+            ).decision
+            != Decision.DROP
+        ):
             sampled += 1
     sampled_array[thread_id] = sampled
 
@@ -52,12 +56,18 @@ def mocked_requests_get(*args, **kwargs):
             return self.json_data
 
     if kwargs["url"] == "http://127.0.0.1:2000/GetSamplingRules":
-        with open(f"{DATA_DIR}/test-remote-sampler_sampling-rules-response-sample.json", encoding="UTF-8") as file:
+        with open(
+            f"{DATA_DIR}/test-remote-sampler_sampling-rules-response-sample.json",
+            encoding="UTF-8",
+        ) as file:
             sample_response = json.load(file)
             file.close()
         return MockResponse(sample_response, 200)
     if kwargs["url"] == "http://127.0.0.1:2000/SamplingTargets":
-        with open(f"{DATA_DIR}/test-remote-sampler_sampling-targets-response-sample.json", encoding="UTF-8") as file:
+        with open(
+            f"{DATA_DIR}/test-remote-sampler_sampling-targets-response-sample.json",
+            encoding="UTF-8",
+        ) as file:
             sample_response = json.load(file)
             file.close()
         return MockResponse(sample_response, 200)
@@ -76,50 +86,94 @@ class TestAwsXRayRemoteSampler(TestCase):
     def test_create_remote_sampler_with_empty_resource(self):
         self.rs = AwsXRayRemoteSampler(resource=Resource.get_empty())
         self.assertIsNotNone(self.rs._root._root._rules_timer)
-        self.assertEqual(self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__xray_client)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__resource)
-        self.assertTrue(len(self.rs._root._root._AwsXRayRemoteSampler__client_id), 24)
+        self.assertEqual(
+            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__resource
+        )
+        self.assertTrue(
+            len(self.rs._root._root._AwsXRayRemoteSampler__client_id), 24
+        )
 
     def test_create_remote_sampler_with_populated_resource(self):
         self.rs = AwsXRayRemoteSampler(
-            resource=Resource.create({"service.name": "test-service-name", "cloud.platform": "test-cloud-platform"})
+            resource=Resource.create(
+                {
+                    "service.name": "test-service-name",
+                    "cloud.platform": "test-cloud-platform",
+                }
+            )
         )
         self.assertIsNotNone(self.rs._root._root._rules_timer)
-        self.assertEqual(self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__xray_client)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__resource)
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes["service.name"], "test-service-name"
+            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__resource
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes["cloud.platform"], "test-cloud-platform"
+            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+                "service.name"
+            ],
+            "test-service-name",
+        )
+        self.assertEqual(
+            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+                "cloud.platform"
+            ],
+            "test-cloud-platform",
         )
 
     def test_create_remote_sampler_with_all_fields_populated(self):
         self.rs = AwsXRayRemoteSampler(
-            resource=Resource.create({"service.name": "test-service-name", "cloud.platform": "test-cloud-platform"}),
+            resource=Resource.create(
+                {
+                    "service.name": "test-service-name",
+                    "cloud.platform": "test-cloud-platform",
+                }
+            ),
             endpoint="http://abc.com",
             polling_interval=120,
             log_level=DEBUG,
         )
         self.assertIsNotNone(self.rs._root._root._rules_timer)
-        self.assertEqual(self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 120)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__xray_client)
-        self.assertIsNotNone(self.rs._root._root._AwsXRayRemoteSampler__resource)
+        self.assertEqual(
+            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 120
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+        )
+        self.assertIsNotNone(
+            self.rs._root._root._AwsXRayRemoteSampler__resource
+        )
         self.assertEqual(
             self.rs._root._root._AwsXRayRemoteSampler__xray_client._AwsXRaySamplingClient__get_sampling_rules_endpoint,
             "http://abc.com/GetSamplingRules",
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes["service.name"], "test-service-name"
+            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+                "service.name"
+            ],
+            "test-service-name",
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes["cloud.platform"], "test-cloud-platform"
+            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+                "cloud.platform"
+            ],
+            "test-cloud-platform",
         )
 
     def test_get_description(self) -> str:
-        self.rs: AwsXRayRemoteSampler = AwsXRayRemoteSampler(resource=Resource.create({"service.name": "dummy_name"}))
+        self.rs: AwsXRayRemoteSampler = AwsXRayRemoteSampler(
+            resource=Resource.create({"service.name": "dummy_name"})
+        )
         self.assertEqual(
             self.rs.get_description(),
             "AwsXRayRemoteSampler{root:ParentBased{root:_AwsXRayRemoteSampler{remote sampling with AWS X-Ray},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}}",  # noqa: E501

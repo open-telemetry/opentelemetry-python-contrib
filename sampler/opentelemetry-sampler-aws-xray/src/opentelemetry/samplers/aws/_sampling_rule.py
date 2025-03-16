@@ -18,6 +18,7 @@
 
 from typing import Optional
 
+
 # Disable snake_case naming style so this class can match the sampling rules response from X-Ray
 # pylint: disable=invalid-name
 class _SamplingRule:

@@ -18,10 +18,18 @@
 
 from opentelemetry.samplers.aws._clock import _Clock
 
+
 # Disable snake_case naming style so this class can match the statistics document response from X-Ray
 # pylint: disable=invalid-name
 class _SamplingStatisticsDocument:
-    def __init__(self, clientID: str, ruleName: str, RequestCount: int = 0, BorrowCount: int = 0, SampleCount: int = 0):
+    def __init__(
+        self,
+        clientID: str,
+        ruleName: str,
+        RequestCount: int = 0,
+        BorrowCount: int = 0,
+        SampleCount: int = 0,
+    ):
         self.ClientID = clientID
         self.RuleName = ruleName
         self.Timestamp = None

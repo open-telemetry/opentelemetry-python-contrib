@@ -12,23 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
-import json
 import os
 from unittest import TestCase
-from unittest.mock import patch
-
-from opentelemetry.samplers.aws._mock_clock import MockClock
-
-from opentelemetry.samplers.aws._clock import _Clock
-from opentelemetry.samplers.aws._sampling_rule import _SamplingRule
-from opentelemetry.samplers.aws._sampling_rule_applier import _SamplingRuleApplier
-from opentelemetry.samplers.aws._sampling_target import _SamplingTarget
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace.sampling import Decision, SamplingResult, TraceIdRatioBased
-from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.util.types import Attributes
 
 TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 DATA_DIR = os.path.join(TEST_DIR, "data")

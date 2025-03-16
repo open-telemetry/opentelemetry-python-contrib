@@ -17,7 +17,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from logging import getLogger
-from typing import Optional, List
+from typing import List, Optional
 
 _logger = getLogger(__name__)
 
@@ -59,13 +59,17 @@ class _SamplingTargetResponse:
         SamplingTargetDocuments: Optional[List[_SamplingTarget]] = None,
         UnprocessedStatistics: Optional[List[_UnprocessedStatistics]] = None,
     ):
-        self.LastRuleModification: float = LastRuleModification if LastRuleModification is not None else 0.0
+        self.LastRuleModification: float = (
+            LastRuleModification if LastRuleModification is not None else 0.0
+        )
 
         self.SamplingTargetDocuments: List[_SamplingTarget] = []
         if SamplingTargetDocuments is not None:
             for document in SamplingTargetDocuments:
                 try:
-                    self.SamplingTargetDocuments.append(_SamplingTarget(**document))
+                    self.SamplingTargetDocuments.append(
+                        _SamplingTarget(**document)
+                    )
                 except TypeError as e:
                     _logger.debug("TypeError occurred: %s", e)
 
@@ -73,6 +77,8 @@ class _SamplingTargetResponse:
         if UnprocessedStatistics is not None:
             for unprocessed in UnprocessedStatistics:
                 try:
-                    self.UnprocessedStatistics.append(_UnprocessedStatistics(**unprocessed))
+                    self.UnprocessedStatistics.append(
+                        _UnprocessedStatistics(**unprocessed)
+                    )
                 except TypeError as e:
                     _logger.debug("TypeError occurred: %s", e)
