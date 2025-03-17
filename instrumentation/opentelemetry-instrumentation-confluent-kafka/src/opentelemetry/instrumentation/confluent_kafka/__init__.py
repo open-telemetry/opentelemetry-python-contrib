@@ -75,12 +75,12 @@ The _instrument method accepts the following keyword args:
 .. code:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
-    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.trace import get_tracer_provider
 
     from confluent_kafka import Producer, Consumer
 
     inst = ConfluentKafkaInstrumentor()
-    tracer_provider = TracerProvider()
+    tracer_provider = get_tracer_provider()
 
     p = Producer({'bootstrap.servers': 'localhost:9092'})
     c = Consumer({
