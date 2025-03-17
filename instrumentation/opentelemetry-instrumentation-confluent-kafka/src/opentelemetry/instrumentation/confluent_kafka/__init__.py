@@ -18,10 +18,6 @@ Instrument confluent-kafka-python to report instrumentation-confluent-kafka prod
 Usage
 -----
 
-::
-
-    docker run --name broker -p 9092:9092 apache/kafka:latest
-
 .. code:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
@@ -79,14 +75,16 @@ The _instrument method accepts the following keyword args:
 .. code:: python
 
     from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
+    from opentelemetry.sdk.trace import TracerProvider
 
     from confluent_kafka import Producer, Consumer
 
     inst = ConfluentKafkaInstrumentor()
+    tracer_provider = TracerProvider()
 
-    p = confluent_kafka.Producer({'bootstrap.servers': 'localhost:29092'})
-    c = confluent_kafka.Consumer({
-        'bootstrap.servers': 'localhost:29092',
+    p = Producer({'bootstrap.servers': 'localhost:9092'})
+    c = Consumer({
+        'bootstrap.servers': 'localhost:9092',
         'group.id': 'mygroup',
         'auto.offset.reset': 'earliest'
     })
