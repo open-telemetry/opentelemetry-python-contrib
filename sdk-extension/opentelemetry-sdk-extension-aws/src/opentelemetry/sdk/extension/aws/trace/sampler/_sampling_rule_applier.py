@@ -18,12 +18,17 @@
 
 from typing import Optional
 
-from opentelemetry.samplers.aws._clock import _Clock
-from opentelemetry.samplers.aws._sampling_rule import _SamplingRule
-from opentelemetry.samplers.aws._sampling_statistics_document import (
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_rule import (
+    _SamplingRule,
+)
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_statistics_document import (
     _SamplingStatisticsDocument,
 )
-from opentelemetry.samplers.aws._sampling_target import _SamplingTarget
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_target import (
+    _SamplingTarget,
+)
 
 
 class _SamplingRuleApplier:

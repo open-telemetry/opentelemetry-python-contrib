@@ -61,7 +61,6 @@ dependencies = [
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
-  "opentelemetry-sampler-aws-xray",
   "opentelemetry-util-http",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
@@ -131,7 +130,6 @@ opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
-opentelemetry-sampler-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
@@ -144,7 +142,6 @@ members = [
   "exporter/*",
   "opentelemetry-instrumentation",
   "propagator/*",
-  "sampler/*",
   "util/opentelemetry-util-http",
 ]
 # TODO: remove after python 3.8 is dropped

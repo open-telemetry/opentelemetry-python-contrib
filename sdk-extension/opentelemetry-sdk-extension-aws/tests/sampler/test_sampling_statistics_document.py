@@ -19,8 +19,9 @@
 import datetime
 from unittest import TestCase
 
-from opentelemetry.samplers.aws._mock_clock import MockClock
-from opentelemetry.samplers.aws._sampling_statistics_document import (
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._mock_clock import MockClock
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_statistics_document import (
     _SamplingStatisticsDocument,
 )
 

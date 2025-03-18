@@ -26,7 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+  "opentelemetry-api ~= 1.12",
   "opentelemetry-sdk ~= 1.12",
+  "opentelemetry-instrumentation ~= 0.33b0",
+  "opentelemetry-semantic-conventions ~= 0.33b0",
 ]
 
 [project.entry-points.opentelemetry_id_generator]
@@ -38,6 +41,9 @@ aws_ecs = "opentelemetry.sdk.extension.aws.resource.ecs:AwsEcsResourceDetector"
 aws_eks = "opentelemetry.sdk.extension.aws.resource.eks:AwsEksResourceDetector"
 aws_elastic_beanstalk = "opentelemetry.sdk.extension.aws.resource.beanstalk:AwsBeanstalkResourceDetector"
 aws_lambda = "opentelemetry.sdk.extension.aws.resource._lambda:AwsLambdaResourceDetector"
+
+[project.entry-points.opentelemetry_sampler]
+aws_xray_remote_sampler = "opentelemetry.sdk.extension.aws.trace.sampler:AwsXRayRemoteSampler"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/sdk-extension/opentelemetry-sdk-extension-aws"

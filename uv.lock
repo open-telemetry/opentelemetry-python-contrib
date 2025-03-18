@@ -69,7 +69,6 @@ members = [
     "opentelemetry-propagator-aws-xray",
     "opentelemetry-propagator-ot-trace",
     "opentelemetry-python-contrib",
-    "opentelemetry-sampler-aws-xray",
     "opentelemetry-util-http",
 ]
 
@@ -4043,7 +4042,6 @@ dependencies = [
     { name = "opentelemetry-instrumentation-wsgi" },
     { name = "opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace" },
-    { name = "opentelemetry-sampler-aws-xray" },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
     { name = "opentelemetry-test-utils" },
@@ -4108,29 +4106,10 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-wsgi", editable = "instrumentation/opentelemetry-instrumentation-wsgi" },
     { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace", editable = "propagator/opentelemetry-propagator-ot-trace" },
-    { name = "opentelemetry-sampler-aws-xray", editable = "sampler/opentelemetry-sampler-aws-xray" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-test-utils", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-]
-
-[[package]]
-name = "opentelemetry-sampler-aws-xray"
-source = { editable = "sampler/opentelemetry-sampler-aws-xray" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-sdk" },
-    { name = "opentelemetry-semantic-conventions" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
-    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 
 [[package]]

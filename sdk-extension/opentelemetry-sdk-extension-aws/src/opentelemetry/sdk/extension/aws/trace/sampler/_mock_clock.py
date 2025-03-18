@@ -18,7 +18,8 @@
 
 import datetime
 
-from opentelemetry.samplers.aws._clock import _Clock
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 
 
 class MockClock(_Clock):

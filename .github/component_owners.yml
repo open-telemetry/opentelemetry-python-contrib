@@ -32,13 +32,11 @@ components:
   propagator/opentelemetry-propagator-aws-xray:
     - NathanielRN
 
-  sampler/opentelemetry-sampler-aws-xray:
-    - jj22ee
-
   sdk-extension/opentelemetry-sdk-extension-aws:
     - NathanielRN
     - Kausik-A
     - srprash
+    - jj22ee
 
   instrumentation/opentelemetry-instrumentation-tortoiseorm:
     - tonybaloney

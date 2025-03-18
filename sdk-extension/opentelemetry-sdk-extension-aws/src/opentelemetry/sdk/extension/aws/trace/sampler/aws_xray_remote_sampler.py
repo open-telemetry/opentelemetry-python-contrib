@@ -23,12 +23,13 @@ from typing import Optional, Sequence
 
 from typing_extensions import override
 
+# pylint: disable=no-name-in-module
 from opentelemetry.context import Context
-from opentelemetry.samplers.aws._aws_xray_sampling_client import (
+from opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client import (
     DEFAULT_SAMPLING_PROXY_ENDPOINT,
     _AwsXRaySamplingClient,
 )
-from opentelemetry.samplers.aws._clock import _Clock
+from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import (
     Decision,

@@ -18,7 +18,10 @@
 
 from unittest import TestCase
 
-from opentelemetry.samplers.aws._sampling_rule import _SamplingRule
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_rule import (
+    _SamplingRule,
+)
 
 
 class TestSamplingRule(TestCase):

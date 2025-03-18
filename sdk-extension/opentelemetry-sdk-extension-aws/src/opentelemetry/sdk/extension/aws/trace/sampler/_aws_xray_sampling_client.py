@@ -22,9 +22,14 @@ from typing import List, Optional
 
 import requests
 
+# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.utils import suppress_instrumentation
-from opentelemetry.samplers.aws._sampling_rule import _SamplingRule
-from opentelemetry.samplers.aws._sampling_target import _SamplingTargetResponse
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_rule import (
+    _SamplingRule,
+)
+from opentelemetry.sdk.extension.aws.trace.sampler._sampling_target import (
+    _SamplingTargetResponse,
+)
 
 _logger = getLogger(__name__)
 DEFAULT_SAMPLING_PROXY_ENDPOINT = "http://127.0.0.1:2000"

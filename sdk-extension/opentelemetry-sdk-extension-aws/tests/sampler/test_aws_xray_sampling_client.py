@@ -22,12 +22,13 @@ from logging import getLogger
 from unittest import TestCase
 from unittest.mock import patch
 
-from opentelemetry.samplers.aws._aws_xray_sampling_client import (
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client import (
     _AwsXRaySamplingClient,
 )
 
 SAMPLING_CLIENT_LOGGER_NAME = (
-    "opentelemetry.samplers.aws._aws_xray_sampling_client"
+    "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client"
 )
 _sampling_client_logger = getLogger(SAMPLING_CLIENT_LOGGER_NAME)
 

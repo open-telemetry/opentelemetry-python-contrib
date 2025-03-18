@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from opentelemetry.samplers.aws.aws_xray_remote_sampler import (
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler.aws_xray_remote_sampler import (
     AwsXRayRemoteSampler,
 )
 

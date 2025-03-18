@@ -16,7 +16,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from opentelemetry.samplers.aws._clock import _Clock
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 
 
 # Disable snake_case naming style so this class can match the statistics document response from X-Ray
