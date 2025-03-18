@@ -26,10 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.12",
-  "opentelemetry-sdk ~= 1.12",
-  "opentelemetry-instrumentation ~= 0.33b0",
-  "opentelemetry-semantic-conventions ~= 0.33b0",
+  "opentelemetry-api ~= 1.23",
+  "opentelemetry-sdk ~= 1.23",
+  "opentelemetry-instrumentation ~= 0.44b0",
+  "opentelemetry-semantic-conventions ~= 0.44b0",
 ]
 
 [project.entry-points.opentelemetry_id_generator]
