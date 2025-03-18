@@ -240,7 +240,7 @@ def request_to_events(
                 id_=f"{function_response.name}_{idx}",
                 role=content.role,
                 content=json_format.MessageToDict(
-                    function_response._pb.response  # type: ignore[reportUnknownMemberType]
+                    function_response._pb.response
                 )
                 if capture_content
                 else None,
@@ -300,7 +300,7 @@ def _extract_tool_calls(
             function=ChoiceToolCall.Function(
                 name=part.function_call.name,
                 arguments=json_format.MessageToDict(
-                    part.function_call._pb.args  # type: ignore[reportUnknownMemberType]
+                    part.function_call._pb.args
                 )
                 if capture_content
                 else None,
