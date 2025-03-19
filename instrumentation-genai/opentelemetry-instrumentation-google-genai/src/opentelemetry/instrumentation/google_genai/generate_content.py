@@ -165,6 +165,7 @@ def _add_request_options_to_span(span, config: Optional[GenerateContentConfigOrD
             "gen_ai.gcp.request.candidate_count": "gen_ai.request.choice.count",
             "gen_ai.gcp.request.max_output_tokens": "gen_ai.request.max_tokens",
             "gen_ai.gcp.request.stop_sequences": "gen_ai.request.stop_sequences",
+            "gen_ai.gcp.request.frequency_penalty": "gen_ai.request.frequency_penalty",
             "gen_ai.gcp.request.presence_penalty": "gen_ai.request.presence_penalty",
             "gen_ai.gcp.request.seed": "gen_ai.request.seed",
         }
@@ -302,7 +303,7 @@ class _GenerateContentInstrumentationHelper:
         system_instruction = None
         if config is not None:
             if isinstance(config, dict):
-                system_instruction = config["system_instruction"]
+                system_instruction = config.get("system_instruction")
             else:
                 system_instruction = config.system_instruction
         if not system_instruction:

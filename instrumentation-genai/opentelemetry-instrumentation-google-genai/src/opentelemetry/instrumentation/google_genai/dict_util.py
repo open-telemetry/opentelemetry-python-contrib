@@ -71,6 +71,8 @@ def _flatten_value(
     rename_keys: Dict[str, str],
     flatten_functions: Dict[str, Callable],
     _from_json=False) -> FlattenedDict:
+  if value is None:
+    return {}
   key_names = set([key])
   renamed_key = rename_keys.get(key)
   if renamed_key is not None:
@@ -130,7 +132,6 @@ def _flatten_list(
     flattened = _flatten_value(full_key, value, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
     result.update(flattened)
  return result
-
 
 
 def flatten_dict(
