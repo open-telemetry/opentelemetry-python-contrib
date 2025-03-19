@@ -116,12 +116,9 @@ def _should_redact_header(header_key):
 
 
 def _redact_headers(headers):
-    to_redact = []
     for header_key in headers:
         if _should_redact_header(header_key.lower()):
-            to_redact.append(header_key)
-    for header_key in to_redact:
-        headers[header_key] = "<REDACTED>"
+            headers[header_key] = "<REDACTED>"
 
 
 def _before_record_request(request):
