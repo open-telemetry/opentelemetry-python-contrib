@@ -16,8 +16,9 @@ import json
 import os
 import unittest
 
-from .base import TestCase
 from google.genai.types import GenerateContentConfig
+
+from .base import TestCase
 
 
 class NonStreamingTestCase(TestCase):
@@ -40,7 +41,8 @@ class NonStreamingTestCase(TestCase):
         self.generate_content(
             model="gemini-2.0-flash",
             contents="Some input prompt",
-            config=config)
+            config=config,
+        )
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         return self.otel.get_span_named("generate_content gemini-2.0-flash")
 
@@ -104,62 +106,82 @@ class NonStreamingTestCase(TestCase):
         )
 
     def test_option_reflected_to_span_attribute_choice_count_config_dict(self):
-        self.configure_valid_response(text='Some response')
+        self.configure_valid_response(text="Some response")
         span = self.generate_and_get_span(config={"candidate_count": 2})
         self.assertEqual(span.attributes["gen_ai.request.choice.count"], 2)
 
     def test_option_reflected_to_span_attribute_choice_count_config_obj(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config=GenerateContentConfig(candidate_count = 2))
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config=GenerateContentConfig(candidate_count=2)
+        )
         self.assertEqual(span.attributes["gen_ai.request.choice.count"], 2)
 
     def test_option_reflected_to_span_attribute_seed_config_dict(self):
-        self.configure_valid_response(text='Some response')
+        self.configure_valid_response(text="Some response")
         span = self.generate_and_get_span(config={"seed": 12345})
         self.assertEqual(span.attributes["gen_ai.request.seed"], 12345)
 
     def test_option_reflected_to_span_attribute_seed_config_obj(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config=GenerateContentConfig(seed = 12345))
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config=GenerateContentConfig(seed=12345)
+        )
         self.assertEqual(span.attributes["gen_ai.request.seed"], 12345)
 
     def test_option_reflected_to_span_attribute_frequency_penalty(self):
-        self.configure_valid_response(text='Some response')
+        self.configure_valid_response(text="Some response")
         span = self.generate_and_get_span(config={"frequency_penalty": 1.0})
-        self.assertEqual(span.attributes["gen_ai.request.frequency_penalty"], 1.0)
+        self.assertEqual(
+            span.attributes["gen_ai.request.frequency_penalty"], 1.0
+        )
 
     def test_option_reflected_to_span_attribute_max_tokens(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config=GenerateContentConfig(max_output_tokens=5000))
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config=GenerateContentConfig(max_output_tokens=5000)
+        )
         self.assertEqual(span.attributes["gen_ai.request.max_tokens"], 5000)
 
     def test_option_reflected_to_span_attribute_presence_penalty(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config=GenerateContentConfig(presence_penalty=0.5))
-        self.assertEqual(span.attributes["gen_ai.request.presence_penalty"], 0.5)
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config=GenerateContentConfig(presence_penalty=0.5)
+        )
+        self.assertEqual(
+            span.attributes["gen_ai.request.presence_penalty"], 0.5
+        )
 
     def test_option_reflected_to_span_attribute_stop_sequences(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config={"stop_sequences": ["foo", "bar"]})
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config={"stop_sequences": ["foo", "bar"]}
+        )
         stop_sequences = span.attributes["gen_ai.request.stop_sequences"]
         self.assertEqual(len(stop_sequences), 2)
         self.assertEqual(stop_sequences[0], "foo")
         self.assertEqual(stop_sequences[1], "bar")
 
     def test_option_reflected_to_span_attribute_top_k(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config=GenerateContentConfig(top_k=20))
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config=GenerateContentConfig(top_k=20)
+        )
         self.assertEqual(span.attributes["gen_ai.request.top_k"], 20)
 
     def test_option_reflected_to_span_attribute_top_p(self):
-        self.configure_valid_response(text='Some response')
+        self.configure_valid_response(text="Some response")
         span = self.generate_and_get_span(config={"top_p": 10})
         self.assertEqual(span.attributes["gen_ai.request.top_p"], 10)
 
     def test_option_not_reflected_to_span_attribute_system_instruction(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config={"system_instruction": "Yadda yadda yadda"})
-        self.assertNotIn("gen_ai.gcp.request.system_instruction", span.attributes)
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config={"system_instruction": "Yadda yadda yadda"}
+        )
+        self.assertNotIn(
+            "gen_ai.gcp.request.system_instruction", span.attributes
+        )
         self.assertNotIn("gen_ai.request.system_instruction", span.attributes)
         for key in span.attributes:
             value = span.attributes[key]
@@ -167,27 +189,40 @@ class NonStreamingTestCase(TestCase):
                 self.assertNotIn("Yadda yadda yadda", value)
 
     def test_option_not_reflected_to_span_attribute_http_headers(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config={"http_options": {
-            "base_url": "my.backend.override",
-            "headers": {
-                "sensitive": 12345,
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config={
+                "http_options": {
+                    "base_url": "my.backend.override",
+                    "headers": {
+                        "sensitive": 12345,
+                    },
+                }
             }
-        }})
+        )
         self.assertEqual(
-            span.attributes["gen_ai.gcp.request.http_options.base_url"], "my.backend.override")
+            span.attributes["gen_ai.gcp.request.http_options.base_url"],
+            "my.backend.override",
+        )
         self.assertNotIn(
             "gen_ai.gcp.request.http_options.headers.sensitive",
-            span.attributes
+            span.attributes,
         )
 
     def test_option_reflected_to_span_attribute_automatic_func_calling(self):
-        self.configure_valid_response(text='Some response')
-        span = self.generate_and_get_span(config={"automatic_function_calling": {
-            "ignore_call_history": True,
-        }})
+        self.configure_valid_response(text="Some response")
+        span = self.generate_and_get_span(
+            config={
+                "automatic_function_calling": {
+                    "ignore_call_history": True,
+                }
+            }
+        )
         self.assertTrue(
-            span.attributes["gen_ai.gcp.request.automatic_function_calling.ignore_call_history"])
+            span.attributes[
+                "gen_ai.gcp.request.automatic_function_calling.ignore_call_history"
+            ]
+        )
 
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(input_tokens=123, output_tokens=456)

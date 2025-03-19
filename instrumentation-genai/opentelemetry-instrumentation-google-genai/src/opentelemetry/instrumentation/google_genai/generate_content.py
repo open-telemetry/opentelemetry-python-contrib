@@ -39,10 +39,10 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import error_attributes
 
+from .custom_semconv import CUSTOM_LLM_REQUEST_PREFIX
+from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
-from .dict_util import flatten_dict
-from .custom_semconv import CUSTOM_LLM_REQUEST_PREFIX
 
 _logger = logging.getLogger(__name__)
 
@@ -139,7 +139,9 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def _add_request_options_to_span(span, config: Optional[GenerateContentConfigOrDict]):
+def _add_request_options_to_span(
+    span, config: Optional[GenerateContentConfigOrDict]
+):
     if config is None:
         return
     span_context = span.get_span_context()
@@ -168,7 +170,7 @@ def _add_request_options_to_span(span, config: Optional[GenerateContentConfigOrD
             "gen_ai.gcp.request.frequency_penalty": "gen_ai.request.frequency_penalty",
             "gen_ai.gcp.request.presence_penalty": "gen_ai.request.presence_penalty",
             "gen_ai.gcp.request.seed": "gen_ai.request.seed",
-        }
+        },
     )
     span.set_attributes(attributes)
 

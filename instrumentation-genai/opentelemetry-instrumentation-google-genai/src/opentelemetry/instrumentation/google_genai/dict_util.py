@@ -13,9 +13,8 @@
 # limitations under the License.
 
 
-from typing import Dict, Optional, Set, Any, Callable, Union, List, Sequence
-
 import json
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Union
 
 Primitive = Union[bool, str, int, float]
 BoolList = list[bool]
@@ -55,8 +54,8 @@ def _is_homogenous_primitive_list(v):
 
 
 def _get_flatten_func(
-    flatten_functions: Dict[str, Callable],
-    key_names: set[str]):
+    flatten_functions: Dict[str, Callable], key_names: set[str]
+):
     for key in key_names:
         flatten_func = flatten_functions.get(key)
         if flatten_func is not None:
@@ -70,36 +69,70 @@ def _flatten_value(
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
     flatten_functions: Dict[str, Callable],
-    _from_json=False) -> FlattenedDict:
-  if value is None:
-    return {}
-  key_names = set([key])
-  renamed_key = rename_keys.get(key)
-  if renamed_key is not None:
-    key_names.add(renamed_key)
-    key = renamed_key
-  if key_names & exclude_keys:
-    return {}
-  if _is_primitive(value):
-    return {key: value}
-  flatten_func = _get_flatten_func(flatten_functions, key_names)
-  if flatten_func is not None:
-    func_output = flatten_func(key, value, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-    if func_output is not None:
-      return {key: func_output}
-  if isinstance(value, dict):
-    return _flatten_dict(value, key_prefix=key, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-  if isinstance(value, list):
-    if _is_homogenous_primitive_list(value):
+    _from_json=False,
+) -> FlattenedDict:
+    if value is None:
+        return {}
+    key_names = set([key])
+    renamed_key = rename_keys.get(key)
+    if renamed_key is not None:
+        key_names.add(renamed_key)
+        key = renamed_key
+    if key_names & exclude_keys:
+        return {}
+    if _is_primitive(value):
         return {key: value}
-    return _flatten_list(value, key_prefix=key, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-  if hasattr(value, "model_dump"):
-    d = value.model_dump()
-    return _flatten_dict(d, key_prefix=key, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-  if _from_json:
-    raise ValueError(f"Cannot flatten value with key {key}; value: {value}")
-  json_value = json.loads(json.dumps(value))
-  return _flatten_value(key, json_value, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions, _from_json=True)
+    flatten_func = _get_flatten_func(flatten_functions, key_names)
+    if flatten_func is not None:
+        func_output = flatten_func(
+            key,
+            value,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+        if func_output is not None:
+            return {key: func_output}
+    if isinstance(value, dict):
+        return _flatten_dict(
+            value,
+            key_prefix=key,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+    if isinstance(value, list):
+        if _is_homogenous_primitive_list(value):
+            return {key: value}
+        return _flatten_list(
+            value,
+            key_prefix=key,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+    if hasattr(value, "model_dump"):
+        d = value.model_dump()
+        return _flatten_dict(
+            d,
+            key_prefix=key,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+    if _from_json:
+        raise ValueError(
+            f"Cannot flatten value with key {key}; value: {value}"
+        )
+    json_value = json.loads(json.dumps(value))
+    return _flatten_value(
+        key,
+        json_value,
+        exclude_keys=exclude_keys,
+        rename_keys=rename_keys,
+        flatten_functions=flatten_functions,
+        _from_json=True,
+    )
 
 
 def _flatten_dict(
@@ -107,16 +140,22 @@ def _flatten_dict(
     key_prefix: str,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable]) -> FlattenedDict:
- result = {}
- for key, value in d.items():
-    if key in exclude_keys:
-      continue
-    full_key = _concat_key(key_prefix, key)
-    flattened = _flatten_value(full_key, value, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-    result.update(flattened)
- return result
-
+    flatten_functions: Dict[str, Callable],
+) -> FlattenedDict:
+    result = {}
+    for key, value in d.items():
+        if key in exclude_keys:
+            continue
+        full_key = _concat_key(key_prefix, key)
+        flattened = _flatten_value(
+            full_key,
+            value,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+        result.update(flattened)
+    return result
 
 
 def _flatten_list(
@@ -124,14 +163,21 @@ def _flatten_list(
     key_prefix: str,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable]) -> FlattenedDict:
- result = {}
- result[_concat_key(key_prefix, "length")] = len(lst)
- for index, value in enumerate(lst):
-    full_key = f"{key_prefix}[{index}]"
-    flattened = _flatten_value(full_key, value, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
-    result.update(flattened)
- return result
+    flatten_functions: Dict[str, Callable],
+) -> FlattenedDict:
+    result = {}
+    result[_concat_key(key_prefix, "length")] = len(lst)
+    for index, value in enumerate(lst):
+        full_key = f"{key_prefix}[{index}]"
+        flattened = _flatten_value(
+            full_key,
+            value,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+        result.update(flattened)
+    return result
 
 
 def flatten_dict(
@@ -139,12 +185,19 @@ def flatten_dict(
     key_prefix: Optional[str] = None,
     exclude_keys: Optional[Sequence[str]] = None,
     rename_keys: Optional[Dict[str, str]] = None,
-    flatten_functions: Optional[Dict[str, Callable]] = None):
-  key_prefix = key_prefix or ""
-  if exclude_keys is None:
-    exclude_keys = set()
-  elif isinstance(exclude_keys, list):
-    exclude_keys = set(exclude_keys)
-  rename_keys = rename_keys or {}
-  flatten_functions = flatten_functions or {}
-  return _flatten_dict(d, key_prefix=key_prefix, exclude_keys=exclude_keys, rename_keys=rename_keys, flatten_functions=flatten_functions)
+    flatten_functions: Optional[Dict[str, Callable]] = None,
+):
+    key_prefix = key_prefix or ""
+    if exclude_keys is None:
+        exclude_keys = set()
+    elif isinstance(exclude_keys, list):
+        exclude_keys = set(exclude_keys)
+    rename_keys = rename_keys or {}
+    flatten_functions = flatten_functions or {}
+    return _flatten_dict(
+        d,
+        key_prefix=key_prefix,
+        exclude_keys=exclude_keys,
+        rename_keys=rename_keys,
+        flatten_functions=flatten_functions,
+    )
