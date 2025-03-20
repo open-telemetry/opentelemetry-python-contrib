@@ -17,29 +17,22 @@ import unittest
 
 import google.genai
 
+from .auth import FakeCredentials
 from .instrumentation_context import InstrumentationContext
 from .otel_mocker import OTelMocker
-from .requests_mocker import RequestsMocker
-
-
-class _FakeCredentials(google.auth.credentials.AnonymousCredentials):
-    def refresh(self, request):
-        pass
 
 
 class TestCase(unittest.TestCase):
     def setUp(self):
         self._otel = OTelMocker()
         self._otel.install()
-        self._requests = RequestsMocker()
-        self._requests.install()
         self._instrumentation_context = None
         self._api_key = "test-api-key"
         self._project = "test-project"
         self._location = "test-location"
         self._client = None
         self._uses_vertex = False
-        self._credentials = _FakeCredentials()
+        self._credentials = FakeCredentials()
 
     def _lazy_init(self):
         self._instrumentation_context = InstrumentationContext()
@@ -52,15 +45,20 @@ class TestCase(unittest.TestCase):
         return self._client
 
     @property
-    def requests(self):
-        return self._requests
-
-    @property
     def otel(self):
         return self._otel
 
     def set_use_vertex(self, use_vertex):
         self._uses_vertex = use_vertex
+
+    def reset_client(self):
+        self._client = None
+
+    def reset_instrumentation(self):
+        if self._instrumentation_context is None:
+            return
+        self._instrumentation_context.uninstall()
+        self._instrumentation_context = None
 
     def _create_client(self):
         self._lazy_init()
@@ -72,10 +70,9 @@ class TestCase(unittest.TestCase):
                 location=self._location,
                 credentials=self._credentials,
             )
-        return google.genai.Client(api_key=self._api_key)
+        return google.genai.Client(vertexai=False, api_key=self._api_key)
 
     def tearDown(self):
         if self._instrumentation_context is not None:
             self._instrumentation_context.uninstall()
-        self._requests.uninstall()
         self._otel.uninstall()
