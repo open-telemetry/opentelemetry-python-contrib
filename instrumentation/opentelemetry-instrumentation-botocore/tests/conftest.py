@@ -77,6 +77,10 @@ def fixture_meter_provider(metric_reader):
 def bedrock_runtime_client():
     return boto3.client("bedrock-runtime")
 
+@pytest.fixture
+def bedrock_agent_client():
+    return boto3.client('bedrock-agent-runtime')
+
 
 @pytest.fixture(autouse=True)
 def environment():
