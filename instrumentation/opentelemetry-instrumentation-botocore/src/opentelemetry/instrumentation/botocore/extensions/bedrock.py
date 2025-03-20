@@ -56,10 +56,16 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_TOKEN_TYPE,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
+    GEN_AI_AGENT_ID,
+    GEN_AI_AGENT_NAME,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GenAiOperationNameValues,
     GenAiSystemValues,
     GenAiTokenTypeValues,
 )
+
 from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
@@ -118,6 +124,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         "ConverseStream",
         "InvokeModel",
         "InvokeModelWithResponseStream",
+        "InvokeAgent",
     }
     _DONT_CLOSE_SPAN_ON_END_OPERATIONS = {
         "ConverseStream",
@@ -147,6 +154,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     def _extract_metrics_attributes(self) -> _AttributeMapT:
         attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
 
+        if self._call_context.operation == "InvokeAgent":
+            attributes[GEN_AI_OPERATION_NAME] = "invoke_agent"
+
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
             return attributes
@@ -170,6 +180,19 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         attributes[GEN_AI_SYSTEM] = GenAiSystemValues.AWS_BEDROCK.value
 
+        # Handle InvokeAgent
+        if self._call_context.operation == "InvokeAgent":
+            attributes[GEN_AI_OPERATION_NAME] = "invoke_agent"
+
+            # Set agent attributes
+            agent_id = self._call_context.params.get("agentId")
+            agent_alias_id = self._call_context.params.get("agentAliasId")
+
+            self._set_if_not_none(attributes, GEN_AI_AGENT_ID, agent_id)
+            self._set_if_not_none(attributes, GEN_AI_AGENT_NAME, agent_alias_id)
+            return
+
+        # Handle non-agent chat completions
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if model_id:
             attributes[GEN_AI_REQUEST_MODEL] = model_id
@@ -329,10 +352,14 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         if span.is_recording():
             operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
-            request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
-            # avoid setting to an empty string if are not available
-            if operation_name and request_model:
-                span.update_name(f"{operation_name} {request_model}")
+            if self._call_context.operation == "InvokeAgent":
+                if operation_name:
+                    span.update_name(f"{operation_name}")
+            else:
+                request_model = span.attributes.get(GEN_AI_REQUEST_MODEL, "")
+                # avoid setting to an empty string if are not available
+                if operation_name and request_model:
+                    span.update_name(f"{operation_name} {request_model}")
 
         # this is used to calculate the operation duration metric, duration may be skewed by request_hook
         # pylint: disable=attribute-defined-outside-init
@@ -472,6 +499,65 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 attributes=metrics_attributes,
             )
 
+    def _invoke_agent_on_success(
+        self,
+        span: Span,
+        result: dict,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
+        try:
+            if "completion" in result and isinstance(result["completion"], EventStream):
+                event_stream = result["completion"]
+
+                # Drain the stream so we can instrument AND keep events
+                all_events = list(event_stream)
+
+                # A replay generator so user code can still iterate
+                result["completion"] = _replay_events(all_events)
+
+                for event in all_events:
+                    if "returnControl" in event:
+                        self._handle_return_control(span, event)
+
+            # Record metrics
+            metrics = instrumentor_context.metrics
+            metrics_attributes = self._extract_metrics_attributes()
+            if operation_duration_histogram := metrics.get(GEN_AI_CLIENT_OPERATION_DURATION):
+                duration = max((default_timer() - self._operation_start), 0)
+                operation_duration_histogram.record(
+                    duration,
+                    attributes=metrics_attributes,
+                )
+
+        except json.JSONDecodeError:
+            _logger.debug("Error: Unable to parse the response body as JSON")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _logger.debug("Error processing response: %s", exc)
+
+    def _handle_return_control(self, span: Span, event: dict):
+        return_control = event["returnControl"]
+        invocation_id = return_control.get("invocationId")
+        invocation_inputs = return_control.get("invocationInputs", [])
+
+        if span.is_recording() and invocation_id:
+            span.set_attribute(GEN_AI_TOOL_CALL_ID, invocation_id)
+
+            for input_item in invocation_inputs:
+                # Handle function invocation
+                if "functionInvocationInput" in input_item:
+                    func_input = input_item["functionInvocationInput"]
+                    action_group = func_input.get("actionGroup")
+                    function = func_input.get("function")
+                    span.set_attribute(GEN_AI_TOOL_NAME, action_group)
+                    span.set_attribute(GEN_AI_TOOL_TYPE, "function")
+
+                # Handle API invocation
+                elif "apiInvocationInput" in input_item:
+                    api_input = input_item["apiInvocationInput"]
+                    action_group = api_input.get("actionGroup")
+                    span.set_attribute(GEN_AI_TOOL_NAME, action_group)
+                    span.set_attribute(GEN_AI_TOOL_TYPE, "extension")
+
     def on_success(
         self,
         span: Span,
@@ -481,6 +567,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if self._call_context.operation not in self._HANDLED_OPERATIONS:
             return
 
+        # Handle InvokeAgent
+        if self._call_context.operation == "InvokeAgent":
+            self._invoke_agent_on_success(span, result, instrumentor_context)
+            return
+
+        # Handle non-agent chat completions
         capture_content = genai_capture_message_content()
 
         if self._call_context.operation == "ConverseStream":
@@ -754,3 +846,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 duration,
                 attributes=metrics_attributes,
             )
+
+def _replay_events(events):
+    """
+    Helper so that user can still iterate EventStream
+    """
+    for e in events:
+        yield e
