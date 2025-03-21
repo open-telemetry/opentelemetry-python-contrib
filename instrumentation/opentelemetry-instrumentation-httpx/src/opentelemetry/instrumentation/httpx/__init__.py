@@ -233,8 +233,15 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    parse_excluded_urls,
+    remove_url_credentials, 
+    sanitize_method,
+)
 
+_excluded_urls_from_env = get_excluded_urls("HTTPX")
 _logger = logging.getLogger(__name__)
 
 RequestHook = typing.Callable[[Span, "RequestInfo"], None]
@@ -411,6 +418,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             right after the span is created
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
+        excluded_urls: List of urls that should be excluded from tracing
     """
 
     def __init__(
@@ -419,6 +427,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         tracer_provider: TracerProvider | None = None,
         request_hook: RequestHook | None = None,
         response_hook: ResponseHook | None = None,
+        excluded_urls: ExcludeList | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -434,6 +443,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = excluded_urls
 
     def __enter__(self) -> SyncOpenTelemetryTransport:
         self._transport.__enter__()
@@ -463,6 +473,10 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+        
+        if self._excluded_urls and self._excluded_urls.url_disabled(str(url)):
+            return self._transport.handle_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -536,6 +550,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             right after the span is created
         response_hook: A hook that receives the span, request, and response
             that is called right before the span ends
+        excluded_urls: List of urls that should be excluded from tracing
     """
 
     def __init__(
@@ -544,6 +559,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         tracer_provider: TracerProvider | None = None,
         request_hook: AsyncRequestHook | None = None,
         response_hook: AsyncResponseHook | None = None,
+        excluded_urls: ExcludeList | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -559,6 +575,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = excluded_urls
 
     async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
@@ -586,6 +603,10 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+        
+        if self._excluded_urls and self._excluded_urls.url_disabled(str(url)):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -674,6 +695,8 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     and response that is called right before the span ends
                 ``async_request_hook``: Async ``request_hook`` for ``httpx.AsyncClient``
                 ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
+                ``excluded_urls``: A string containing a comma-delimited
+                    list of regexes used to exclude URLs from tracking
         """
         tracer_provider = kwargs.get("tracer_provider")
         request_hook = kwargs.get("request_hook")
@@ -689,6 +712,14 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             async_response_hook
             if iscoroutinefunction(async_response_hook)
             else None
+        )
+        
+        excluded_urls_raw = kwargs.get("excluded_urls")
+        
+        excluded_urls = (
+            parse_excluded_urls(excluded_urls_raw) 
+            if excluded_urls_raw
+            else _excluded_urls_from_env
         )
 
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -711,6 +742,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
         wrap_function_wrapper(
@@ -722,6 +754,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 async_request_hook=async_request_hook,
                 async_response_hook=async_response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
 
@@ -739,6 +772,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         request_hook: RequestHook,
         response_hook: ResponseHook,
+        excluded_urls: ExcludeList | None = None,
     ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
@@ -746,6 +780,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(str(url)):
+            return wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -813,6 +851,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         async_request_hook: AsyncRequestHook,
         async_response_hook: AsyncResponseHook,
+        excluded_urls: ExcludeList | None = None,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
@@ -820,6 +859,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+        
+        if excluded_urls and excluded_urls.url_disabled(str(url)):
+            return await wrapped(*args, **kwargs)
+        
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -885,6 +928,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         tracer_provider: TracerProvider | None = None,
         request_hook: RequestHook | AsyncRequestHook | None = None,
         response_hook: ResponseHook | AsyncResponseHook | None = None,
+        excluded_urls: ExcludeList | None = None,
     ) -> None:
         """Instrument httpx Client or AsyncClient
 
@@ -938,6 +982,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     request_hook=request_hook,
                     response_hook=response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -951,6 +996,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             request_hook=request_hook,
                             response_hook=response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
@@ -964,6 +1010,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     async_request_hook=async_request_hook,
                     async_response_hook=async_response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -977,6 +1024,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             async_request_hook=async_request_hook,
                             async_response_hook=async_response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
