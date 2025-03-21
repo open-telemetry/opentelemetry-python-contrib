@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
 - Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
   ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
-
+- `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler
+  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 
 ### Fixed
 
