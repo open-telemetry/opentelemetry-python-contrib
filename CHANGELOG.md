@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
 ### Added
-
+- `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
+  ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
 - `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
   ([#3279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3279))
 - `opentelemetry-instrumentation-system-metrics` Add `process` metrics and deprecated `process.runtime` prefixed ones
@@ -35,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
 - Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
   ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
-
 
 ### Fixed
 
