@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-grpc` Check for None result in gRPC
+  ([#3380](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3381))
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
 - `opentelemetry-instrumentation-botocore` sns-extension: Change destination name attribute
