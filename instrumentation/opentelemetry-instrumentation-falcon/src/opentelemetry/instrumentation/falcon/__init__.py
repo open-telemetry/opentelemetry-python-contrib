@@ -58,16 +58,16 @@ Usage
 
 .. code-block:: python
 
-    from falcon import API
+    import falcon
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     FalconInstrumentor().instrument()
 
-    app = falcon.API()
+    app = falcon.App()
 
     class HelloWorldResource(object):
         def on_get(self, req, resp):
-            resp.body = 'Hello World'
+            resp.text = 'Hello World'
 
     app.add_route('/hello', HelloWorldResource())
 
@@ -78,7 +78,9 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
 
-::
+.. code-block:: python
+
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     def request_hook(span, req):
         pass
@@ -86,7 +88,7 @@ The hooks can be configured as follows:
     def response_hook(span, req, resp):
         pass
 
-    FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Capture HTTP request and response headers
 *****************************************
