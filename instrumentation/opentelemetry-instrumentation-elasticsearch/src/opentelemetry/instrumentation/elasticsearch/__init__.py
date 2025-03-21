@@ -32,15 +32,15 @@ Usage
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
-
+    from datetime import datetime
 
     # instrument elasticsearch
     ElasticsearchInstrumentor().instrument()
 
     # Using elasticsearch as normal now will automatically generate spans
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 Elasticsearch instrumentation prefixes operation names with the string "Elasticsearch". This
 can be changed to a different string by either setting the OTEL_PYTHON_ELASTICSEARCH_NAME_PREFIX
@@ -48,6 +48,8 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 
 .. code-block:: python
+
+    from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
 
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
 
@@ -67,6 +69,7 @@ for example:
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
+    from datetime import datetime
 
     def request_hook(span, method, url, kwargs):
         if span and span.is_recording():
@@ -82,8 +85,8 @@ for example:
     # Using elasticsearch as normal now will automatically generate spans,
     # including user custom attributes added from the hooks
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 API
 ---
