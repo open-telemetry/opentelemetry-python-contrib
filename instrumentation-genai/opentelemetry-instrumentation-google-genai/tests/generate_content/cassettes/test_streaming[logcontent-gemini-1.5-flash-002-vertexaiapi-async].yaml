@@ -1,0 +1,99 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '92'
+      Content-Type:
+      - application/json
+      user-agent:
+      - google-genai-sdk/1.0.0 gl-python/3.12.8
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-1.5-flash-002:streamGenerateContent?alt=sse
+  response:
+    body:
+      string: "data: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"No\"}]}}],\"usageMetadata\": {},\"modelVersion\": \"gemini-1.5-flash-002\"\
+        ,\"createTime\": \"2025-03-07T22:19:23.579184Z\",\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" more dark logs, a cryptic, silent scream,\\nNo more the hunt\
+        \ for\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"\
+        2025-03-07T22:19:23.579184Z\",\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" errors, a lost, fading dream.\\nOpen Telemetry, a beacon\
+        \ in\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"\
+        2025-03-07T22:19:23.579184Z\",\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" the night,\\nShining forth its data, clear and burning bright.\\\
+        n\\nFrom traces spanning systems, a flowing, silver thread,\\nMetrics pulse\
+        \ and measure,\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\"\
+        : \"2025-03-07T22:19:23.579184Z\",\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" insights finely spread.\\nLogs enriched with context, a story\
+        \ they unfold,\\nOf requests and responses, both brave and bold.\\n\\nObservability's\
+        \ promise\"}]}}],\"modelVersion\": \"gemini-1.5-flash-002\",\"createTime\"\
+        : \"2025-03-07T22:19:23.579184Z\",\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \", a future now at hand,\\nWith vendors interoperable, a collaborative\
+        \ band.\\nNo longer vendor lock-in, a restrictive, iron cage,\\nBut freedom\
+        \ of selection, turning a new page.\\n\\nFrom microservices humming,\"}]}}],\"\
+        modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:23.579184Z\"\
+        ,\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \" a symphony\
+        \ of calls,\\nTo monolithic giants, answering their thralls,\\nOpen Telemetry\
+        \ watches, with keen and watchful eye,\\nDetecting the anomalies, before they\
+        \ rise and fly.\\n\\nSo let the data flow freely, a\"}]}}],\"modelVersion\"\
+        : \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:23.579184Z\"\
+        ,\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \" river strong\
+        \ and deep,\\nIts secrets it will whisper, while the systems sleep.\\nOpen\
+        \ Telemetry's power, a force that we can wield,\\nTo build more stable systems,\
+        \ in the digital field.\\n\"}]},\"finishReason\": \"STOP\"}],\"usageMetadata\"\
+        : {\"promptTokenCount\": 8,\"candidatesTokenCount\": 238,\"totalTokenCount\"\
+        : 246,\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 8}],\"\
+        candidatesTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\": 238}]},\"\
+        modelVersion\": \"gemini-1.5-flash-002\",\"createTime\": \"2025-03-07T22:19:23.579184Z\"\
+        ,\"responseId\": \"63DLZ_CsI_Hg-O4P7YfKqQ8\"}\r\n\r\n"
+    headers:
+      Content-Disposition:
+      - attachment
+      Content-Type:
+      - text/event-stream
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
