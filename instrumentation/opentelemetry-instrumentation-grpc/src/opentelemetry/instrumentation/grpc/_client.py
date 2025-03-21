@@ -165,7 +165,7 @@ class OpenTelemetryClientInterceptor(
                 span.record_exception(exc)
                 raise exc
             finally:
-                if not result:
+                if result is None:
                     span.end()
         return self._trace_result(span, rpc_info, result)
 
