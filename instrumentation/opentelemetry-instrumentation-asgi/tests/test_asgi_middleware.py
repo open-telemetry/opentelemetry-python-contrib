@@ -52,7 +52,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
-from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_PATH,
     URL_QUERY,
@@ -401,6 +404,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
                     SERVER_PORT: 80,
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
@@ -436,6 +440,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
                     SERVER_PORT: 80,
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
@@ -706,7 +711,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    CLIENT_ADDRESS: "0.0.0.0",
+                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
@@ -733,7 +738,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: "0.0.0.0",
                     SpanAttributes.NET_HOST_PORT: 80,
                     SpanAttributes.HTTP_URL: "http://0.0.0.0/",
-                    CLIENT_ADDRESS: "0.0.0.0",
+                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
@@ -948,7 +953,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: self.scope["server"][0],
                     SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
                     SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
+                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
                     SpanAttributes.NET_PEER_IP: self.scope["client"][0],
                     SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -1018,6 +1023,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
                     SERVER_PORT: self.scope["server"][1],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
@@ -1096,12 +1102,13 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: self.scope["server"][0],
                     SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
                     SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
+                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
                     SpanAttributes.NET_PEER_IP: self.scope["client"][0],
                     SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                     SpanAttributes.HTTP_METHOD: self.scope["method"],
                     URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
                     SERVER_PORT: self.scope["server"][1],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
@@ -1661,6 +1668,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1696,6 +1704,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
