@@ -227,10 +227,12 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             # {'contentBlockStart': {'start': {'toolUse': {'toolUseId': 'id', 'name': 'name'}}, 'contentBlockIndex': 31}}
             if self._record_message:
                 self._message["content"].append(self._content_block)
-                self._content_block = {}
-            start = chunk["contentBlockStart"].get("start", {})
-            if "toolUse" in start:
-                self._content_block = start
+
+                start = chunk["contentBlockStart"].get("start", {})
+                if "toolUse" in start:
+                    self._content_block = start
+                else:
+                    self._content_block = {}
             return
 
         if "contentBlockDelta" in chunk:
