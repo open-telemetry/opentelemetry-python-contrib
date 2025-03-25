@@ -19,24 +19,6 @@ import grpc
 from opentelemetry.trace.status import Status, StatusCode
 
 
-class RpcInfo:
-    def __init__(
-        self,
-        full_method=None,
-        metadata=None,
-        timeout=None,
-        request=None,
-        response=None,
-        error=None,
-    ):
-        self.full_method = full_method
-        self.metadata = metadata
-        self.timeout = timeout
-        self.request = request
-        self.response = response
-        self.error = error
-
-
 def _server_status(code, details):
     error_status = Status(
         status_code=StatusCode.ERROR, description=f"{code}:{details}"
