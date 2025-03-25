@@ -2032,20 +2032,24 @@ def invoke_model_with_response_stream_tool_call(
     expect_content,
 ):
     # pylint:disable=too-many-locals,too-many-statements,too-many-branches
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
-                    "type": "text",
-                }
-            ],
+    user_prompt = "What is the weather in Seattle and San Francisco today? Please give one tool call for Seattle and one for San Francisco"
+    if "anthropic.claude" in llm_model_value:
+        user_msg_content = {
+            "text": user_prompt,
+            "type": "text",
         }
-    ]
+    else:
+        user_msg_content = {
+            "text": user_prompt,
+        }
+    messages = [{"role": "user", "content": [user_msg_content]}]
 
     max_tokens = 1000
-    tool_config = get_anthropic_tool_config()
+    if "anthropic.claude" in llm_model_value:
+        tool_config = get_anthropic_tool_config()
+    else:
+        tool_config = get_tool_config()
+
     body = get_invoke_model_body(
         llm_model_value,
         messages=messages,
@@ -2059,12 +2063,16 @@ def invoke_model_with_response_stream_tool_call(
 
     content = []
     content_block = {}
+    # used only by anthropic claude
     input_json_buf = ""
+    # used only by amazon nova
+    tool_use = None
     for event in response_0["body"]:
         json_bytes = event["chunk"].get("bytes", b"")
         decoded = json_bytes.decode("utf-8")
         chunk = json.loads(decoded)
 
+        # anthropic claude
         if (message_type := chunk.get("type")) is not None:
             if message_type == "content_block_start":
                 content_block = chunk["content_block"]
@@ -2079,28 +2087,81 @@ def invoke_model_with_response_stream_tool_call(
                 content.append(content_block)
                 content_block = None
                 input_json_buf = ""
+        else:
+            if "contentBlockDelta" in chunk:
+                delta = chunk["contentBlockDelta"]["delta"]
+                if "text" in delta:
+                    content_block.setdefault("text", "")
+                    content_block["text"] += delta["text"]
+                elif "toolUse" in delta:
+                    tool_use["toolUse"]["input"] = json.loads(
+                        delta["toolUse"]["input"]
+                    )
+            elif "contentBlockStart" in chunk:
+                if content_block:
+                    content.append(content_block)
+                    content_block = {}
+                start = chunk["contentBlockStart"]["start"]
+                if "toolUse" in start:
+                    tool_use = start
+            elif "contentBlockStop" in chunk:
+                if tool_use:
+                    content.append(tool_use)
+                    tool_use = {}
 
     assert content
 
-    tool_requests_ids = [
-        item["id"] for item in content if item["type"] == "tool_use"
-    ]
+    if "anthropic.claude" in llm_model_value:
+        tool_requests_ids = [
+            item["id"] for item in content if item["type"] == "tool_use"
+        ]
+    else:
+        tool_requests_ids = [
+            item["toolUse"]["toolUseId"]
+            for item in content
+            if "toolUse" in item
+        ]
+
     assert len(tool_requests_ids) == 2
-    tool_call_result = {
-        "role": "user",
-        "content": [
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[0],
-                "content": "50 degrees and raining",
-            },
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[1],
-                "content": "70 degrees and sunny",
-            },
-        ],
-    }
+
+    if "anthropic.claude" in llm_model_value:
+        tool_call_result = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[0],
+                    "content": "50 degrees and raining",
+                },
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[1],
+                    "content": "70 degrees and sunny",
+                },
+            ],
+        }
+    else:
+        tool_call_result = {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[0],
+                        "content": [
+                            {"json": {"weather": "50 degrees and raining"}}
+                        ],
+                    }
+                },
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[1],
+                        "content": [
+                            {"json": {"weather": "70 degrees and sunny"}}
+                        ],
+                    }
+                },
+            ],
+        }
 
     # remove extra attributes from response
     messages.append({"role": "assistant", "content": content})
@@ -2112,14 +2173,43 @@ def invoke_model_with_response_stream_tool_call(
         max_tokens=max_tokens,
         tools=tool_config,
     )
+    import pprint
+
+    pprint.pprint(messages[1])
     response_1 = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
     )
 
-    # consume the body to have it traced
-    for _ in response_1["body"]:
-        pass
+    content_block = {}
+    response_1_content = []
+    for event in response_1["body"]:
+        json_bytes = event["chunk"].get("bytes", b"")
+        decoded = json_bytes.decode("utf-8")
+        chunk = json.loads(decoded)
+
+        # anthropic claude
+        if (message_type := chunk.get("type")) is not None:
+            if message_type == "content_block_start":
+                content_block = chunk["content_block"]
+            elif message_type == "content_block_delta":
+                if chunk["delta"]["type"] == "text_delta":
+                    content_block["text"] += chunk["delta"]["text"]
+            elif message_type == "content_block_stop":
+                response_1_content.append(content_block)
+                content_block = None
+        else:
+            if "contentBlockDelta" in chunk:
+                delta = chunk["contentBlockDelta"]["delta"]
+                if "text" in delta:
+                    content_block.setdefault("text", "")
+                    content_block["text"] += delta["text"]
+            elif "messageStop" in chunk:
+                if content_block:
+                    response_1_content.append(content_block)
+                    content_block = {}
+
+    assert response_1_content
 
     (span_0, span_1) = span_exporter.get_finished_spans()
     assert_stream_completion_attributes(
@@ -2194,21 +2284,38 @@ def invoke_model_with_response_stream_tool_call(
         assistant_body,
         span_1,
     )
-    tool_message_0 = {
-        "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["content"]
-        if expect_content
-        else None,
-    }
+
+    if "anthropic.claude" in llm_model_value:
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["content"]
+            if expect_content
+            else None,
+        }
+    else:
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+
     assert_message_in_logs(
         logs[4], "gen_ai.tool.message", tool_message_0, span_1
     )
-    tool_message_1 = {
-        "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["content"]
-        if expect_content
-        else None,
-    }
+
     assert_message_in_logs(
         logs[5], "gen_ai.tool.message", tool_message_1, span_1
     )
@@ -2225,12 +2332,7 @@ def invoke_model_with_response_stream_tool_call(
         "finish_reason": "end_turn",
         "message": {
             "role": "assistant",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "\n\nGreat! I have the current weather information for both cities. Here's the weather in Seattle and San Francisco today:\n\nSeattle: 50 degrees and raining\nSan Francisco: 70 degrees and sunny\n\nAs you can see, the weather is quite different in these two cities today. Seattle is experiencing cooler temperatures with rain, which is fairly typical for the city. On the other hand, San Francisco is enjoying a warm and sunny day. If you're planning any activities, you might want to consider indoor options for Seattle, while it's a great day for outdoor activities in San Francisco.\n\nIs there anything else you'd like to know about the weather in these cities or any other locations?",
-                }
-            ],
+            "content": response_1_content,
         },
     }
     if not expect_content:
@@ -2238,14 +2340,23 @@ def invoke_model_with_response_stream_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_response_stream_with_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_with_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+
     invoke_model_with_response_stream_tool_call(
         span_exporter,
         log_exporter,
@@ -2412,13 +2523,23 @@ def test_invoke_model_with_response_stream_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_response_stream_no_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_no_content,
+    model_family,
 ):
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+
     llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
     invoke_model_with_response_stream_tool_call(
         span_exporter,
