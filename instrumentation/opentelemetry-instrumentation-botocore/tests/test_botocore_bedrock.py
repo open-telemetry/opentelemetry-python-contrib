@@ -1383,7 +1383,7 @@ def invoke_model_tool_call(
     llm_model_value,
     expect_content,
 ):
-    # pylint:disable=too-many-locals,too-many-statements
+    # pylint:disable=too-many-locals,too-many-statements,too-many-branches
     user_prompt = "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco"
     if "anthropic.claude" in llm_model_value:
         user_msg = {
@@ -2066,7 +2066,7 @@ def invoke_model_with_response_stream_tool_call(
     # used only by anthropic claude
     input_json_buf = ""
     # used only by amazon nova
-    tool_use = None
+    tool_use = {}
     for event in response_0["body"]:
         json_bytes = event["chunk"].get("bytes", b"")
         decoded = json_bytes.decode("utf-8")
@@ -2173,9 +2173,6 @@ def invoke_model_with_response_stream_tool_call(
         max_tokens=max_tokens,
         tools=tool_config,
     )
-    import pprint
-
-    pprint.pprint(messages[1])
     response_1 = bedrock_runtime_client.invoke_model_with_response_stream(
         body=body,
         modelId=llm_model_value,
