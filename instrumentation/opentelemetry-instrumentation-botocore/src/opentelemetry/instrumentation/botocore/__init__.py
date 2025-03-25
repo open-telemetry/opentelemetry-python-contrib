@@ -109,7 +109,9 @@ the available models, namely:
 - Amazon Nova models
 - Anthropic Claude
 
-There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
+Tool calls with InvokeModel and InvokeModelWithResponseStream APIs are supported with:
+- Amazon Nova models
+- Anthropic Claude 3+
 """
 
 import logging
