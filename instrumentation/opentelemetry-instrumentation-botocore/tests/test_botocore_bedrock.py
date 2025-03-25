@@ -1146,7 +1146,7 @@ def get_invoke_model_body(
         if system:
             body["system"] = system
         if tools:
-            body["toolConfig"] = {"tools": tools}
+            body["toolConfig"] = tools
     elif llm_model == "amazon.titan-text-lite-v1":
         config = {}
         set_if_not_none(config, "maxTokenCount", max_tokens)
@@ -1384,20 +1384,23 @@ def invoke_model_tool_call(
     expect_content,
 ):
     # pylint:disable=too-many-locals,too-many-statements
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
-                    "type": "text",
-                }
-            ],
+    user_prompt = "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco"
+    if "anthropic.claude" in llm_model_value:
+        user_msg = {
+            "text": user_prompt,
+            "type": "text",
         }
-    ]
+    else:
+        user_msg = {
+            "text": user_prompt,
+        }
+    messages = [{"role": "user", "content": [user_msg]}]
 
     max_tokens = 1000
-    tool_config = get_anthropic_tool_config()
+    if "anthropic.claude" in llm_model_value:
+        tool_config = get_anthropic_tool_config()
+    else:
+        tool_config = get_tool_config()
     body = get_invoke_model_body(
         llm_model_value,
         messages=messages,
@@ -1415,36 +1418,73 @@ def invoke_model_tool_call(
     new_stream = io.BytesIO(response_0_raw_body)
     response_0["body"] = StreamingBody(new_stream, len(response_0_raw_body))
 
-    tool_requests_ids = [
-        content["id"]
-        for content in response_0_body["content"]
-        if content["type"] == "tool_use"
-    ]
-    assert len(tool_requests_ids) == 2
-    tool_call_result = {
-        "role": "user",
-        "content": [
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[0],
-                "content": "50 degrees and raining",
-            },
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[1],
-                "content": "70 degrees and sunny",
-            },
-        ],
-    }
+    if "anthropic.claude" in llm_model_value:
+        tool_requests_ids = [
+            content["id"]
+            for content in response_0_body["content"]
+            if content["type"] == "tool_use"
+        ]
+    else:
+        tool_requests_ids = [
+            content["toolUse"]["toolUseId"]
+            for content in response_0_body["output"]["message"]["content"]
+            if "toolUse" in content
+        ]
 
-    # remove extra attributes from response
-    response_0_body.pop("id")
-    response_0_body.pop("stop_reason")
-    response_0_body.pop("stop_sequence")
-    response_0_body.pop("usage")
-    response_0_body.pop("model")
-    response_0_body.pop("type")
-    messages.append(response_0_body)
+    assert len(tool_requests_ids) == 2
+
+    if "anthropic.claude" in llm_model_value:
+        # remove extra attributes from response
+        response_0_body.pop("id")
+        response_0_body.pop("stop_reason")
+        response_0_body.pop("stop_sequence")
+        response_0_body.pop("usage")
+        response_0_body.pop("model")
+        response_0_body.pop("type")
+        assistant_message = response_0_body
+
+        tool_call_result = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[0],
+                    "content": "50 degrees and raining",
+                },
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[1],
+                    "content": "70 degrees and sunny",
+                },
+            ],
+        }
+
+    else:
+        assistant_message = response_0_body["output"]["message"]
+
+        tool_call_result = {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[0],
+                        "content": [
+                            {"json": {"weather": "50 degrees and raining"}}
+                        ],
+                    }
+                },
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[1],
+                        "content": [
+                            {"json": {"weather": "70 degrees and sunny"}}
+                        ],
+                    }
+                },
+            ],
+        }
+
+    messages.append(assistant_message)
     messages.append(tool_call_result)
 
     body = get_invoke_model_body(
@@ -1457,6 +1497,12 @@ def invoke_model_tool_call(
         body=body,
         modelId=llm_model_value,
     )
+
+    response_1_raw_body = response_1["body"].read()
+    response_1_body = json.loads(response_1_raw_body)
+    # replenish body for span assertions
+    new_stream = io.BytesIO(response_1_raw_body)
+    response_1["body"] = StreamingBody(new_stream, len(response_1_raw_body))
 
     (span_0, span_1) = span_exporter.get_finished_spans()
     assert_completion_attributes_from_streaming_body(
@@ -1516,7 +1562,7 @@ def invoke_model_tool_call(
     assert_message_in_logs(
         logs[2], "gen_ai.user.message", user_content, span_1
     )
-    assistant_body = response_0_body
+    assistant_body = assistant_message
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
     if not expect_content:
@@ -1527,21 +1573,37 @@ def invoke_model_tool_call(
         assistant_body,
         span_1,
     )
-    tool_message_0 = {
-        "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["content"]
-        if expect_content
-        else None,
-    }
+
+    if "anthropic.claude" in llm_model_value:
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["content"]
+            if expect_content
+            else None,
+        }
+    else:
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+
     assert_message_in_logs(
         logs[4], "gen_ai.tool.message", tool_message_0, span_1
     )
-    tool_message_1 = {
-        "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["content"]
-        if expect_content
-        else None,
-    }
     assert_message_in_logs(
         logs[5], "gen_ai.tool.message", tool_message_1, span_1
     )
@@ -1553,17 +1615,16 @@ def invoke_model_tool_call(
     assert_message_in_logs(
         logs[6], "gen_ai.user.message", user_message_body, span_1
     )
+    if "anthropic.claude" in llm_model_value:
+        choice_content = response_1_body["content"]
+    else:
+        choice_content = response_1_body["output"]["message"]["content"]
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
         "message": {
             "role": "assistant",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "Thank you for providing the weather information. Here's the current weather for Seattle and San Francisco:\n\n1. Seattle: The current weather in Seattle is 50 degrees and raining.\n2. San Francisco: The current weather in San Francisco is 70 degrees and sunny.\n\nAs you can see, there's quite a difference in the weather between these two West Coast cities today. Seattle is experiencing cooler temperatures with rain, which is fairly typical for the Pacific Northwest. On the other hand, San Francisco is enjoying warmer temperatures with sunny skies, making for a pleasant day in the Bay Area.\n\nIs there anything else you'd like to know about the weather in these cities or any other locations?",
-                }
-            ],
+            "content": choice_content,
         },
     }
     if not expect_content:
@@ -1571,14 +1632,23 @@ def invoke_model_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_with_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+
     invoke_model_tool_call(
         span_exporter,
         log_exporter,
@@ -1700,14 +1770,23 @@ def test_invoke_model_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_no_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_no_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+
     invoke_model_tool_call(
         span_exporter,
         log_exporter,

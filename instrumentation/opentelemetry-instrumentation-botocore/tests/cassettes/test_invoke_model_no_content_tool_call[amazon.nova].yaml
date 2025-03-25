@@ -1,0 +1,291 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 1000
+        },
+        "schemaVersion": "messages-v1",
+        "toolConfig": {
+          "tools": [
+            {
+              "toolSpec": {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location.",
+                "inputSchema": {
+                  "json": {
+                    "type": "object",
+                    "properties": {
+                      "location": {
+                        "type": "string",
+                        "description": "The name of the city"
+                      }
+                    },
+                    "required": [
+                      "location"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '552'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250325T130901Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-2541300b-2dbeda14c09ccd3d3b041879;Parent=1fc006fd156b7383;Sampled=1
+      amz-sdk-invocation-id:
+      - 09f5a7ed-4163-46ec-a974-000c5662062a
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "<thinking> To provide the current weather information for both Seattle and San Francisco, I will need to use the `get_current_weather` tool separately for each city. I will start by calling the tool for Seattle and then proceed to call it for San Francisco.</thinking>\n"
+                },
+                {
+                  "toolUse": {
+                    "name": "get_current_weather",
+                    "toolUseId": "4d8acf92-6a04-42b6-aaf7-f68937a339ef",
+                    "input": {
+                      "location": "Seattle"
+                    }
+                  }
+                },
+                {
+                  "toolUse": {
+                    "name": "get_current_weather",
+                    "toolUseId": "db27bd9d-9f7d-4783-aa8b-59871e00e0bc",
+                    "input": {
+                      "location": "San Francisco"
+                    }
+                  }
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "tool_use",
+          "usage": {
+            "inputTokens": 427,
+            "outputTokens": 172,
+            "totalTokens": 599,
+            "cacheReadInputTokenCount": 0,
+            "cacheWriteInputTokenCount": 0
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 25 Mar 2025 13:09:02 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Cache-Read-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Cache-Write-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '427'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '430'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '172'
+      x-amzn-RequestId:
+      - adebeba4-5940-4c34-87a1-46cd45646bbe
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco"
+              }
+            ]
+          },
+          {
+            "content": [
+              {
+                "text": "<thinking> To provide the current weather information for both Seattle and San Francisco, I will need to use the `get_current_weather` tool separately for each city. I will start by calling the tool for Seattle and then proceed to call it for San Francisco.</thinking>\n"
+              },
+              {
+                "toolUse": {
+                  "name": "get_current_weather",
+                  "toolUseId": "4d8acf92-6a04-42b6-aaf7-f68937a339ef",
+                  "input": {
+                    "location": "Seattle"
+                  }
+                }
+              },
+              {
+                "toolUse": {
+                  "name": "get_current_weather",
+                  "toolUseId": "db27bd9d-9f7d-4783-aa8b-59871e00e0bc",
+                  "input": {
+                    "location": "San Francisco"
+                  }
+                }
+              }
+            ],
+            "role": "assistant"
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "toolResult": {
+                  "toolUseId": "4d8acf92-6a04-42b6-aaf7-f68937a339ef",
+                  "content": [
+                    {
+                      "json": {
+                        "weather": "50 degrees and raining"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "toolResult": {
+                  "toolUseId": "db27bd9d-9f7d-4783-aa8b-59871e00e0bc",
+                  "content": [
+                    {
+                      "json": {
+                        "weather": "70 degrees and sunny"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "max_new_tokens": 1000
+        },
+        "schemaVersion": "messages-v1",
+        "toolConfig": {
+          "tools": [
+            {
+              "toolSpec": {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location.",
+                "inputSchema": {
+                  "json": {
+                    "type": "object",
+                    "properties": {
+                      "location": {
+                        "type": "string",
+                        "description": "The name of the city"
+                      }
+                    },
+                    "required": [
+                      "location"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '1439'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250325T130902Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-2592d804-d8515e92a6320e1d293c3643;Parent=5406f9af558aaabe;Sampled=1
+      amz-sdk-invocation-id:
+      - 4ad9ba7e-df5a-4a01-a3a1-40fce5d29ef2
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-micro-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "<thinking> I have received the weather information for both cities. Now I will compile this information and present it to the User.</thinking>\n\nThe current weather in Seattle is 50 degrees and it is raining. In San Francisco, the weather is 70 degrees and sunny."
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "end_turn",
+          "usage": {
+            "inputTokens": 576,
+            "outputTokens": 57,
+            "totalTokens": 633,
+            "cacheReadInputTokenCount": 0,
+            "cacheWriteInputTokenCount": 0
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 25 Mar 2025 13:09:03 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Cache-Read-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Cache-Write-Input-Token-Count:
+      - '0'
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '576'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '417'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '57'
+      x-amzn-RequestId:
+      - cedb9b10-f794-4ec4-ac67-f3e237511e62
+    status:
+      code: 200
+      message: OK
+version: 1
