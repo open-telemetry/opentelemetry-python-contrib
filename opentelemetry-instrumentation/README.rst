@@ -131,7 +131,7 @@ The above command will configure the global trace provider to use the Random IDs
 pass ``--port=3000`` to ``flask run``.
 
 Programmatic Auto-instrumentation
---------------------
+---------------------------------
 
 ::
 
