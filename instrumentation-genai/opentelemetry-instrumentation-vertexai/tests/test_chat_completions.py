@@ -1,7 +1,23 @@
 from __future__ import annotations
 
+import asyncio
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Protocol,
+    TypeVar,
+)
+
 import pytest
 from google.api_core.exceptions import BadRequest, NotFound
+from google.auth.aio.credentials import (
+    AnonymousCredentials as AsyncAnonymousCredentials,
+)
+from google.cloud.aiplatform.initializer import _set_async_rest_credentials
+from typing_extensions import Concatenate, ParamSpec
+from vcr import VCR
+from vcr.record_mode import RecordMode
 from vertexai.generative_models import (
     Content,
     GenerationConfig,
@@ -27,13 +43,15 @@ from opentelemetry.trace import StatusCode
 def test_generate_content(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-1.5-flash-002")
-    model.generate_content(
+    generate_content(
+        model,
         [
             Content(role="user", parts=[Part.from_text("Say this is a test")]),
-        ]
+        ],
     )
 
     # Emits span
@@ -95,13 +113,15 @@ def test_generate_content(
 def test_generate_content_without_events(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
+    generate_content: GenerateContentFixture,
     instrument_no_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-1.5-flash-002")
-    model.generate_content(
+    generate_content(
+        model,
         [
             Content(role="user", parts=[Part.from_text("Say this is a test")]),
-        ]
+        ],
     )
 
     # Emits span
@@ -144,11 +164,13 @@ def test_generate_content_without_events(
 @pytest.mark.vcr
 def test_generate_content_empty_model(
     span_exporter: InMemorySpanExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("")
     try:
-        model.generate_content(
+        generate_content(
+            model,
             [
                 Content(
                     role="user", parts=[Part.from_text("Say this is a test")]
@@ -175,11 +197,13 @@ def test_generate_content_empty_model(
 @pytest.mark.vcr
 def test_generate_content_missing_model(
     span_exporter: InMemorySpanExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-does-not-exist")
     try:
-        model.generate_content(
+        generate_content(
+            model,
             [
                 Content(
                     role="user", parts=[Part.from_text("Say this is a test")]
@@ -206,12 +230,14 @@ def test_generate_content_missing_model(
 @pytest.mark.vcr
 def test_generate_content_invalid_temperature(
     span_exporter: InMemorySpanExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-1.5-flash-002")
     try:
         # Temperature out of range causes error
-        model.generate_content(
+        generate_content(
+            model,
             [
                 Content(
                     role="user", parts=[Part.from_text("Say this is a test")]
@@ -239,18 +265,20 @@ def test_generate_content_invalid_temperature(
 @pytest.mark.vcr
 def test_generate_content_invalid_role(
     log_exporter: InMemoryLogExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-1.5-flash-002")
     try:
         # Fails because role must be "user" or "model"
-        model.generate_content(
+        generate_content(
+            model,
             [
                 Content(
                     role="invalid_role",
                     parts=[Part.from_text("Say this is a test")],
                 )
-            ]
+            ],
         )
     except BadRequest:
         pass
@@ -269,7 +297,11 @@ def test_generate_content_invalid_role(
 
 
 @pytest.mark.vcr()
-def test_generate_content_extra_params(span_exporter, instrument_no_content):
+def test_generate_content_extra_params(
+    span_exporter,
+    instrument_no_content,
+    generate_content: GenerateContentFixture,
+):
     generation_config = GenerationConfig(
         top_k=2,
         top_p=0.95,
@@ -281,7 +313,8 @@ def test_generate_content_extra_params(span_exporter, instrument_no_content):
         seed=12345,
     )
     model = GenerativeModel("gemini-1.5-flash-002")
-    model.generate_content(
+    generate_content(
+        model,
         [
             Content(role="user", parts=[Part.from_text("Say this is a test")]),
         ],
@@ -324,6 +357,7 @@ def assert_span_error(span: ReadableSpan) -> None:
 @pytest.mark.vcr
 def test_generate_content_all_events(
     log_exporter: InMemoryLogExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     generate_content_all_input_events(
@@ -333,6 +367,7 @@ def test_generate_content_all_events(
                 "You are a clever language model"
             ),
         ),
+        generate_content,
         log_exporter,
     )
 
@@ -340,6 +375,7 @@ def test_generate_content_all_events(
 @pytest.mark.vcr
 def test_preview_generate_content_all_input_events(
     log_exporter: InMemoryLogExporter,
+    generate_content: GenerateContentFixture,
     instrument_with_content: VertexAIInstrumentor,
 ):
     generate_content_all_input_events(
@@ -349,12 +385,14 @@ def test_preview_generate_content_all_input_events(
                 "You are a clever language model"
             ),
         ),
+        generate_content,
         log_exporter,
     )
 
 
 def generate_content_all_input_events(
     model: GenerativeModel | PreviewGenerativeModel,
+    generate_content: GenerateContentFixture,
     log_exporter: InMemoryLogExporter,
 ):
     model.generate_content(
@@ -430,3 +468,52 @@ def generate_content_all_input_events(
             "role": "model",
         },
     }
+
+
+# Type annotation for fixture to make LSP work properly
+class GenerateContentFixture(Protocol):
+    _P = ParamSpec("_P")
+    _R = TypeVar("_R")
+
+    @staticmethod
+    def _copy_signature(
+        func_type: Callable[_P, _R],
+    ) -> Callable[
+        [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
+    ]:
+        return lambda func: func
+
+    @_copy_signature(GenerativeModel.generate_content)
+    def __call__(self): ...
+
+
+@pytest.fixture(
+    name="generate_content",
+    params=(
+        pytest.param(False, id="sync"),
+        pytest.param(True, id="async"),
+    ),
+)
+def fixture_generate_content(
+    request: pytest.FixtureRequest,
+    vcr: VCR,
+) -> Generator[GenerateContentFixture, None, None]:
+    is_async: bool = request.param
+
+    if is_async and vcr.record_mode != RecordMode.NONE:
+        pytest.skip("Do not run async tests when VCR is recording")
+
+    if is_async:
+        # See
+        # https://github.com/googleapis/python-aiplatform/blob/cb0e5fedbf45cb0531c0b8611fb7fabdd1f57e56/google/cloud/aiplatform/initializer.py#L717-L729
+        _set_async_rest_credentials(credentials=AsyncAnonymousCredentials())
+
+    def wrapper(model: GenerativeModel, *args, **kwargs) -> None:
+        if is_async:
+            return asyncio.run(model.generate_content_async(*args, **kwargs))
+        return model.generate_content(*args, **kwargs)
+
+    with vcr.use_cassette(
+        request.node.originalname, allow_playback_repeats=True
+    ):
+        yield wrapper
