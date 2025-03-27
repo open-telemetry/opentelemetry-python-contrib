@@ -30,10 +30,14 @@ Usage
     producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
     producer.send('my-topic', b'raw_bytes')
 
+    def process_msg(message):
+        print(message)
+
     # report a span of type consumer with the default settings
     consumer = KafkaConsumer('my-topic', group_id='my-group', bootstrap_servers=['localhost:9092'])
     for message in consumer:
-    # process message
+        # process message
+        process_msg(message)
 
 The _instrument() method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
