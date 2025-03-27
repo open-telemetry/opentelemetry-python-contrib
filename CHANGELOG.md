@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation` Fix client address is set to server address in new semconv
   ([#3354](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3354))
+- `opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-django`,
+  `opentelemetry-instrumentation-sqlalchemy`: Fix sqlcomment for non string query and composable object.
+  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
