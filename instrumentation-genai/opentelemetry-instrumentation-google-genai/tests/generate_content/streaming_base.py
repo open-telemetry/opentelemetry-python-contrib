@@ -14,8 +14,7 @@
 
 import unittest
 
-from ..common.base import TestCase
-from .util import create_valid_response
+from .base import TestCase
 
 
 class StreamingTestCase(TestCase):
@@ -34,11 +33,8 @@ class StreamingTestCase(TestCase):
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
 
-    def configure_valid_response(self, *args, **kwargs):
-        self.requests.add_response(create_valid_response(*args, **kwargs))
-
     def test_instrumentation_does_not_break_core_functionality(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         responses = self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
@@ -47,8 +43,8 @@ class StreamingTestCase(TestCase):
         self.assertEqual(response.text, "Yep, it works!")
 
     def test_handles_multiple_ressponses(self):
-        self.configure_valid_response(response_text="First response")
-        self.configure_valid_response(response_text="Second response")
+        self.configure_valid_response(text="First response")
+        self.configure_valid_response(text="Second response")
         responses = self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
