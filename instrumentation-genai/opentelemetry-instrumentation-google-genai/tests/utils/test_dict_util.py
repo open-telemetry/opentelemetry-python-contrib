@@ -17,22 +17,25 @@ from opentelemetry.instrumentation.google_genai import dict_util
 
 
 def test_flatten_empty_dict():
-    d = {}
-    assert dict_util.flatten_dict(d) == d
+    input_dict = {}
+    output_dict = dict_util.flatten_dict(input_dict)
+    assert output_dict is not None
+    assert isinstance(output_dict, dict)
+    assert not output_dict
 
 
 def test_flatten_simple_dict():
-    d = {
+    input_dict = {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
         "bool_key": True,
     }
-    assert dict_util.flatten_dict(d) == d
+    assert dict_util.flatten_dict(input_dict) == input_dict
 
 
 def test_flatten_nested_dict():
-    d = {
+    input_dict = {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
@@ -45,7 +48,7 @@ def test_flatten_nested_dict():
             "qux": 54321,
         },
     }
-    assert dict_util.flatten_dict(d) == {
+    assert dict_util.flatten_dict(input_dict) == {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
@@ -57,13 +60,13 @@ def test_flatten_nested_dict():
 
 
 def test_flatten_with_key_exclusion():
-    d = {
+    input_dict = {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
         "bool_key": True,
     }
-    output = dict_util.flatten_dict(d, exclude_keys=["int_key"])
+    output = dict_util.flatten_dict(input_dict, exclude_keys=["int_key"])
     assert "int_key" not in output
     assert output == {
         "string_key": "somevalue",
@@ -73,13 +76,13 @@ def test_flatten_with_key_exclusion():
 
 
 def test_flatten_with_renaming():
-    d = {
+    input_dict = {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
         "bool_key": True,
     }
-    output = dict_util.flatten_dict(d, rename_keys={"float_key": "math_key"})
+    output = dict_util.flatten_dict(input_dict, rename_keys={"float_key": "math_key"})
     assert "float_key" not in output
     assert "math_key" in output
     assert output == {
@@ -91,13 +94,13 @@ def test_flatten_with_renaming():
 
 
 def test_flatten_with_prefixing():
-    d = {
+    input_dict = {
         "int_key": 1,
         "string_key": "somevalue",
         "float_key": 3.14,
         "bool_key": True,
     }
-    output = dict_util.flatten_dict(d, key_prefix="someprefix")
+    output = dict_util.flatten_dict(input_dict, key_prefix="someprefix")
     assert output == {
         "someprefix.int_key": 1,
         "someprefix.string_key": "somevalue",
@@ -115,7 +118,7 @@ def test_flatten_with_custom_flatten_func():
         return f"{len(value)} items (total: {total}, average: {avg})"
 
     flatten_functions = {"some.deeply.nested.key": summarize_int_list}
-    d = {
+    input_dict = {
         "some": {
             "deeply": {
                 "nested": {
@@ -125,7 +128,7 @@ def test_flatten_with_custom_flatten_func():
         },
         "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],
     }
-    output = dict_util.flatten_dict(d, flatten_functions=flatten_functions)
+    output = dict_util.flatten_dict(input_dict, flatten_functions=flatten_functions)
     assert output == {
         "some.deeply.nested.key": "9 items (total: 45, average: 5.0)",
         "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],

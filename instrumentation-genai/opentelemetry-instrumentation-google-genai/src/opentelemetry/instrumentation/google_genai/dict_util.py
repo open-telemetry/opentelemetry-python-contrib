@@ -46,9 +46,9 @@ def _is_homogenous_primitive_list(v):
         return True
     if not _is_primitive(v[0]):
         return False
-    t = type(v[0])
+    first_entry_value_type = type(v[0])
     for entry in v[1:]:
-        if not isinstance(entry, t):
+        if not isinstance(entry, first_entry_value_type):
             return False
     return True
 
@@ -63,25 +63,15 @@ def _get_flatten_func(
     return None
 
 
-def _flatten_value(
+def _flatten_compound_value(
     key: str,
     value: Any,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
     flatten_functions: Dict[str, Callable],
+    key_names: Set[str],
     _from_json=False,
 ) -> FlattenedDict:
-    if value is None:
-        return {}
-    key_names = set([key])
-    renamed_key = rename_keys.get(key)
-    if renamed_key is not None:
-        key_names.add(renamed_key)
-        key = renamed_key
-    if key_names & exclude_keys:
-        return {}
-    if _is_primitive(value):
-        return {key: value}
     flatten_func = _get_flatten_func(flatten_functions, key_names)
     if flatten_func is not None:
         func_output = flatten_func(
@@ -112,9 +102,8 @@ def _flatten_value(
             flatten_functions=flatten_functions,
         )
     if hasattr(value, "model_dump"):
-        d = value.model_dump()
         return _flatten_dict(
-            d,
+            value.model_dump(),
             key_prefix=key,
             exclude_keys=exclude_keys,
             rename_keys=rename_keys,
@@ -132,6 +121,36 @@ def _flatten_value(
         rename_keys=rename_keys,
         flatten_functions=flatten_functions,
         _from_json=True,
+    )
+
+
+def _flatten_value(
+    key: str,
+    value: Any,
+    exclude_keys: Set[str],
+    rename_keys: Dict[str, str],
+    flatten_functions: Dict[str, Callable],
+    _from_json=False,
+) -> FlattenedDict:
+    if value is None:
+        return {}
+    key_names = set([key])
+    renamed_key = rename_keys.get(key)
+    if renamed_key is not None:
+        key_names.add(renamed_key)
+        key = renamed_key
+    if key_names & exclude_keys:
+        return {}
+    if _is_primitive(value):
+        return {key: value}
+    return _flatten_compound_value(
+        key=key,
+        value=value,
+        exclude_keys=exclude_keys,
+        rename_keys=rename_keys,
+        flatten_functions=flatten_functions,
+        key_names=key_names,
+        _from_json=_from_json,
     )
 
 
