@@ -470,19 +470,20 @@ def generate_content_all_input_events(
     }
 
 
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _copy_signature(
+    func_type: Callable[_P, _R],
+) -> Callable[
+    [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
+]:
+    return lambda func: func
+
+
 # Type annotation for fixture to make LSP work properly
 class GenerateContentFixture(Protocol):
-    _P = ParamSpec("_P")
-    _R = TypeVar("_R")
-
-    @staticmethod
-    def _copy_signature(
-        func_type: Callable[_P, _R],
-    ) -> Callable[
-        [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
-    ]:
-        return lambda func: func
-
     @_copy_signature(GenerativeModel.generate_content)
     def __call__(self): ...
 
