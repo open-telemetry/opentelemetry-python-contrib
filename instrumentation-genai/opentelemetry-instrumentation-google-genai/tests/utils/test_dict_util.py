@@ -82,7 +82,9 @@ def test_flatten_with_renaming():
         "float_key": 3.14,
         "bool_key": True,
     }
-    output = dict_util.flatten_dict(input_dict, rename_keys={"float_key": "math_key"})
+    output = dict_util.flatten_dict(
+        input_dict, rename_keys={"float_key": "math_key"}
+    )
     assert "float_key" not in output
     assert "math_key" in output
     assert output == {
@@ -128,7 +130,9 @@ def test_flatten_with_custom_flatten_func():
         },
         "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],
     }
-    output = dict_util.flatten_dict(input_dict, flatten_functions=flatten_functions)
+    output = dict_util.flatten_dict(
+        input_dict, flatten_functions=flatten_functions
+    )
     assert output == {
         "some.deeply.nested.key": "9 items (total: 45, average: 5.0)",
         "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],

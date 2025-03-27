@@ -18,7 +18,6 @@ from .base import TestCase
 
 
 class ConfigSpanAttributesTestCase(TestCase):
-
     def setUp(self):
         super().setUp()
         self.configure_valid_response(text="Some response")
