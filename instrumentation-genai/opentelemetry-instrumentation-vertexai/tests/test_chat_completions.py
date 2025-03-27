@@ -498,10 +498,15 @@ def fixture_generate_content(
     request: pytest.FixtureRequest,
     vcr: VCR,
 ) -> Generator[GenerateContentFixture, None, None]:
+    """This fixture parameterizes tests that use it to test calling both
+    GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
+    """
     is_async: bool = request.param
 
     if is_async and vcr.record_mode != RecordMode.NONE:
-        pytest.skip("Do not run async tests when VCR is recording")
+        pytest.skip(
+            "Skip async tests when VCR is recording so that fixtures are only recorded once"
+        )
 
     if is_async:
         # See
