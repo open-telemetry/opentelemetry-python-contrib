@@ -26,6 +26,7 @@ Usage
 
 .. code-block:: python
 
+    import asyncio
     import asyncclick
     from opentelemetry.instrumentation.asyncclick import AsyncClickInstrumentor
 
@@ -33,10 +34,10 @@ Usage
 
     @asyncclick.command()
     async def hello():
-       click.echo(f'Hello world!')
+        asyncclick.echo(f'Hello world!')
 
     if __name__ == "__main__":
-        hello()
+        asyncio.run(hello())
 
 API
 ---
