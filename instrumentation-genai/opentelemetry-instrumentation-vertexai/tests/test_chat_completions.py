@@ -17,7 +17,6 @@ from google.auth.aio.credentials import (
 from google.cloud.aiplatform.initializer import _set_async_rest_credentials
 from typing_extensions import Concatenate, ParamSpec
 from vcr import VCR
-from vcr.record_mode import RecordMode
 from vertexai.generative_models import (
     Content,
     GenerationConfig,
