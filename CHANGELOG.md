@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
+  ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
+
 ### Fixed
 
 - `opentelemetry-instrumentation` Fix client address is set to server address in new semconv
