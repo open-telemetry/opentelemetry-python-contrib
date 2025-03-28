@@ -79,7 +79,7 @@ def _methods_to_wrap(
     ):
         yield (
             client_class,
-            client_class.generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
+            client_class.generate_content.__name__,  # type: ignore[reportUnknownMemberType]
             method_wrappers.generate_content,
         )
 
@@ -89,7 +89,7 @@ def _methods_to_wrap(
     ):
         yield (
             client_class,
-            client_class.generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
+            client_class.generate_content.__name__,  # type: ignore[reportUnknownMemberType]
             method_wrappers.agenerate_content,
         )
 
