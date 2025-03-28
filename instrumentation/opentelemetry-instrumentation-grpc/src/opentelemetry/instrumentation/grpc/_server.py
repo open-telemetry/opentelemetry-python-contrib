@@ -239,7 +239,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         # * ipv4:127.0.0.1:57284
         # * ipv4:10.2.1.1:57284,127.0.0.1:57284
         #
-        if context.peer() != "unix:":
+        if not context.peer().startswith("unix:"):
             try:
                 ip, port = (
                     context.peer()
