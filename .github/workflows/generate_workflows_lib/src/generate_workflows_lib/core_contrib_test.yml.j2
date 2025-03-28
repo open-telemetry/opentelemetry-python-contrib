@@ -30,6 +30,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${% raw %}{{ env.CONTRIB_REPO_SHA }}{% endraw %}
 
+      - name: Checkout core repo @ SHA - ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+          path: opentelemetry-python
+
       - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
@@ -41,4 +48,6 @@ jobs:
 
       - name: Run tests
         run: tox -e {{ job_data.tox_env }} -- -ra
+        env:
+          CORE_REPO: "git+file://{% raw %}${{ github.workspace }}{% endraw %}/opentelemetry-python"
   {%- endfor %}
