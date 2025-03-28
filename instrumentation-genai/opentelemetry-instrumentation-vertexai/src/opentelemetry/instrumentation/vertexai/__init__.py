@@ -44,7 +44,7 @@ from __future__ import annotations
 from typing import Any, Collection
 
 from wrapt import (
-    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
 
 from opentelemetry._events import get_event_logger
