@@ -504,11 +504,6 @@ def fixture_generate_content(
     """
     is_async: bool = request.param
 
-    if is_async and vcr.record_mode != RecordMode.NONE:
-        pytest.skip(
-            "Skip async tests when VCR is recording so that fixtures are only recorded once"
-        )
-
     if is_async:
         # See
         # https://github.com/googleapis/python-aiplatform/blob/cb0e5fedbf45cb0531c0b8611fb7fabdd1f57e56/google/cloud/aiplatform/initializer.py#L717-L729
