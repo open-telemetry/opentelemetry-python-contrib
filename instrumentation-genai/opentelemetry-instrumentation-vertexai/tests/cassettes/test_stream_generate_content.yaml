@@ -1,0 +1,120 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '141'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:streamGenerateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        [
+          {
+            "candidates": [
+              {
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Okay"
+                    }
+                  ]
+                }
+              }
+            ],
+            "usageMetadata": {},
+            "modelVersion": "gemini-1.5-flash-002",
+            "createTime": "2025-03-03T22:23:47.310622Z",
+            "responseId": "8yvGZ976Eu6knvgPpOnW2Q4"
+          },
+          {
+            "candidates": [
+              {
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": ", I understand.  I'm ready for your test.  Please proceed"
+                    }
+                  ]
+                }
+              }
+            ],
+            "modelVersion": "gemini-1.5-flash-002",
+            "createTime": "2025-03-03T22:23:47.310622Z",
+            "responseId": "8yvGZ976Eu6knvgPpOnW2Q4"
+          },
+          {
+            "candidates": [
+              {
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": ".\n"
+                    }
+                  ]
+                },
+                "finishReason": 1
+              }
+            ],
+            "usageMetadata": {
+              "promptTokenCount": 5,
+              "candidatesTokenCount": 19,
+              "totalTokenCount": 24,
+              "promptTokensDetails": [
+                {
+                  "modality": 1,
+                  "tokenCount": 5
+                }
+              ],
+              "candidatesTokensDetails": [
+                {
+                  "modality": 1,
+                  "tokenCount": 19
+                }
+              ]
+            },
+            "modelVersion": "gemini-1.5-flash-002",
+            "createTime": "2025-03-03T22:23:47.310622Z",
+            "responseId": "8yvGZ976Eu6knvgPpOnW2Q4"
+          }
+        ]
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '1328'
+    status:
+      code: 200
+      message: OK
+version: 1

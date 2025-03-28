@@ -161,10 +161,11 @@ def choice_event(
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#event-gen_aichoice
     """
     body: dict[str, AnyValue] = {
-        "finish_reason": finish_reason,
         "index": index,
         "message": _asdict_filter_nulls(message),
     }
+    if finish_reason:
+        body["finish_reason"] = finish_reason
 
     tool_calls_list = [
         _asdict_filter_nulls(tool_call) for tool_call in tool_calls

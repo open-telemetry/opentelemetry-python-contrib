@@ -82,6 +82,11 @@ def _methods_to_wrap(
             client_class.generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
             method_wrappers.generate_content,
         )
+        yield (
+            client_class,
+            client_class.stream_generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
+            method_wrappers.stream_generate_content,
+        )
 
     for client_class in (
         async_client.PredictionServiceAsyncClient,
@@ -91,6 +96,11 @@ def _methods_to_wrap(
             client_class,
             client_class.generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
             method_wrappers.agenerate_content,
+        )
+        yield (
+            client_class,
+            client_class.stream_generate_content.__name__,  # pyright: ignore[reportUnknownMemberType]
+            method_wrappers.astream_generate_content,
         )
 
 
