@@ -216,7 +216,6 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
 
     def _process_amazon_nova_chunk(self, chunk):
         # pylint: disable=too-many-branches
-        # TODO:  handle tool calls!
         if "messageStart" in chunk:
             # {'messageStart': {'role': 'assistant'}}
             if chunk["messageStart"].get("role") == "assistant":
@@ -224,17 +223,40 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._message = {"role": "assistant", "content": []}
             return
 
+        if "contentBlockStart" in chunk:
+            # {'contentBlockStart': {'start': {'toolUse': {'toolUseId': 'id', 'name': 'name'}}, 'contentBlockIndex': 31}}
+            if self._record_message:
+                self._message["content"].append(self._content_block)
+
+                start = chunk["contentBlockStart"].get("start", {})
+                if "toolUse" in start:
+                    self._content_block = start
+                else:
+                    self._content_block = {}
+            return
+
         if "contentBlockDelta" in chunk:
             # {'contentBlockDelta': {'delta': {'text': "Hello"}, 'contentBlockIndex': 0}}
+            # {'contentBlockDelta': {'delta': {'toolUse': {'input': '{"location":"San Francisco"}'}}, 'contentBlockIndex': 31}}
             if self._record_message:
                 delta = chunk["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
                     self._content_block.setdefault("text", "")
                     self._content_block["text"] += delta["text"]
+                elif "toolUse" in delta:
+                    self._content_block.setdefault("toolUse", {})
+                    self._content_block["toolUse"]["input"] = json.loads(
+                        delta["toolUse"]["input"]
+                    )
             return
 
         if "contentBlockStop" in chunk:
             # {'contentBlockStop': {'contentBlockIndex': 0}}
+            if self._record_message:
+                # create a new content block only for tools
+                if "toolUse" in self._content_block:
+                    self._message["content"].append(self._content_block)
+                    self._content_block = {}
             return
 
         if "messageStop" in chunk:
