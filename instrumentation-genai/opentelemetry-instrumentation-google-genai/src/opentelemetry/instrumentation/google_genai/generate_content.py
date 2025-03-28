@@ -146,9 +146,17 @@ def _add_request_options_to_span(
         return
     span_context = span.get_span_context()
     if not span_context.trace_flags.sampled:
+        # Avoid potentially costly traversal of config
+        # options if the span will be dropped, anyway.
         return
+    # Automatically derive attributes from the contents of the
+    # config object. This ensures that all relevant parameters
+    # are captured in the telemetry data (except for those
+    # that are excluded via "exclude_keys").
     attributes = flatten_dict(
         _to_dict(config),
+        # A custom prefix is used, because the names/structure of the
+        # configuration is likely to be specific to Google Gen AI SDK.
         key_prefix=CUSTOM_LLM_REQUEST_PREFIX,
         exclude_keys=[
             # System instruction can be overly long for a span attribute.
@@ -158,6 +166,10 @@ def _add_request_options_to_span(
             # best that we not record these options.
             "gen_ai.gcp.request.http_options.headers",
         ],
+        # Although a custom prefix is used by default, some of the attributes
+        # are captured in common, standard, Semantic Conventions. For the
+        # well-known properties whose values align with Semantic Conventions,
+        # we ensure that the key name matches the standard SemConv name.
         rename_keys={
             # TODO: add more entries here as more semantic conventions are
             # generalized to cover more of the available config options.
