@@ -35,6 +35,15 @@ class NonStreamingTestCase(TestCase):
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
 
+    def _generate_and_get_span(self, config):
+        self.generate_content(
+            model="gemini-2.0-flash",
+            contents="Some input prompt",
+            config=config,
+        )
+        self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
+        return self.otel.get_span_named("generate_content gemini-2.0-flash")
+
     def test_instrumentation_does_not_break_core_functionality(self):
         self.configure_valid_response(text="Yep, it works!")
         response = self.generate_content(
