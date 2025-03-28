@@ -109,8 +109,8 @@ the available models, namely:
 - Amazon Nova models
 - Anthropic Claude
 
-Tool calls with InvokeModel and InvokeModelWithResponseStream APIs are supported with:
-- Amazon Nova models
+Tool calls with InvokeModel and InvokeModelWithResponseStream APIs are supported with the following model families:
+- Amazon Nova
 - Anthropic Claude 3+
 """
 
