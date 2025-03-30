@@ -19,7 +19,6 @@ from urllib.parse import urlparse
 from httpx import URL
 from openai import NOT_GIVEN
 
-from opentelemetry._events import Event
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -44,7 +43,7 @@ def is_content_enabled() -> bool:
     return capture_content.lower() == "true"
 
 
-def extract_tool_calls(item, capture_content):
+def extract_tool_calls(item):
     tool_calls = get_property_value(item, "tool_calls")
     if tool_calls is None:
         return None
@@ -69,7 +68,7 @@ def extract_tool_calls(item, capture_content):
                 tool_call_dict["function"]["name"] = name
 
             arguments = get_property_value(func, "arguments")
-            if capture_content and arguments:
+            if arguments:
                 if isinstance(arguments, str):
                     arguments = arguments.replace("\n", "")
                 tool_call_dict["function"]["arguments"] = arguments
@@ -103,64 +102,57 @@ def get_property_value(obj, property_name):
 
     return getattr(obj, property_name, None)
 
+# TODO: expose common (across GenAI) public API for prompt payload
+def prompt_to_object(messages):
+    body = []
+    for message in messages:
+        role = get_property_value(message, "role")
+        content = get_property_value(message, "content")
 
-def message_to_event(message, capture_content):
-    attributes = {
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-    }
-    role = get_property_value(message, "role")
-    content = get_property_value(message, "content")
+        message_event = {}
+        if role:
+            message_event["role"] = role
+        if content:
+            message_event["content"] = content
+        if role == "assistant":
+            tool_calls = extract_tool_calls(message)
+            if tool_calls:
+                message_event = {"tool_calls": tool_calls}
+        elif role == "tool":
+            tool_call_id = get_property_value(message, "tool_call_id")
+            if tool_call_id:
+                message_event["id"] = tool_call_id
 
-    body = {}
-    if capture_content and content:
-        body["content"] = content
-    if role == "assistant":
-        tool_calls = extract_tool_calls(message, capture_content)
-        if tool_calls:
-            body = {"tool_calls": tool_calls}
-    elif role == "tool":
-        tool_call_id = get_property_value(message, "tool_call_id")
-        if tool_call_id:
-            body["id"] = tool_call_id
+        body.append(message_event)
+    return body
 
-    return Event(
-        name=f"gen_ai.{role}.message",
-        attributes=attributes,
-        body=body if body else None,
-    )
-
-
-def choice_to_event(choice, capture_content):
-    attributes = {
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-    }
-
-    body = {
-        "index": choice.index,
-        "finish_reason": choice.finish_reason or "error",
-    }
-
-    if choice.message:
-        message = {
-            "role": (
-                choice.message.role
-                if choice.message and choice.message.role
-                else None
-            )
+# TODO: expose common (across GenAI) public API for completion payload
+def completion_to_object(choices):
+    body = []
+    for choice in choices:
+        choice_event = {
+            "index": choice.index,
+            "finish_reason": choice.finish_reason or "error",
         }
-        tool_calls = extract_tool_calls(choice.message, capture_content)
-        if tool_calls:
-            message["tool_calls"] = tool_calls
-        content = get_property_value(choice.message, "content")
-        if capture_content and content:
-            message["content"] = content
-        body["message"] = message
 
-    return Event(
-        name="gen_ai.choice",
-        attributes=attributes,
-        body=body,
-    )
+        if choice.message:
+            message = {
+                "role": (
+                    choice.message.role
+                    if choice.message and choice.message.role
+                    else None
+                )
+            }
+            tool_calls = extract_tool_calls(choice.message)
+            if tool_calls:
+                message["tool_calls"] = tool_calls
+            content = get_property_value(choice.message, "content")
+            if content:
+                message["content"] = content
+            choice_event["message"] = message
+        body.append(choice_event)
+
+    return body
 
 
 def set_span_attributes(span, attributes: dict):
