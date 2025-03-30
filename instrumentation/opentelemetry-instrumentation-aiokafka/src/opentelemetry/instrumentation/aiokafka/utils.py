@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
@@ -212,7 +213,9 @@ def _enrich_base_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(server_attributes.SERVER_ADDRESS, bootstrap_servers)
+    span.set_attribute(
+        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
+    )
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
     span.set_attribute(messaging_attributes.MESSAGING_DESTINATION_NAME, topic)
 
@@ -253,7 +256,7 @@ def _enrich_send_span(
     span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
-        messaging_attributes.MessagingOperationTypeValues.SEND.value,
+        messaging_attributes.MessagingOperationTypeValues.PUBLISH.value,
     )
 
 
@@ -321,7 +324,9 @@ def _enrich_getmany_poll_span(
         messaging_attributes.MESSAGING_SYSTEM,
         messaging_attributes.MessagingSystemValues.KAFKA.value,
     )
-    span.set_attribute(server_attributes.SERVER_ADDRESS, bootstrap_servers)
+    span.set_attribute(
+        server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
+    )
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
 
     if consumer_group is not None:
@@ -333,7 +338,9 @@ def _enrich_getmany_poll_span(
         messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count
     )
 
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "poll")
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
+    )
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
         messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
@@ -371,7 +378,9 @@ def _enrich_getmany_topic_span(
         messaging_attributes.MESSAGING_BATCH_MESSAGE_COUNT, message_count
     )
 
-    span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "poll")
+    span.set_attribute(
+        messaging_attributes.MESSAGING_OPERATION_NAME, "receive"
+    )
     span.set_attribute(
         messaging_attributes.MESSAGING_OPERATION_TYPE,
         messaging_attributes.MessagingOperationTypeValues.RECEIVE.value,
@@ -444,7 +453,7 @@ async def _create_consumer_span(
     with tracer.start_as_current_span(
         span_name,
         context=extracted_context,
-        kind=trace.SpanKind.CLIENT,
+        kind=trace.SpanKind.CONSUMER,
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
@@ -530,11 +539,11 @@ def _wrap_getmany(
             consumer_group = _extract_consumer_group(instance)
 
             span_name = _get_span_name(
-                "poll",
+                "receive",
                 ", ".join(sorted({topic.topic for topic in records.keys()})),
             )
             with tracer.start_as_current_span(
-                span_name, kind=trace.SpanKind.CLIENT
+                span_name, kind=trace.SpanKind.CONSUMER
             ) as poll_span:
                 _enrich_getmany_poll_span(
                     poll_span,
@@ -545,9 +554,9 @@ def _wrap_getmany(
                 )
 
                 for topic, topic_records in records.items():
-                    span_name = _get_span_name("poll", topic.topic)
+                    span_name = _get_span_name("receive", topic.topic)
                     with tracer.start_as_current_span(
-                        span_name, kind=trace.SpanKind.CLIENT
+                        span_name, kind=trace.SpanKind.CONSUMER
                     ) as topic_span:
                         _enrich_getmany_topic_span(
                             topic_span,

@@ -347,7 +347,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         tracer.start_as_current_span.assert_called_once_with(
             expected_span_name,
             context=extracted_context,
-            kind=SpanKind.CLIENT,
+            kind=SpanKind.CONSUMER,
         )
         span = tracer.start_as_current_span.return_value.__enter__()
         set_span_in_context.assert_called_once_with(span, extracted_context)
