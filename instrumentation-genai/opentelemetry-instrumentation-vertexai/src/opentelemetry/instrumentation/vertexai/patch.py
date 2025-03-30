@@ -14,9 +14,11 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
+    Awaitable,
     Callable,
     MutableSequence,
 )
@@ -87,17 +89,17 @@ def _extract_params(
     )
 
 
-def generate_content_create(
-    tracer: Tracer, event_logger: EventLogger, capture_content: bool
-):
-    """Wrap the `generate_content` method of the `GenerativeModel` class to trace it."""
+class MethodWrappers:
+    def __init__(
+        self, tracer: Tracer, event_logger: EventLogger, capture_content: bool
+    ) -> None:
+        self.tracer = tracer
+        self.event_logger = event_logger
+        self.capture_content = capture_content
 
-    def traced_method(
-        wrapped: Callable[
-            ...,
-            prediction_service.GenerateContentResponse
-            | prediction_service_v1beta1.GenerateContentResponse,
-        ],
+    @contextmanager
+    def _with_instrumentation(
+        self,
         instance: client.PredictionServiceClient
         | client_v1beta1.PredictionServiceClient,
         args: Any,
@@ -111,32 +113,82 @@ def generate_content_create(
         }
 
         span_name = get_span_name(span_attributes)
-        with tracer.start_as_current_span(
+
+        with self.tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
         ) as span:
             for event in request_to_events(
-                params=params, capture_content=capture_content
+                params=params, capture_content=self.capture_content
             ):
-                event_logger.emit(event)
+                self.event_logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
+
+            def handle_response(
+                response: prediction_service.GenerateContentResponse
+                | prediction_service_v1beta1.GenerateContentResponse,
+            ) -> None:
+                if span.is_recording():
+                    # When streaming, this is called multiple times so attributes would be
+                    # overwritten. In practice, it looks the API only returns the interesting
+                    # attributes on the last streamed response. However, I couldn't find
+                    # documentation for this and setting attributes shouldn't be too expensive.
+                    span.set_attributes(
+                        get_genai_response_attributes(response)
+                    )
+
+                for event in response_to_events(
+                    response=response, capture_content=self.capture_content
+                ):
+                    self.event_logger.emit(event)
+
+            yield handle_response
+
+    def generate_content(
+        self,
+        wrapped: Callable[
+            ...,
+            prediction_service.GenerateContentResponse
+            | prediction_service_v1beta1.GenerateContentResponse,
+        ],
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
+        args: Any,
+        kwargs: Any,
+    ) -> (
+        prediction_service.GenerateContentResponse
+        | prediction_service_v1beta1.GenerateContentResponse
+    ):
+        with self._with_instrumentation(
+            instance, args, kwargs
+        ) as handle_response:
             response = wrapped(*args, **kwargs)
-            # TODO: handle streaming
-            # if is_streaming(kwargs):
-            #     return StreamWrapper(
-            #         result, span, event_logger, capture_content
-            #     )
-
-            if span.is_recording():
-                span.set_attributes(get_genai_response_attributes(response))
-            for event in response_to_events(
-                response=response, capture_content=capture_content
-            ):
-                event_logger.emit(event)
-
+            handle_response(response)
             return response
 
-    return traced_method
+    async def agenerate_content(
+        self,
+        wrapped: Callable[
+            ...,
+            Awaitable[
+                prediction_service.GenerateContentResponse
+                | prediction_service_v1beta1.GenerateContentResponse
+            ],
+        ],
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
+        args: Any,
+        kwargs: Any,
+    ) -> (
+        prediction_service.GenerateContentResponse
+        | prediction_service_v1beta1.GenerateContentResponse
+    ):
+        with self._with_instrumentation(
+            instance, args, kwargs
+        ) as handle_response:
+            response = await wrapped(*args, **kwargs)
+            handle_response(response)
+            return response
