@@ -28,19 +28,6 @@ from opentelemetry.instrumentation.aiokafka.utils import (
 )
 from opentelemetry.trace import SpanKind
 
-SEND_RETURN_VALUE = None
-
-
-async def original_send(
-    topic,
-    value=None,
-    key=None,
-    partition=None,
-    timestamp_ms=None,
-    headers=None,
-):
-    return SEND_RETURN_VALUE
-
 
 class TestUtils(IsolatedAsyncioTestCase):
     def setUp(self) -> None:
@@ -122,36 +109,6 @@ class TestUtils(IsolatedAsyncioTestCase):
             extract_bootstrap_servers,
         )
 
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._extract_send_partition"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_send_span"
-    )
-    @mock.patch("opentelemetry.trace.set_span_in_context")
-    @mock.patch("opentelemetry.propagate.inject")
-    async def test_wrap_send_with_headers_as_args(
-        self,
-        inject: mock.MagicMock,
-        set_span_in_context: mock.MagicMock,
-        enrich_span: mock.MagicMock,
-        extract_send_partition: mock.AsyncMock,
-        extract_bootstrap_servers: mock.MagicMock,
-    ) -> None:
-        # like send_and_wait
-        self.args = [self.topic_name, None, None, None, None, None]
-        self.kwargs = {}
-        await self.wrap_send_helper(
-            inject,
-            set_span_in_context,
-            enrich_span,
-            extract_send_partition,
-            extract_bootstrap_servers,
-        )
-
     async def wrap_send_helper(
         self,
         inject: mock.MagicMock,
@@ -163,8 +120,6 @@ class TestUtils(IsolatedAsyncioTestCase):
         tracer = mock.MagicMock()
         produce_hook = mock.AsyncMock()
         original_send_callback = mock.AsyncMock()
-        original_send_callback.side_effect = original_send
-        original_send_callback.return_value = SEND_RETURN_VALUE
         kafka_producer = mock.MagicMock()
         expected_span_name = _get_span_name("send", self.topic_name)
 
@@ -176,7 +131,9 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_bootstrap_servers.assert_called_once_with(
             kafka_producer.client
         )
-        extract_send_partition.assert_awaited_once()
+        extract_send_partition.assert_awaited_once_with(
+            kafka_producer, self.args, self.kwargs
+        )
         tracer.start_as_current_span.assert_called_once_with(
             expected_span_name, kind=SpanKind.PRODUCER
         )
@@ -197,9 +154,11 @@ class TestUtils(IsolatedAsyncioTestCase):
             self.headers, context=context, setter=_aiokafka_setter
         )
 
-        produce_hook.assert_awaited_once()
+        produce_hook.assert_awaited_once_with(span, self.args, self.kwargs)
 
-        original_send_callback.assert_awaited_once()
+        original_send_callback.assert_awaited_once_with(
+            *self.args, **self.kwargs
+        )
         self.assertEqual(retval, original_send_callback.return_value)
 
     @mock.patch("opentelemetry.propagate.extract")
