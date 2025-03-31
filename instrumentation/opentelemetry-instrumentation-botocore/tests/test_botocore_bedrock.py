@@ -1446,6 +1446,33 @@ class AnthropicClaudeModel:
     def choice_content(response):
         return response["content"]
 
+    @staticmethod
+    def get_stream_body_content(body):
+        content = []
+        content_block = {}
+        input_json_buf = ""
+        for event in body:
+            json_bytes = event["chunk"].get("bytes", b"")
+            decoded = json_bytes.decode("utf-8")
+            chunk = json.loads(decoded)
+
+            if (message_type := chunk.get("type")) is not None:
+                if message_type == "content_block_start":
+                    content_block = chunk["content_block"]
+                elif message_type == "content_block_delta":
+                    if chunk["delta"]["type"] == "text_delta":
+                        content_block["text"] += chunk["delta"]["text"]
+                    elif chunk["delta"]["type"] == "input_json_delta":
+                        input_json_buf += chunk["delta"]["partial_json"]
+                elif message_type == "content_block_stop":
+                    if input_json_buf:
+                        content_block["input"] = json.loads(input_json_buf)
+                    content.append(content_block)
+                    content_block = None
+                    input_json_buf = ""
+
+        return content
+
 
 class AmazonNovaModel:
     @staticmethod
@@ -1523,6 +1550,43 @@ class AmazonNovaModel:
     @staticmethod
     def choice_content(response):
         return response["output"]["message"]["content"]
+
+    @staticmethod
+    def get_stream_body_content(body):
+        content = []
+        content_block = {}
+        tool_use = {}
+        for event in body:
+            json_bytes = event["chunk"].get("bytes", b"")
+            decoded = json_bytes.decode("utf-8")
+            chunk = json.loads(decoded)
+
+            if "contentBlockDelta" in chunk:
+                delta = chunk["contentBlockDelta"]["delta"]
+                if "text" in delta:
+                    content_block.setdefault("text", "")
+                    content_block["text"] += delta["text"]
+                elif "toolUse" in delta:
+                    tool_use["toolUse"]["input"] = json.loads(
+                        delta["toolUse"]["input"]
+                    )
+            elif "contentBlockStart" in chunk:
+                if content_block:
+                    content.append(content_block)
+                    content_block = {}
+                start = chunk["contentBlockStart"]["start"]
+                if "toolUse" in start:
+                    tool_use = start
+            elif "contentBlockStop" in chunk:
+                if tool_use:
+                    content.append(tool_use)
+                    tool_use = {}
+            elif "messageStop" in chunk:
+                if content_block:
+                    content.append(content_block)
+                    content_block = {}
+
+        return content
 
 
 def invoke_model_tool_call(
@@ -2110,54 +2174,7 @@ def invoke_model_with_response_stream_tool_call(
         modelId=llm_model_value,
     )
 
-    content = []
-    content_block = {}
-    # used only by anthropic claude
-    input_json_buf = ""
-    # used only by amazon nova
-    tool_use = {}
-    for event in response_0["body"]:
-        json_bytes = event["chunk"].get("bytes", b"")
-        decoded = json_bytes.decode("utf-8")
-        chunk = json.loads(decoded)
-
-        # anthropic claude
-        if (message_type := chunk.get("type")) is not None:
-            if message_type == "content_block_start":
-                content_block = chunk["content_block"]
-            elif message_type == "content_block_delta":
-                if chunk["delta"]["type"] == "text_delta":
-                    content_block["text"] += chunk["delta"]["text"]
-                elif chunk["delta"]["type"] == "input_json_delta":
-                    input_json_buf += chunk["delta"]["partial_json"]
-            elif message_type == "content_block_stop":
-                if input_json_buf:
-                    content_block["input"] = json.loads(input_json_buf)
-                content.append(content_block)
-                content_block = None
-                input_json_buf = ""
-        else:
-            if "contentBlockDelta" in chunk:
-                delta = chunk["contentBlockDelta"]["delta"]
-                if "text" in delta:
-                    content_block.setdefault("text", "")
-                    content_block["text"] += delta["text"]
-                elif "toolUse" in delta:
-                    tool_use["toolUse"]["input"] = json.loads(
-                        delta["toolUse"]["input"]
-                    )
-            elif "contentBlockStart" in chunk:
-                if content_block:
-                    content.append(content_block)
-                    content_block = {}
-                start = chunk["contentBlockStart"]["start"]
-                if "toolUse" in start:
-                    tool_use = start
-            elif "contentBlockStop" in chunk:
-                if tool_use:
-                    content.append(tool_use)
-                    tool_use = {}
-
+    content = llm_model_config.get_stream_body_content(response_0["body"])
     assert content
 
     tool_requests_ids = llm_model_config.tool_requests_ids_from_stream(content)
@@ -2179,34 +2196,9 @@ def invoke_model_with_response_stream_tool_call(
         modelId=llm_model_value,
     )
 
-    content_block = {}
-    response_1_content = []
-    for event in response_1["body"]:
-        json_bytes = event["chunk"].get("bytes", b"")
-        decoded = json_bytes.decode("utf-8")
-        chunk = json.loads(decoded)
-
-        # anthropic claude
-        if (message_type := chunk.get("type")) is not None:
-            if message_type == "content_block_start":
-                content_block = chunk["content_block"]
-            elif message_type == "content_block_delta":
-                if chunk["delta"]["type"] == "text_delta":
-                    content_block["text"] += chunk["delta"]["text"]
-            elif message_type == "content_block_stop":
-                response_1_content.append(content_block)
-                content_block = None
-        else:
-            if "contentBlockDelta" in chunk:
-                delta = chunk["contentBlockDelta"]["delta"]
-                if "text" in delta:
-                    content_block.setdefault("text", "")
-                    content_block["text"] += delta["text"]
-            elif "messageStop" in chunk:
-                if content_block:
-                    response_1_content.append(content_block)
-                    content_block = {}
-
+    response_1_content = llm_model_config.get_stream_body_content(
+        response_1["body"]
+    )
     assert response_1_content
 
     (span_0, span_1) = span_exporter.get_finished_spans()
