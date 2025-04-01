@@ -34,11 +34,13 @@ For the Converse and ConverseStream APIs tracing, events and metrics are impleme
 
 For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
 the available models, namely:
+
 - Amazon Titan models
 - Amazon Nova models
 - Anthropic Claude
 
 Tool calls with InvokeModel and InvokeModelWithResponseStream APIs are supported with:
+
 - Amazon Nova models
 - Anthropic Claude 3+
 
