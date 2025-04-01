@@ -42,6 +42,8 @@ Tool calls with InvokeModel and InvokeModelWithResponseStream APIs are supported
 - Amazon Nova models
 - Anthropic Claude 3+
 
+If you don't have an application using Bedrock APIs yet, try our `zero-code examples <examples/bedrock-runtime/zero-code>`_.
+
 Installation
 ------------
 
