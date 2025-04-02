@@ -7,6 +7,7 @@
 | [opentelemetry-instrumentation-aiokafka](./opentelemetry-instrumentation-aiokafka) | aiokafka >= 0.8, < 1.0 | No | development
 | [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No | development
 | [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | Yes | migration
+| [opentelemetry-instrumentation-asyncclick](./opentelemetry-instrumentation-asyncclick) | asyncclick ~= 8.0 | No | development
 | [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | development
 | [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No | development
 | [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No | development

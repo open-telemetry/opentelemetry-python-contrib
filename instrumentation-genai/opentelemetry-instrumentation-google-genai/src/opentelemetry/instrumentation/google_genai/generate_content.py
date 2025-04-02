@@ -619,7 +619,7 @@ def _create_instrumented_async_generate_content(
 
 
 # Disabling type checking because this is not yet implemented and tested fully.
-def _create_instrumented_async_generate_content_stream(  # pyright: ignore
+def _create_instrumented_async_generate_content_stream(  # type: ignore
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content_stream
@@ -632,7 +632,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
-    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
+    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(
             self, otel_wrapper, model
         )
