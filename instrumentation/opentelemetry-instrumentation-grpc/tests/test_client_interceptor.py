@@ -269,6 +269,47 @@ class TestClientProto(TestBase):
             trace.StatusCode.ERROR,
         )
 
+    def test_client_interceptor_falsy_response(
+        self,
+    ):  # pylint: disable=no-self-use
+        """ensure that client interceptor closes the span only once even if the response is falsy."""
+
+        span_end_count = 0
+        tracer_provider, _exporter = self.create_tracer_provider()
+        tracer = tracer_provider.get_tracer(__name__)
+        original_start_span = tracer.start_span
+
+        def counting_span_end(original_end):
+            def wrapper(*args, **kwargs):
+                nonlocal span_end_count
+                span_end_count += 1
+                return original_end(*args, **kwargs)
+
+            return wrapper
+
+        def patched_start_span(*args, **kwargs):
+            span = original_start_span(*args, **kwargs)
+            span.end = counting_span_end(span.end)
+            return span
+
+        tracer.start_span = patched_start_span
+        interceptor = OpenTelemetryClientInterceptor(tracer)
+
+        def invoker(_request, _metadata):
+            return {}
+
+        request = Request(client_id=1, request_data="data")
+        interceptor.intercept_unary(
+            request,
+            {},
+            _UnaryClientInfo(
+                full_method="/GRPCTestServer/SimpleMethod",
+                timeout=None,
+            ),
+            invoker=invoker,
+        )
+        assert span_end_count == 1
+
     def test_client_interceptor_trace_context_propagation(
         self,
     ):  # pylint: disable=no-self-use
