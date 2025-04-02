@@ -28,6 +28,7 @@ Run instrumented actor
 
     from remoulade.brokers.rabbitmq import RabbitmqBroker
     import remoulade
+    from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 
     RemouladeInstrumentor().instrument()
 
@@ -38,7 +39,7 @@ Run instrumented actor
     def multiply(x, y):
         return x * y
 
-    broker.declare_actor(count_words)
+    broker.declare_actor(multiply)
 
     multiply.send(43, 51)
 
