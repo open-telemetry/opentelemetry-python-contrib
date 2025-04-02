@@ -286,7 +286,6 @@ from opentelemetry.instrumentation.grpc.filters import (
     negate,
     service_name,
 )
-from opentelemetry.instrumentation.grpc.grpcext import intercept_channel
 from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -339,7 +338,8 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 kwargs["interceptors"].insert(
                     0,
                     server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
+                        tracer_provider=tracer_provider,
+                        filter_=self._filter,
                     ),
                 )
             else:
@@ -476,9 +476,10 @@ class GrpcInstrumentorClient(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         request_hook = self._request_hook
         response_hook = self._response_hook
-        return intercept_channel(
+
+        return grpc.intercept_channel(
             channel,
-            client_interceptor(
+            *client_interceptors(
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
                 request_hook=request_hook,
@@ -560,10 +561,10 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(
+def client_interceptors(
     tracer_provider=None, filter_=None, request_hook=None, response_hook=None
 ):
-    """Create a gRPC client channel interceptor.
+    """Create gRPC client channel interceptors.
 
     Args:
         tracer: The tracer to use to create client-side spans.
@@ -573,7 +574,7 @@ def client_interceptor(
                  all requests.
 
     Returns:
-        An invocation-side interceptor object.
+        A list of invocation-side interceptor objects.
     """
     from . import _client
 
@@ -584,12 +585,32 @@ def client_interceptor(
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _client.OpenTelemetryClientInterceptor(
-        tracer,
-        filter_=filter_,
-        request_hook=request_hook,
-        response_hook=response_hook,
-    )
+    return [
+        _client.UnaryUnaryClientInterceptor(
+            tracer,
+            filter_=filter_,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        ),
+        _client.UnaryStreamClientInterceptor(
+            tracer,
+            filter_=filter_,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        ),
+        _client.StreamUnaryClientInterceptor(
+            tracer,
+            filter_=filter_,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        ),
+        _client.StreamStreamClientInterceptor(
+            tracer,
+            filter_=filter_,
+            request_hook=request_hook,
+            response_hook=response_hook,
+        ),
+    ]
 
 
 def server_interceptor(tracer_provider=None, filter_=None):
