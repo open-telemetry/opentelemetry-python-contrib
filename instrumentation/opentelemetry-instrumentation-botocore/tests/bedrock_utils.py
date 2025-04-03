@@ -273,6 +273,29 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert_log_parent(log, parent_span)
 
 
+def assert_invoke_agent_attributes(span, agent_id, agent_alias_id, session_id, has_tool_call=False, is_result_call=False):
+    # Check system and operation name
+    assert span.attributes.get(GenAIAttributes.GEN_AI_SYSTEM) == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
+    assert span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME) == "invoke_agent"
+
+    # Check agent attributes
+    assert span.attributes.get(GenAIAttributes.GEN_AI_AGENT_ID) == agent_id
+    assert span.attributes.get(GenAIAttributes.GEN_AI_AGENT_NAME) == agent_alias_id
+
+    # If tool call exists, check tool attributes
+    if has_tool_call:
+        assert GenAIAttributes.GEN_AI_TOOL_CALL_ID in span.attributes
+        assert GenAIAttributes.GEN_AI_TOOL_NAME in span.attributes
+        assert GenAIAttributes.GEN_AI_TOOL_TYPE in span.attributes
+        allowed_tool_types = {"extension", "function", "datastore"}
+        assert span.attributes.get(GenAIAttributes.GEN_AI_TOOL_TYPE) in allowed_tool_types, \
+            f"Unexpected tool type in span: {span.attributes.get(GenAIAttributes.GEN_AI_TOOL_TYPE)}"
+    elif is_result_call:
+        assert GenAIAttributes.GEN_AI_TOOL_CALL_ID not in span.attributes
+        assert GenAIAttributes.GEN_AI_TOOL_NAME not in span.attributes
+        assert GenAIAttributes.GEN_AI_TOOL_TYPE not in span.attributes
+
+
 def assert_all_metric_attributes(
     data_point, operation_name: str, model: str, error_type: str | None = None
 ):
@@ -286,8 +309,9 @@ def assert_all_metric_attributes(
         data_point.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
     )
-    assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
-    assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    if model is not None:
+        assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
+        assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
 
     if error_type is not None:
         assert ERROR_TYPE in data_point.attributes
