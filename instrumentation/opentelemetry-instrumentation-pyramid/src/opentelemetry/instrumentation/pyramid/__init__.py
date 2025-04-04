@@ -185,8 +185,10 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import platform
-from typing import Collection
+from collections.abc import Collection
 
 from pyramid.config import Configurator
 from pyramid.path import caller_package

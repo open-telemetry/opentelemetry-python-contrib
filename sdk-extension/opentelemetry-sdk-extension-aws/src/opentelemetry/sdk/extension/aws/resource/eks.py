@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import json
 import logging
@@ -109,7 +110,7 @@ class AwsEksResourceDetector(ResourceDetector):
     NOTE: Uses a `cluster-info` configmap in the `amazon-cloudwatch` namespace. See more here: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-quickstart.html#Container-Insights-setup-EKS-quickstart-Fluentd
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         try:
             # if we are not running on eks exit early without warnings
             if not _is_k8s():

@@ -2,6 +2,8 @@
 https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
 """
 
+from __future__ import annotations
+
 MOCK_LAMBDA_SQS_EVENT = {
     "Records": [
         {

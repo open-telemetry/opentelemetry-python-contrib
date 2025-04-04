@@ -59,9 +59,11 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection, Iterable
 from timeit import default_timer
-from typing import Collection, Iterable
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from opentelemetry._events import EventLogger
 from opentelemetry.metrics import Instrument, Meter
@@ -26,11 +26,11 @@ from opentelemetry.util.types import AttributeValue
 _logger = logging.getLogger(__name__)
 
 _BotoClientT = "botocore.client.BaseClient"
-_BotoResultT = Dict[str, Any]
+_BotoResultT = dict[str, Any]
 _BotoClientErrorT = "botocore.exceptions.ClientError"
 
-_OperationParamsT = Dict[str, Any]
-_AttributeMapT = Dict[str, AttributeValue]
+_OperationParamsT = dict[str, Any]
+_AttributeMapT = dict[str, AttributeValue]
 
 
 class _AwsSdkCallContext:
@@ -50,7 +50,7 @@ class _AwsSdkCallContext:
         span_kind: the kind used to create the span.
     """
 
-    def __init__(self, client: _BotoClientT, args: Tuple[str, Dict[str, Any]]):
+    def __init__(self, client: _BotoClientT, args: tuple[str, dict[str, Any]]):
         operation = args[0]
         try:
             params = args[1]
@@ -68,12 +68,12 @@ class _AwsSdkCallContext:
         # 'operation' and 'service' are essential for instrumentation.
         # for all other attributes we extract them defensively. All of them should
         # usually exist unless some future botocore version moved things.
-        self.region: Optional[str] = self._get_attr(boto_meta, "region_name")
-        self.endpoint_url: Optional[str] = self._get_attr(
+        self.region: str | None = self._get_attr(boto_meta, "region_name")
+        self.endpoint_url: str | None = self._get_attr(
             boto_meta, "endpoint_url"
         )
 
-        self.api_version: Optional[str] = self._get_attr(
+        self.api_version: str | None = self._get_attr(
             service_model, "api_version"
         )
         # name of the service in proper casing
@@ -97,7 +97,7 @@ class _BotocoreInstrumentorContext:
     def __init__(
         self,
         event_logger: EventLogger,
-        metrics: Dict[str, Instrument] | None = None,
+        metrics: dict[str, Instrument] | None = None,
     ):
         self.event_logger = event_logger
         self.metrics = metrics or {}
@@ -138,7 +138,7 @@ class _AwsSdkExtension:
         """
         return True
 
-    def setup_metrics(self, meter: Meter, metrics: Dict[str, Instrument]):
+    def setup_metrics(self, meter: Meter, metrics: dict[str, Instrument]):
         """Callback which gets invoked to setup metrics.
 
         Extensions might override this function to add to the metrics dictionary all the metrics

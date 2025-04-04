@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Generator
 from typing import (
     Any,
     Callable,
-    Generator,
     Protocol,
     TypeVar,
 )
@@ -72,7 +72,7 @@ def test_generate_content(
     # Emits user and choice events
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
+    user_log, choice_log = (log_data.log_record for log_data in logs)
 
     span_context = spans[0].get_span_context()
     assert user_log.trace_id == span_context.trace_id
@@ -142,7 +142,7 @@ def test_generate_content_without_events(
     # Emits user and choice event without body.content
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
+    user_log, choice_log = (log_data.log_record for log_data in logs)
     assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
@@ -414,9 +414,9 @@ def generate_content_all_input_events(
     # Emits a system event, 2 users events, an assistant event, and the choice (response) event
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    system_log, user_log1, assistant_log, user_log2, choice_log = [
+    system_log, user_log1, assistant_log, user_log2, choice_log = (
         log_data.log_record for log_data in logs
-    ]
+    )
 
     assert system_log.attributes == {
         "gen_ai.system": "vertex_ai",
@@ -497,7 +497,7 @@ class GenerateContentFixture(Protocol):
 def fixture_generate_content(
     request: pytest.FixtureRequest,
     vcr: VCR,
-) -> Generator[GenerateContentFixture, None, None]:
+) -> Generator[GenerateContentFixture]:
     """This fixture parameterizes tests that use it to test calling both
     GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
     """

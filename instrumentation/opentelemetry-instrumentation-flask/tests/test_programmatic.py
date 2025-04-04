@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # pylint: disable=too-many-lines
+from __future__ import annotations
+
 from timeit import default_timer
 from unittest.mock import Mock, patch
 

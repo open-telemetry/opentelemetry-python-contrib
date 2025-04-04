@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=import-error
+from __future__ import annotations
 
 from .processor import ALLOW_ALL_BAGGAGE_KEYS, BaggageSpanProcessor
 from .version import __version__

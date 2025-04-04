@@ -84,12 +84,14 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import asyncio
 import functools
 import sys
 from asyncio import futures
+from collections.abc import Collection
 from timeit import default_timer
-from typing import Collection
 
 from wrapt import wrap_function_wrapper as _wrap
 

@@ -22,8 +22,9 @@ schematized in YAML and the Weaver tool supports it.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 from opentelemetry._events import Event
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes

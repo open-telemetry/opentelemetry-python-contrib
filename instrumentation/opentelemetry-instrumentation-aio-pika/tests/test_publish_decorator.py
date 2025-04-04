@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import asyncio
-from typing import Type
 from unittest import TestCase, mock, skipIf
 from unittest.mock import MagicMock
 
@@ -70,7 +71,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
@@ -149,7 +150,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
             attributes=self.EXPECTED_ATTRIBUTES,
         )
 
-    def _test_publish(self, exchange_type: Type[Exchange]):
+    def _test_publish(self, exchange_type: type[Exchange]):
         exchange = exchange_type(CONNECTION_8, CHANNEL_8, EXCHANGE_NAME)
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"

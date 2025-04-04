@@ -17,6 +17,8 @@
 
 """Implementation of gRPC Python interceptors."""
 
+from __future__ import annotations
+
 import collections
 
 import grpc

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import logging
 from os import environ
@@ -32,7 +33,7 @@ class AwsLambdaResourceDetector(ResourceDetector):
     Uses Lambda defined runtime environment variables. See more: https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         try:
             return Resource(
                 {

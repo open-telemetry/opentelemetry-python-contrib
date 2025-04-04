@@ -55,9 +55,11 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
 
 """
 
+from __future__ import annotations
+
 import logging  # pylint: disable=import-self
+from collections.abc import Collection
 from os import environ
-from typing import Collection
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (

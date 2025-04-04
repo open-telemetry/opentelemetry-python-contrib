@@ -48,7 +48,7 @@ def get_instrumentation_packages(
                 "hatch version",
                 shell=True,
                 cwd=pkg_path,
-                universal_newlines=True,
+                text=True,
             )
         except CalledProcessError as exc:
             print(f"Could not get hatch version from path {pkg_path}")

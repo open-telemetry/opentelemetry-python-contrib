@@ -184,11 +184,13 @@ API
 ---
 """
 
+from __future__ import annotations
+
+from collections.abc import Collection
 from logging import getLogger
 from sys import exc_info
 from time import time_ns
 from timeit import default_timer
-from typing import Collection
 
 import falcon
 from packaging import version as package_version

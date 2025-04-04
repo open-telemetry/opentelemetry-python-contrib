@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import json
 import logging
@@ -36,7 +37,7 @@ class AwsEcsResourceDetector(ResourceDetector):
     Elastic Container Service (ECS) and returns them in a Resource.
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         try:
             if not os.environ.get(
                 "ECS_CONTAINER_METADATA_URI"

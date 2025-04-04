@@ -101,7 +101,9 @@ The _instrument method accepts the following keyword args:
 
 """
 
-from typing import Collection
+from __future__ import annotations
+
+from collections.abc import Collection
 
 import confluent_kafka
 import wrapt

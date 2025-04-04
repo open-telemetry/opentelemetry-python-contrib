@@ -29,8 +29,11 @@ Usage
 ---
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
+from collections.abc import Collection, Generator, Mapping
+from typing import Any
 
 import boto3.session
 import botocore.client
@@ -59,7 +62,7 @@ _IS_SQS_INSTRUMENTED_ATTRIBUTE = "_otel_boto3sqs_instrumented"
 
 
 class Boto3SQSGetter(Getter[CarrierT]):
-    def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: CarrierT, key: str) -> list[str]:
         msg_attr = carrier.get(key)
         if not isinstance(msg_attr, Mapping):
             return None
@@ -70,7 +73,7 @@ class Boto3SQSGetter(Getter[CarrierT]):
 
         return [value]
 
-    def keys(self, carrier: CarrierT) -> List[str]:
+    def keys(self, carrier: CarrierT) -> list[str]:
         return list(carrier.keys())
 
 
@@ -95,7 +98,7 @@ boto3sqs_setter = Boto3SQSSetter()
 
 # pylint: disable=attribute-defined-outside-init
 class Boto3SQSInstrumentor(BaseInstrumentor):
-    received_messages_spans: Dict[str, Span] = {}
+    received_messages_spans: dict[str, Span] = {}
     current_span_related_to_token: Span = None
     current_context_token = None
 
@@ -110,9 +113,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         """
 
         def __getitem__(self, key: int) -> Any:
-            retval = super(
-                Boto3SQSInstrumentor.ContextableList, self
-            ).__getitem__(key)
+            retval = super().__getitem__(key)
             if not isinstance(retval, dict):
                 return retval
             receipt_handle = retval.get("ReceiptHandle")
@@ -145,9 +146,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         span: Span,
         queue_name: str,
         queue_url: str,
-        conversation_id: Optional[str] = None,
-        operation: Optional[MessagingOperationValues] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str = None,
+        operation: MessagingOperationValues = None,
+        message_id: str = None,
     ) -> None:
         if not span.is_recording():
             return
@@ -194,7 +195,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         queue_name: str,
         queue_url: str,
         receipt_handle: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> None:
         message_attributes = message.get("MessageAttributes", {})
         links = []
@@ -261,7 +262,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url
             )
-            ids_to_spans: Dict[str, Span] = {}
+            ids_to_spans: dict[str, Span] = {}
             for entry in entries:
                 entry_id = entry["Id"]
                 span = self._tracer.start_span(
@@ -418,10 +419,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
         setattr(sqs_class, _IS_SQS_INSTRUMENTED_ATTRIBUTE, False)
 
-    def _instrument(self, **kwargs: Dict[str, Any]) -> None:
-        self._tracer_provider: Optional[TracerProvider] = kwargs.get(
-            "tracer_provider"
-        )
+    def _instrument(self, **kwargs: dict[str, Any]) -> None:
+        self._tracer_provider: TracerProvider = kwargs.get("tracer_provider")
         self._tracer: Tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -433,7 +432,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         for client_cls in botocore.client.BaseClient.__subclasses__():
             self._decorate_sqs(client_cls)
 
-    def _uninstrument(self, **kwargs: Dict[str, Any]) -> None:
+    def _uninstrument(self, **kwargs: dict[str, Any]) -> None:
         unwrap(boto3.session.Session, "client")
 
         for client_cls in botocore.client.BaseClient.__subclasses__():

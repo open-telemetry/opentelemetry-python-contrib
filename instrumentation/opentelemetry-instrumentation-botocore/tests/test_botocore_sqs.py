@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import botocore.session
 from moto import mock_aws
 

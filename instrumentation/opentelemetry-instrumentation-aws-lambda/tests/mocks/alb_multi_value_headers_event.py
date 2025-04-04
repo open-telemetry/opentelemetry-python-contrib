@@ -4,6 +4,8 @@ https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-funct
 When an ALB is configured to send multi-value headers, the headers are sent as a list of values under the key in the multiValueHeaders object.
 """
 
+from __future__ import annotations
+
 MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT = {
     "requestContext": {
         "elb": {

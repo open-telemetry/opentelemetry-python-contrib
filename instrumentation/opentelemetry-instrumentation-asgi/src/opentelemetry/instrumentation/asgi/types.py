@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from opentelemetry.trace import Span
 
-_Scope = Dict[str, Any]
-_Message = Dict[str, Any]
+_Scope = dict[str, Any]
+_Message = dict[str, Any]
 
 ServerRequestHook = Optional[Callable[[Span, _Scope], None]]
 """

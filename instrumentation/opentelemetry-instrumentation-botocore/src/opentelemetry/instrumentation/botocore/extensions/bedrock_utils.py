@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator, Sequence
 from os import environ
-from typing import Any, Callable, Dict, Iterator, Sequence, Union
+from typing import Any, Callable, Union
 
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
@@ -30,7 +31,7 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GenAiSystemValues,
 )
 
-_StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
+_StreamDoneCallableT = Callable[[dict[str, Union[int, str]]], None]
 _StreamErrorCallableT = Callable[[Exception], None]
 
 
@@ -367,7 +368,7 @@ def genai_capture_message_content() -> bool:
 
 def extract_tool_calls(
     message: dict[str, Any], capture_content: bool
-) -> Sequence[Dict[str, Any]] | None:
+) -> Sequence[dict[str, Any]] | None:
     content = message.get("content")
     if not content:
         return None
@@ -403,7 +404,7 @@ def extract_tool_calls(
 
 def extract_tool_results(
     message: dict[str, Any], capture_content: bool
-) -> Iterator[Dict[str, Any]]:
+) -> Iterator[dict[str, Any]]:
     content = message.get("content")
     if not content:
         return

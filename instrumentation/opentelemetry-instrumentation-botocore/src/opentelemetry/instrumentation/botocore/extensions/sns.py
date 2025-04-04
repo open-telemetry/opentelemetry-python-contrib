@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import abc
 import inspect
-from typing import Any, Dict, MutableMapping, Optional, Tuple
+from collections.abc import MutableMapping
+from typing import Any
 
 from opentelemetry.instrumentation.botocore.extensions._messaging import (
     inject_propagation_context,
@@ -91,7 +94,7 @@ class _OpPublish(_SnsOperation):
     @classmethod
     def _extract_destination_name(
         cls, call_context: _AwsSdkCallContext
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         arn = cls._extract_input_arn(call_context)
         if arn:
             return arn.rsplit(":", 1)[-1], arn
@@ -107,7 +110,7 @@ class _OpPublish(_SnsOperation):
     @classmethod
     def _extract_input_arn(
         cls, call_context: _AwsSdkCallContext
-    ) -> Optional[str]:
+    ) -> str | None:
         for input_arn in cls._arn_arg_names:
             arn = call_context.params.get(input_arn)
             if arn:
@@ -143,10 +146,11 @@ class _OpPublishBatch(_OpPublish):
 # SNS extension
 ################################################################################
 
-_OPERATION_MAPPING: Dict[str, _SnsOperation] = {
+_OPERATION_MAPPING: dict[str, _SnsOperation] = {
     op.operation_name(): op
     for op in globals().values()
     if inspect.isclass(op)
+    and hasattr(op, "operation_name")
     and issubclass(op, _SnsOperation)
     and not inspect.isabstract(op)
 }

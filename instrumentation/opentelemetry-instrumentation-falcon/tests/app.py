@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import falcon
 from packaging import version as package_version
 

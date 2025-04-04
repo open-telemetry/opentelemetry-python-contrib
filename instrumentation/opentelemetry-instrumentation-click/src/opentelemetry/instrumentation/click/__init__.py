@@ -40,11 +40,13 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import os
 import sys
+from collections.abc import Collection
 from functools import partial
 from logging import getLogger
-from typing import Collection
 
 import click
 from wrapt import wrap_function_wrapper

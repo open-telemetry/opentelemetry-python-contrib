@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=import-error
+from __future__ import annotations
 
 from .app_service import AzureAppServiceResourceDetector
 from .functions import AzureFunctionsResourceDetector

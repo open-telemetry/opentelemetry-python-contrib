@@ -92,11 +92,13 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import re
 import warnings
+from collections.abc import Collection
 from logging import getLogger
 from os import environ
-from typing import Collection
 
 import elasticsearch
 import elasticsearch.exceptions

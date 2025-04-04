@@ -82,8 +82,10 @@ API
 ___
 """
 
+from __future__ import annotations
+
+from collections.abc import Collection
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Collection
 
 import kafka
 from wrapt import wrap_function_wrapper

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from json import loads
 from logging import getLogger
@@ -38,7 +39,7 @@ _logger = getLogger(__name__)
 
 class AzureVMResourceDetector(ResourceDetector):
     # pylint: disable=no-self-use
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         attributes = {}
         if not _can_ignore_vm_detect():
             with suppress_instrumentation():

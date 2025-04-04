@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import unittest
 import unittest.mock
@@ -121,8 +122,7 @@ class TestCase(CommonTestCaseBase):
         mock = unittest.mock.MagicMock()
 
         def _default_impl(*args, **kwargs):
-            for response in self._responses:
-                yield response
+            yield from self._responses
 
         mock.side_effect = _default_impl
         return mock

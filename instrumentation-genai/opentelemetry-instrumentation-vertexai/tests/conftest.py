@@ -1,9 +1,12 @@
 """Unit tests configuration module."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
-from typing import Any, Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
 import pytest
 import vertexai

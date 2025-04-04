@@ -17,6 +17,7 @@
 # will give multiple "no-name-in-module" errors for the imports.
 #
 # pylint: skip-file
+from __future__ import annotations
 
 import os
 

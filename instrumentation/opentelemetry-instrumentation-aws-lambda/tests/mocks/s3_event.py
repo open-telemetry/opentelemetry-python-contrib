@@ -2,6 +2,8 @@
 https://docs.aws.amazon.com/lambda/latest/dg/with-s3.html
 """
 
+from __future__ import annotations
+
 MOCK_LAMBDA_S3_EVENT = {
     "Records": [
         {

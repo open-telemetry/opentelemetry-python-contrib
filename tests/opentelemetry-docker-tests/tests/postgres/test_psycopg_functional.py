@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 
@@ -118,8 +119,9 @@ class TestFunctionalPsycopg(TestBase):
 
     def test_callproc(self):
         """Should create a child span for callproc"""
-        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
-            Exception
+        with (
+            self._tracer.start_as_current_span("rootSpan"),
+            self.assertRaises(Exception),
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 _instruments_psycopg2 = "psycopg2 >= 2.7.3.1"
 _instruments_psycopg2_binary = "psycopg2-binary >= 2.7.3.1"

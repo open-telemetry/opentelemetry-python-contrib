@@ -56,6 +56,8 @@ API
 .. _trace ID format: https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html#xray-api-traceids
 """
 
+from __future__ import annotations
+
 import random
 import time
 

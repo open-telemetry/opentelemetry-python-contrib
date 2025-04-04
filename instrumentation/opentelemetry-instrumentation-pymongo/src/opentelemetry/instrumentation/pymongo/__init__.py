@@ -80,8 +80,9 @@ for example:
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from logging import getLogger
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, Callable, TypeVar
 
 from pymongo import monitoring
 

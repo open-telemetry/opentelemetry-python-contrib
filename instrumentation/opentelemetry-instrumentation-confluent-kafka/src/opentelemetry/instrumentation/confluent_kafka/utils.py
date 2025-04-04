@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from logging import getLogger
-from typing import List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
@@ -38,7 +39,7 @@ class KafkaPropertiesExtractor:
 
 
 class KafkaContextGetter(textmap.Getter):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -53,7 +54,7 @@ class KafkaContextGetter(textmap.Getter):
 
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
 
@@ -112,9 +113,9 @@ def _get_links_from_records(records):
 def _enrich_span(
     span,
     topic,
-    partition: Optional[int] = None,
-    offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+    partition: int | None = None,
+    offset: int | None = None,
+    operation: MessagingOperationValues | None = None,
 ):
     if not span.is_recording():
         return

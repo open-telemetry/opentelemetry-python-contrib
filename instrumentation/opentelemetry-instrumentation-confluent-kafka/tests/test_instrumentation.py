@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=no-name-in-module
+from __future__ import annotations
 
 from confluent_kafka import Consumer, Producer
 
@@ -89,12 +90,12 @@ class TestConfluentKafka(TestBase):
         carrier_dict = {"key1": "val1"}
         context_setter.set(carrier_dict, "key2", "val2")
         self.assertGreaterEqual(
-            carrier_dict.items(), {"key2": "val2".encode()}.items()
+            carrier_dict.items(), {"key2": b"val2"}.items()
         )
 
         carrier_list = [("key1", "val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = KafkaContextSetter()

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=protected-access
+from __future__ import annotations
 
 import pytest
 from packaging.requirements import Requirement

@@ -41,6 +41,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 from .instrumentor import GoogleGenAiSdkInstrumentor
 from .version import __version__
 

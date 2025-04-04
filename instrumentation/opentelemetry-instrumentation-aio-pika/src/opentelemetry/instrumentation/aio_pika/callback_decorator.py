@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Callable, Optional
+from __future__ import annotations
+
+from typing import Any, Callable
 
 from aio_pika import Queue
 from aio_pika.abc import AbstractIncomingMessage
@@ -28,7 +30,7 @@ class CallbackDecorator:
         self._tracer = tracer
         self._queue = queue
 
-    def _get_span(self, message: AbstractIncomingMessage) -> Optional[Span]:
+    def _get_span(self, message: AbstractIncomingMessage) -> Span | None:
         builder = SpanBuilder(self._tracer)
         builder.set_as_consumer()
         builder.set_operation(MessagingOperationValues.RECEIVE)

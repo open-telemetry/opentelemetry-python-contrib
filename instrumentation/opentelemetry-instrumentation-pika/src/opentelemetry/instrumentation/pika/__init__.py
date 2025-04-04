@@ -115,7 +115,9 @@ For consumer instrumentation, pika supports two consuming modes:
 API
 ---
 """
+
 # pylint: disable=import-error
+from __future__ import annotations
 
 from .pika_instrumentor import PikaInstrumentor
 from .version import __version__

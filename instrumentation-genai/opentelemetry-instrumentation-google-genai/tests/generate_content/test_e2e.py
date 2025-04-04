@@ -23,6 +23,8 @@ verifying that instrumentation does not break the GenAI SDK) is a
 secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
+from __future__ import annotations
+
 import asyncio
 import gzip
 import json

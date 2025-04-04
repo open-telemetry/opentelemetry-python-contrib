@@ -16,6 +16,8 @@
 Some utils used by the redis integration
 """
 
+from __future__ import annotations
+
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,

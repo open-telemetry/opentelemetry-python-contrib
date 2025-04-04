@@ -183,7 +183,8 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Collection, Literal
+from collections.abc import Collection
+from typing import Literal
 
 import fastapi
 from starlette.routing import Match

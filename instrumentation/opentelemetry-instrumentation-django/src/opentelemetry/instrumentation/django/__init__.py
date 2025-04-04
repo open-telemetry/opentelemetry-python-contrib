@@ -237,9 +237,11 @@ API
 
 """
 
+from __future__ import annotations
+
+from collections.abc import Collection
 from logging import getLogger
 from os import environ
-from typing import Collection
 
 from django import VERSION as django_version
 from django.conf import settings

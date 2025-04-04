@@ -47,14 +47,13 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Awaitable, Collection
 from functools import partial
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
-    Collection,
     TypeVar,
 )
 
@@ -159,5 +158,5 @@ class AsyncClickInstrumentor(BaseInstrumentor):
             partial(_command_invoke_wrapper, tracer=tracer),
         )
 
-    def _uninstrument(self, **kwargs: Unpack["UninstrumentKwargs"]) -> None:
+    def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]) -> None:
         unwrap(asyncclick.core.Command, "invoke")

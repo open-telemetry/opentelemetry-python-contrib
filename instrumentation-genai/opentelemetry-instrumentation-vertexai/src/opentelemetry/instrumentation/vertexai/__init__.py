@@ -41,7 +41,8 @@ API
 
 from __future__ import annotations
 
-from typing import Any, Collection
+from collections.abc import Collection
+from typing import Any
 
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
