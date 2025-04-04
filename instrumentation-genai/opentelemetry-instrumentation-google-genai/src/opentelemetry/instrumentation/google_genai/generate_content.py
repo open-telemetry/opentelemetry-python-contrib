@@ -173,15 +173,15 @@ def _add_request_options_to_span(
         rename_keys={
             # TODO: add more entries here as more semantic conventions are
             # generalized to cover more of the available config options.
-            "gcp.gen_ai.request.temperature": "gen_ai.request.temperature",
-            "gcp.gen_ai.request.top_k": "gen_ai.request.top_k",
-            "gcp.gen_ai.request.top_p": "gen_ai.request.top_p",
-            "gcp.gen_ai.request.candidate_count": "gen_ai.request.choice.count",
-            "gcp.gen_ai.request.max_output_tokens": "gen_ai.request.max_tokens",
-            "gcp.gen_ai.request.stop_sequences": "gen_ai.request.stop_sequences",
-            "gcp.gen_ai.request.frequency_penalty": "gen_ai.request.frequency_penalty",
-            "gcp.gen_ai.request.presence_penalty": "gen_ai.request.presence_penalty",
-            "gcp.gen_ai.request.seed": "gen_ai.request.seed",
+            "gcp.gen_ai.request.temperature": gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+            "gcp.gen_ai.request.top_k": gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
+            "gcp.gen_ai.request.top_p": gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
+            "gcp.gen_ai.request.candidate_count": gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT,
+            "gcp.gen_ai.request.max_output_tokens": gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+            "gcp.gen_ai.request.stop_sequences": gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+            "gcp.gen_ai.request.frequency_penalty": gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+            "gcp.gen_ai.request.presence_penalty": gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+            "gcp.gen_ai.request.seed": gen_ai_attributes.GEN_AI_REQUEST_SEED,
         },
     )
     span.set_attributes(attributes)
