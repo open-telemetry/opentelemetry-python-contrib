@@ -21,9 +21,8 @@ Futures might be reused throughout an application's lifecycle.
 
 import asyncio
 
-from opentelemetry.test.test_base import TestBase
-
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+from opentelemetry.test.test_base import TestBase
 
 
 class MockSubscription:
@@ -31,6 +30,7 @@ class MockSubscription:
     Example class holding an unsubscribe_future, similar to something like
     aiokafka's subscription.
     """
+
     def __init__(self):
         self.unsubscribe_future = asyncio.Future()
 
@@ -39,6 +39,7 @@ class MockGroupCoordinator:
     """
     Example class modeling repeated instrumentation of the same Future objects.
     """
+
     def __init__(self):
         self._closing = asyncio.Future()
         self.subscription = MockSubscription()
@@ -62,11 +63,16 @@ class TestAsyncioDuplicateInstrument(TestBase):
 
     def setUp(self):
         super().setUp()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.instrumentor = AsyncioInstrumentor()
         self.instrumentor.instrument()
 
     def tearDown(self):
         self.instrumentor.uninstrument()
+        self.loop.close()
+        asyncio.set_event_loop(None)
         super().tearDown()
 
     def test_duplicate_instrumentation_of_futures(self):
@@ -79,11 +85,15 @@ class TestAsyncioDuplicateInstrument(TestBase):
         # Simulate calling the routine multiple times
         num_iterations = 10
         for _ in range(num_iterations):
-            asyncio.run(coordinator.run_routine(self.instrumentor))
+            self.loop.run_until_complete(
+                coordinator.run_routine(self.instrumentor)
+            )
 
         # Check for callback accumulation
         closing_cb_count = len(coordinator._closing._callbacks)
-        unsub_cb_count = len(coordinator.subscription.unsubscribe_future._callbacks)
+        unsub_cb_count = len(
+            coordinator.subscription.unsubscribe_future._callbacks
+        )
         rejoin_cb_count = len(coordinator._rejoin_needed_fut._callbacks)
 
         # If instrumentation is properly deduplicated, each Future might have ~1-2 callbacks.

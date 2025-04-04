@@ -93,6 +93,10 @@ from typing import Collection
 
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation.asyncio.instrumentation_state import (
+    _is_instrumented,
+    _mark_instrumented,
+)
 from opentelemetry.instrumentation.asyncio.package import _instruments
 from opentelemetry.instrumentation.asyncio.utils import (
     get_coros_to_trace,
@@ -107,7 +111,7 @@ from opentelemetry.trace import get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 ASYNCIO_PREFIX = "asyncio"
-_IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE = "_otel_asyncio_instrumented"
+
 
 class AsyncioInstrumentor(BaseInstrumentor):
     """
@@ -240,10 +244,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
         Trace a function, but if already instrumented, skip double-wrapping.
         """
-        if getattr(func, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+        if _is_instrumented(func):
             return func
 
-        setattr(func, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+        _mark_instrumented(func)
 
         start = default_timer()
         func_name = getattr(func, "__name__", None)
@@ -281,10 +285,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
         Wrap a coroutine so that we measure its duration, metrics, etc.
         If already instrumented, simply 'await coro' to preserve call behavior.
         """
-        if getattr(coro, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+        if _is_instrumented(coro):
             return await coro
 
-        setattr(coro, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+        _mark_instrumented(coro)
 
         if not hasattr(coro, "__name__"):
             return await coro
@@ -322,10 +326,10 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
         Wrap a Future's done callback. If already instrumented, skip re-wrapping.
         """
-        if getattr(future, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+        if _is_instrumented(future):
             return future
 
-        setattr(future, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+        _mark_instrumented(future)
 
         start = default_timer()
         span = (
