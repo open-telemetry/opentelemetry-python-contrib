@@ -78,38 +78,6 @@ for example:
     )
     ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
-
-Extensions
-----------
-
-The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
-for the following AWS services:
-
-- Bedrock Runtime
-- DynamoDB
-- Lambda
-- SNS
-- SQS
-
-Bedrock Runtime
-***************
-
-This extension implements the GenAI semantic conventions for the following API calls:
-
-- Converse
-- ConverseStream
-- InvokeModel
-- InvokeModelWithResponseStream
-
-For the Converse and ConverseStream APIs tracing, events and metrics are implemented.
-
-For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
-the available models, namely:
-- Amazon Titan models
-- Amazon Nova models
-- Anthropic Claude
-
-There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
 """
 
 import logging
