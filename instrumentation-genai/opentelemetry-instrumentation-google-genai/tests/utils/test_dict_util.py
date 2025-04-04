@@ -222,3 +222,56 @@ def test_flatten_with_complex_object_not_json_serializable_and_custom_flatten_fu
     assert output == {
         "cannot_serialize_directly": "blah",
     }
+
+def test_flatten_simple_homogenous_primitive_string_list():
+    input_dict = {
+        "list_value": ["abc", "def"]
+    }
+    assert dict_util.flatten_dict(input_dict) == input_dict
+
+def test_flatten_simple_homogenous_primitive_int_list():
+    input_dict = {
+        "list_value": [123, 456]
+    }
+    assert dict_util.flatten_dict(input_dict) == input_dict
+
+def test_flatten_simple_homogenous_primitive_bool_list():
+    input_dict = {
+        "list_value": [True, False]
+    }
+    assert dict_util.flatten_dict(input_dict) == input_dict
+
+def test_flatten_simple_heterogenous_primitive_list():
+    input_dict = {
+        "list_value": ["abc", 123]
+    }
+    assert dict_util.flatten_dict(input_dict) == {
+        "list_value.length": 2,
+        "list_value[0]": "abc",
+        "list_value[1]": 123,
+    }
+
+def test_flatten_list_of_compound_types():
+    input_dict = {
+        "list_value": [
+            {"a": 1, "b": 2},
+            {"x": 100, "y": 123, "z": 321},
+            "blah",
+            [
+                "abc",
+                123,
+            ],
+        ]
+    }
+    assert dict_util.flatten_dict(input_dict) == {
+        "list_value.length": 4,
+        "list_value[0].a": 1,
+        "list_value[0].b": 2,
+        "list_value[1].x": 100,
+        "list_value[1].y": 123,
+        "list_value[1].z": 321,
+        "list_value[2]": "blah",
+        "list_value[3].length": 2,
+        "list_value[3][0]": "abc",
+        "list_value[3][1]": 123,
+    }
