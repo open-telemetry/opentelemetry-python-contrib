@@ -19,8 +19,8 @@ from opentelemetry.instrumentation.google_genai import dict_util
 
 class PydanticModel(BaseModel):
     """Used to verify handling of pydantic models in the flattener."""
-    str_value: str
-    int_value: int
+    str_value: str = ""
+    int_value: int = 0
 
 
 class ModelDumpableNotPydantic:
@@ -274,4 +274,42 @@ def test_flatten_list_of_compound_types():
         "list_value[3].length": 2,
         "list_value[3][0]": "abc",
         "list_value[3][1]": 123,
+    }
+
+
+def test_handles_simple_output_from_flatten_func():
+    def f(*args, **kwargs):
+        return "baz"
+
+    input_dict = {
+        "foo": PydanticModel(),
+    }
+
+    output = dict_util.flatten_dict(
+        input_dict,
+        flatten_functions={"foo": f})
+
+    assert output == {
+        "foo": "baz",
+    }
+
+
+def test_handles_compound_output_from_flatten_func():
+    def f(*args, **kwargs):
+        return {
+            "baz": 123,
+            "qux": 456
+        }
+
+    input_dict = {
+        "foo": PydanticModel(),
+    }
+
+    output = dict_util.flatten_dict(
+        input_dict,
+        flatten_functions={"foo": f})
+
+    assert output == {
+        "foo.baz": 123,
+        "foo.qux": 456,
     }

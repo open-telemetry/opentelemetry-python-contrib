@@ -81,8 +81,12 @@ def _flatten_compound_value(
             rename_keys=rename_keys,
             flatten_functions=flatten_functions,
         )
-        if func_output is not None:
+        if func_output is None:
+            return {}
+        elif _is_primitive(func_output) or _is_homogenous_primitive_list(func_output):
             return {key: func_output}
+        else:
+            value = func_output
     if isinstance(value, dict):
         return _flatten_dict(
             value,
