@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import List
 from unittest.mock import MagicMock, patch
 
 from opentelemetry import trace
@@ -27,7 +27,7 @@ class TestThreading(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        self._mock_span_contexts: List[trace.SpanContext] = []
+        self._mock_span_contexts: list[trace.SpanContext] = []
         ThreadingInstrumentor().instrument()
 
     def tearDown(self):
@@ -63,7 +63,7 @@ class TestThreading(TestBase):
         max_workers = 10
         executor = ThreadPoolExecutor(max_workers=max_workers)
 
-        expected_span_contexts: List[trace.SpanContext] = []
+        expected_span_contexts: list[trace.SpanContext] = []
         futures_list = []
         for num in range(max_workers):
             with self._tracer.start_as_current_span(f"trace_{num}") as span:
@@ -267,9 +267,10 @@ class TestThreading(TestBase):
         autospec=True,
     )
     def test_thread_pool_with_none_context_token(self, mock_detach: MagicMock):
-        with self.get_root_span(), ThreadPoolExecutor(
-            max_workers=1
-        ) as executor:
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_not_called()
@@ -284,9 +285,10 @@ class TestThreading(TestBase):
     )
     @patch("opentelemetry.context.detach", autospec=True)
     def test_threadpool_with_valid_context_token(self, mock_detach: MagicMock):
-        with self.get_root_span(), ThreadPoolExecutor(
-            max_workers=1
-        ) as executor:
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_called_once()

@@ -42,8 +42,9 @@ API
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from types import CodeType
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, Callable, TypeVar
 
 import jinja2
 from jinja2.environment import Template

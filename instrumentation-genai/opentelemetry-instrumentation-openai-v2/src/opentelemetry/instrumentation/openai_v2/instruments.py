@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 

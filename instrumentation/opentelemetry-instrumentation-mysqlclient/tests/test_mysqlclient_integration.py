@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from unittest import mock
 
@@ -132,12 +133,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             cnx_proxy = MySQLClientInstrumentor().instrument_connection(
                 mock_connection,
@@ -172,12 +176,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             cnx_proxy = MySQLClientInstrumentor().instrument_connection(
                 mock_connection,
@@ -213,12 +220,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             cnx_proxy = MySQLClientInstrumentor().instrument_connection(
                 mock_connection,
@@ -258,12 +268,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             cnx_proxy = MySQLClientInstrumentor().instrument_connection(
                 mock_connection,
@@ -312,12 +325,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             MySQLClientInstrumentor()._instrument(
                 enable_commenter=True,
@@ -353,12 +369,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             MySQLClientInstrumentor()._instrument(
                 enable_commenter=True,
@@ -395,12 +414,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             MySQLClientInstrumentor()._instrument(
                 enable_commenter=True,
@@ -441,12 +463,15 @@ class TestMySQLClientIntegration(TestBase):
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
-        with mock.patch(
-            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
-            mock_connect_module,
-        ), mock.patch(
-            "opentelemetry.instrumentation.dbapi.util_version",
-            return_value="foobar",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+                mock_connect_module,
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.dbapi.util_version",
+                return_value="foobar",
+            ),
         ):
             MySQLClientInstrumentor()._instrument()
             cnx = mock_connect_module.connect(database="test")

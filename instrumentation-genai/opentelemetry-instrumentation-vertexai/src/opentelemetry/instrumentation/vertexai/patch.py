@@ -14,13 +14,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, MutableSequence
 from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
-    MutableSequence,
 )
 
 from opentelemetry._events import EventLogger

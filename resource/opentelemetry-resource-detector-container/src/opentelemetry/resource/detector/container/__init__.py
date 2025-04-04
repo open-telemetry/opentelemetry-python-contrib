@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from logging import getLogger
 
@@ -73,7 +74,7 @@ class ContainerResourceDetector(ResourceDetector):
     docker container and return it in a Resource
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         try:
             container_id = _get_container_id()
             resource = Resource.get_empty()

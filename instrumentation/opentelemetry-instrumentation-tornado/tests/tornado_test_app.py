@@ -1,4 +1,6 @@
 # pylint: disable=W0223,R0201
+from __future__ import annotations
+
 import time
 
 import tornado.web

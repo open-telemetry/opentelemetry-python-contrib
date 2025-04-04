@@ -50,7 +50,9 @@ Run instrumented task
 API
 ---
 """
+
 # pylint: disable=import-error
+from __future__ import annotations
 
 from .aio_pika_instrumentor import AioPikaInstrumentor
 from .version import __version__

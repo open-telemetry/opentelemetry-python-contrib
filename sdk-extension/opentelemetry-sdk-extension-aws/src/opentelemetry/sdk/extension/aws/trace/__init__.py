@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint:disable=no-name-in-module
+from __future__ import annotations
 
 from opentelemetry.sdk.extension.aws.trace.aws_xray_id_generator import (
     AwsXRayIdGenerator,

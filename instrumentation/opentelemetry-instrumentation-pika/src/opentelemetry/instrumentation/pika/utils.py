@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable
 
 from pika.adapters.blocking_connection import (
     _ConsumerDeliveryEvt,
@@ -23,13 +25,13 @@ _LOG = getLogger(__name__)
 
 
 class _PikaGetter(Getter[CarrierT]):  # type: ignore
-    def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: CarrierT, key: str) -> list[str] | None:
         value = carrier.get(key, None)
         if value is None:
             return None
         return [value]
 
-    def keys(self, carrier: CarrierT) -> List[str]:
+    def keys(self, carrier: CarrierT) -> list[str]:
         return []
 
 
@@ -132,13 +134,13 @@ def _decorate_basic_publish(
 
 def _get_span(
     tracer: Tracer,
-    channel: Optional[Channel],
+    channel: Channel | None,
     properties: BasicProperties,
     task_name: str,
     destination: str,
     span_kind: SpanKind,
-    operation: Optional[MessagingOperationValues] = None,
-) -> Optional[Span]:
+    operation: MessagingOperationValues | None = None,
+) -> Span | None:
     if not is_instrumentation_enabled():
         return None
     task_name = properties.type if properties.type else task_name
@@ -152,7 +154,7 @@ def _get_span(
 
 
 def _generate_span_name(
-    task_name: str, operation: Optional[MessagingOperationValues]
+    task_name: str, operation: MessagingOperationValues | None
 ) -> str:
     if not operation:
         return f"{task_name} send"
@@ -161,10 +163,10 @@ def _generate_span_name(
 
 def _enrich_span(
     span: Span,
-    channel: Optional[Channel],
+    channel: Channel | None,
     properties: BasicProperties,
     task_destination: str,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: MessagingOperationValues | None = None,
 ) -> None:
     span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq")
     if operation:
@@ -204,7 +206,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         self,
         wrapped,
         queue_consumer_generator: _QueueConsumerGeneratorInfo,
-        tracer: Optional[Tracer],
+        tracer: Tracer | None,
         consume_hook: HookT = dummy_callback,
     ):
         super().__init__(wrapped)

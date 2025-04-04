@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import aiormq
 from aio_pika import Exchange
@@ -29,7 +31,7 @@ class PublishDecorator:
 
     def _get_publish_span(
         self, message: AbstractMessage, routing_key: str
-    ) -> Optional[Span]:
+    ) -> Span | None:
         builder = SpanBuilder(self._tracer)
         builder.set_as_producer()
         builder.set_destination(f"{self._exchange.name},{routing_key}")
@@ -40,7 +42,7 @@ class PublishDecorator:
     def decorate(self, publish: Callable) -> Callable:
         async def decorated_publish(
             message: AbstractMessage, routing_key: str, **kwargs
-        ) -> Optional[aiormq.abc.ConfirmationFrameType]:
+        ) -> aiormq.abc.ConfirmationFrameType | None:
             span = self._get_publish_span(message, routing_key)
             if not span:
                 return await publish(message, routing_key, **kwargs)

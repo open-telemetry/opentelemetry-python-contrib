@@ -19,9 +19,12 @@
 
 """Implementation of the invocation-side open-telemetry interceptor."""
 
+from __future__ import annotations
+
 import logging
 from collections import OrderedDict
-from typing import Callable, MutableMapping
+from collections.abc import MutableMapping
+from typing import Callable
 
 import grpc
 

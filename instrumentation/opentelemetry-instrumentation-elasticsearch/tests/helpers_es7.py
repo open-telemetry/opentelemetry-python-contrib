@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from elasticsearch_dsl import (  # pylint: disable=unused-import
     Document,
     Keyword,

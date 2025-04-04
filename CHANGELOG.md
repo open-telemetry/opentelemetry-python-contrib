@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
   ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
 
+### Deprecated
+
+- Drop support for Python 3.8, bump baseline to Python 3.9.
+([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
+
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
 ### Added

@@ -80,8 +80,11 @@ for example:
     ec2.describe_instances()
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from collections.abc import Collection
+from typing import Any, Callable
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -140,7 +143,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         # meters are lazy initialized per-extension in _get_meter
         self._meters = {}
         # metrics are lazy initialized per-extension in _get_metrics
-        self._metrics: Dict[str, Dict[str, Instrument]] = {}
+        self._metrics: dict[str, dict[str, Instrument]] = {}
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
@@ -229,7 +232,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def _get_metrics(
         self, extension: _AwsSdkExtension, meter: Meter
-    ) -> Dict[str, Instrument]:
+    ) -> dict[str, Instrument]:
         """This is a multiplexer for lazy initialization of metrics required by extensions"""
         instrumentation_name = self._get_instrumentation_name(extension)
         metrics = self._metrics.get(instrumentation_name)
@@ -375,8 +378,8 @@ def _apply_response_attributes(span: Span, result):
 
 
 def _determine_call_context(
-    client: BaseClient, args: Tuple[str, Dict[str, Any]]
-) -> Optional[_AwsSdkCallContext]:
+    client: BaseClient, args: tuple[str, dict[str, Any]]
+) -> _AwsSdkCallContext | None:
     try:
         call_context = _AwsSdkCallContext(client, args)
 

@@ -38,8 +38,9 @@ run method or the executor's worker thread."
 from __future__ import annotations
 
 import threading
+from collections.abc import Collection
 from concurrent import futures
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from typing import TYPE_CHECKING, Any, Callable
 
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]

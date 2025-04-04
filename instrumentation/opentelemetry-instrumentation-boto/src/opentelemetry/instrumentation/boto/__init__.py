@@ -41,9 +41,11 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection
 from inspect import currentframe
-from typing import Collection
 
 from boto.connection import AWSAuthConnection, AWSQueryConnection
 from wrapt import wrap_function_wrapper

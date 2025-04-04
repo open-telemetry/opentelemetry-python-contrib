@@ -143,7 +143,9 @@ API
 ---
 """
 
-from typing import Collection
+from __future__ import annotations
+
+from collections.abc import Collection
 
 import mysql.connector
 

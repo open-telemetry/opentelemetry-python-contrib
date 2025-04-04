@@ -49,8 +49,10 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import re
-from typing import Collection
+from collections.abc import Collection
 
 import asyncpg
 import wrapt

@@ -2,6 +2,8 @@
 https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
 """
 
+from __future__ import annotations
+
 MOCK_LAMBDA_SNS_EVENT = {
     "Records": [
         {

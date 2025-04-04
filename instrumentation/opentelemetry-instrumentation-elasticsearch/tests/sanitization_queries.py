@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 interval_query = {
     "query": {
         "intervals": {

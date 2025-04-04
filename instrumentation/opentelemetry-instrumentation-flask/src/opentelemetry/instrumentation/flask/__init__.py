@@ -245,11 +245,13 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import weakref
+from collections.abc import Collection
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Collection
 
 import flask
 from packaging import version as package_version

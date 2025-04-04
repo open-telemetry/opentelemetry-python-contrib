@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 MOCK_LAMBDA_ALB_EVENT = {
     "requestContext": {
         "elb": {

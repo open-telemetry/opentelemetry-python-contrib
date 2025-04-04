@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import json
 import logging
 import os
 import time
-from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
+from collections.abc import AsyncIterator, Awaitable, Iterator
+from typing import Any
 
 from google.genai.models import AsyncModels, Models
 from google.genai.types import (
@@ -103,7 +106,7 @@ def _guess_genai_system_from_env():
     return _get_gemini_system_name()
 
 
-def _get_is_vertexai(models_object: Union[Models, AsyncModels]):
+def _get_is_vertexai(models_object: Models | AsyncModels):
     # Since commit 8e561de04965bb8766db87ad8eea7c57c1040442 of "googleapis/python-genai",
     # it is possible to obtain the information using a documented property.
     if hasattr(models_object, "vertexai"):
@@ -120,7 +123,7 @@ def _get_is_vertexai(models_object: Union[Models, AsyncModels]):
     return None
 
 
-def _determine_genai_system(models_object: Union[Models, AsyncModels]):
+def _determine_genai_system(models_object: Models | AsyncModels):
     vertexai_attr = _get_is_vertexai(models_object)
     if vertexai_attr is None:
         return _guess_genai_system_from_env()
@@ -130,7 +133,7 @@ def _determine_genai_system(models_object: Union[Models, AsyncModels]):
 
 
 def _get_config_property(
-    config: Optional[GenerateContentConfigOrDict], path: str
+    config: GenerateContentConfigOrDict | None, path: str
 ) -> Any:
     if config is None:
         return None
@@ -159,15 +162,15 @@ def _get_response_property(response: GenerateContentResponse, path: str):
     return current_context
 
 
-def _get_temperature(config: Optional[GenerateContentConfigOrDict]):
+def _get_temperature(config: GenerateContentConfigOrDict | None):
     return _get_config_property(config, "temperature")
 
 
-def _get_top_k(config: Optional[GenerateContentConfigOrDict]):
+def _get_top_k(config: GenerateContentConfigOrDict | None):
     return _get_config_property(config, "top_k")
 
 
-def _get_top_p(config: Optional[GenerateContentConfigOrDict]):
+def _get_top_p(config: GenerateContentConfigOrDict | None):
     return _get_config_property(config, "top_p")
 
 
@@ -200,7 +203,7 @@ def _to_dict(value: object):
 class _GenerateContentInstrumentationHelper:
     def __init__(
         self,
-        models_object: Union[Models, AsyncModels],
+        models_object: Models | AsyncModels,
         otel_wrapper: OTelWrapper,
         model: str,
     ):
@@ -233,8 +236,8 @@ class _GenerateContentInstrumentationHelper:
 
     def process_request(
         self,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict],
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None,
     ):
         span = trace.get_current_span()
         for (
@@ -315,7 +318,7 @@ class _GenerateContentInstrumentationHelper:
         self._error_type = f"BLOCKED_{block_reason}"
 
     def _maybe_log_system_instruction(
-        self, config: Optional[GenerateContentConfigOrDict] = None
+        self, config: GenerateContentConfigOrDict | None = None
     ):
         system_instruction = _get_config_property(config, "system_instruction")
         if not system_instruction:
@@ -340,7 +343,7 @@ class _GenerateContentInstrumentationHelper:
         )
 
     def _maybe_log_user_prompt(
-        self, contents: Union[ContentListUnion, ContentListUnionDict]
+        self, contents: ContentListUnion | ContentListUnionDict
     ):
         if isinstance(contents, list):
             total = len(contents)
@@ -354,7 +357,7 @@ class _GenerateContentInstrumentationHelper:
             self._maybe_log_single_user_prompt(contents)
 
     def _maybe_log_single_user_prompt(
-        self, contents: Union[ContentUnion, ContentUnionDict], index=0, total=1
+        self, contents: ContentUnion | ContentUnionDict, index=0, total=1
     ):
         # TODO: figure out how to report the index in a manner that is
         # aligned with the OTel semantic conventions.
@@ -508,8 +511,8 @@ def _create_instrumented_generate_content(
         self: Models,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(
@@ -548,8 +551,8 @@ def _create_instrumented_generate_content_stream(
         self: Models,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
         helper = _GenerateContentInstrumentationHelper(
@@ -588,8 +591,8 @@ def _create_instrumented_async_generate_content(
         self: AsyncModels,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(
@@ -629,8 +632,8 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         self: AsyncModels,
         *,
         model: str,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        contents: ContentListUnion | ContentListUnionDict,
+        config: GenerateContentConfigOrDict | None = None,
         **kwargs: Any,
     ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(

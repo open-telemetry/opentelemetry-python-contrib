@@ -93,7 +93,8 @@ API
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Collection
+from collections.abc import Collection
+from typing import TYPE_CHECKING, Any, Callable
 
 import redis
 from wrapt import wrap_function_wrapper
@@ -113,7 +114,8 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, StatusCode, Tracer
 
 if TYPE_CHECKING:
-    from typing import Awaitable, TypeVar
+    from collections.abc import Awaitable
+    from typing import TypeVar
 
     import redis.asyncio.client
     import redis.asyncio.cluster

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint: disable=unnecessary-dunder-call
+from __future__ import annotations
 
 from unittest import TestCase, mock
 

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import asyncio
 import os
 
@@ -108,8 +110,9 @@ class TestFunctionalAiopgConnect(TestBase):
 
     def test_callproc(self):
         """Should create a child span for callproc"""
-        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
-            Exception
+        with (
+            self._tracer.start_as_current_span("rootSpan"),
+            self.assertRaises(Exception),
         ):
             async_call(self._cursor.callproc("test", ()))
             self.validate_spans("test")
@@ -194,8 +197,9 @@ class TestFunctionalAiopgCreatePool(TestBase):
 
     def test_callproc(self):
         """Should create a child span for callproc"""
-        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
-            Exception
+        with (
+            self._tracer.start_as_current_span("rootSpan"),
+            self.assertRaises(Exception),
         ):
             async_call(self._cursor.callproc("test", ()))
             self.validate_spans("test")

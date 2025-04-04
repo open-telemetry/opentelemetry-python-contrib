@@ -59,8 +59,9 @@ API
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Collection
 from sqlite3 import dbapi2
-from typing import Any, Collection, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor

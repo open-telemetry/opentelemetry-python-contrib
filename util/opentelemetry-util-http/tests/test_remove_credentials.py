@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from opentelemetry.util.http import remove_url_credentials

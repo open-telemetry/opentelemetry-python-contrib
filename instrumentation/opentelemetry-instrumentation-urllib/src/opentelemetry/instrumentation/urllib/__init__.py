@@ -86,9 +86,10 @@ from __future__ import annotations
 import functools
 import types
 import typing
+from collections.abc import Collection
 from http import client
 from timeit import default_timer
-from typing import Any, Collection
+from typing import Any
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,

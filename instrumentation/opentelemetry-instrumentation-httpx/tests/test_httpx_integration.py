@@ -14,6 +14,8 @@
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 import abc
 import asyncio
 import typing
@@ -75,7 +77,7 @@ if typing.TYPE_CHECKING:
 HTTP_RESPONSE_BODY = "http.response.body"
 
 
-def _is_url_tuple(request: "RequestInfo"):
+def _is_url_tuple(request: RequestInfo):
     """Determine if request url format is for httpx versions < 0.20.0."""
     return isinstance(request[1], tuple) and len(request[1]) == 4
 
@@ -85,7 +87,7 @@ def _async_call(coro: typing.Coroutine) -> asyncio.Task:
     return loop.run_until_complete(coro)
 
 
-def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
+def _response_hook(span, request: RequestInfo, response: ResponseInfo):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
@@ -94,7 +96,7 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
 
 
 async def _async_response_hook(
-    span: "Span", request: "RequestInfo", response: "ResponseInfo"
+    span: Span, request: RequestInfo, response: ResponseInfo
 ):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
@@ -103,23 +105,23 @@ async def _async_response_hook(
     )
 
 
-def _request_hook(span: "Span", request: "RequestInfo"):
+def _request_hook(span: Span, request: RequestInfo):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
-async def _async_request_hook(span: "Span", request: "RequestInfo"):
+async def _async_request_hook(span: Span, request: RequestInfo):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
-def _no_update_request_hook(span: "Span", request: "RequestInfo"):
+def _no_update_request_hook(span: Span, request: RequestInfo):
     return 123
 
 
-async def _async_no_update_request_hook(span: "Span", request: "RequestInfo"):
+async def _async_no_update_request_hook(span: Span, request: RequestInfo):
     return 123
 
 
@@ -175,7 +177,7 @@ class BaseTestCases:
             HTTPXClientInstrumentor().uninstrument()
 
         def assert_span(
-            self, exporter: "SpanExporter" = None, num_spans: int = 1
+            self, exporter: SpanExporter = None, num_spans: int = 1
         ):
             if exporter is None:
                 exporter = self.memory_exporter
@@ -192,8 +194,8 @@ class BaseTestCases:
             self,
             url: str,
             method: str = "GET",
-            headers: typing.Dict[str, str] = None,
-            client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+            headers: dict[str, str] = None,
+            client: httpx.Client | httpx.AsyncClient | None = None,
         ):
             pass
 
@@ -583,9 +585,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_transport(
             self,
-            tracer_provider: typing.Optional["TracerProvider"] = None,
-            request_hook: typing.Optional["RequestHook"] = None,
-            response_hook: typing.Optional["ResponseHook"] = None,
+            tracer_provider: TracerProvider | None = None,
+            request_hook: RequestHook | None = None,
+            response_hook: ResponseHook | None = None,
             **kwargs,
         ):
             pass
@@ -593,9 +595,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: typing.Union[
-                SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
-            ] = None,
+            transport: (
+                SyncOpenTelemetryTransport | AsyncOpenTelemetryTransport | None
+            ) = None,
             **kwargs,
         ):
             pass
@@ -730,9 +732,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: typing.Union[
-                SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport, None
-            ] = None,
+            transport: (
+                SyncOpenTelemetryTransport | AsyncOpenTelemetryTransport | None
+            ) = None,
             **kwargs,
         ):
             pass
@@ -1095,9 +1097,9 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
 
     def create_transport(
         self,
-        tracer_provider: typing.Optional["TracerProvider"] = None,
-        request_hook: typing.Optional["RequestHook"] = None,
-        response_hook: typing.Optional["ResponseHook"] = None,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: RequestHook | None = None,
+        response_hook: ResponseHook | None = None,
         **kwargs,
     ):
         transport = httpx.HTTPTransport(**kwargs)
@@ -1111,7 +1113,7 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
 
     def create_client(
         self,
-        transport: typing.Optional[SyncOpenTelemetryTransport] = None,
+        transport: SyncOpenTelemetryTransport | None = None,
         **kwargs,
     ):
         return httpx.Client(transport=transport, **kwargs)
@@ -1120,8 +1122,8 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         self,
         url: str,
         method: str = "GET",
-        headers: typing.Dict[str, str] = None,
-        client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+        headers: dict[str, str] = None,
+        client: httpx.Client | httpx.AsyncClient | None = None,
     ):
         if client is None:
             return self.client.request(method, url, headers=headers)
@@ -1147,9 +1149,9 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
 
     def create_transport(
         self,
-        tracer_provider: typing.Optional["TracerProvider"] = None,
-        request_hook: typing.Optional["AsyncRequestHook"] = None,
-        response_hook: typing.Optional["AsyncResponseHook"] = None,
+        tracer_provider: TracerProvider | None = None,
+        request_hook: AsyncRequestHook | None = None,
+        response_hook: AsyncResponseHook | None = None,
         **kwargs,
     ):
         transport = httpx.AsyncHTTPTransport(**kwargs)
@@ -1163,7 +1165,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
 
     def create_client(
         self,
-        transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
+        transport: AsyncOpenTelemetryTransport | None = None,
         **kwargs,
     ):
         return httpx.AsyncClient(transport=transport, **kwargs)
@@ -1172,8 +1174,8 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         self,
         url: str,
         method: str = "GET",
-        headers: typing.Dict[str, str] = None,
-        client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+        headers: dict[str, str] = None,
+        client: httpx.Client | httpx.AsyncClient | None = None,
     ):
         async def _perform_request():
             nonlocal client
@@ -1207,7 +1209,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
     def create_client(
         self,
-        transport: typing.Optional[SyncOpenTelemetryTransport] = None,
+        transport: SyncOpenTelemetryTransport | None = None,
         **kwargs,
     ):
         return httpx.Client(**kwargs)
@@ -1216,8 +1218,8 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self,
         url: str,
         method: str = "GET",
-        headers: typing.Dict[str, str] = None,
-        client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+        headers: dict[str, str] = None,
+        client: httpx.Client | httpx.AsyncClient | None = None,
     ):
         if client is None:
             return self.client.request(method, url, headers=headers)
@@ -1257,7 +1259,7 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
     def create_client(
         self,
-        transport: typing.Optional[AsyncOpenTelemetryTransport] = None,
+        transport: AsyncOpenTelemetryTransport | None = None,
         **kwargs,
     ):
         return httpx.AsyncClient(**kwargs)
@@ -1266,8 +1268,8 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self,
         url: str,
         method: str = "GET",
-        headers: typing.Dict[str, str] = None,
-        client: typing.Union[httpx.Client, httpx.AsyncClient, None] = None,
+        headers: dict[str, str] = None,
+        client: httpx.Client | httpx.AsyncClient | None = None,
     ):
         async def _perform_request():
             nonlocal client

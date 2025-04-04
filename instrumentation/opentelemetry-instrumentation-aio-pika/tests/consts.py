@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from argparse import Namespace
 
 from aio_pika import __version__ as aiopika_version

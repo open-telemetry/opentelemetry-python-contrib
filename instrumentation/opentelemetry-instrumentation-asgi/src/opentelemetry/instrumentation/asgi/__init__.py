@@ -194,9 +194,10 @@ from __future__ import annotations
 import typing
 import urllib
 from collections import defaultdict
+from collections.abc import Awaitable
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, DefaultDict, Tuple
+from typing import Any, Callable, DefaultDict
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -264,9 +265,7 @@ from opentelemetry.util.http import (
 
 
 class ASGIGetter(Getter[dict]):
-    def get(
-        self, carrier: dict, key: str
-    ) -> typing.Optional[typing.List[str]]:
+    def get(self, carrier: dict, key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the ASGI
         scope.
 
@@ -292,7 +291,7 @@ class ASGIGetter(Getter[dict]):
             return None
         return decoded
 
-    def keys(self, carrier: dict) -> typing.List[str]:
+    def keys(self, carrier: dict) -> list[str]:
         headers = carrier.get("headers") or []
         return [_decode_header_item(_key) for (_key, _value) in headers]
 
@@ -460,7 +459,7 @@ def set_status_code(
     )
 
 
-def get_default_span_details(scope: dict) -> Tuple[str, dict]:
+def get_default_span_details(scope: dict) -> tuple[str, dict]:
     """
     Default span name is the HTTP method and URL path, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
@@ -483,8 +482,8 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
 
 
 def _collect_target_attribute(
-    scope: typing.Dict[str, typing.Any],
-) -> typing.Optional[str]:
+    scope: dict[str, typing.Any],
+) -> str | None:
     """
     Returns the target path as defined by the Semantic Conventions.
 

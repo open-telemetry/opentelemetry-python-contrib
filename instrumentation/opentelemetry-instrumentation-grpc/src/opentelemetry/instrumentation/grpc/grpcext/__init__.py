@@ -15,6 +15,7 @@
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
 # pylint:disable=no-name-in-module
+from __future__ import annotations
 
 import abc
 

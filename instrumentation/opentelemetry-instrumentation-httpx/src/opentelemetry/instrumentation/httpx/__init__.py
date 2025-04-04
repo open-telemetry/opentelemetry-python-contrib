@@ -571,13 +571,13 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         self._request_hook = request_hook
         self._response_hook = response_hook
 
-    async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
+    async def __aenter__(self) -> AsyncOpenTelemetryTransport:
         await self._transport.__aenter__()
         return self
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:

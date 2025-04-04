@@ -1,4 +1,5 @@
 # Generated via `sam local generate-event apigateway http-api-proxy`
+from __future__ import annotations
 
 MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT = {
     "version": "2.0",

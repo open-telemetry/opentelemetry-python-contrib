@@ -35,10 +35,12 @@ Usage
 API
 ---
 """
+
 # pylint: disable=no-value-for-parameter
+from __future__ import annotations
 
 import logging
-from typing import Collection
+from collections.abc import Collection
 
 import pymemcache
 from wrapt import wrap_function_wrapper as _wrap

@@ -21,6 +21,8 @@
 Implementation of the service-side open-telemetry interceptor.
 """
 
+from __future__ import annotations
+
 import logging
 from contextlib import contextmanager
 from urllib.parse import unquote

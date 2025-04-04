@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from os import environ
-from typing import Mapping, Optional, Union
 from urllib.parse import urlparse
 
 from httpx import URL
@@ -179,7 +181,7 @@ def is_streaming(kwargs):
     return non_numerical_value_is_set(kwargs.get("stream"))
 
 
-def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
+def non_numerical_value_is_set(value: bool | str | None):
     return bool(value) and value != NOT_GIVEN
 
 

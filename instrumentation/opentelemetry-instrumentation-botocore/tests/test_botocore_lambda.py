@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import io
 import json
@@ -114,7 +115,7 @@ class TestLambdaExtension(TestBase):
 
         self.client.create_function(
             FunctionName=function_name,
-            Runtime="python3.8",
+            Runtime="python3.9",
             Role=role_arn,
             Handler="lambda_function.lambda_handler",
             Code={

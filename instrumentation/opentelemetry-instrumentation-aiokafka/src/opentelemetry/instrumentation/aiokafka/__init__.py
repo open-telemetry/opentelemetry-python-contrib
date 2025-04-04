@@ -69,8 +69,10 @@ API
 ___
 """
 
+from __future__ import annotations
+
 from asyncio import iscoroutinefunction
-from typing import Collection
+from collections.abc import Collection
 
 import aiokafka
 from wrapt import wrap_function_wrapper

@@ -94,8 +94,9 @@ import logging
 import os
 import sys
 import threading
+from collections.abc import Collection, Iterable
 from platform import python_implementation
-from typing import Any, Collection, Iterable
+from typing import Any
 
 import psutil
 

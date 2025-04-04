@@ -37,7 +37,9 @@ API
 ---
 """
 
-from typing import Collection
+from __future__ import annotations
+
+from collections.abc import Collection
 
 import cassandra.cluster
 from wrapt import wrap_function_wrapper

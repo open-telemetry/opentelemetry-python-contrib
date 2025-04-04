@@ -1,5 +1,7 @@
 """Test script to check given paths for valid README.rst files."""
 
+from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path

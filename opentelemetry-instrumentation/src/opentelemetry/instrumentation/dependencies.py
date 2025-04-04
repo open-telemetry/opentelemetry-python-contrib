@@ -14,8 +14,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from logging import getLogger
-from typing import Collection
 
 from packaging.requirements import InvalidRequirement, Requirement
 

@@ -1,4 +1,6 @@
 # pylint: skip-file
+from __future__ import annotations
+
 import vertexai
 from vertexai.generative_models import GenerativeModel
 

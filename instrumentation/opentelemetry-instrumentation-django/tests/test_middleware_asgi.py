@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=E0611
+from __future__ import annotations
 
 from sys import modules
 from unittest.mock import Mock, patch

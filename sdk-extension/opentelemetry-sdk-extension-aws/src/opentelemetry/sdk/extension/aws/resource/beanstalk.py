@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import json
 import logging
@@ -33,7 +34,7 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
     NOTE: Requires enabling X-Ray on Beanstalk Environment. See more here: https://docs.aws.amazon.com/xray/latest/devguide/xray-services-beanstalk.html
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         if os.name == "nt":
             conf_file_path = (
                 "C:\\Program Files\\Amazon\\XRay\\environment.conf"

@@ -14,6 +14,7 @@
 
 # pylint: disable=E0611
 # pylint: disable=too-many-lines
+from __future__ import annotations
 
 from sys import modules
 from timeit import default_timer

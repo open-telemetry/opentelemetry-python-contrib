@@ -1,4 +1,5 @@
 # Generated via `sam local generate-event apigateway aws-proxy`
+from __future__ import annotations
 
 MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT = {
     "body": "eyJ0ZXN0IjoiYm9keSJ9",

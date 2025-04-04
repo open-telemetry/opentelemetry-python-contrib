@@ -68,7 +68,8 @@ For example:
 
 from __future__ import annotations
 
-from typing import Any, Callable, Collection, NamedTuple
+from collections.abc import Collection
+from typing import Any, Callable, NamedTuple
 
 import pymssql
 

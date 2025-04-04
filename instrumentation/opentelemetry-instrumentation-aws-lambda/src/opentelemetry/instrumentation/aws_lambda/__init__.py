@@ -69,11 +69,14 @@ for example:
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
+from collections.abc import Collection
 from importlib import import_module
-from typing import Any, Callable, Collection
+from typing import Any, Callable
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper

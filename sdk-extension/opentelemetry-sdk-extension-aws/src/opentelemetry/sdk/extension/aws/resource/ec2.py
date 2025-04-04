@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import json
 import logging
@@ -79,7 +80,7 @@ class AwsEc2ResourceDetector(ResourceDetector):
     Uses a special URI to get instance meta-data. See more: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
     """
 
-    def detect(self) -> "Resource":
+    def detect(self) -> Resource:
         try:
             # If can't get a token quick assume we are not on ec2
             try:

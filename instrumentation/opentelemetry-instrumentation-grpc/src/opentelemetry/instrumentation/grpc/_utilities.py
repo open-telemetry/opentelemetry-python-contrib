@@ -14,6 +14,8 @@
 
 """Internal utilities."""
 
+from __future__ import annotations
+
 import grpc
 
 from opentelemetry.trace.status import Status, StatusCode

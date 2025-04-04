@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 from timeit import default_timer
-from typing import Optional
 
 from openai import Stream
 
@@ -159,7 +159,7 @@ def _record_metrics(
     duration: float,
     result,
     span_attributes: dict,
-    error_type: Optional[str],
+    error_type: str | None,
 ):
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
@@ -300,12 +300,12 @@ class ChoiceBuffer:
 
 class StreamWrapper:
     span: Span
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
+    response_id: str | None = None
+    response_model: str | None = None
+    service_tier: str | None = None
     finish_reasons: list = []
-    prompt_tokens: Optional[int] = 0
-    completion_tokens: Optional[int] = 0
+    prompt_tokens: int | None = 0
+    completion_tokens: int | None = 0
 
     def __init__(
         self,

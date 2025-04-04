@@ -2,6 +2,8 @@
 https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
 """
 
+from __future__ import annotations
+
 MOCK_LAMBDA_DYNAMO_DB_EVENT = {
     "Records": [
         {
