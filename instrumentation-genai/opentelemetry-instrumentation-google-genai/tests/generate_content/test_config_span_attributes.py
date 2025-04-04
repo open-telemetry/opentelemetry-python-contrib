@@ -98,7 +98,7 @@ class ConfigSpanAttributesTestCase(TestCase):
             config={"system_instruction": "Yadda yadda yadda"}
         )
         self.assertNotIn(
-            "gen_ai.gcp.request.system_instruction", span.attributes
+            "gcp.gen_ai.request.system_instruction", span.attributes
         )
         self.assertNotIn("gen_ai.request.system_instruction", span.attributes)
         for key in span.attributes:
@@ -118,11 +118,11 @@ class ConfigSpanAttributesTestCase(TestCase):
             }
         )
         self.assertEqual(
-            span.attributes["gen_ai.gcp.request.http_options.base_url"],
+            span.attributes["gcp.gen_ai.request.http_options.base_url"],
             "my.backend.override",
         )
         self.assertNotIn(
-            "gen_ai.gcp.request.http_options.headers.sensitive",
+            "gcp.gen_ai.request.http_options.headers.sensitive",
             span.attributes,
         )
 
@@ -136,6 +136,6 @@ class ConfigSpanAttributesTestCase(TestCase):
         )
         self.assertTrue(
             span.attributes[
-                "gen_ai.gcp.request.automatic_function_calling.ignore_call_history"
+                "gcp.gen_ai.request.automatic_function_calling.ignore_call_history"
             ]
         )

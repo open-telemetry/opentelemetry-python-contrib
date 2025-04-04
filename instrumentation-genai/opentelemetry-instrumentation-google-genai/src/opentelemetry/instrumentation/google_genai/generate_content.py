@@ -161,10 +161,10 @@ def _add_request_options_to_span(
         exclude_keys=[
             # System instruction can be overly long for a span attribute.
             # Additionally, it is recorded as an event (log), instead.
-            "gen_ai.gcp.request.system_instruction",
+            "gcp.gen_ai.request.system_instruction",
             # Headers could include sensitive information, therefore it is
             # best that we not record these options.
-            "gen_ai.gcp.request.http_options.headers",
+            "gcp.gen_ai.request.http_options.headers",
         ],
         # Although a custom prefix is used by default, some of the attributes
         # are captured in common, standard, Semantic Conventions. For the
@@ -173,15 +173,15 @@ def _add_request_options_to_span(
         rename_keys={
             # TODO: add more entries here as more semantic conventions are
             # generalized to cover more of the available config options.
-            "gen_ai.gcp.request.temperature": "gen_ai.request.temperature",
-            "gen_ai.gcp.request.top_k": "gen_ai.request.top_k",
-            "gen_ai.gcp.request.top_p": "gen_ai.request.top_p",
-            "gen_ai.gcp.request.candidate_count": "gen_ai.request.choice.count",
-            "gen_ai.gcp.request.max_output_tokens": "gen_ai.request.max_tokens",
-            "gen_ai.gcp.request.stop_sequences": "gen_ai.request.stop_sequences",
-            "gen_ai.gcp.request.frequency_penalty": "gen_ai.request.frequency_penalty",
-            "gen_ai.gcp.request.presence_penalty": "gen_ai.request.presence_penalty",
-            "gen_ai.gcp.request.seed": "gen_ai.request.seed",
+            "gcp.gen_ai.request.temperature": "gen_ai.request.temperature",
+            "gcp.gen_ai.request.top_k": "gen_ai.request.top_k",
+            "gcp.gen_ai.request.top_p": "gen_ai.request.top_p",
+            "gcp.gen_ai.request.candidate_count": "gen_ai.request.choice.count",
+            "gcp.gen_ai.request.max_output_tokens": "gen_ai.request.max_tokens",
+            "gcp.gen_ai.request.stop_sequences": "gen_ai.request.stop_sequences",
+            "gcp.gen_ai.request.frequency_penalty": "gen_ai.request.frequency_penalty",
+            "gcp.gen_ai.request.presence_penalty": "gen_ai.request.presence_penalty",
+            "gcp.gen_ai.request.seed": "gen_ai.request.seed",
         },
     )
     span.set_attributes(attributes)

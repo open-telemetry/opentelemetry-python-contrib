@@ -15,4 +15,4 @@
 
 # Prefix to use for LLM model request attributes that are unique GCP
 # (or that have not yet been formally defined in the GenAI/LLM SIG).
-CUSTOM_LLM_REQUEST_PREFIX = "gen_ai.gcp.request"
+CUSTOM_LLM_REQUEST_PREFIX = "gcp.gen_ai.request"
