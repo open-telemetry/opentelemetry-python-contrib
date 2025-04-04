@@ -107,7 +107,7 @@ from opentelemetry.trace import get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 ASYNCIO_PREFIX = "asyncio"
-
+_IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE = "_otel_asyncio_instrumented"
 
 class AsyncioInstrumentor(BaseInstrumentor):
     """
@@ -237,7 +237,14 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
     def trace_to_thread(self, func: callable):
-        """Trace a function."""
+        """
+        Trace a function, but if already instrumented, skip double-wrapping.
+        """
+        if getattr(func, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+            return func
+
+        setattr(func, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+
         start = default_timer()
         func_name = getattr(func, "__name__", None)
         if func_name is None and isinstance(func, functools.partial):
@@ -270,6 +277,15 @@ class AsyncioInstrumentor(BaseInstrumentor):
         return coro_or_future
 
     async def trace_coroutine(self, coro):
+        """
+        Wrap a coroutine so that we measure its duration, metrics, etc.
+        If already instrumented, simply 'await coro' to preserve call behavior.
+        """
+        if getattr(coro, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+            return await coro
+
+        setattr(coro, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+
         if not hasattr(coro, "__name__"):
             return await coro
         start = default_timer()
@@ -303,6 +319,14 @@ class AsyncioInstrumentor(BaseInstrumentor):
             self.record_process(start, attr, span, exception)
 
     def trace_future(self, future):
+        """
+        Wrap a Future's done callback. If already instrumented, skip re-wrapping.
+        """
+        if getattr(future, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, False):
+            return future
+
+        setattr(future, _IS_ASYNCIO_INSTRUMENTED_ATTRIBUTE, True)
+
         start = default_timer()
         span = (
             self._tracer.start_span(f"{ASYNCIO_PREFIX} future")
