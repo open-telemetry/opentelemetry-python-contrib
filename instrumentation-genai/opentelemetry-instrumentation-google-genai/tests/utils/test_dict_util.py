@@ -12,8 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import pytest
+from pydantic import BaseModel
 from opentelemetry.instrumentation.google_genai import dict_util
+
+
+class PydanticModel(BaseModel):
+    """Used to verify handling of pydantic models in the flattener."""
+    str_value: str
+    int_value: int
+
+
+class ModelDumpableNotPydantic:
+    """Used to verify general handling of 'model_dump'."""
+
+    def __init__(self, dump_output):
+        self._dump_output = dump_output
+
+    def model_dump(self):
+        return self._dump_output
+
+
+class NotJsonSerializable:
+
+    def __init__(self):
+        pass
 
 
 def test_flatten_empty_dict():
@@ -136,4 +159,66 @@ def test_flatten_with_custom_flatten_func():
     assert output == {
         "some.deeply.nested.key": "9 items (total: 45, average: 5.0)",
         "other": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    }
+
+
+def test_flatten_with_pydantic_model_value():
+    input_dict = {
+        "foo": PydanticModel(str_value="bar", int_value=123),
+    }
+
+    output = dict_util.flatten_dict(input_dict)
+    assert output == {
+        "foo.str_value": "bar",
+        "foo.int_value": 123,
+    }
+
+
+def test_flatten_with_model_dumpable_value():
+    input_dict = {
+        "foo": ModelDumpableNotPydantic({
+            "str_value": "bar",
+            "int_value": 123,
+        }),
+    }
+
+    output = dict_util.flatten_dict(input_dict)
+    assert output == {
+        "foo.str_value": "bar",
+        "foo.int_value": 123,
+    }
+
+
+def test_flatten_with_mixed_structures():
+    input_dict = {
+        "foo": ModelDumpableNotPydantic({
+            "pydantic": PydanticModel(str_value="bar", int_value=123),
+        }),
+    }
+
+    output = dict_util.flatten_dict(input_dict)
+    assert output == {
+        "foo.pydantic.str_value": "bar",
+        "foo.pydantic.int_value": 123,
+    }
+
+
+def test_flatten_with_complex_object_not_json_serializable():
+    with pytest.raises(ValueError):
+        dict_util.flatten_dict({
+            "cannot_serialize_directly": NotJsonSerializable(),
+        })
+
+
+def test_flatten_with_complex_object_not_json_serializable_and_custom_flatten_func():
+    def flatten_not_json_serializable(key, value, **kwargs):
+        assert isinstance(value, NotJsonSerializable)
+        return "blah"
+    output = dict_util.flatten_dict({
+        "cannot_serialize_directly": NotJsonSerializable(),
+    }, flatten_functions={
+        "cannot_serialize_directly": flatten_not_json_serializable,
+    })
+    assert output == {
+        "cannot_serialize_directly": "blah",
     }
