@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
-from typing import Optional, Set, Callable, List, Union
+from typing import Callable, List, Optional, Set, Union
 
 ALLOWED = True
 DENIED = False
 
+
 def _parse_env_list(s: str) -> Set[str]:
     result = set()
-    for entry in s.split(','):
+    for entry in s.split(","):
         stripped_entry = entry.strip()
         if not stripped_entry:
             continue
@@ -29,17 +30,19 @@ def _parse_env_list(s: str) -> Set[str]:
 
 
 class AllowList:
-
     def __init__(
         self,
         includes: Optional[Union[Set[str], List[str]]] = None,
         excludes: Optional[Union[Set[str], List[str]]] = None,
-        if_none_match: Optional[Callable[str, bool]] = None):
+        if_none_match: Optional[Callable[str, bool]] = None,
+    ):
         self._includes = set(includes or [])
         self._excludes = set(excludes or [])
-        self._include_all = '*' in self._includes
-        self._exclude_all = '*' in self._excludes
-        assert (not self._include_all) or (not self._exclude_all), "Can't have '*' in both includes and excludes."
+        self._include_all = "*" in self._includes
+        self._exclude_all = "*" in self._excludes
+        assert (not self._include_all) or (
+            not self._exclude_all
+        ), "Can't have '*' in both includes and excludes."
 
     def allowed(self, x: str):
         if self._exclude_all:
@@ -50,12 +53,10 @@ class AllowList:
 
     @staticmethod
     def from_env(
-        includes_env_var: str,
-        excludes_env_var: Optional[str] = None):
-      includes = _parse_env_list(os.getenv(includes_env_var) or '')
-      excludes = set()
-      if excludes_env_var:
-        excludes = _parse_env_list(os.getenv(excludes_env_var) or '')
-      return AllowList(
-        includes=includes,
-        excludes=excludes)
+        includes_env_var: str, excludes_env_var: Optional[str] = None
+    ):
+        includes = _parse_env_list(os.getenv(includes_env_var) or "")
+        excludes = set()
+        if excludes_env_var:
+            excludes = _parse_env_list(os.getenv(excludes_env_var) or "")
+        return AllowList(includes=includes, excludes=excludes)

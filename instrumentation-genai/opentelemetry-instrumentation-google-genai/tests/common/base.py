@@ -36,7 +36,9 @@ class TestCase(unittest.TestCase):
         self._instrumentor_args = {}
 
     def _lazy_init(self):
-        self._instrumentation_context = InstrumentationContext(**self._instrumentor_args)
+        self._instrumentation_context = InstrumentationContext(
+            **self._instrumentor_args
+        )
         self._instrumentation_context.install()
 
     def set_instrumentor_constructor_kwarg(self, key, value):

@@ -83,7 +83,9 @@ def _flatten_compound_value(
         )
         if func_output is None:
             return {}
-        elif _is_primitive(func_output) or _is_homogenous_primitive_list(func_output):
+        elif _is_primitive(func_output) or _is_homogenous_primitive_list(
+            func_output
+        ):
             return {key: func_output}
         else:
             value = func_output

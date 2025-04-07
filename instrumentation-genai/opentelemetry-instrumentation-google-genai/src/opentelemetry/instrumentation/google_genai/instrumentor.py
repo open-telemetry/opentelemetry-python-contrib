@@ -28,11 +28,17 @@ from .otel_wrapper import OTelWrapper
 
 
 class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
-    def __init__(self, generate_content_config_key_allowlist: Optional[AllowList] = None):
+    def __init__(
+        self, generate_content_config_key_allowlist: Optional[AllowList] = None
+    ):
         self._generate_content_snapshot = None
-        self._generate_content_config_key_allowlist = (generate_content_config_key_allowlist or AllowList.from_env(
-            'OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES',
-            excludes_env_var='OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES'))
+        self._generate_content_config_key_allowlist = (
+            generate_content_config_key_allowlist
+            or AllowList.from_env(
+                "OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES",
+                excludes_env_var="OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES",
+            )
+        )
 
     # Inherited, abstract function from 'BaseInstrumentor'. Even though 'self' is
     # not used in the definition, a method is required per the API contract.
@@ -54,7 +60,8 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
         )
         self._generate_content_snapshot = instrument_generate_content(
             otel_wrapper,
-            generate_content_config_key_allowlist=self._generate_content_config_key_allowlist)
+            generate_content_config_key_allowlist=self._generate_content_config_key_allowlist,
+        )
 
     def _uninstrument(self, **kwargs: Any):
         uninstrument_generate_content(self._generate_content_snapshot)

@@ -14,11 +14,13 @@
 
 import pytest
 from pydantic import BaseModel
+
 from opentelemetry.instrumentation.google_genai import dict_util
 
 
 class PydanticModel(BaseModel):
     """Used to verify handling of pydantic models in the flattener."""
+
     str_value: str = ""
     int_value: int = 0
 
@@ -34,7 +36,6 @@ class ModelDumpableNotPydantic:
 
 
 class NotJsonSerializable:
-
     def __init__(self):
         pass
 
@@ -176,10 +177,12 @@ def test_flatten_with_pydantic_model_value():
 
 def test_flatten_with_model_dumpable_value():
     input_dict = {
-        "foo": ModelDumpableNotPydantic({
-            "str_value": "bar",
-            "int_value": 123,
-        }),
+        "foo": ModelDumpableNotPydantic(
+            {
+                "str_value": "bar",
+                "int_value": 123,
+            }
+        ),
     }
 
     output = dict_util.flatten_dict(input_dict)
@@ -191,9 +194,11 @@ def test_flatten_with_model_dumpable_value():
 
 def test_flatten_with_mixed_structures():
     input_dict = {
-        "foo": ModelDumpableNotPydantic({
-            "pydantic": PydanticModel(str_value="bar", int_value=123),
-        }),
+        "foo": ModelDumpableNotPydantic(
+            {
+                "pydantic": PydanticModel(str_value="bar", int_value=123),
+            }
+        ),
     }
 
     output = dict_util.flatten_dict(input_dict)
@@ -205,51 +210,54 @@ def test_flatten_with_mixed_structures():
 
 def test_flatten_with_complex_object_not_json_serializable():
     with pytest.raises(ValueError):
-        dict_util.flatten_dict({
-            "cannot_serialize_directly": NotJsonSerializable(),
-        })
+        dict_util.flatten_dict(
+            {
+                "cannot_serialize_directly": NotJsonSerializable(),
+            }
+        )
 
 
 def test_flatten_with_complex_object_not_json_serializable_and_custom_flatten_func():
     def flatten_not_json_serializable(key, value, **kwargs):
         assert isinstance(value, NotJsonSerializable)
         return "blah"
-    output = dict_util.flatten_dict({
-        "cannot_serialize_directly": NotJsonSerializable(),
-    }, flatten_functions={
-        "cannot_serialize_directly": flatten_not_json_serializable,
-    })
+
+    output = dict_util.flatten_dict(
+        {
+            "cannot_serialize_directly": NotJsonSerializable(),
+        },
+        flatten_functions={
+            "cannot_serialize_directly": flatten_not_json_serializable,
+        },
+    )
     assert output == {
         "cannot_serialize_directly": "blah",
     }
 
+
 def test_flatten_simple_homogenous_primitive_string_list():
-    input_dict = {
-        "list_value": ["abc", "def"]
-    }
+    input_dict = {"list_value": ["abc", "def"]}
     assert dict_util.flatten_dict(input_dict) == input_dict
+
 
 def test_flatten_simple_homogenous_primitive_int_list():
-    input_dict = {
-        "list_value": [123, 456]
-    }
+    input_dict = {"list_value": [123, 456]}
     assert dict_util.flatten_dict(input_dict) == input_dict
+
 
 def test_flatten_simple_homogenous_primitive_bool_list():
-    input_dict = {
-        "list_value": [True, False]
-    }
+    input_dict = {"list_value": [True, False]}
     assert dict_util.flatten_dict(input_dict) == input_dict
 
+
 def test_flatten_simple_heterogenous_primitive_list():
-    input_dict = {
-        "list_value": ["abc", 123]
-    }
+    input_dict = {"list_value": ["abc", 123]}
     assert dict_util.flatten_dict(input_dict) == {
         "list_value.length": 2,
         "list_value[0]": "abc",
         "list_value[1]": 123,
     }
+
 
 def test_flatten_list_of_compound_types():
     input_dict = {
@@ -285,9 +293,7 @@ def test_handles_simple_output_from_flatten_func():
         "foo": PydanticModel(),
     }
 
-    output = dict_util.flatten_dict(
-        input_dict,
-        flatten_functions={"foo": f})
+    output = dict_util.flatten_dict(input_dict, flatten_functions={"foo": f})
 
     assert output == {
         "foo": "baz",
@@ -296,18 +302,13 @@ def test_handles_simple_output_from_flatten_func():
 
 def test_handles_compound_output_from_flatten_func():
     def f(*args, **kwargs):
-        return {
-            "baz": 123,
-            "qux": 456
-        }
+        return {"baz": 123, "qux": 456}
 
     input_dict = {
         "foo": PydanticModel(),
     }
 
-    output = dict_util.flatten_dict(
-        input_dict,
-        flatten_functions={"foo": f})
+    output = dict_util.flatten_dict(input_dict, flatten_functions={"foo": f})
 
     assert output == {
         "foo.baz": 123,

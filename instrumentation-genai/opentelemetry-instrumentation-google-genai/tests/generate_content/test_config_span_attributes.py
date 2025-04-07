@@ -15,8 +15,10 @@
 import os
 from unittest import mock
 
-from opentelemetry.instrumentation.google_genai.allowlist_util import AllowList
 from google.genai.types import GenerateContentConfig
+
+from opentelemetry.instrumentation.google_genai.allowlist_util import AllowList
+
 from .base import TestCase
 
 
@@ -96,7 +98,9 @@ class ConfigSpanAttributesTestCase(TestCase):
         span = self.generate_and_get_span(config={"top_p": 10})
         self.assertEqual(span.attributes["gen_ai.request.top_p"], 10)
 
-    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
+    @mock.patch.dict(
+        os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"}
+    )
     def test_option_not_reflected_to_span_attribute_system_instruction(self):
         span = self.generate_and_get_span(
             config={"system_instruction": "Yadda yadda yadda"}
@@ -110,7 +114,9 @@ class ConfigSpanAttributesTestCase(TestCase):
             if isinstance(value, str):
                 self.assertNotIn("Yadda yadda yadda", value)
 
-    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
+    @mock.patch.dict(
+        os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"}
+    )
     def test_option_reflected_to_span_attribute_automatic_func_calling(self):
         span = self.generate_and_get_span(
             config={
@@ -140,8 +146,8 @@ class ConfigSpanAttributesTestCase(TestCase):
 
     def test_can_supply_allow_list_via_instrumentor_constructor(self):
         self.set_instrumentor_constructor_kwarg(
-            "generate_content_config_key_allowlist",
-            AllowList(includes=["*"]))
+            "generate_content_config_key_allowlist", AllowList(includes=["*"])
+        )
         span = self.generate_and_get_span(
             config={
                 "automatic_function_calling": {

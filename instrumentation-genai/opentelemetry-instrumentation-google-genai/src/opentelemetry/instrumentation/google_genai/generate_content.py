@@ -185,7 +185,9 @@ def _add_request_options_to_span(
         },
     )
     for key, value in attributes.items():
-        if key.startswith(CUSTOM_LLM_REQUEST_PREFIX) and not allow_list.allowed(key):
+        if key.startswith(
+            CUSTOM_LLM_REQUEST_PREFIX
+        ) and not allow_list.allowed(key):
             # The allowlist is used to control inclusion of the dynamic keys.
             continue
         span.set_attribute(key, value)
@@ -223,7 +225,9 @@ class _GenerateContentInstrumentationHelper:
         self._content_recording_enabled = is_content_recording_enabled()
         self._response_index = 0
         self._candidate_index = 0
-        self._generate_content_config_key_allowlist = generate_content_config_key_allowlist or AllowList()
+        self._generate_content_config_key_allowlist = (
+            generate_content_config_key_allowlist or AllowList()
+        )
 
     def start_span_as_current_span(
         self, model_name, function_name, end_on_exit=True
@@ -246,7 +250,9 @@ class _GenerateContentInstrumentationHelper:
         config: Optional[GenerateContentConfigOrDict],
     ):
         span = trace.get_current_span()
-        _add_request_options_to_span(span, config, self._generate_content_config_key_allowlist)
+        _add_request_options_to_span(
+            span, config, self._generate_content_config_key_allowlist
+        )
         self._maybe_log_system_instruction(config=config)
         self._maybe_log_user_prompt(contents)
 
@@ -507,7 +513,9 @@ class _GenerateContentInstrumentationHelper:
 
 
 def _create_instrumented_generate_content(
-    snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper, generate_content_config_key_allowlist: Optional[AllowList] = None
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper,
+    generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.generate_content
 
@@ -521,7 +529,10 @@ def _create_instrumented_generate_content(
         **kwargs: Any,
     ) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(
-            self, otel_wrapper, model, generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            self,
+            otel_wrapper,
+            model,
+            generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content"
@@ -547,7 +558,9 @@ def _create_instrumented_generate_content(
 
 
 def _create_instrumented_generate_content_stream(
-    snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper, generate_content_config_key_allowlist: Optional[AllowList] = None
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper,
+    generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.generate_content_stream
 
@@ -561,7 +574,10 @@ def _create_instrumented_generate_content_stream(
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
         helper = _GenerateContentInstrumentationHelper(
-            self, otel_wrapper, model, generate_content_config_key_allowlist=generate_content_config_key_allowlist
+            self,
+            otel_wrapper,
+            model,
+            generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content_stream"
@@ -587,7 +603,9 @@ def _create_instrumented_generate_content_stream(
 
 
 def _create_instrumented_async_generate_content(
-    snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper, generate_content_config_key_allowlist: Optional[AllowList] = None
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper,
+    generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.async_generate_content
 
@@ -601,7 +619,10 @@ def _create_instrumented_async_generate_content(
         **kwargs: Any,
     ) -> GenerateContentResponse:
         helper = _GenerateContentInstrumentationHelper(
-            self, otel_wrapper, model, generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            self,
+            otel_wrapper,
+            model,
+            generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
             model, "google.genai.AsyncModels.generate_content"
@@ -628,7 +649,9 @@ def _create_instrumented_async_generate_content(
 
 # Disabling type checking because this is not yet implemented and tested fully.
 def _create_instrumented_async_generate_content_stream(  # type: ignore
-    snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper, generate_content_config_key_allowlist: Optional[AllowList] = None
+    snapshot: _MethodsSnapshot,
+    otel_wrapper: OTelWrapper,
+    generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.async_generate_content_stream
 
@@ -642,7 +665,10 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         **kwargs: Any,
     ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(
-            self, otel_wrapper, model, generate_content_config_key_allowlist=generate_content_config_key_allowlist
+            self,
+            otel_wrapper,
+            model,
+            generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
             model,
@@ -688,20 +714,27 @@ def uninstrument_generate_content(snapshot: object):
 
 def instrument_generate_content(
     otel_wrapper: OTelWrapper,
-    generate_content_config_key_allowlist: Optional[AllowList]=None) -> object:
+    generate_content_config_key_allowlist: Optional[AllowList] = None,
+) -> object:
     snapshot = _MethodsSnapshot()
     Models.generate_content = _create_instrumented_generate_content(
-        snapshot, otel_wrapper, generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+        snapshot,
+        otel_wrapper,
+        generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
-    Models.generate_content_stream = (
-        _create_instrumented_generate_content_stream(snapshot, otel_wrapper, generate_content_config_key_allowlist=generate_content_config_key_allowlist)
+    Models.generate_content_stream = _create_instrumented_generate_content_stream(
+        snapshot,
+        otel_wrapper,
+        generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     AsyncModels.generate_content = _create_instrumented_async_generate_content(
-        snapshot, otel_wrapper, generate_content_config_key_allowlist=generate_content_config_key_allowlist
+        snapshot,
+        otel_wrapper,
+        generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
-    AsyncModels.generate_content_stream = (
-        _create_instrumented_async_generate_content_stream(
-            snapshot, otel_wrapper, generate_content_config_key_allowlist=generate_content_config_key_allowlist,
-        )
+    AsyncModels.generate_content_stream = _create_instrumented_async_generate_content_stream(
+        snapshot,
+        otel_wrapper,
+        generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     return snapshot
