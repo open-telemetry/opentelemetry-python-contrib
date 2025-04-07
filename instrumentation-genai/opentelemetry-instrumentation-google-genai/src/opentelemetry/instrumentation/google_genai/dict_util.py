@@ -14,7 +14,7 @@
 
 
 import json
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Union, Tuple
 
 Primitive = Union[bool, str, int, float]
 BoolList = list[bool]
@@ -63,6 +63,31 @@ def _get_flatten_func(
     return None
 
 
+def _flatten_with_flatten_func(
+    key: str,
+    value: Any,
+    exclude_keys: Set[str],
+    rename_keys: Dict[str, str],
+    flatten_functions: Dict[str, Callable],
+    key_names: Set[str]) -> Tuple[bool, Any]:
+    flatten_func = _get_flatten_func(flatten_functions, key_names)
+    if flatten_func is None:
+        return False, value
+    func_output = flatten_func(
+            key,
+            value,
+            exclude_keys=exclude_keys,
+            rename_keys=rename_keys,
+            flatten_functions=flatten_functions,
+        )
+    if func_output is None:
+        return True, {}
+    if _is_primitive(func_output) or _is_homogenous_primitive_list(
+        func_output):
+        return True, {key: func_output}
+    return False, func_output
+
+
 def _flatten_compound_value(
     key: str,
     value: Any,
@@ -72,23 +97,15 @@ def _flatten_compound_value(
     key_names: Set[str],
     _from_json=False,
 ) -> FlattenedDict:
-    flatten_func = _get_flatten_func(flatten_functions, key_names)
-    if flatten_func is not None:
-        func_output = flatten_func(
-            key,
-            value,
-            exclude_keys=exclude_keys,
-            rename_keys=rename_keys,
-            flatten_functions=flatten_functions,
-        )
-        if func_output is None:
-            return {}
-        elif _is_primitive(func_output) or _is_homogenous_primitive_list(
-            func_output
-        ):
-            return {key: func_output}
-        else:
-            value = func_output
+    fully_flattened_with_flatten_func, value = _flatten_with_flatten_func(
+        key=key,
+        value=value,
+        exclude_keys=exclude_keys,
+        rename_keys=rename_keys,
+        flatten_functions=flatten_functions,
+        key_names=key_names)
+    if fully_flattened_with_flatten_func:
+        return value
     if isinstance(value, dict):
         return _flatten_dict(
             value,
