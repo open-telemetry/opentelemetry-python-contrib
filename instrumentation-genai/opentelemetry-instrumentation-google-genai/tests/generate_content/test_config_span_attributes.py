@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.genai.types import GenerateContentConfig
+import os
+from unittest import mock
 
+from opentelemetry.instrumentation.google_genai.allowlist_util import AllowList
+from google.genai.types import GenerateContentConfig
 from .base import TestCase
 
 
@@ -93,6 +96,7 @@ class ConfigSpanAttributesTestCase(TestCase):
         span = self.generate_and_get_span(config={"top_p": 10})
         self.assertEqual(span.attributes["gen_ai.request.top_p"], 10)
 
+    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
     def test_option_not_reflected_to_span_attribute_system_instruction(self):
         span = self.generate_and_get_span(
             config={"system_instruction": "Yadda yadda yadda"}
@@ -106,27 +110,38 @@ class ConfigSpanAttributesTestCase(TestCase):
             if isinstance(value, str):
                 self.assertNotIn("Yadda yadda yadda", value)
 
-    def test_option_not_reflected_to_span_attribute_http_headers(self):
+    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
+    def test_option_reflected_to_span_attribute_automatic_func_calling(self):
         span = self.generate_and_get_span(
             config={
-                "http_options": {
-                    "base_url": "my.backend.override",
-                    "headers": {
-                        "sensitive": 12345,
-                    },
+                "automatic_function_calling": {
+                    "ignore_call_history": True,
                 }
             }
         )
-        self.assertEqual(
-            span.attributes["gcp.gen_ai.request.http_options.base_url"],
-            "my.backend.override",
+        self.assertTrue(
+            span.attributes[
+                "gcp.gen_ai.request.automatic_function_calling.ignore_call_history"
+            ]
+        )
+
+    def test_dynamic_config_options_not_included_without_allow_list(self):
+        span = self.generate_and_get_span(
+            config={
+                "automatic_function_calling": {
+                    "ignore_call_history": True,
+                }
+            }
         )
         self.assertNotIn(
-            "gcp.gen_ai.request.http_options.headers.sensitive",
+            "gcp.gen_ai.request.automatic_function_calling.ignore_call_history",
             span.attributes,
         )
 
-    def test_option_reflected_to_span_attribute_automatic_func_calling(self):
+    def test_can_supply_allow_list_via_instrumentor_constructor(self):
+        self.set_instrumentor_constructor_kwarg(
+            "generate_content_config_key_allowlist",
+            AllowList(includes=["*"]))
         span = self.generate_and_get_span(
             config={
                 "automatic_function_calling": {
