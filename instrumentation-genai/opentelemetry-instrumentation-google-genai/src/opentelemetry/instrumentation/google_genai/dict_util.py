@@ -121,7 +121,8 @@ def _flatten_compound_value_using_json(
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
     flatten_functions: Dict[str, FlattenFunc],
-    _from_json=False) -> FlattenedDict:
+    _from_json=False,
+) -> FlattenedDict:
     if _from_json:
         _logger.debug(
             "Cannot flatten value with key %s; value: %s", key, value
@@ -201,7 +202,8 @@ def _flatten_compound_value(
         exclude_keys=exclude_keys,
         rename_keys=rename_keys,
         flatten_functions=flatten_functions,
-        _from_json=_from_json)
+        _from_json=_from_json,
+    )
 
 
 def _flatten_value(
