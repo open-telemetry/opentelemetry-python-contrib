@@ -115,6 +115,41 @@ def _flatten_with_flatten_func(
     return False, func_output
 
 
+def _flatten_compound_value_using_json(
+    key: str,
+    value: Any,
+    exclude_keys: Set[str],
+    rename_keys: Dict[str, str],
+    flatten_functions: Dict[str, FlattenFunc],
+    _from_json=False) -> FlattenedDict:
+    if _from_json:
+        _logger.debug(
+            "Cannot flatten value with key %s; value: %s", key, value
+        )
+        return {}
+    try:
+        json_string = json.dumps(value)
+    except TypeError:
+        _logger.debug(
+            "Cannot flatten value with key %s; value: %s. Not JSON serializable.",
+            key,
+            value,
+        )
+        return {}
+    json_value = json.loads(json_string)
+    return _flatten_value(
+        key,
+        json_value,
+        exclude_keys=exclude_keys,
+        rename_keys=rename_keys,
+        flatten_functions=flatten_functions,
+        # Ensure that we don't recurse indefinitely if "json.loads()" somehow returns
+        # a complex, compound object that does not get handled by the "primitive", "list",
+        # or "dict" cases. Prevents falling back on the JSON serialization fallback path.
+        _from_json=True,
+    )
+
+
 def _flatten_compound_value(
     key: str,
     value: Any,
@@ -160,32 +195,13 @@ def _flatten_compound_value(
             rename_keys=rename_keys,
             flatten_functions=flatten_functions,
         )
-    if _from_json:
-        _logger.debug(
-            "Cannot flatten value with key %s; value: %s", key, value
-        )
-        return {}
-    try:
-        json_string = json.dumps(value)
-    except TypeError:
-        _logger.debug(
-            "Cannot flatten value with key %s; value: %s. Not JSON serializable.",
-            key,
-            value,
-        )
-        return {}
-    json_value = json.loads(json_string)
-    return _flatten_value(
+    return _flatten_compound_value_using_json(
         key,
-        json_value,
+        value,
         exclude_keys=exclude_keys,
         rename_keys=rename_keys,
         flatten_functions=flatten_functions,
-        # Ensure that we don't recurse indefinitely if "json.loads()" somehow returns
-        # a complex, compound object that does not get handled by the "primitive", "list",
-        # or "dict" cases. Prevents falling back on the JSON serialization fallback path.
-        _from_json=True,
-    )
+        _from_json=_from_json)
 
 
 def _flatten_value(
