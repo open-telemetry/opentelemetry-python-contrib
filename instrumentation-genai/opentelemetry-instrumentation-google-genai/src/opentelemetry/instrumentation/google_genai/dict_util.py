@@ -14,7 +14,7 @@
 
 import logging
 import json
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Protocol, Sequence, Set, Tuple, Union
 
 Primitive = Union[bool, str, int, float]
 BoolList = list[bool]
@@ -24,6 +24,19 @@ FloatList = list[float]
 HomogenousPrimitiveList = Union[BoolList, StringList, IntList, FloatList]
 FlattenedValue = Union[Primitive, HomogenousPrimitiveList]
 FlattenedDict = Dict[str, FlattenedValue]
+
+
+class FlattenFunc(Protocol):
+
+    def __call__(
+        self,
+        key: str,
+        value: Any,
+        exclude_keys: Set[str],
+        rename_keys: Dict[str, str],
+        flatten_functions: Dict[str, "FlattenFunc"],
+        **kwargs: Any) -> Any:
+        return None
 
 
 _logger = logging.getLogger(__name__)
@@ -57,8 +70,8 @@ def _is_homogenous_primitive_list(v):
 
 
 def _get_flatten_func(
-    flatten_functions: Dict[str, Callable], key_names: set[str]
-):
+    flatten_functions: Dict[str, FlattenFunc], key_names: set[str]
+) -> Optional[FlattenFunc]:
     for key in key_names:
         flatten_func = flatten_functions.get(key)
         if flatten_func is not None:
@@ -71,7 +84,7 @@ def _flatten_with_flatten_func(
     value: Any,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable],
+    flatten_functions: Dict[str, FlattenFunc],
     key_names: Set[str],
 ) -> Tuple[bool, Any]:
     flatten_func = _get_flatten_func(flatten_functions, key_names)
@@ -98,7 +111,7 @@ def _flatten_compound_value(
     value: Any,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable],
+    flatten_functions: Dict[str, FlattenFunc],
     key_names: Set[str],
     _from_json=False,
 ) -> FlattenedDict:
@@ -165,7 +178,7 @@ def _flatten_value(
     value: Any,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable],
+    flatten_functions: Dict[str, FlattenFunc],
     _from_json=False,
 ) -> FlattenedDict:
     if value is None:
@@ -195,7 +208,7 @@ def _flatten_dict(
     key_prefix: str,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable],
+    flatten_functions: Dict[str, FlattenFunc],
 ) -> FlattenedDict:
     result = {}
     for key, value in d.items():
@@ -218,7 +231,7 @@ def _flatten_list(
     key_prefix: str,
     exclude_keys: Set[str],
     rename_keys: Dict[str, str],
-    flatten_functions: Dict[str, Callable],
+    flatten_functions: Dict[str, FlattenFunc],
 ) -> FlattenedDict:
     result = {}
     result[_concat_key(key_prefix, "length")] = len(lst)
@@ -240,7 +253,7 @@ def flatten_dict(
     key_prefix: Optional[str] = None,
     exclude_keys: Optional[Sequence[str]] = None,
     rename_keys: Optional[Dict[str, str]] = None,
-    flatten_functions: Optional[Dict[str, Callable]] = None,
+    flatten_functions: Optional[Dict[str, FlattenFunc]] = None,
 ):
     key_prefix = key_prefix or ""
     if exclude_keys is None:
