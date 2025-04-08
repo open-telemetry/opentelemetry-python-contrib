@@ -256,10 +256,7 @@ def flatten_dict(
     flatten_functions: Optional[Dict[str, FlattenFunc]] = None,
 ):
     key_prefix = key_prefix or ""
-    if exclude_keys is None:
-        exclude_keys = set()
-    elif isinstance(exclude_keys, list):
-        exclude_keys = set(exclude_keys)
+    exclude_keys = set(exclude_keys or [])
     rename_keys = rename_keys or {}
     flatten_functions = flatten_functions or {}
     return _flatten_dict(
