@@ -14,7 +14,7 @@
 
 import re
 import os
-from typing import Callable, List, Optional, Set, Union
+from typing import Callable, Iterable, Optional, Set, Union
 
 ALLOWED = True
 DENIED = False
@@ -69,8 +69,8 @@ class _CompoundMatcher:
 class AllowList:
     def __init__(
         self,
-        includes: Optional[Union[Set[str], List[str]]] = None,
-        excludes: Optional[Union[Set[str], List[str]]] = None,
+        includes: Optional[Iterable[str]] = None,
+        excludes: Optional[Iterable[str]] = None,
     ):
         self._includes = _CompoundMatcher(set(includes or []))
         self._excludes = _CompoundMatcher(set(excludes or []))
