@@ -14,6 +14,7 @@
 
 # pylint: disable=too-many-lines
 
+from importlib.metadata import PackageNotFoundError
 import unittest
 from contextlib import ExitStack
 from timeit import default_timer
@@ -1090,7 +1091,7 @@ def mock_version_with_old_fastapi(*args, **kwargs):
 def mock_version_without_fastapi(*args, **kwargs):
     raise PackageNotFoundError()
 
- 
+
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
