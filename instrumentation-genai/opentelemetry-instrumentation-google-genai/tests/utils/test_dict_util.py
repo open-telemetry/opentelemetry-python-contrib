@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 from pydantic import BaseModel
-
 from opentelemetry.instrumentation.google_genai import dict_util
 
 
@@ -209,12 +207,30 @@ def test_flatten_with_mixed_structures():
 
 
 def test_flatten_with_complex_object_not_json_serializable():
-    with pytest.raises(ValueError):
-        dict_util.flatten_dict(
+    result = dict_util.flatten_dict(
             {
                 "cannot_serialize_directly": NotJsonSerializable(),
             }
         )
+    assert result is not None
+    assert isinstance(result, dict)
+    assert len(result) == 0
+
+
+def test_flatten_good_with_non_serializable_complex_object():
+    result = dict_util.flatten_dict(
+            {
+                "foo": {
+                    "bar": "blah",
+                    "baz": 5,
+                },
+                "cannot_serialize_directly": NotJsonSerializable(),
+            }
+        )
+    assert result == {
+        "foo.bar": "blah",
+        "foo.baz": 5,
+    }
 
 
 def test_flatten_with_complex_object_not_json_serializable_and_custom_flatten_func():

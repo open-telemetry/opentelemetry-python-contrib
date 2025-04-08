@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import logging
 import json
 from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple, Union
 
@@ -24,6 +24,9 @@ FloatList = list[float]
 HomogenousPrimitiveList = Union[BoolList, StringList, IntList, FloatList]
 FlattenedValue = Union[Primitive, HomogenousPrimitiveList]
 FlattenedDict = Dict[str, FlattenedValue]
+
+
+_logger = logging.getLogger(__name__)
 
 
 def _concat_key(prefix: Optional[str], suffix: str):
@@ -136,15 +139,13 @@ def _flatten_compound_value(
             flatten_functions=flatten_functions,
         )
     if _from_json:
-        raise ValueError(
-            f"Cannot flatten value with key {key}; value: {value}"
-        )
+        _logger.debug("Cannot flatten value with key %s; value: %s", key, value)
+        return {}
     try:
         json_string = json.dumps(value)
-    except TypeError as exc:
-        raise ValueError(
-            f"Cannot flatten value with key {key}; value: {value}. Not JSON serializable."
-        ) from exc
+    except TypeError:
+        _logger.debug("Cannot flatten value with key %s; value: %s. Not JSON serializable.", key, value)
+        return {}
     json_value = json.loads(json_string)
     return _flatten_value(
         key,
