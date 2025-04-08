@@ -17,7 +17,7 @@
 import unittest
 from contextlib import ExitStack
 from timeit import default_timer
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -38,6 +38,10 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
+from opentelemetry.instrumentation.dependencies import (
+    DependencyConflict,
+    DependencyConflictError,
+)
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -55,10 +59,7 @@ from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.util._importlib_metadata import (
-    PackageNotFoundError,
-    entry_points,
-)
+from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -1089,7 +1090,7 @@ def mock_version_with_old_fastapi(*args, **kwargs):
 def mock_version_without_fastapi(*args, **kwargs):
     raise PackageNotFoundError()
 
-
+ 
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
@@ -1101,31 +1102,65 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         (ep,) = entry_points(group="opentelemetry_instrumentor")
         self.assertEqual(ep.name, "fastapi")
 
-    @patch("opentelemetry.instrumentation.dependencies.version")
-    def test_instruments_with_fastapi_installed(self, mock_version):
-        mock_version.side_effect = mock_version_with_fastapi
+    @staticmethod
+    def _instrumentation_loaded_successfully_call():
+        return call("Instrumented %s", "fastapi")
+
+    @staticmethod
+    def _instrumentation_failed_to_load_call(dependency_conflict):
+        return call(
+            "Skipping instrumentation %s: %s", "fastapi", dependency_conflict
+        )
+
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_fastapi_installed(self, mock_logger):
         mock_distro = Mock()
+        mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
-        mock_version.assert_called_once_with("fastapi")
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         (ep,) = mock_distro.load_instrumentor.call_args.args
         self.assertEqual(ep.name, "fastapi")
+        mock_logger.debug.assert_has_calls(
+            [self._instrumentation_loaded_successfully_call()]
+        )
 
-    @patch("opentelemetry.instrumentation.dependencies.version")
-    def test_instruments_with_old_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
-        mock_version.side_effect = mock_version_with_old_fastapi
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_old_fastapi_installed(self, mock_logger):  # pylint: disable=no-self-use
+        dependency_conflict = DependencyConflict("0.58", "0.57")
         mock_distro = Mock()
+        mock_distro.load_instrumentor.side_effect = DependencyConflictError(
+            dependency_conflict
+        )
         _load_instrumentors(mock_distro)
-        mock_version.assert_called_once_with("fastapi")
-        mock_distro.load_instrumentor.assert_not_called()
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
+        (ep,) = mock_distro.load_instrumentor.call_args.args
+        self.assertEqual(ep.name, "fastapi")
+        assert (
+            self._instrumentation_loaded_successfully_call()
+            not in mock_logger.debug.call_args_list
+        )
+        mock_logger.debug.assert_has_calls(
+            [self._instrumentation_failed_to_load_call(dependency_conflict)]
+        )
 
-    @patch("opentelemetry.instrumentation.dependencies.version")
-    def test_instruments_without_fastapi_installed(self, mock_version):  # pylint: disable=no-self-use
-        mock_version.side_effect = mock_version_without_fastapi
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_without_fastapi_installed(self, mock_logger):  # pylint: disable=no-self-use
+        dependency_conflict = DependencyConflict("0.58", None)
         mock_distro = Mock()
+        mock_distro.load_instrumentor.side_effect = DependencyConflictError(
+            dependency_conflict
+        )
         _load_instrumentors(mock_distro)
-        mock_version.assert_called_once_with("fastapi")
-        mock_distro.load_instrumentor.assert_not_called()
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
+        (ep,) = mock_distro.load_instrumentor.call_args.args
+        self.assertEqual(ep.name, "fastapi")
+        assert (
+            self._instrumentation_loaded_successfully_call()
+            not in mock_logger.debug.call_args_list
+        )
+        mock_logger.debug.assert_has_calls(
+            [self._instrumentation_failed_to_load_call(dependency_conflict)]
+        )
 
     def _create_app(self):
         # instrumentation is handled by the instrument call

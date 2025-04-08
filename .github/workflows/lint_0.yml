@@ -322,6 +322,24 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-boto
 
+  lint-instrumentation-asyncclick:
+    name: instrumentation-asyncclick
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-asyncclick
+
   lint-instrumentation-click:
     name: instrumentation-click
     runs-on: ubuntu-latest
