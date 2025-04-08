@@ -12,9 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import json
-from typing import Any, Callable, Dict, Optional, Protocol, Sequence, Set, Tuple, Union
+import logging
+from typing import (
+    Any,
+    Dict,
+    Optional,
+    Protocol,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 Primitive = Union[bool, str, int, float]
 BoolList = list[bool]
@@ -27,7 +36,6 @@ FlattenedDict = Dict[str, FlattenedValue]
 
 
 class FlattenFunc(Protocol):
-
     def __call__(
         self,
         key: str,
@@ -35,7 +43,8 @@ class FlattenFunc(Protocol):
         exclude_keys: Set[str],
         rename_keys: Dict[str, str],
         flatten_functions: Dict[str, "FlattenFunc"],
-        **kwargs: Any) -> Any:
+        **kwargs: Any,
+    ) -> Any:
         return None
 
 
@@ -152,12 +161,18 @@ def _flatten_compound_value(
             flatten_functions=flatten_functions,
         )
     if _from_json:
-        _logger.debug("Cannot flatten value with key %s; value: %s", key, value)
+        _logger.debug(
+            "Cannot flatten value with key %s; value: %s", key, value
+        )
         return {}
     try:
         json_string = json.dumps(value)
     except TypeError:
-        _logger.debug("Cannot flatten value with key %s; value: %s. Not JSON serializable.", key, value)
+        _logger.debug(
+            "Cannot flatten value with key %s; value: %s. Not JSON serializable.",
+            key,
+            value,
+        )
         return {}
     json_value = json.loads(json_string)
     return _flatten_value(

@@ -67,7 +67,9 @@ def test_includes_and_excludes():
 
 
 def test_includes_and_excludes_with_wildcards():
-    allow_list = AllowList(includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"])
+    allow_list = AllowList(
+        includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"]
+    )
     assert allow_list.allowed("abc")
     assert allow_list.allowed("xyz")
     assert not allow_list.allowed("xyz.foo")
