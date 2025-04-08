@@ -20,7 +20,6 @@ from typing import Collection
 from packaging.requirements import InvalidRequirement, Requirement
 
 from opentelemetry.util._importlib_metadata import (
-    Distribution,
     PackageNotFoundError,
     version,
 )
@@ -40,23 +39,14 @@ class DependencyConflict:
         return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
-def get_dist_dependency_conflicts(
-    dist: Distribution,
-) -> DependencyConflict | None:
-    instrumentation_deps = []
-    extra = "extra"
-    instruments = "instruments"
-    instruments_marker = {extra: instruments}
-    if dist.requires:
-        for dep in dist.requires:
-            if extra not in dep or instruments not in dep:
-                continue
+class DependencyConflictError(Exception):
+    conflict: DependencyConflict
 
-            req = Requirement(dep)
-            if req.marker.evaluate(instruments_marker):
-                instrumentation_deps.append(req)
+    def __init__(self, conflict: DependencyConflict):
+        self.conflict = conflict
 
-    return get_dependency_conflicts(instrumentation_deps)
+    def __str__(self):
+        return str(self.conflict)
 
 
 def get_dependency_conflicts(
