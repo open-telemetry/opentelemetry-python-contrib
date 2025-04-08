@@ -30,15 +30,51 @@ def test_empty_allowlist_allows_nothing():
 def test_simple_include_allow_list():
     allow_list = AllowList(includes=["abc", "xyz"])
     assert allow_list.allowed("abc")
+    assert not allow_list.allowed("abc.xyz")
     assert allow_list.allowed("xyz")
     assert not allow_list.allowed("blah")
     assert not allow_list.allowed("other value not in includes")
 
 
-def test_includes_and_exclues():
+def test_allow_list_with_prefix_matching():
+    allow_list = AllowList(includes=["abc.*", "xyz"])
+    assert not allow_list.allowed("abc")
+    assert allow_list.allowed("abc.foo")
+    assert allow_list.allowed("abc.bar")
+    assert allow_list.allowed("xyz")
+    assert not allow_list.allowed("blah")
+    assert not allow_list.allowed("other value not in includes")
+
+
+def test_allow_list_with_array_wildcard_matching():
+    allow_list = AllowList(includes=["abc[*].foo", "xyz[*].*"])
+    assert not allow_list.allowed("abc")
+    assert allow_list.allowed("abc[0].foo")
+    assert not allow_list.allowed("abc[0].bar")
+    assert allow_list.allowed("abc[1].foo")
+    assert allow_list.allowed("xyz[0].blah")
+    assert allow_list.allowed("xyz[1].yadayada")
+    assert not allow_list.allowed("blah")
+    assert not allow_list.allowed("other value not in includes")
+
+
+def test_includes_and_excludes():
     allow_list = AllowList(includes=["abc", "xyz"], excludes=["xyz"])
     assert allow_list.allowed("abc")
     assert not allow_list.allowed("xyz")
+    assert not allow_list.allowed("blah")
+    assert not allow_list.allowed("other value not in includes")
+
+
+def test_includes_and_excludes_with_wildcards():
+    allow_list = AllowList(includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"])
+    assert allow_list.allowed("abc")
+    assert allow_list.allowed("xyz")
+    assert not allow_list.allowed("xyz.foo")
+    assert not allow_list.allowed("xyz.foo.bar")
+    assert not allow_list.allowed("xyz.foo.baz")
+    assert allow_list.allowed("xyz.not_foo")
+    assert allow_list.allowed("xyz.blah")
     assert not allow_list.allowed("blah")
     assert not allow_list.allowed("other value not in includes")
 

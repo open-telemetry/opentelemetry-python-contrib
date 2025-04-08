@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import os
 from typing import Callable, List, Optional, Set, Union
 
@@ -29,27 +30,58 @@ def _parse_env_list(s: str) -> Set[str]:
     return result
 
 
+class _CompoundMatcher:
+
+    def __init__(self, entries: Set[str]):
+        self._match_all = '*' in entries
+        self._entries = entries
+        self._regex_matcher = None
+        regex_entries = []
+        for entry in entries:
+            if "*" not in entry:
+                continue
+            if entry == "*":
+                continue
+            entry = entry.replace("[", "\\[")
+            entry = entry.replace("]", "\\]")
+            entry = entry.replace(".", "\\.")
+            entry = entry.replace("*", ".*")
+            regex_entries.append(f"({entry})")
+        if regex_entries:
+            joined_regex = '|'.join(regex_entries)
+            regex_str = f"^({joined_regex})$"
+            self._regex_matcher = re.compile(regex_str)
+    
+    @property
+    def match_all(self):
+        return self._match_all
+
+    def matches(self, x):
+        if self._match_all:
+            return True
+        if x in self._entries:
+            return True
+        if (self._regex_matcher is not None) and (self._regex_matcher.fullmatch(x)):
+            return True
+        return False
+
+
 class AllowList:
     def __init__(
         self,
         includes: Optional[Union[Set[str], List[str]]] = None,
         excludes: Optional[Union[Set[str], List[str]]] = None,
-        if_none_match: Optional[Callable[str, bool]] = None,
     ):
-        self._includes = set(includes or [])
-        self._excludes = set(excludes or [])
-        self._include_all = "*" in self._includes
-        self._exclude_all = "*" in self._excludes
-        assert (not self._include_all) or (
-            not self._exclude_all
-        ), "Can't have '*' in both includes and excludes."
+        self._includes = _CompoundMatcher(set(includes or []))
+        self._excludes = _CompoundMatcher(set(excludes or []))
+        assert ((not self._includes.match_all) or (not self._excludes.match_all)), "Can't have '*' in both includes and excludes."
 
     def allowed(self, x: str):
-        if self._exclude_all:
-            return x in self._includes
-        if self._include_all:
-            return x not in self._excludes
-        return (x in self._includes) and (x not in self._excludes)
+        if self._excludes.match_all:
+            return self._includes.matches(x)
+        if self._includes.match_all:
+            return not self._excludes.matches(x)
+        return self._includes.matches(x) and not self._excludes.matches(x)
 
     @staticmethod
     def from_env(
