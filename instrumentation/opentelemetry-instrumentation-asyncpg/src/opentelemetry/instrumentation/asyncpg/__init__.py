@@ -19,16 +19,31 @@ This library allows tracing PostgreSQL queries made by the
 Usage
 -----
 
+Start PostgreSQL:
+
+::
+
+    docker run -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DATABASE=database -p 5432:5432 postgres
+
+Run instrumented code:
+
 .. code-block:: python
 
+    import asyncio
     import asyncpg
     from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
-    conn = await asyncpg.connect(user='user', password='password',
-                                 database='database', host='127.0.0.1')
-    values = await conn.fetch('''SELECT 42;''')
+
+    async def main():
+        conn = await asyncpg.connect(user='user', password='password')
+
+        await conn.fetch('''SELECT 42;''')
+
+        await conn.close()
+
+    asyncio.run(main())
 
 API
 ---
