@@ -45,6 +45,8 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_AGENT_ID,
+    GEN_AI_AGENT_NAME,
     GEN_AI_OPERATION_NAME,
     GEN_AI_REQUEST_MAX_TOKENS,
     GEN_AI_REQUEST_MODEL,
@@ -54,18 +56,15 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_RESPONSE_FINISH_REASONS,
     GEN_AI_SYSTEM,
     GEN_AI_TOKEN_TYPE,
-    GEN_AI_USAGE_INPUT_TOKENS,
-    GEN_AI_USAGE_OUTPUT_TOKENS,
-    GEN_AI_AGENT_ID,
-    GEN_AI_AGENT_NAME,
     GEN_AI_TOOL_CALL_ID,
     GEN_AI_TOOL_NAME,
     GEN_AI_TOOL_TYPE,
+    GEN_AI_USAGE_INPUT_TOKENS,
+    GEN_AI_USAGE_OUTPUT_TOKENS,
     GenAiOperationNameValues,
     GenAiSystemValues,
     GenAiTokenTypeValues,
 )
-
 from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
@@ -189,7 +188,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             agent_alias_id = self._call_context.params.get("agentAliasId")
 
             self._set_if_not_none(attributes, GEN_AI_AGENT_ID, agent_id)
-            self._set_if_not_none(attributes, GEN_AI_AGENT_NAME, agent_alias_id)
+            self._set_if_not_none(
+                attributes, GEN_AI_AGENT_NAME, agent_alias_id
+            )
             return
 
         # Handle non-agent chat completions
@@ -506,7 +507,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         instrumentor_context: _BotocoreInstrumentorContext,
     ):
         try:
-            if "completion" in result and isinstance(result["completion"], EventStream):
+            if "completion" in result and isinstance(
+                result["completion"], EventStream
+            ):
                 event_stream = result["completion"]
 
                 # Drain the stream so we can instrument AND keep events
@@ -522,15 +525,15 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             # Record metrics
             metrics = instrumentor_context.metrics
             metrics_attributes = self._extract_metrics_attributes()
-            if operation_duration_histogram := metrics.get(GEN_AI_CLIENT_OPERATION_DURATION):
+            if operation_duration_histogram := metrics.get(
+                GEN_AI_CLIENT_OPERATION_DURATION
+            ):
                 duration = max((default_timer() - self._operation_start), 0)
                 operation_duration_histogram.record(
                     duration,
                     attributes=metrics_attributes,
                 )
 
-        except json.JSONDecodeError:
-            _logger.debug("Error: Unable to parse the response body as JSON")
         except Exception as exc:  # pylint: disable=broad-exception-caught
             _logger.debug("Error processing response: %s", exc)
 
@@ -548,7 +551,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     func_input = input_item["functionInvocationInput"]
                     action_group = func_input.get("actionGroup")
                     function = func_input.get("function")
-                    span.set_attribute(GEN_AI_TOOL_NAME, action_group)
+                    span.set_attribute(
+                        GEN_AI_TOOL_NAME, action_group + "." + function
+                    )
                     span.set_attribute(GEN_AI_TOOL_TYPE, "function")
 
                 # Handle API invocation
@@ -846,6 +851,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 duration,
                 attributes=metrics_attributes,
             )
+
 
 def _replay_events(events):
     """

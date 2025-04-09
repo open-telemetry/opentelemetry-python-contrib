@@ -1,23 +1,30 @@
 #!/usr/bin/env python3
 
-import boto3
 import json
-import uuid
 import logging
+import os
+import uuid
+
+import boto3
 from botocore.exceptions import ClientError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class WeatherAgentDemo:
     def __init__(self):
         # Initialize Bedrock Agents Runtime client
-        self.client = boto3.client('bedrock-agent-runtime')
+        self.client = boto3.client("bedrock-agent-runtime")
 
-        # Replace these with your actual agent IDs
-        self.agent_id = "TFMZVIWXR7"
-        self.agent_alias_id = "ZT7YYHO8TO"
+        self.agent_id = os.environ.get("BEDROCK_AGENT_ID")
+        self.agent_alias_id = os.environ.get("BEDROCK_AGENT_ALIAS_ID")
+
+        if not self.agent_id or not self.agent_alias_id:
+            raise ValueError(
+                "Environment variables BEDROCK_AGENT_ID and BEDROCK_AGENT_ALIAS_ID must be set."
+            )
 
         # Generate a unique session ID for this conversation
         self.session_id = str(uuid.uuid4())
@@ -54,12 +61,15 @@ class WeatherAgentDemo:
                     trace_data.append(event["trace"])
                 elif "returnControl" in event:
                     # Handle the case where the agent returns control
-                    return {"type": "return_control", "data": event["returnControl"]}
+                    return {
+                        "type": "return_control",
+                        "data": event["returnControl"],
+                    }
 
             return {
                 "type": "completion",
                 "completion": completion,
-                "trace": trace_data
+                "trace": trace_data,
             }
 
         except ClientError as e:
@@ -73,13 +83,15 @@ class WeatherAgentDemo:
 
         # Simulate weather API response (using function result format)
         weather_response = {
-            "actionGroup": invocation_inputs["functionInvocationInput"]["actionGroup"],
-            "function": invocation_inputs["functionInvocationInput"]["function"],
+            "actionGroup": invocation_inputs["functionInvocationInput"][
+                "actionGroup"
+            ],
+            "function": invocation_inputs["functionInvocationInput"][
+                "function"
+            ],
             "responseBody": {
-                "TEXT": {
-                    "body": "It's 55F in Seattle today, rainy."
-                }
-            }
+                "TEXT": {"body": "It's 55F in Seattle today, rainy."}
+            },
         }
 
         # Prepare session state with the returned control results
@@ -87,7 +99,7 @@ class WeatherAgentDemo:
             "invocationId": invocation_id,
             "returnControlInvocationResults": [
                 {"functionResult": weather_response}
-            ]
+            ],
         }
 
         return session_state
@@ -110,7 +122,7 @@ class WeatherAgentDemo:
             final_response = self.invoke_agent(
                 "Process the weather data",
                 session_state=session_state,
-                end_session=False # Keeping session open for potential follow-up
+                end_session=False,  # Keeping session open for potential follow-up
             )
 
             if final_response["type"] == "completion":
@@ -122,11 +134,13 @@ class WeatherAgentDemo:
                         print(json.dumps(trace, indent=2))
             else:
                 # Should not happen if session_state is provided correctly
-                logger.warning(f"Unexpected response type after providing session state: {final_response.get('type')}")
+                logger.warning(
+                    f"Unexpected response type after providing session state: {final_response.get('type')}"
+                )
                 print("Received unexpected response after providing data.")
 
         elif response["type"] == "completion":
-             # Agent answered directly without needing function call/return control
+            # Agent answered directly without needing function call/return control
             print("\nAgent responded directly:")
             print(response["completion"])
             if response["trace"]:
@@ -135,12 +149,17 @@ class WeatherAgentDemo:
                     print(json.dumps(trace, indent=2))
         else:
             # Handle other unexpected response types
-            logger.error(f"Unexpected initial response type: {response.get('type')}")
+            logger.error(
+                f"Unexpected initial response type: {response.get('type')}"
+            )
             print(f"Received unexpected response type: {response.get('type')}")
+
 
 if __name__ == "__main__":
     try:
         demo = WeatherAgentDemo()
         demo.run_demo()
     except Exception as e:
-        logger.error(f"Demo failed unexpectedly: {e}", exc_info=True) # Add traceback info
+        logger.error(
+            f"Demo failed unexpectedly: {e}", exc_info=True
+        )  # Add traceback info
