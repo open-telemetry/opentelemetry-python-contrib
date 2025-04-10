@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import math
 from timeit import default_timer
 from typing import Any
 
@@ -514,11 +515,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     span, response_body, instrumentor_context, capture_content
                 )
             elif "cohere.command-r" in model_id:
-                self._handle_command_r_response(
+                self._handle_cohere_command_r_response(
                     span, response_body, instrumentor_context, capture_content
                 )
             elif "cohere.command" in model_id:
-                self._handle_command_response(
+                self._handle_cohere_command_response(
                     span, response_body, instrumentor_context, capture_content
                 )
             elif "meta.llama" in model_id:
