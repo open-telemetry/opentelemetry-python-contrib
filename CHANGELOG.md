@@ -11,12 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.32.0/0.53b0 (2025-04-10)
+
 ### Added
 
 - `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
   ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI tool events using Amazon Nova models and `InvokeModel*` APIs
   ([#3385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3385))
+- `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
+  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
 
 ### Fixed
 
@@ -29,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
 - `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
   ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+- `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
+  ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
+
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
