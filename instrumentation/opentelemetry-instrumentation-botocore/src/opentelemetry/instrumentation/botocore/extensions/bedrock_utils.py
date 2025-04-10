@@ -519,6 +519,48 @@ class _Choice:
             message["content"] = response["content"]
         return cls(message, response["stop_reason"], index=0)
 
+    @classmethod
+    def from_invoke_cohere_command_r(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
+        if capture_content:
+            message = {"content": response["text"]}
+        else:
+            message = {}
+        return cls(message, response["finish_reason"], index=0)
+    
+    @classmethod
+    def from_invoke_cohere_command(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
+        result = response["generations"][0]
+        if capture_content:
+            message = {"content": result["text"]}
+        else:
+            message = {}
+        return cls(message, result["finish_reason"], index=0)
+
+    @classmethod
+    def from_invoke_meta_llama(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
+        if capture_content:
+            message = {"content": response["generation"]}
+        else:
+            message = {}
+        return cls(message, response["stop_reason"], index=0)
+    
+    @classmethod
+    def from_invoke_mistral_mistral(
+        cls, response: dict[str, Any], capture_content: bool
+    ) -> _Choice:
+        result = response["outputs"][0]
+        if capture_content:
+            message = {"content": result["text"]}
+        else:
+            message = {}
+        return cls(message, result["stop_reason"], index=0)
+
     def _to_body_dict(self) -> dict[str, Any]:
         return {
             "finish_reason": self.finish_reason,

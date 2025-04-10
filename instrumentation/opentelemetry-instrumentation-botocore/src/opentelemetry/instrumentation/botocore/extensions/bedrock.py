@@ -380,11 +380,25 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
                 messages = decoded_body.get("messages", [])
                 if not messages:
-                    # transform old school amazon titan invokeModel api to messages
-                    if input_text := decoded_body.get("inputText"):
-                        messages = [
-                            {"role": "user", "content": [{"text": input_text}]}
-                        ]
+                    model_id = self._call_context.params.get(_MODEL_ID_KEY)
+                    if "amazon.titan" in model_id:
+                        # transform old school amazon titan invokeModel api to messages
+                        if input_text := decoded_body.get("inputText"):
+                            messages = [
+                                {"role": "user", "content": [{"text": input_text}]}
+                            ]
+                    elif "cohere.command-r" in model_id:
+                        # chat_history can be converted to messages; for now, just use message
+                        if input_text := decoded_body.get("message"):
+                            messages = [
+                                {"role": "user", "content": [{"text": input_text}]}
+                            ]
+                    elif "cohere.command" in model_id or "meta.llama" in model_id or "mistral.mistral" in model_id:
+                        # transform old school cohere command api to messages
+                        if input_text := decoded_body.get("prompt"):
+                            messages = [
+                                {"role": "user", "content": [{"text": input_text}]}
+                            ]
 
         return system_messages + messages
 
@@ -831,6 +845,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             span.set_attribute(
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["finish_reason"]]
             )
+        
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_cohere_command_r(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
     
     def _handle_cohere_command_response(
         self,
@@ -849,6 +869,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.set_attribute(
                     GEN_AI_RESPONSE_FINISH_REASONS, [generations["finish_reason"]]
                 )
+        
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_cohere_command(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
 
     def _handle_meta_llama_response(
         self,
@@ -870,6 +896,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
             )
 
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_meta_llama(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
+
     def _handle_mistral_ai_response(
         self,
         span: Span,
@@ -883,6 +915,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(outputs["text"]) / 6))
             if "stop_reason" in outputs:
                 span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]])
+        
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_mistral_mistral(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
 
     def on_error(
         self,
