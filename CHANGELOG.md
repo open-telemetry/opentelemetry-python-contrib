@@ -11,8 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
 - `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
   ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI tool events using Amazon Nova models and `InvokeModel*` APIs
+  ([#3385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3385))
+- `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
+  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
 
 ### Fixed
 
@@ -21,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-django`,
   `opentelemetry-instrumentation-sqlalchemy`: Fix sqlcomment for non string query and composable object.
   ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
+- `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
+  ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
