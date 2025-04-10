@@ -14,7 +14,9 @@
 
 # pylint: disable=too-many-lines
 
+from importlib.metadata import PackageNotFoundError
 import unittest
+from contextlib import ExitStack
 from timeit import default_timer
 from unittest.mock import Mock, call, patch
 
@@ -171,9 +173,14 @@ class TestBaseFastAPI(TestBase):
         self._instrumentor = otel_fastapi.FastAPIInstrumentor()
         self._app = self._create_app()
         self._app.add_middleware(HTTPSRedirectMiddleware)
-        self._client = TestClient(self._app)
+        self._client = TestClient(self._app, base_url="https://testserver:443")
+        # run the lifespan, initialize the middleware stack
+        # this is more in-line with what happens in a real application when the server starts up
+        self._exit_stack = ExitStack()
+        self._exit_stack.enter_context(self._client)
 
     def tearDown(self):
+        self._exit_stack.close()
         super().tearDown()
         self.env_patch.stop()
         self.exclude_patch.stop()
@@ -206,9 +213,17 @@ class TestBaseFastAPI(TestBase):
         async def _():
             return {"message": "ok"}
 
+        @app.get("/error")
+        async def _():
+            raise UnhandledException("This is an unhandled exception")
+
         app.mount("/sub", app=sub_app)
 
         return app
+
+
+class UnhandledException(Exception):
+    pass
 
 
 class TestBaseManualFastAPI(TestBaseFastAPI):
@@ -220,6 +235,27 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             )
 
         super(TestBaseManualFastAPI, cls).setUpClass()
+
+    def test_fastapi_unhandled_exception(self):
+        """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
+        try:
+            resp = self._client.get("/error")
+            assert (
+                resp.status_code == 500
+            ), resp.content  # pragma: no cover, for debugging this test if an exception is _not_ raised
+        except UnhandledException:
+            pass
+        else:
+            self.fail("Expected UnhandledException")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        span = spans[0]
+        assert span.name == "GET /error http send"
+        assert span.attributes[SpanAttributes.HTTP_STATUS_CODE] == 500
+        span = spans[2]
+        assert span.name == "GET /error"
+        assert span.attributes[SpanAttributes.HTTP_TARGET] == "/error"
 
     def test_sub_app_fastapi_call(self):
         """
@@ -977,6 +1013,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         async def _():
             return {"message": "ok"}
 
+        @app.get("/error")
+        async def _():
+            raise UnhandledException("This is an unhandled exception")
+
         app.mount("/sub", app=sub_app)
 
         return app
@@ -1030,6 +1070,26 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
             self.assertSpanHasAttributes(
                 span, {"attr-from-response-hook": "value"}
             )
+
+
+def mock_version_with_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.109"
+    raise PackageNotFoundError()
+
+
+def mock_version_with_old_fastapi(*args, **kwargs):
+    req_name = args[0]
+    if req_name == "fastapi":
+        # TODO: Value now matters
+        return "0.92"
+    raise PackageNotFoundError()
+
+
+def mock_version_without_fastapi(*args, **kwargs):
+    raise PackageNotFoundError()
 
 
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
@@ -1139,9 +1199,11 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
     def test_mulitple_way_instrumentation(self):
         self._instrumentor.instrument_app(self._app)
         count = 0
-        for middleware in self._app.user_middleware:
-            if middleware.cls is OpenTelemetryMiddleware:
+        app = self._app.middleware_stack
+        while app is not None:
+            if isinstance(app, OpenTelemetryMiddleware):
                 count += 1
+            app = getattr(app, "app", None)
         self.assertEqual(count, 1)
 
     def test_uninstrument_after_instrument(self):
