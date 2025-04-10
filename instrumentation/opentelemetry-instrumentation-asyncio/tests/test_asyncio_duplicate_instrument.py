@@ -61,10 +61,10 @@ class TestAsyncioDuplicateInstrument(TestBase):
         self.assertLessEqual(
             len(fut1._callbacks),
             1,
-            f"fut1 has {len(fut1._callbacks)} callbacks. Potential leak!"
+            f"fut1 has {len(fut1._callbacks)} callbacks. Potential leak!",
         )
         self.assertLessEqual(
             len(fut2._callbacks),
             1,
-            f"fut2 has {len(fut2._callbacks)} callbacks. Potential leak!"
+            f"fut2 has {len(fut2._callbacks)} callbacks. Potential leak!",
         )
