@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.32.0/0.53b0 (2025-04-10)
+
 ### Added
 
 - `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
@@ -29,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
   ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
+- `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
+  ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
