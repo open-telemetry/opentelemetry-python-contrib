@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
-- 
+
 - `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
   ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
 
