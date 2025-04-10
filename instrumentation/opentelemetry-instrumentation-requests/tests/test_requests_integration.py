@@ -701,7 +701,7 @@ class TestRequestsIntegrationPreparedRequest(
         return session.send(prepared_request)
 
 
-class TestRequestsIntergrationMetric(TestBase):
+class TestRequestsIntegrationMetric(TestBase):
     URL = "http://examplehost:8000/status/200"
 
     def setUp(self):
