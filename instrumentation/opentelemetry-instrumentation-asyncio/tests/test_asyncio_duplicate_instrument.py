@@ -25,36 +25,6 @@ from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 
-class MockSubscription:
-    """
-    Example class holding an unsubscribe_future, similar to something like
-    aiokafka's subscription.
-    """
-
-    def __init__(self):
-        self.unsubscribe_future = asyncio.Future()
-
-
-class MockGroupCoordinator:
-    """
-    Example class modeling repeated instrumentation of the same Future objects.
-    """
-
-    def __init__(self):
-        self._closing = asyncio.Future()
-        self.subscription = MockSubscription()
-        self._rejoin_needed_fut = asyncio.Future()
-
-    async def run_routine(self, instrumentor):
-        """
-        Each time this routine is called, the same 3 Futures are 'traced' again.
-        In a real-life scenario, there's often a loop reusing these objects.
-        """
-        instrumentor.trace_future(self._closing)
-        instrumentor.trace_future(self.subscription.unsubscribe_future)
-        instrumentor.trace_future(self._rejoin_needed_fut)
-
-
 class TestAsyncioDuplicateInstrument(TestBase):
     """
     Tests whether repeated instrumentation of the same Futures leads to
@@ -80,36 +50,21 @@ class TestAsyncioDuplicateInstrument(TestBase):
         If instrumentor.trace_future is called multiple times on the same Future,
         we should NOT see an unbounded accumulation of callbacks.
         """
-        coordinator = MockGroupCoordinator()
+        fut1 = asyncio.Future()
+        fut2 = asyncio.Future()
 
-        # Simulate calling the routine multiple times
         num_iterations = 10
         for _ in range(num_iterations):
-            self.loop.run_until_complete(
-                coordinator.run_routine(self.instrumentor)
-            )
+            self.instrumentor.trace_future(fut1)
+            self.instrumentor.trace_future(fut2)
 
-        # Check for callback accumulation
-        closing_cb_count = len(coordinator._closing._callbacks)
-        unsub_cb_count = len(
-            coordinator.subscription.unsubscribe_future._callbacks
-        )
-        rejoin_cb_count = len(coordinator._rejoin_needed_fut._callbacks)
-
-        # If instrumentation is properly deduplicated, each Future might have ~1-2 callbacks.
-        max_expected_callbacks = 2
         self.assertLessEqual(
-            closing_cb_count,
-            max_expected_callbacks,
-            f"_closing Future has {closing_cb_count} callbacks. Potential leak!",
+            len(fut1._callbacks),
+            1,
+            f"fut1 has {len(fut1._callbacks)} callbacks. Potential leak!"
         )
         self.assertLessEqual(
-            unsub_cb_count,
-            max_expected_callbacks,
-            f"unsubscribe_future has {unsub_cb_count} callbacks. Potential leak!",
-        )
-        self.assertLessEqual(
-            rejoin_cb_count,
-            max_expected_callbacks,
-            f"_rejoin_needed_fut has {rejoin_cb_count} callbacks. Potential leak!",
+            len(fut2._callbacks),
+            1,
+            f"fut2 has {len(fut2._callbacks)} callbacks. Potential leak!"
         )

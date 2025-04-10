@@ -95,7 +95,6 @@ from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.asyncio.instrumentation_state import (
     _is_instrumented,
-    _mark_instrumented,
 )
 from opentelemetry.instrumentation.asyncio.package import _instruments
 from opentelemetry.instrumentation.asyncio.utils import (
@@ -247,8 +246,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         if _is_instrumented(func):
             return func
 
-        _mark_instrumented(func)
-
         start = default_timer()
         func_name = getattr(func, "__name__", None)
         if func_name is None and isinstance(func, functools.partial):
@@ -288,8 +285,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         if _is_instrumented(coro):
             return await coro
 
-        _mark_instrumented(coro)
-
         if not hasattr(coro, "__name__"):
             return await coro
         start = default_timer()
@@ -328,8 +323,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
         if _is_instrumented(future):
             return future
-
-        _mark_instrumented(future)
 
         start = default_timer()
         span = (
