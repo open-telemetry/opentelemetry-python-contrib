@@ -283,7 +283,9 @@ class _GenerateContentInstrumentationHelper:
             finish_reason = candidate.finish_reason
             if finish_reason is None:
                 continue
-            finish_reason_str = finish_reason.name.lower().removeprefix('finish_reason_')
+            finish_reason_str = finish_reason.name.lower().removeprefix(
+                "finish_reason_"
+            )
             self._finish_reasons_set.add(finish_reason_str)
 
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
