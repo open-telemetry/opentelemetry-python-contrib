@@ -20,8 +20,10 @@ from packaging.requirements import Requirement
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
     get_dependency_conflicts,
+    get_dist_dependency_conflicts,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import Distribution
 
 
 class TestDependencyConflicts(TestBase):
@@ -62,3 +64,41 @@ class TestDependencyConflicts(TestBase):
             str(conflict),
             f'DependencyConflict: requested: "pytest == 5000" but found: "pytest {pytest.__version__}"',
         )
+
+    def test_get_dist_dependency_conflicts(self):
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
+
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return ['test-pkg ~= 1.0; extra == "instruments"']
+
+        dist = MockDistribution()
+
+        conflict = get_dist_dependency_conflicts(dist)
+        self.assertTrue(conflict is not None)
+        self.assertTrue(isinstance(conflict, DependencyConflict))
+        self.assertEqual(
+            str(conflict),
+            'DependencyConflict: requested: "test-pkg~=1.0; extra == "instruments"" but found: "None"',
+        )
+
+    def test_get_dist_dependency_conflicts_requires_none(self):
+        class MockDistribution(Distribution):
+            def locate_file(self, path):
+                pass
+
+            def read_text(self, filename):
+                pass
+
+            @property
+            def requires(self):
+                return None
+
+        dist = MockDistribution()
+        conflict = get_dist_dependency_conflicts(dist)
+        self.assertTrue(conflict is None)
