@@ -56,23 +56,22 @@ if TYPE_CHECKING:
             headers: HeadersT | None = None,
         ) -> asyncio.Future[RecordMetadata]: ...
 
-
-ProduceHookT = Optional[
-    Callable[[Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]]
-]
-ConsumeHookT = Optional[
-    Callable[
-        [
-            Span,
-            aiokafka.ConsumerRecord[object, object],
-            Tuple[aiokafka.TopicPartition, ...],
-            Dict[str, Any],
-        ],
-        Awaitable[None],
+    ProduceHookT = Optional[
+        Callable[[Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]]
     ]
-]
+    ConsumeHookT = Optional[
+        Callable[
+            [
+                Span,
+                aiokafka.ConsumerRecord[object, object],
+                Tuple[aiokafka.TopicPartition, ...],
+                Dict[str, Any],
+            ],
+            Awaitable[None],
+        ]
+    ]
 
-HeadersT = Sequence[Tuple[str, Optional[bytes]]]
+    HeadersT = Sequence[Tuple[str, Optional[bytes]]]
 
 _LOG = getLogger(__name__)
 
@@ -160,7 +159,7 @@ async def _extract_send_partition(
         return None
 
 
-class AIOKafkaContextGetter(textmap.Getter[HeadersT]):
+class AIOKafkaContextGetter(textmap.Getter["HeadersT"]):
     def get(self, carrier: HeadersT, key: str) -> list[str] | None:
         if carrier is None:
             return None
@@ -177,7 +176,7 @@ class AIOKafkaContextGetter(textmap.Getter[HeadersT]):
         return [key for (key, value) in carrier]
 
 
-class AIOKafkaContextSetter(textmap.Setter[HeadersT]):
+class AIOKafkaContextSetter(textmap.Setter["HeadersT"]):
     def set(
         self, carrier: HeadersT, key: str | None, value: str | None
     ) -> None:
