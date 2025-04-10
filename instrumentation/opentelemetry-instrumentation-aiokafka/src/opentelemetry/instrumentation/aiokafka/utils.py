@@ -130,6 +130,15 @@ def _extract_send_headers(
     return _extract_argument("headers", 5, None, args, kwargs)
 
 
+def _move_headers_to_kwargs(
+    args: Tuple[Any], kwargs: Dict[str, Any]
+) -> Tuple[Tuple[Any], Dict[str, Any]]:
+    """Move headers from args to kwargs"""
+    if len(args) > 5:
+        kwargs["headers"] = args[5]
+    return args[:5], kwargs
+
+
 async def _extract_send_partition(
     instance: aiokafka.AIOKafkaProducer,
     args: tuple[Any, ...],
@@ -399,6 +408,7 @@ def _wrap_send(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> asyncio.Future[RecordMetadata]:
+        args, kwargs = _move_headers_to_kwargs(args, kwargs)
         headers: HeadersT | None = _extract_send_headers(args, kwargs)
         if headers is None:
             headers = []

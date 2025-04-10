@@ -473,3 +473,43 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
                 dict(span.attributes),
                 msg=span.name,
             )
+
+    async def test_send_and_wait(self) -> None:
+        AIOKafkaInstrumentor().uninstrument()
+        AIOKafkaInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+        producer = await self.producer_factory()
+        add_message_mock: mock.AsyncMock = (
+            producer._message_accumulator.add_message
+        )
+        add_message_mock.side_effect = [mock.AsyncMock()(), mock.AsyncMock()()]
+
+        tracer = self.tracer_provider.get_tracer(__name__)
+        with tracer.start_as_current_span("test_span") as span:
+            await producer.send_and_wait("topic_1", b"value_1")
+
+        add_message_mock.assert_awaited_with(
+            TopicPartition(topic="topic_1", partition=1),
+            None,
+            b"value_1",
+            40.0,
+            timestamp_ms=None,
+            headers=[("traceparent", mock.ANY)],
+        )
+        assert (
+            add_message_mock.call_args_list[0]
+            .kwargs["headers"][0][1]
+            .startswith(
+                f"00-{format_trace_id(span.get_span_context().trace_id)}-".encode()
+            )
+        )
+
+        await producer.send_and_wait("topic_2", b"value_2")
+        add_message_mock.assert_awaited_with(
+            TopicPartition(topic="topic_2", partition=1),
+            None,
+            b"value_2",
+            40.0,
+            timestamp_ms=None,
+            headers=[("traceparent", mock.ANY)],
+        )
