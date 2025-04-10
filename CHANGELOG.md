@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
-
+- 
 - `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
   ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+
+## Version 1.32.0/0.53b0 (2025-04-10)
 
 ### Added
 
@@ -20,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
 - `opentelemetry-instrumentation-botocore` Add support for GenAI tool events using Amazon Nova models and `InvokeModel*` APIs
   ([#3385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3385))
+- `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
+  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
 
 ### Fixed
 
@@ -30,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
   ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
+  ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+- `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
+  ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
+
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
