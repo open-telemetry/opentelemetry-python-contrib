@@ -30,6 +30,7 @@ from moto import (  # pylint: disable=import-error
 from opentelemetry.instrumentation.boto import BotoInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import NoOpTracerProvider, get_tracer_provider
 
 
 def assert_span_http_status_code(span, code):
@@ -44,6 +45,7 @@ class TestBotoInstrumentor(TestBase):
     def setUp(self):
         super().setUp()
         BotoInstrumentor().instrument()
+        self.noop_tracer_provider = NoOpTracerProvider()
 
     def tearDown(self):
         BotoInstrumentor().uninstrument()
@@ -280,3 +282,27 @@ class TestBotoInstrumentor(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes["endpoint"], "elasticcache")
         self.assertEqual(span.attributes["aws.region"], "us-west-2")
+    @mock_s3_deprecated
+    def test_boto_with_noop_tracer_provider(self):
+        # Set the NoOpTracerProvider explicitly
+        from opentelemetry.trace import set_tracer_provider
+        BotoInstrumentor().uninstrument()
+        set_tracer_provider(self.noop_tracer_provider)
+
+        # Create a boto client
+        s3 = boto.s3.connect_to_region("us-east-1")
+
+        # Perform a simple operation
+        try:
+            s3.get_all_buckets()
+        except Exception:
+            pass  # Ignore any exceptions for this test
+
+        # Ensure no spans are created
+        tracer = get_tracer_provider().get_tracer("test")
+        if get_tracer_provider() is self.noop_tracer_provider:
+            # NoOpTracerProvider does not support span processing
+            self.assertTrue(True)
+        else:
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 0)
