@@ -16,6 +16,7 @@ env:
   CORE_REPO_SHA: ${% raw %}{{ inputs.CORE_REPO_SHA }}{% endraw %}
   CONTRIB_REPO_SHA: ${% raw %}{{ inputs.CONTRIB_REPO_SHA }}{% endraw %}
   PIP_EXISTS_ACTION: w
+  CORE_REPO: "git+file://{% raw %}${{ github.workspace }}{% endraw %}/opentelemetry-python"
 
 jobs:
   {%- for job_data in job_datas %}
@@ -29,6 +30,13 @@ jobs:
         with:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${% raw %}{{ env.CONTRIB_REPO_SHA }}{% endraw %}
+
+      - name: Checkout core repo @ SHA - ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+          path: opentelemetry-python
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v5
