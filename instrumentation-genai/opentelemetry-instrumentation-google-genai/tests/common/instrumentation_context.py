@@ -18,8 +18,8 @@ from opentelemetry.instrumentation.google_genai import (
 
 
 class InstrumentationContext:
-    def __init__(self):
-        self._instrumentor = GoogleGenAiSdkInstrumentor()
+    def __init__(self, **kwargs):
+        self._instrumentor = GoogleGenAiSdkInstrumentor(**kwargs)
 
     def install(self):
         self._instrumentor.instrument()
