@@ -37,3 +37,5 @@ zipp==3.19.2
 -e opentelemetry-instrumentation
 -e propagator/opentelemetry-propagator-aws-xray
 -e instrumentation/opentelemetry-instrumentation-botocore
+git+https://github.com/open-telemetry/opentelemetry-python.git@main#subdirectory=opentelemetry-semantic-conventions
+

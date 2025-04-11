@@ -18,13 +18,22 @@ from __future__ import annotations
 
 import io
 import json
+import uuid
 from unittest import mock
+import time
 
 import boto3
 import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
+    GEN_AI_AGENT_ID,
+    GEN_AI_AGENT_NAME,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -36,6 +45,7 @@ from .bedrock_utils import (
     assert_message_in_logs,
     assert_metrics,
     assert_stream_completion_attributes,
+    assert_invoke_agent_attributes
 )
 
 BOTO3_VERSION = tuple(int(x) for x in boto3.__version__.split("."))
@@ -2690,3 +2700,165 @@ def get_anthropic_tool_config():
             },
         }
     ]
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 34, 1), reason="InvokeAgent API not available"
+)
+@pytest.mark.vcr()
+def test_invoke_agent_with_completion(
+    span_exporter,
+    metric_reader,
+    bedrock_runtime_client,
+    bedrock_agent_client,
+    instrument_with_content,
+):
+    agent_id = "TFMZVIWXR7"
+    agent_alias_id = "ZT7YYHO8TO"
+    session_id = str(uuid.uuid4())
+    input_text = "What's the weather like in Seattle today?"
+
+    # Make the actual API call
+    response = bedrock_agent_client.invoke_agent(
+        agentId=agent_id,
+        agentAliasId=agent_alias_id,
+        sessionId=session_id,
+        inputText=input_text,
+        enableTrace=True,
+        endSession=False,
+    )
+
+    event_stream = response.get("completion")
+    for event in event_stream:
+        # Consume the stream
+        pass
+
+    # Verify the span was created with correct attributes
+    (span,) = span_exporter.get_finished_spans()
+    assert_invoke_agent_attributes(span, agent_id, agent_alias_id, session_id)
+
+    # Verify span name
+    assert span.name == f"invoke_agent"
+
+    # Verify metrics
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "invoke_agent", None)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 34, 1), reason="InvokeAgent API not available"
+)
+@pytest.mark.vcr()
+def test_invoke_agent_with_return_control(
+    span_exporter,
+    metric_reader,
+    bedrock_runtime_client,
+    bedrock_agent_client,
+    instrument_with_content,
+):
+    agent_id = "TFMZVIWXR7"
+    agent_alias_id = "ZT7YYHO8TO"
+    session_id = str(uuid.uuid4())
+    input_text = "What's the weather like in Seattle today?"
+
+    # Make the actual API call
+    response = bedrock_agent_client.invoke_agent(
+        agentId=agent_id,
+        agentAliasId=agent_alias_id,
+        sessionId=session_id,
+        inputText=input_text,
+        enableTrace=True,
+        endSession=False,
+    )
+
+    event_stream = response.get("completion", [])
+    completion_events = list(event_stream) # Consume the stream
+
+    has_tool_call = any("returnControl" in e for e in completion_events)
+    assert has_tool_call, "Test expects a tool call (returnControl) in the first response"
+
+    # Verify the span attributes
+    (span,) = span_exporter.get_finished_spans()
+    assert_invoke_agent_attributes(
+        span,
+        agent_id,
+        agent_alias_id,
+        session_id,
+        has_tool_call=has_tool_call
+    )
+
+    def extract_return_control_details(completion_events):
+        for event in completion_events:
+            if "returnControl" in event:
+                return_control = event["returnControl"]
+                invocation_id = return_control.get("invocationId")
+                if invocation_inputs := return_control.get("invocationInputs", []):
+                     if len(invocation_inputs) > 0 and "functionInvocationInput" in invocation_inputs[0]:
+                        func_input = invocation_inputs[0]["functionInvocationInput"]
+                        action_group = func_input.get("actionGroup")
+                        function_name = func_input.get("function")
+                        params = {p['name']: p['value'] for p in func_input.get("parameters", [])}
+                        return invocation_id, action_group, function_name, params
+        return None, None, None, None
+
+    (
+        invocation_id,
+        action_group,
+        function_name,
+        params,
+    ) = extract_return_control_details(completion_events)
+    assert invocation_id, "Invocation ID not found in returnControl"
+    assert action_group, "Action Group not found in returnControl"
+    assert function_name == "get_weather", f"Expected function 'get_weather', got '{function_name}'"
+    assert params.get("location") == "Seattle", f"Expected location 'Seattle' in params, got {params.get('location')}"
+
+    assert span.attributes.get(GEN_AI_TOOL_CALL_ID) == invocation_id
+    assert span.attributes.get(GEN_AI_TOOL_NAME) == action_group
+    assert span.attributes.get(GEN_AI_TOOL_TYPE) == "function"
+
+    simulated_weather_response = f"The weather in {params.get('location', 'N/A')} is 72 degrees and sunny."
+    # Construct the sessionState payload
+    session_state = {
+        "invocationId": invocation_id,
+        "returnControlInvocationResults": [
+            {
+                "functionResult": {
+                    "actionGroup": action_group,
+                    "function": function_name,
+                    "responseBody": {
+                        "TEXT": {"body": simulated_weather_response},
+                    },
+                }
+            }
+        ],
+    }
+    span_exporter.clear()
+
+    # Make the second API call with the result
+    response_2 = bedrock_agent_client.invoke_agent(
+        agentId=agent_id,
+        agentAliasId=agent_alias_id,
+        sessionId=session_id, # Keeping the same session ID
+        sessionState=session_state,
+        # inputText is ignored when sessionState with returnControlInvocationResults is present
+        enableTrace=True,
+        endSession=False,
+    )
+
+    event_stream_2 = response_2.get("completion", [])
+    completion_events_2 = list(event_stream_2) # Consume the stream
+
+    # Verify the second span
+    (span_2,) = span_exporter.get_finished_spans()
+    assert_invoke_agent_attributes(
+        span_2,
+        agent_id,
+        agent_alias_id,
+        session_id,
+        has_tool_call=False, # This call receives results, doesn't initiate a tool call
+        is_result_call=True,
+    )
+
+    # Verify metrics
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "invoke_agent", None)
