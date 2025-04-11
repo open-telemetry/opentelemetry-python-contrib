@@ -72,6 +72,8 @@ created span and some other contextual information. Example:
 
 .. code-block:: python
 
+    from opentelemetry.instrumentation.tornado import TornadoInstrumentor
+
     # will be called for each incoming request to Tornado
     # web server. `handler` is an instance of
     # `tornado.web.RequestHandler`.
@@ -94,7 +96,7 @@ created span and some other contextual information. Example:
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_response_hook
+        client_response_hook=client_response_hook,
     )
 
 Capture HTTP request and response headers
