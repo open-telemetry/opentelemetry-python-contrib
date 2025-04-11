@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3385))
 - `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
   ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
+- `opentelemetry-instrumentation-botocore` Add GenAI instrumentation for additional Bedrock models for InvokeModel API
+  ([#3419](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3419))
 
 ### Fixed
 

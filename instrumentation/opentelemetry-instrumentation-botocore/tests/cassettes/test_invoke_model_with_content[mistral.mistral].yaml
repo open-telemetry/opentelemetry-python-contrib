@@ -1,0 +1,63 @@
+interactions:
+- request:
+    body: |-
+      {
+        "prompt": "Say this is a test",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "top_p": 1,
+        "stop": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '97'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.3.0 md/arch#arm64 lang/python#3.10.16
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250410T224059Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-332feae9-215a9553da54b4789bf12414;Parent=f3899b50f888d5d7;Sampled=1
+      amz-sdk-invocation-id:
+      - 2d410cd2-ef68-48af-9cad-b7ddf3b1d844
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/mistral.mistral-7b-instruct-v0%3A2/invoke
+  response:
+    body:
+      string: |-
+        {
+          "outputs": [
+            {
+              "text": "\n\nA man stands before a crowd of people",
+              "stop_reason": "length"
+            }
+          ]
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 10 Apr 2025 22:41:00 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '6'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '174'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 68547039-f30c-4aff-b368-31bb6d9b9d07
+    status:
+      code: 200
+      message: OK
+version: 1
