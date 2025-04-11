@@ -525,6 +525,28 @@ jobs:
       - name: Run tests
         run: tox -e py38-test-instrumentation-boto -- -ra
 
+  py38-test-instrumentation-asyncclick:
+    name: instrumentation-asyncclick 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-asyncclick -- -ra
+
   py38-test-instrumentation-click:
     name: instrumentation-click 
     runs-on: ubuntu-latest
@@ -877,8 +899,8 @@ jobs:
       - name: Run tests
         run: tox -e py38-test-instrumentation-requests -- -ra
 
-  py38-test-instrumentation-starlette:
-    name: instrumentation-starlette 
+  py38-test-instrumentation-starlette-oldest:
+    name: instrumentation-starlette-oldest 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
@@ -897,7 +919,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-starlette -- -ra
+        run: tox -e py38-test-instrumentation-starlette-oldest -- -ra
+
+  py38-test-instrumentation-starlette-latest:
+    name: instrumentation-starlette-latest 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-instrumentation-starlette-latest -- -ra
 
   py38-test-instrumentation-jinja2:
     name: instrumentation-jinja2 

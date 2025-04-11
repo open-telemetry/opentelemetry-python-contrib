@@ -34,6 +34,7 @@ from .bedrock_utils import (
     assert_completion_attributes_from_streaming_body,
     assert_converse_completion_attributes,
     assert_message_in_logs,
+    assert_metrics,
     assert_stream_completion_attributes,
 )
 
@@ -51,9 +52,11 @@ def filter_message_keys(message, keys):
 def test_converse_with_content(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
+    # pylint:disable=too-many-locals
     messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
 
     llm_model_value = "amazon.titan-text-lite-v1"
@@ -95,6 +98,13 @@ def test_converse_with_content(
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
+    input_tokens = response["usage"]["inputTokens"]
+    output_tokens = response["usage"]["outputTokens"]
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="Converse API not available"
@@ -103,6 +113,7 @@ def test_converse_with_content(
 def test_converse_with_content_different_events(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -149,6 +160,13 @@ def test_converse_with_content_different_events(
         },
     }
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
+
+    input_tokens = response["usage"]["inputTokens"]
+    output_tokens = response["usage"]["outputTokens"]
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
 
 
 def converse_tool_call(
@@ -452,6 +470,7 @@ def test_converse_tool_call_no_content(
 def test_converse_with_invalid_model(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -479,6 +498,11 @@ def test_converse_with_invalid_model(
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, error_type="ValidationException"
+    )
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
@@ -487,6 +511,7 @@ def test_converse_with_invalid_model(
 def test_converse_stream_with_content(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -553,6 +578,11 @@ def test_converse_stream_with_content(
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, input_tokens, output_tokens
+    )
+
 
 @pytest.mark.skipif(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
@@ -561,6 +591,7 @@ def test_converse_stream_with_content(
 def test_converse_stream_with_content_different_events(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -613,6 +644,9 @@ def test_converse_stream_with_content_different_events(
         },
     }
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(metrics, "chat", llm_model_value, mock.ANY, mock.ANY)
 
 
 def _rebuild_stream_message(response):
@@ -986,6 +1020,7 @@ def test_converse_stream_no_content_tool_call(
 def test_converse_stream_handles_event_stream_error(
     span_exporter,
     log_exporter,
+    metric_reader,
     bedrock_runtime_client,
     instrument_with_content,
 ):
@@ -1038,6 +1073,11 @@ def test_converse_stream_handles_event_stream_error(
     assert len(logs) == 1
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert_metrics(
+        metrics, "chat", llm_model_value, error_type="EventStreamError"
+    )
 
 
 @pytest.mark.skipif(
@@ -1106,7 +1146,7 @@ def get_invoke_model_body(
         if system:
             body["system"] = system
         if tools:
-            body["toolConfig"] = {"tools": tools}
+            body["toolConfig"] = tools
     elif llm_model == "amazon.titan-text-lite-v1":
         config = {}
         set_if_not_none(config, "maxTokenCount", max_tokens)
@@ -1216,6 +1256,53 @@ def test_invoke_model_with_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.vcr()
+def test_invoke_model_with_content_user_content_as_string(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    max_tokens = 10
+    body = json.dumps(
+        {
+            "messages": [{"role": "user", "content": "say this is a test"}],
+            "max_tokens": max_tokens,
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+    )
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        response,
+        "chat",
+        request_max_tokens=max_tokens,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+    user_content = {"content": "say this is a test"}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    message = {
+        "role": "assistant",
+        "content": [{"type": "text", "text": "This is a test."}],
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": message,
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
+
+
 @pytest.mark.parametrize(
     "model_family",
     ["amazon.nova", "anthropic.claude"],
@@ -1289,28 +1376,234 @@ def test_invoke_model_with_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
+class AnthropicClaudeModel:
+    @staticmethod
+    def user_message(prompt: str):
+        return {
+            "text": prompt,
+            "type": "text",
+        }
+
+    @staticmethod
+    def tool_config():
+        return get_anthropic_tool_config()
+
+    @staticmethod
+    def assistant_message(response):
+        return {"role": response["role"], "content": response["content"]}
+
+    @staticmethod
+    def tool_requests_ids(response):
+        return [
+            content["id"]
+            for content in response["content"]
+            if content["type"] == "tool_use"
+        ]
+
+    @staticmethod
+    def tool_requests_ids_from_stream(stream_content):
+        return [
+            item["id"] for item in stream_content if item["type"] == "tool_use"
+        ]
+
+    @staticmethod
+    def tool_calls_results(tool_requests_ids):
+        assert len(tool_requests_ids) == 2
+
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[0],
+                    "content": "50 degrees and raining",
+                },
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_requests_ids[1],
+                    "content": "70 degrees and sunny",
+                },
+            ],
+        }
+
+    @staticmethod
+    def tool_messages(tool_requests_ids, tool_call_result, expect_content):
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["content"]
+            if expect_content
+            else None,
+        }
+        return tool_message_0, tool_message_1
+
+    @staticmethod
+    def choice_content(response):
+        return response["content"]
+
+    @staticmethod
+    def get_stream_body_content(body):
+        content = []
+        content_block = {}
+        input_json_buf = ""
+        for event in body:
+            json_bytes = event["chunk"].get("bytes", b"")
+            decoded = json_bytes.decode("utf-8")
+            chunk = json.loads(decoded)
+
+            if (message_type := chunk.get("type")) is not None:
+                if message_type == "content_block_start":
+                    content_block = chunk["content_block"]
+                elif message_type == "content_block_delta":
+                    if chunk["delta"]["type"] == "text_delta":
+                        content_block["text"] += chunk["delta"]["text"]
+                    elif chunk["delta"]["type"] == "input_json_delta":
+                        input_json_buf += chunk["delta"]["partial_json"]
+                elif message_type == "content_block_stop":
+                    if input_json_buf:
+                        content_block["input"] = json.loads(input_json_buf)
+                    content.append(content_block)
+                    content_block = None
+                    input_json_buf = ""
+
+        return content
+
+
+class AmazonNovaModel:
+    @staticmethod
+    def user_message(prompt: str):
+        return {
+            "text": prompt,
+        }
+
+    @staticmethod
+    def assistant_message(response):
+        return response["output"]["message"]
+
+    @staticmethod
+    def tool_config():
+        return get_tool_config()
+
+    @staticmethod
+    def tool_requests_ids(response):
+        return [
+            content["toolUse"]["toolUseId"]
+            for content in response["output"]["message"]["content"]
+            if "toolUse" in content
+        ]
+
+    @staticmethod
+    def tool_requests_ids_from_stream(stream_content):
+        return [
+            item["toolUse"]["toolUseId"]
+            for item in stream_content
+            if "toolUse" in item
+        ]
+
+    @staticmethod
+    def tool_calls_results(tool_requests_ids):
+        assert len(tool_requests_ids) == 2
+
+        return {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[0],
+                        "content": [
+                            {"json": {"weather": "50 degrees and raining"}}
+                        ],
+                    }
+                },
+                {
+                    "toolResult": {
+                        "toolUseId": tool_requests_ids[1],
+                        "content": [
+                            {"json": {"weather": "70 degrees and sunny"}}
+                        ],
+                    }
+                },
+            ],
+        }
+
+    @staticmethod
+    def tool_messages(tool_requests_ids, tool_call_result, expect_content):
+        tool_message_0 = {
+            "id": tool_requests_ids[0],
+            "content": tool_call_result["content"][0]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+        tool_message_1 = {
+            "id": tool_requests_ids[1],
+            "content": tool_call_result["content"][1]["toolResult"]["content"]
+            if expect_content
+            else None,
+        }
+        return tool_message_0, tool_message_1
+
+    @staticmethod
+    def choice_content(response):
+        return response["output"]["message"]["content"]
+
+    @staticmethod
+    def get_stream_body_content(body):
+        content = []
+        content_block = {}
+        tool_use = {}
+        for event in body:
+            json_bytes = event["chunk"].get("bytes", b"")
+            decoded = json_bytes.decode("utf-8")
+            chunk = json.loads(decoded)
+
+            if "contentBlockDelta" in chunk:
+                delta = chunk["contentBlockDelta"]["delta"]
+                if "text" in delta:
+                    content_block.setdefault("text", "")
+                    content_block["text"] += delta["text"]
+                elif "toolUse" in delta:
+                    tool_use["toolUse"]["input"] = json.loads(
+                        delta["toolUse"]["input"]
+                    )
+            elif "contentBlockStart" in chunk:
+                if content_block:
+                    content.append(content_block)
+                    content_block = {}
+                start = chunk["contentBlockStart"]["start"]
+                if "toolUse" in start:
+                    tool_use = start
+            elif "contentBlockStop" in chunk:
+                if tool_use:
+                    content.append(tool_use)
+                    tool_use = {}
+            elif "messageStop" in chunk:
+                if content_block:
+                    content.append(content_block)
+                    content_block = {}
+
+        return content
+
+
 def invoke_model_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     llm_model_value,
+    llm_model_config,
     expect_content,
 ):
     # pylint:disable=too-many-locals,too-many-statements
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
-                    "type": "text",
-                }
-            ],
-        }
-    ]
+    user_prompt = "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco"
+    user_msg = llm_model_config.user_message(user_prompt)
+    messages = [{"role": "user", "content": [user_msg]}]
 
     max_tokens = 1000
-    tool_config = get_anthropic_tool_config()
+    tool_config = llm_model_config.tool_config()
     body = get_invoke_model_body(
         llm_model_value,
         messages=messages,
@@ -1328,36 +1621,13 @@ def invoke_model_tool_call(
     new_stream = io.BytesIO(response_0_raw_body)
     response_0["body"] = StreamingBody(new_stream, len(response_0_raw_body))
 
-    tool_requests_ids = [
-        content["id"]
-        for content in response_0_body["content"]
-        if content["type"] == "tool_use"
-    ]
+    tool_requests_ids = llm_model_config.tool_requests_ids(response_0_body)
     assert len(tool_requests_ids) == 2
-    tool_call_result = {
-        "role": "user",
-        "content": [
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[0],
-                "content": "50 degrees and raining",
-            },
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[1],
-                "content": "70 degrees and sunny",
-            },
-        ],
-    }
 
-    # remove extra attributes from response
-    response_0_body.pop("id")
-    response_0_body.pop("stop_reason")
-    response_0_body.pop("stop_sequence")
-    response_0_body.pop("usage")
-    response_0_body.pop("model")
-    response_0_body.pop("type")
-    messages.append(response_0_body)
+    assistant_message = llm_model_config.assistant_message(response_0_body)
+    tool_call_result = llm_model_config.tool_calls_results(tool_requests_ids)
+
+    messages.append(assistant_message)
     messages.append(tool_call_result)
 
     body = get_invoke_model_body(
@@ -1370,6 +1640,12 @@ def invoke_model_tool_call(
         body=body,
         modelId=llm_model_value,
     )
+
+    response_1_raw_body = response_1["body"].read()
+    response_1_body = json.loads(response_1_raw_body)
+    # replenish body for span assertions
+    new_stream = io.BytesIO(response_1_raw_body)
+    response_1["body"] = StreamingBody(new_stream, len(response_1_raw_body))
 
     (span_0, span_1) = span_exporter.get_finished_spans()
     assert_completion_attributes_from_streaming_body(
@@ -1429,7 +1705,7 @@ def invoke_model_tool_call(
     assert_message_in_logs(
         logs[2], "gen_ai.user.message", user_content, span_1
     )
-    assistant_body = response_0_body
+    assistant_body = assistant_message
     assistant_body["tool_calls"] = choice_body["message"]["tool_calls"]
     assistant_body.pop("role")
     if not expect_content:
@@ -1440,21 +1716,14 @@ def invoke_model_tool_call(
         assistant_body,
         span_1,
     )
-    tool_message_0 = {
-        "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["content"]
-        if expect_content
-        else None,
-    }
+
+    tool_message_0, tool_message_1 = llm_model_config.tool_messages(
+        tool_requests_ids, tool_call_result, expect_content
+    )
+
     assert_message_in_logs(
         logs[4], "gen_ai.tool.message", tool_message_0, span_1
     )
-    tool_message_1 = {
-        "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["content"]
-        if expect_content
-        else None,
-    }
     assert_message_in_logs(
         logs[5], "gen_ai.tool.message", tool_message_1, span_1
     )
@@ -1466,17 +1735,13 @@ def invoke_model_tool_call(
     assert_message_in_logs(
         logs[6], "gen_ai.user.message", user_message_body, span_1
     )
+    choice_content = llm_model_config.choice_content(response_1_body)
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
         "message": {
             "role": "assistant",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "Thank you for providing the weather information. Here's the current weather for Seattle and San Francisco:\n\n1. Seattle: The current weather in Seattle is 50 degrees and raining.\n2. San Francisco: The current weather in San Francisco is 70 degrees and sunny.\n\nAs you can see, there's quite a difference in the weather between these two West Coast cities today. Seattle is experiencing cooler temperatures with rain, which is fairly typical for the Pacific Northwest. On the other hand, San Francisco is enjoying warmer temperatures with sunny skies, making for a pleasant day in the Bay Area.\n\nIs there anything else you'd like to know about the weather in these cities or any other locations?",
-                }
-            ],
+            "content": choice_content,
         },
     }
     if not expect_content:
@@ -1484,19 +1749,31 @@ def invoke_model_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_with_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+        llm_model_config = AmazonNovaModel
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+        llm_model_config = AnthropicClaudeModel
+
     invoke_model_tool_call(
         span_exporter,
         log_exporter,
         bedrock_runtime_client,
         llm_model_value,
+        llm_model_config,
         expect_content=True,
     )
 
@@ -1613,19 +1890,31 @@ def test_invoke_model_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_no_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_no_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+        llm_model_config = AmazonNovaModel
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+        llm_model_config = AnthropicClaudeModel
+
     invoke_model_tool_call(
         span_exporter,
         log_exporter,
         bedrock_runtime_client,
         llm_model_value,
+        llm_model_config,
         expect_content=False,
     )
 
@@ -1863,23 +2152,17 @@ def invoke_model_with_response_stream_tool_call(
     log_exporter,
     bedrock_runtime_client,
     llm_model_value,
+    llm_model_config,
     expect_content,
 ):
     # pylint:disable=too-many-locals,too-many-statements,too-many-branches
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
-                    "type": "text",
-                }
-            ],
-        }
-    ]
+    user_prompt = "What is the weather in Seattle and San Francisco today? Please give one tool call for Seattle and one for San Francisco"
+    user_msg_content = llm_model_config.user_message(user_prompt)
+    messages = [{"role": "user", "content": [user_msg_content]}]
 
     max_tokens = 1000
-    tool_config = get_anthropic_tool_config()
+    tool_config = llm_model_config.tool_config()
+
     body = get_invoke_model_body(
         llm_model_value,
         messages=messages,
@@ -1891,50 +2174,12 @@ def invoke_model_with_response_stream_tool_call(
         modelId=llm_model_value,
     )
 
-    content = []
-    content_block = {}
-    input_json_buf = ""
-    for event in response_0["body"]:
-        json_bytes = event["chunk"].get("bytes", b"")
-        decoded = json_bytes.decode("utf-8")
-        chunk = json.loads(decoded)
-
-        if (message_type := chunk.get("type")) is not None:
-            if message_type == "content_block_start":
-                content_block = chunk["content_block"]
-            elif message_type == "content_block_delta":
-                if chunk["delta"]["type"] == "text_delta":
-                    content_block["text"] += chunk["delta"]["text"]
-                elif chunk["delta"]["type"] == "input_json_delta":
-                    input_json_buf += chunk["delta"]["partial_json"]
-            elif message_type == "content_block_stop":
-                if input_json_buf:
-                    content_block["input"] = json.loads(input_json_buf)
-                content.append(content_block)
-                content_block = None
-                input_json_buf = ""
-
+    content = llm_model_config.get_stream_body_content(response_0["body"])
     assert content
 
-    tool_requests_ids = [
-        item["id"] for item in content if item["type"] == "tool_use"
-    ]
+    tool_requests_ids = llm_model_config.tool_requests_ids_from_stream(content)
     assert len(tool_requests_ids) == 2
-    tool_call_result = {
-        "role": "user",
-        "content": [
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[0],
-                "content": "50 degrees and raining",
-            },
-            {
-                "type": "tool_result",
-                "tool_use_id": tool_requests_ids[1],
-                "content": "70 degrees and sunny",
-            },
-        ],
-    }
+    tool_call_result = llm_model_config.tool_calls_results(tool_requests_ids)
 
     # remove extra attributes from response
     messages.append({"role": "assistant", "content": content})
@@ -1951,9 +2196,10 @@ def invoke_model_with_response_stream_tool_call(
         modelId=llm_model_value,
     )
 
-    # consume the body to have it traced
-    for _ in response_1["body"]:
-        pass
+    response_1_content = llm_model_config.get_stream_body_content(
+        response_1["body"]
+    )
+    assert response_1_content
 
     (span_0, span_1) = span_exporter.get_finished_spans()
     assert_stream_completion_attributes(
@@ -2028,21 +2274,14 @@ def invoke_model_with_response_stream_tool_call(
         assistant_body,
         span_1,
     )
-    tool_message_0 = {
-        "id": tool_requests_ids[0],
-        "content": tool_call_result["content"][0]["content"]
-        if expect_content
-        else None,
-    }
+
+    tool_message_0, tool_message_1 = llm_model_config.tool_messages(
+        tool_requests_ids, tool_call_result, expect_content
+    )
     assert_message_in_logs(
         logs[4], "gen_ai.tool.message", tool_message_0, span_1
     )
-    tool_message_1 = {
-        "id": tool_requests_ids[1],
-        "content": tool_call_result["content"][1]["content"]
-        if expect_content
-        else None,
-    }
+
     assert_message_in_logs(
         logs[5], "gen_ai.tool.message", tool_message_1, span_1
     )
@@ -2059,12 +2298,7 @@ def invoke_model_with_response_stream_tool_call(
         "finish_reason": "end_turn",
         "message": {
             "role": "assistant",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "\n\nGreat! I have the current weather information for both cities. Here's the weather in Seattle and San Francisco today:\n\nSeattle: 50 degrees and raining\nSan Francisco: 70 degrees and sunny\n\nAs you can see, the weather is quite different in these two cities today. Seattle is experiencing cooler temperatures with rain, which is fairly typical for the city. On the other hand, San Francisco is enjoying a warm and sunny day. If you're planning any activities, you might want to consider indoor options for Seattle, while it's a great day for outdoor activities in San Francisco.\n\nIs there anything else you'd like to know about the weather in these cities or any other locations?",
-                }
-            ],
+            "content": response_1_content,
         },
     }
     if not expect_content:
@@ -2072,19 +2306,31 @@ def invoke_model_with_response_stream_tool_call(
     assert_message_in_logs(logs[7], "gen_ai.choice", choice_body, span_1)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_response_stream_with_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_with_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+        llm_model_config = AmazonNovaModel
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+        llm_model_config = AnthropicClaudeModel
+
     invoke_model_with_response_stream_tool_call(
         span_exporter,
         log_exporter,
         bedrock_runtime_client,
         llm_model_value,
+        llm_model_config,
         expect_content=True,
     )
 
@@ -2246,19 +2492,31 @@ def test_invoke_model_with_response_stream_no_content_different_events(
     assert_message_in_logs(logs[4], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "anthropic.claude"],
+)
 @pytest.mark.vcr()
 def test_invoke_model_with_response_stream_no_content_tool_call(
     span_exporter,
     log_exporter,
     bedrock_runtime_client,
     instrument_no_content,
+    model_family,
 ):
-    llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+    if model_family == "amazon.nova":
+        llm_model_value = "amazon.nova-micro-v1:0"
+        llm_model_config = AmazonNovaModel
+    elif model_family == "anthropic.claude":
+        llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
+        llm_model_config = AnthropicClaudeModel
+
     invoke_model_with_response_stream_tool_call(
         span_exporter,
         log_exporter,
         bedrock_runtime_client,
         llm_model_value,
+        llm_model_config,
         expect_content=False,
     )
 

@@ -28,7 +28,7 @@ Usage
 .. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
 
     # Instrument Botocore
@@ -39,7 +39,7 @@ Usage
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
 API
@@ -58,13 +58,15 @@ for example:
 .. code: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
     def request_hook(span, service_name, operation_name, api_params):
         # request hook logic
+        pass
 
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
+        pass
 
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
@@ -74,7 +76,7 @@ for example:
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 """
 
@@ -104,6 +106,7 @@ from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     unwrap,
 )
+from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
@@ -134,6 +137,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
         self._tracers = {}
         # event_loggers are lazy initialized per-extension in _get_event_logger
         self._event_loggers = {}
+        # meters are lazy initialized per-extension in _get_meter
+        self._meters = {}
+        # metrics are lazy initialized per-extension in _get_metrics
+        self._metrics: Dict[str, Dict[str, Instrument]] = {}
 
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
@@ -144,6 +151,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         self.tracer_provider = kwargs.get("tracer_provider")
         self.event_logger_provider = kwargs.get("event_logger_provider")
+        self.meter_provider = kwargs.get("meter_provider")
 
         wrap_function_wrapper(
             "botocore.client",
@@ -201,6 +209,38 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         return self._event_loggers[instrumentation_name]
 
+    def _get_meter(self, extension: _AwsSdkExtension):
+        """This is a multiplexer in order to have a meter per extension"""
+
+        instrumentation_name = self._get_instrumentation_name(extension)
+        meter = self._meters.get(instrumentation_name)
+        if meter:
+            return meter
+
+        schema_version = extension.meter_schema_version()
+        self._meters[instrumentation_name] = get_meter(
+            instrumentation_name,
+            "",
+            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
+            meter_provider=self.meter_provider,
+        )
+
+        return self._meters[instrumentation_name]
+
+    def _get_metrics(
+        self, extension: _AwsSdkExtension, meter: Meter
+    ) -> Dict[str, Instrument]:
+        """This is a multiplexer for lazy initialization of metrics required by extensions"""
+        instrumentation_name = self._get_instrumentation_name(extension)
+        metrics = self._metrics.get(instrumentation_name)
+        if metrics is not None:
+            return metrics
+
+        self._metrics.setdefault(instrumentation_name, {})
+        metrics = self._metrics[instrumentation_name]
+        _safe_invoke(extension.setup_metrics, meter, metrics)
+        return metrics
+
     def _uninstrument(self, **kwargs):
         unwrap(BaseClient, "_make_api_call")
         unwrap(Endpoint, "prepare_request")
@@ -244,8 +284,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         tracer = self._get_tracer(extension)
         event_logger = self._get_event_logger(extension)
+        meter = self._get_meter(extension)
+        metrics = self._get_metrics(extension, meter)
         instrumentor_ctx = _BotocoreInstrumentorContext(
-            event_logger=event_logger
+            event_logger=event_logger,
+            metrics=metrics,
         )
         with tracer.start_as_current_span(
             call_context.span_name,

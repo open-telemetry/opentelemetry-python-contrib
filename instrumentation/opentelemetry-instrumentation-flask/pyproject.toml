@@ -27,10 +27,10 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.52b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.52b0.dev",
-  "opentelemetry-semantic-conventions == 0.52b0.dev",
-  "opentelemetry-util-http == 0.52b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.54b0.dev",
+  "opentelemetry-semantic-conventions == 0.54b0.dev",
+  "opentelemetry-util-http == 0.54b0.dev",
   "packaging >= 21.0",
 ]
 

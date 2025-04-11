@@ -45,15 +45,11 @@ from .otel_wrapper import OTelWrapper
 _logger = logging.getLogger(__name__)
 
 
-# Constant used for the value of 'gen_ai.operation.name".
-_GENERATE_CONTENT_OP_NAME = "generate_content"
-
 # Constant used to make the absence of content more understandable.
 _CONTENT_ELIDED = "<elided>"
 
-# Enable these after these cases are fully vetted and tested
-_INSTRUMENT_STREAMING = False
-_INSTRUMENT_ASYNC = False
+# Constant used for the value of 'gen_ai.operation.name".
+_GENERATE_CONTENT_OP_NAME = "generate_content"
 
 
 class _MethodsSnapshot:
@@ -220,7 +216,9 @@ class _GenerateContentInstrumentationHelper:
         self._response_index = 0
         self._candidate_index = 0
 
-    def start_span_as_current_span(self, model_name, function_name):
+    def start_span_as_current_span(
+        self, model_name, function_name, end_on_exit=True
+    ):
         return self._otel_wrapper.start_as_current_span(
             f"{_GENERATE_CONTENT_OP_NAME} {model_name}",
             start_time=self._start_time,
@@ -230,6 +228,7 @@ class _GenerateContentInstrumentationHelper:
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
+            end_on_exit=end_on_exit,
         )
 
     def process_request(
@@ -543,9 +542,6 @@ def _create_instrumented_generate_content_stream(
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.generate_content_stream
-    if not _INSTRUMENT_STREAMING:
-        # TODO: remove once this case has been fully tested
-        return wrapped_func
 
     @functools.wraps(wrapped_func)
     def instrumented_generate_content_stream(
@@ -586,9 +582,6 @@ def _create_instrumented_async_generate_content(
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content
-    if not _INSTRUMENT_ASYNC:
-        # TODO: remove once this case has been fully tested
-        return wrapped_func
 
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content(
@@ -626,13 +619,10 @@ def _create_instrumented_async_generate_content(
 
 
 # Disabling type checking because this is not yet implemented and tested fully.
-def _create_instrumented_async_generate_content_stream(  # pyright: ignore
+def _create_instrumented_async_generate_content_stream(  # type: ignore
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content_stream
-    if not _INSTRUMENT_ASYNC or not _INSTRUMENT_STREAMING:
-        # TODO: remove once this case has been fully tested
-        return wrapped_func
 
     @functools.wraps(wrapped_func)
     async def instrumented_generate_content_stream(
@@ -642,29 +632,43 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
-    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
+    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(
             self, otel_wrapper, model
         )
         with helper.start_span_as_current_span(
-            model, "google.genai.AsyncModels.generate_content_stream"
-        ):
+            model,
+            "google.genai.AsyncModels.generate_content_stream",
+            end_on_exit=False,
+        ) as span:
             helper.process_request(contents, config)
-            try:
-                async for response in await wrapped_func(
-                    self,
-                    model=model,
-                    contents=contents,
-                    config=config,
-                    **kwargs,
-                ):  # pyright: ignore
-                    helper.process_response(response)
-                    yield response  # pyright: ignore
-            except Exception as error:
-                helper.process_error(error)
+        try:
+            response_async_generator = await wrapped_func(
+                self,
+                model=model,
+                contents=contents,
+                config=config,
+                **kwargs,
+            )
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            helper.process_error(error)
+            helper.finalize_processing()
+            with trace.use_span(span, end_on_exit=True):
                 raise
-            finally:
-                helper.finalize_processing()
+
+        async def _response_async_generator_wrapper():
+            with trace.use_span(span, end_on_exit=True):
+                try:
+                    async for response in response_async_generator:
+                        helper.process_response(response)
+                        yield response
+                except Exception as error:
+                    helper.process_error(error)
+                    raise
+                finally:
+                    helper.finalize_processing()
+
+        return _response_async_generator_wrapper()
 
     return instrumented_generate_content_stream
 

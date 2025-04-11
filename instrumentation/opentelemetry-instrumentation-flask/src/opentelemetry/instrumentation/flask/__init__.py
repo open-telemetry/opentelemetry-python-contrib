@@ -133,6 +133,12 @@ For example,
 
 .. code-block:: python
 
+    from opentelemetry.trace import Span
+    from wsgiref.types import WSGIEnvironment
+    from typing import List
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")

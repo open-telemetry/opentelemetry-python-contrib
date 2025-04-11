@@ -47,13 +47,33 @@ will extract path_info and content_type attributes from every traced request and
 
 Falcon Request object reference: https://falcon.readthedocs.io/en/stable/api/request_and_response.html#id1
 
+Usage
+-----
+
+.. code-block:: python
+
+    import falcon
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
+
+    FalconInstrumentor().instrument()
+
+    app = falcon.App()
+
+    class HelloWorldResource(object):
+        def on_get(self, req, resp):
+            resp.text = 'Hello World'
+
+    app.add_route('/hello', HelloWorldResource())
+
 
 Request/Response hooks
 **********************
 The instrumentation supports specifying request and response hooks. These are functions that get called back by the instrumentation right after a Span is created for a request
 and right before the span is finished while processing a response. The hooks can be configured as follows:
 
-::
+.. code-block:: python
+
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     def request_hook(span, req):
         pass
@@ -61,7 +81,7 @@ and right before the span is finished while processing a response. The hooks can
     def response_hook(span, req, resp):
         pass
 
-    FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 References
 ----------
