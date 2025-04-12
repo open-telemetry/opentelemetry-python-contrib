@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
+  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
+
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
 ### Added
@@ -38,8 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
-  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
 - `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
   ([#3279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3279))
 - `opentelemetry-instrumentation-system-metrics` Add `process` metrics and deprecated `process.runtime` prefixed ones
