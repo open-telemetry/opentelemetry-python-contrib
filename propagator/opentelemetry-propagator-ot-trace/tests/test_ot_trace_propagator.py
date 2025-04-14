@@ -275,7 +275,7 @@ class TestOTTracePropagator(TestCase):
             get_current_span().get_span_context().trace_flags, TraceFlags
         )
 
-    def test_extract_invalid_trace_header_to_explict_ctx(self):
+    def test_extract_invalid_trace_header_to_explicit_ctx(self):
         invalid_headers = [
             ("abc123!", "e457b5a2e4d86bd1"),  # malformed trace id
             ("64fe8b2a57d3eff7", "abc123!"),  # malformed span id
