@@ -40,6 +40,9 @@ otlp = [
 [project.entry-points.opentelemetry_configurator]
 configurator = "opentelemetry.distro:OpenTelemetryConfigurator"
 
+[project.entry-points.opentelemetry_customizer]
+customizer = "opentelemetry.distro:OpenTelemetryCustomizer"
+
 [project.entry-points.opentelemetry_distro]
 distro = "opentelemetry.distro:OpenTelemetryDistro"
 
