@@ -29,7 +29,7 @@ interactions:
       authorization:
       - Bearer test_aws_authorization
     method: POST
-    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/cohere.command-light-text-v14/invoke
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/cohere.command-light-text-v14/invoke
   response:
     body:
       string: |-

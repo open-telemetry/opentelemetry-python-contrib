@@ -105,7 +105,9 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 ]
 
 _MODEL_ID_KEY: str = "modelId"
-
+# estimate 6 chars per token for models that don't provide input/output token count in response body.
+# https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-prepare.html
+_CHARS_PER_TOKEN: int = 6
 
 class _BedrockRuntimeExtension(_AwsSdkExtension):
     """
@@ -291,7 +293,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     def _extract_command_r_attributes(self, attributes, request_body):
         prompt = request_body.get("message")
         self._set_if_not_none(
-            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / 6)
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -309,7 +311,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     def _extract_command_attributes(self, attributes, request_body):
         prompt = request_body.get("prompt")
         self._set_if_not_none(
-            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / 6)
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -340,7 +342,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         prompt = request_body.get("prompt")
         if prompt:
             self._set_if_not_none(
-                attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / 6)
+                attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
             )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -379,10 +381,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     system_messages = [{"role": "system", "content": content}]
 
                 messages = decoded_body.get("messages", [])
+                # if no messages interface, convert to messages format from generic API
                 if not messages:
                     model_id = self._call_context.params.get(_MODEL_ID_KEY)
                     if "amazon.titan" in model_id:
-                        # transform old school amazon titan invokeModel api to messages
                         if input_text := decoded_body.get("inputText"):
                             messages = [
                                 {"role": "user", "content": [{"text": input_text}]}
@@ -394,7 +396,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                                 {"role": "user", "content": [{"text": input_text}]}
                             ]
                     elif "cohere.command" in model_id or "meta.llama" in model_id or "mistral.mistral" in model_id:
-                        # transform old school cohere command api to messages
                         if input_text := decoded_body.get("prompt"):
                             messages = [
                                 {"role": "user", "content": [{"text": input_text}]}
@@ -839,7 +840,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     ):
         if "text" in response_body:
             span.set_attribute(
-                GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(response_body["text"]) / 6)
+                GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(response_body["text"]) / _CHARS_PER_TOKEN)
             )
         if "finish_reason" in response_body:
             span.set_attribute(
@@ -863,7 +864,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             generations = response_body["generations"][0]
             if "text" in generations:
                 span.set_attribute(
-                    GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(generations["text"]) / 6)
+                    GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(generations["text"]) / _CHARS_PER_TOKEN)
                 )
             if "finish_reason" in generations:
                 span.set_attribute(
@@ -912,7 +913,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if "outputs" in response_body:
             outputs = response_body["outputs"][0]
             if "text" in outputs:
-                span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(outputs["text"]) / 6))
+                span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(outputs["text"]) / _CHARS_PER_TOKEN))
             if "stop_reason" in outputs:
                 span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]])
         

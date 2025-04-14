@@ -29,7 +29,7 @@ interactions:
       authorization:
       - Bearer test_aws_authorization
     method: POST
-    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/mistral.mistral-7b-instruct-v0%3A2/invoke
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/mistral.mistral-7b-instruct-v0%3A2/invoke
   response:
     body:
       string: |-
