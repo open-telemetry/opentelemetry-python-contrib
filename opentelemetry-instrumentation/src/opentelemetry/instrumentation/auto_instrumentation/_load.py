@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from logging import getLogger
+from logging import DEBUG, basicConfig, getLogger
 from os import environ
 
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
@@ -25,6 +25,7 @@ from opentelemetry.instrumentation.environment_variables import (
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import entry_points
 
+basicConfig(level=DEBUG)
 _logger = getLogger(__name__)
 
 
@@ -80,6 +81,14 @@ def _load_instrumentors(distro):
                 "Skipping instrumentation %s: %s",
                 entry_point.name,
                 exc.conflict,
+            )
+            continue
+        except ModuleNotFoundError as exc:
+            # ModuleNotFoundError is raised when the library is not installed
+            # and the instrumentation is not required to be loaded.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
+            _logger.debug(
+                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
             )
             continue
         except ImportError:

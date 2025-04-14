@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+### Fixed
+
+- `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
+  and prevent exception from bubbling up
+  ([#3423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3423))
+
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
 ### Added

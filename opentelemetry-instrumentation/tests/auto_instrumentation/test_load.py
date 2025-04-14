@@ -382,6 +382,79 @@ class TestLoad(TestCase):
         )
         self.assertEqual(distro_mock.load_instrumentor.call_count, 1)
 
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_module_not_found_error(
+        self, iter_mock, mock_logger
+    ):
+        ep_mock1 = Mock()
+        ep_mock1.name = "instr1"
+
+        ep_mock2 = Mock()
+        ep_mock2.name = "instr2"
+
+        distro_mock = Mock()
+
+        distro_mock.load_instrumentor.side_effect = [
+            ModuleNotFoundError("No module named 'fake_module'"),
+            None,
+        ]
+
+        iter_mock.side_effect = [(), (ep_mock1, ep_mock2), ()]
+
+        _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, raise_exception_on_conflict=True),
+                call(ep_mock2, raise_exception_on_conflict=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+
+        mock_logger.debug.assert_any_call(
+            "Skipping instrumentation %s: %s",
+            "instr1",
+            "No module named 'fake_module'",
+        )
+
+        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
+
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_import_error(self, iter_mock, mock_logger):
+        ep_mock1 = Mock()
+        ep_mock1.name = "instr1"
+
+        ep_mock2 = Mock()
+        ep_mock2.name = "instr2"
+
+        distro_mock = Mock()
+        distro_mock.load_instrumentor.side_effect = [ImportError, None]
+
+        iter_mock.side_effect = [(), (ep_mock1, ep_mock2), ()]
+
+        _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, raise_exception_on_conflict=True),
+                call(ep_mock2, raise_exception_on_conflict=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+
+        mock_logger.exception.assert_any_call(
+            "Importing of %s failed, skipping it",
+            ep_mock1.name,
+        )
+
+        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
+
     def test_load_instrumentors_no_entry_point_mocks(self):
         distro_mock = Mock()
         _load._load_instrumentors(distro_mock)
