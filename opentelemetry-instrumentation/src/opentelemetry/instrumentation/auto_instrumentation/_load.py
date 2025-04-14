@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from logging import DEBUG, basicConfig, getLogger
+from logging import getLogger
 from os import environ
 
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
@@ -25,7 +25,6 @@ from opentelemetry.instrumentation.environment_variables import (
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import entry_points
 
-basicConfig(level=DEBUG)
 _logger = getLogger(__name__)
 
 
