@@ -261,6 +261,7 @@ class _GenerateContentInstrumentationHelper:
         # need to be reflected back into the span attributes.
         #
         # See also: TODOS.md.
+        self._update_finish_reasons(response)
         self._maybe_update_token_counts(response)
         self._maybe_update_error_type(response)
         self._maybe_log_response(response)
@@ -283,6 +284,18 @@ class _GenerateContentInstrumentationHelper:
         )
         self._record_token_usage_metric()
         self._record_duration_metric()
+
+    def _update_finish_reasons(self, response):
+        if not response.candidates:
+            return
+        for candidate in response.candidates:
+            finish_reason = candidate.finish_reason
+            if finish_reason is None:
+                continue
+            finish_reason_str = finish_reason.name.lower().removeprefix(
+                "finish_reason_"
+            )
+            self._finish_reasons_set.add(finish_reason_str)
 
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
         input_tokens = _get_response_property(
