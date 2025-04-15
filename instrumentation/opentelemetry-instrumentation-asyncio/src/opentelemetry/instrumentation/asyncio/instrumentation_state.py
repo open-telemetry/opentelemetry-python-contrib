@@ -35,7 +35,7 @@ Usage:
 import weakref
 from typing import Any
 
-# A global WeakKeyDictionary to track instrumented objects.
+# A global WeakSet to track instrumented objects.
 # Entries are automatically removed when the objects are garbage collected.
 _instrumented_tasks = weakref.WeakSet()
 
