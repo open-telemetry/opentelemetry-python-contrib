@@ -360,7 +360,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group=consumer_group,
             topic=record.topic,
             partition=record.partition,
-            key=record.key,
+            key=str(record.key),
             offset=record.offset,
         )
         consume_hook.assert_awaited_once_with(
