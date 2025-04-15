@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
   and log as debug instead of exception
-  ([#3424](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3424))
+  ([#3425](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3425))
 
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
