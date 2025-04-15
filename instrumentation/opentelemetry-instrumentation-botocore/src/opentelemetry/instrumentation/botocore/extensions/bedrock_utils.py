@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import math
 from os import environ
 from typing import Any, Callable, Dict, Iterator, Sequence, Union
 
@@ -356,6 +357,13 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
 
             self._stream_done_callback(self._response)
             return
+
+def estimate_token_count(
+    message: str
+) -> int:
+    # https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-prepare.html
+    # use 6 chars per token to approximate token count when not provided in response body
+    return math.ceil(len(message) / 6)
 
 
 def genai_capture_message_content() -> bool:

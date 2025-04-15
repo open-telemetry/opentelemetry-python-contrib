@@ -21,7 +21,6 @@ from __future__ import annotations
 import io
 import json
 import logging
-import math
 from timeit import default_timer
 from typing import Any
 
@@ -34,6 +33,7 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     _Choice,
     genai_capture_message_content,
     message_to_event,
+    estimate_token_count,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -105,9 +105,6 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 ]
 
 _MODEL_ID_KEY: str = "modelId"
-# estimate 6 chars per token for models that don't provide input/output token count in response body.
-# https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-prepare.html
-_CHARS_PER_TOKEN: int = 6
 
 class _BedrockRuntimeExtension(_AwsSdkExtension):
     """
@@ -293,7 +290,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     def _extract_command_r_attributes(self, attributes, request_body):
         prompt = request_body.get("message")
         self._set_if_not_none(
-            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -311,7 +308,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     def _extract_command_attributes(self, attributes, request_body):
         prompt = request_body.get("prompt")
         self._set_if_not_none(
-            attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -342,7 +339,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         prompt = request_body.get("prompt")
         if prompt:
             self._set_if_not_none(
-                attributes, GEN_AI_USAGE_INPUT_TOKENS, math.ceil(len(prompt) / _CHARS_PER_TOKEN)
+                attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
             )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
@@ -840,7 +837,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     ):
         if "text" in response_body:
             span.set_attribute(
-                GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(response_body["text"]) / _CHARS_PER_TOKEN)
+                GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(response_body["text"])
             )
         if "finish_reason" in response_body:
             span.set_attribute(
@@ -864,7 +861,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             generations = response_body["generations"][0]
             if "text" in generations:
                 span.set_attribute(
-                    GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(generations["text"]) / _CHARS_PER_TOKEN)
+                    GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(generations["text"])
                 )
             if "finish_reason" in generations:
                 span.set_attribute(
@@ -913,7 +910,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if "outputs" in response_body:
             outputs = response_body["outputs"][0]
             if "text" in outputs:
-                span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, math.ceil(len(outputs["text"]) / _CHARS_PER_TOKEN))
+                span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(outputs["text"]))
             if "stop_reason" in outputs:
                 span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]])
         
