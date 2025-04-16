@@ -48,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
 
 
+### Deprecated
+
+- Drop support for Python 3.8, bump baseline to Python 3.9.
+([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
+
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
 ### Added

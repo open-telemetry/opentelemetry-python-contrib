@@ -57,9 +57,10 @@ class TestHttpBase(TestBase, HttpTestBase):
 
     def test_basic_with_span(self):
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "HTTP GET"
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span("HTTP GET") as span,
+            set_ip_on_next_http_connection(span),
+        ):
             resp, body = self.perform_request()
         assert resp.status == 200
         assert body == b"Hello!"
@@ -68,12 +69,14 @@ class TestHttpBase(TestBase, HttpTestBase):
 
     def test_with_nested_span(self):
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "requests HTTP GET"
-        ) as span, set_ip_on_next_http_connection(span):
-            with tracer.start_as_current_span(
-                "urllib3 HTTP GET"
-            ) as span2, set_ip_on_next_http_connection(span2):
+        with (
+            tracer.start_as_current_span("requests HTTP GET") as span,
+            set_ip_on_next_http_connection(span),
+        ):
+            with (
+                tracer.start_as_current_span("urllib3 HTTP GET") as span2,
+                set_ip_on_next_http_connection(span2),
+            ):
                 resp, body = self.perform_request()
         assert resp.status == 200
         assert body == b"Hello!"
@@ -82,11 +85,13 @@ class TestHttpBase(TestBase, HttpTestBase):
 
     def test_with_nested_nonrecording_span(self):
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "requests HTTP GET"
-        ) as span, set_ip_on_next_http_connection(span):
-            with trace.use_span(INVALID_SPAN), set_ip_on_next_http_connection(
-                INVALID_SPAN
+        with (
+            tracer.start_as_current_span("requests HTTP GET") as span,
+            set_ip_on_next_http_connection(span),
+        ):
+            with (
+                trace.use_span(INVALID_SPAN),
+                set_ip_on_next_http_connection(INVALID_SPAN),
             ):
                 resp, body = self.perform_request()
         assert resp.status == 200
@@ -95,8 +100,9 @@ class TestHttpBase(TestBase, HttpTestBase):
         self.assertEqual(span.attributes, {"net.peer.ip": "127.0.0.1"})
 
     def test_with_only_nonrecording_span(self):
-        with trace.use_span(INVALID_SPAN), set_ip_on_next_http_connection(
-            INVALID_SPAN
+        with (
+            trace.use_span(INVALID_SPAN),
+            set_ip_on_next_http_connection(INVALID_SPAN),
         ):
             resp, body = self.perform_request()
         assert resp.status == 200
@@ -120,9 +126,10 @@ class TestHttpBase(TestBase, HttpTestBase):
         HttpClientInstrumentor().uninstrument()
 
         tracer = trace.get_tracer(__name__)
-        with tracer.start_as_current_span(
-            "HTTP GET"
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span("HTTP GET") as span,
+            set_ip_on_next_http_connection(span),
+        ):
             body = self.perform_request()[1]
         self.assertEqual(b"Hello!", body)
 
