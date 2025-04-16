@@ -33,8 +33,6 @@ components:
     - NathanielRN
 
   sdk-extension/opentelemetry-sdk-extension-aws:
-    - NathanielRN
-    - Kausik-A
     - srprash
     - jj22ee
 
