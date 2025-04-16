@@ -13,8 +13,6 @@
 # limitations under the License.
 import asyncio
 import functools
-import sys
-from unittest import skipIf
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
@@ -42,9 +40,6 @@ class TestAsyncioToThread(TestBase):
         super().tearDown()
         AsyncioInstrumentor().uninstrument()
 
-    @skipIf(
-        sys.version_info < (3, 9), "to_thread is only available in Python 3.9+"
-    )
     def test_to_thread(self):
         def multiply(x, y):
             return x * y
@@ -74,9 +69,6 @@ class TestAsyncioToThread(TestBase):
                     self.assertEqual(point.attributes["type"], "to_thread")
                     self.assertEqual(point.attributes["name"], "multiply")
 
-    @skipIf(
-        sys.version_info < (3, 9), "to_thread is only available in Python 3.9+"
-    )
     def test_to_thread_partial_func(self):
         def multiply(x, y):
             return x * y

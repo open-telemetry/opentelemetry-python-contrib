@@ -204,10 +204,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         _wrap(asyncio, "gather", wrap_coros_or_futures)
 
     def instrument_to_thread(self) -> None:
-        # to_thread was added in Python 3.9
-        if sys.version_info < (3, 9):
-            return
-
         def wrap_to_thread(method, instance, args, kwargs) -> None:
             if args:
                 first_arg = args[0]
@@ -387,9 +383,6 @@ def uninstrument_taskgroup_create_task() -> None:
 
 
 def uninstrument_to_thread() -> None:
-    # to_thread was added in Python 3.9
-    if sys.version_info < (3, 9):
-        return
     unwrap(asyncio, "to_thread")
 
 

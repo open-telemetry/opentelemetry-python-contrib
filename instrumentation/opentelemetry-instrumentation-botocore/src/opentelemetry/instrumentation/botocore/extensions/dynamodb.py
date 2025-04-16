@@ -343,6 +343,7 @@ _OPERATION_MAPPING = {
     op.operation_name(): op
     for op in globals().values()
     if inspect.isclass(op)
+    and hasattr(op, "operation_name")
     and issubclass(op, _DynamoDbOperation)
     and not inspect.isabstract(op)
 }  # type: Dict[str, _DynamoDbOperation]

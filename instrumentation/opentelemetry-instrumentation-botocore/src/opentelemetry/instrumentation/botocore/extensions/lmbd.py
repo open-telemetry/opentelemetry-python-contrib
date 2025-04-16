@@ -104,6 +104,7 @@ _OPERATION_MAPPING: Dict[str, _LambdaOperation] = {
     op.operation_name(): op
     for op in globals().values()
     if inspect.isclass(op)
+    and hasattr(op, "operation_name")
     and issubclass(op, _LambdaOperation)
     and not inspect.isabstract(op)
 }

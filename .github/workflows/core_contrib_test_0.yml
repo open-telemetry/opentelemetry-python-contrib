@@ -19,7 +19,7 @@ env:
 
 jobs:
 
-  py38-test-instrumentation-openai-v2-oldest:
+  py39-test-instrumentation-openai-v2-oldest:
     name: instrumentation-openai-v2-oldest 
     runs-on: ubuntu-latest
     steps:
@@ -29,19 +29,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-openai-v2-oldest -- -ra
+        run: tox -e py39-test-instrumentation-openai-v2-oldest -- -ra
 
-  py38-test-instrumentation-openai-v2-latest:
+  py39-test-instrumentation-openai-v2-latest:
     name: instrumentation-openai-v2-latest 
     runs-on: ubuntu-latest
     steps:
@@ -51,19 +51,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-openai-v2-latest -- -ra
+        run: tox -e py39-test-instrumentation-openai-v2-latest -- -ra
 
-  py38-test-instrumentation-vertexai-oldest:
+  py39-test-instrumentation-vertexai-oldest:
     name: instrumentation-vertexai-oldest 
     runs-on: ubuntu-latest
     steps:
@@ -73,19 +73,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-vertexai-oldest -- -ra
+        run: tox -e py39-test-instrumentation-vertexai-oldest -- -ra
 
-  py38-test-instrumentation-vertexai-latest:
+  py39-test-instrumentation-vertexai-latest:
     name: instrumentation-vertexai-latest 
     runs-on: ubuntu-latest
     steps:
@@ -95,19 +95,63 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-vertexai-latest -- -ra
+        run: tox -e py39-test-instrumentation-vertexai-latest -- -ra
 
-  py38-test-resource-detector-container:
+  py39-test-instrumentation-google-genai-oldest:
+    name: instrumentation-google-genai-oldest 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-google-genai-oldest -- -ra
+
+  py39-test-instrumentation-google-genai-latest:
+    name: instrumentation-google-genai-latest 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-google-genai-latest -- -ra
+
+  py39-test-resource-detector-container:
     name: resource-detector-container 
     runs-on: ubuntu-latest
     steps:
@@ -117,19 +161,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-resource-detector-container -- -ra
+        run: tox -e py39-test-resource-detector-container -- -ra
 
-  py38-test-resource-detector-azure-0:
+  py39-test-resource-detector-azure-0:
     name: resource-detector-azure-0 
     runs-on: ubuntu-latest
     steps:
@@ -139,19 +183,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-resource-detector-azure-0 -- -ra
+        run: tox -e py39-test-resource-detector-azure-0 -- -ra
 
-  py38-test-resource-detector-azure-1:
+  py39-test-resource-detector-azure-1:
     name: resource-detector-azure-1 
     runs-on: ubuntu-latest
     steps:
@@ -161,19 +205,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-resource-detector-azure-1 -- -ra
+        run: tox -e py39-test-resource-detector-azure-1 -- -ra
 
-  py38-test-sdk-extension-aws-0:
+  py39-test-sdk-extension-aws-0:
     name: sdk-extension-aws-0 
     runs-on: ubuntu-latest
     steps:
@@ -183,19 +227,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-sdk-extension-aws-0 -- -ra
+        run: tox -e py39-test-sdk-extension-aws-0 -- -ra
 
-  py38-test-sdk-extension-aws-1:
+  py39-test-sdk-extension-aws-1:
     name: sdk-extension-aws-1 
     runs-on: ubuntu-latest
     steps:
@@ -205,19 +249,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-sdk-extension-aws-1 -- -ra
+        run: tox -e py39-test-sdk-extension-aws-1 -- -ra
 
-  py38-test-distro:
+  py39-test-distro:
     name: distro 
     runs-on: ubuntu-latest
     steps:
@@ -227,19 +271,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-distro -- -ra
+        run: tox -e py39-test-distro -- -ra
 
-  py38-test-opentelemetry-instrumentation:
+  py39-test-opentelemetry-instrumentation:
     name: opentelemetry-instrumentation 
     runs-on: ubuntu-latest
     steps:
@@ -249,19 +293,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-opentelemetry-instrumentation -- -ra
+        run: tox -e py39-test-opentelemetry-instrumentation -- -ra
 
-  py38-test-instrumentation-aiohttp-client:
+  py39-test-instrumentation-aiohttp-client:
     name: instrumentation-aiohttp-client 
     runs-on: ubuntu-latest
     steps:
@@ -271,19 +315,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aiohttp-client -- -ra
+        run: tox -e py39-test-instrumentation-aiohttp-client -- -ra
 
-  py38-test-instrumentation-aiohttp-server:
+  py39-test-instrumentation-aiohttp-server:
     name: instrumentation-aiohttp-server 
     runs-on: ubuntu-latest
     steps:
@@ -293,19 +337,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aiohttp-server -- -ra
+        run: tox -e py39-test-instrumentation-aiohttp-server -- -ra
 
-  py38-test-instrumentation-aiopg:
+  py39-test-instrumentation-aiopg:
     name: instrumentation-aiopg 
     runs-on: ubuntu-latest
     steps:
@@ -315,19 +359,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aiopg -- -ra
+        run: tox -e py39-test-instrumentation-aiopg -- -ra
 
-  py38-test-instrumentation-aws-lambda:
+  py39-test-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda 
     runs-on: ubuntu-latest
     steps:
@@ -337,19 +381,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aws-lambda -- -ra
+        run: tox -e py39-test-instrumentation-aws-lambda -- -ra
 
-  py38-test-instrumentation-botocore-0:
+  py39-test-instrumentation-botocore-0:
     name: instrumentation-botocore-0 
     runs-on: ubuntu-latest
     steps:
@@ -359,19 +403,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-botocore-0 -- -ra
+        run: tox -e py39-test-instrumentation-botocore-0 -- -ra
 
-  py38-test-instrumentation-botocore-1:
+  py39-test-instrumentation-botocore-1:
     name: instrumentation-botocore-1 
     runs-on: ubuntu-latest
     steps:
@@ -381,19 +425,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-botocore-1 -- -ra
+        run: tox -e py39-test-instrumentation-botocore-1 -- -ra
 
-  py38-test-instrumentation-boto3sqs:
+  py39-test-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs 
     runs-on: ubuntu-latest
     steps:
@@ -403,19 +447,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-boto3sqs -- -ra
+        run: tox -e py39-test-instrumentation-boto3sqs -- -ra
 
-  py38-test-instrumentation-django-0:
+  py39-test-instrumentation-django-0:
     name: instrumentation-django-0 
     runs-on: ubuntu-latest
     steps:
@@ -425,19 +469,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-django-0 -- -ra
+        run: tox -e py39-test-instrumentation-django-0 -- -ra
 
-  py38-test-instrumentation-django-1:
+  py39-test-instrumentation-django-1:
     name: instrumentation-django-1 
     runs-on: ubuntu-latest
     steps:
@@ -447,19 +491,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-django-1 -- -ra
+        run: tox -e py39-test-instrumentation-django-1 -- -ra
 
-  py38-test-instrumentation-django-2:
+  py39-test-instrumentation-django-2:
     name: instrumentation-django-2 
     runs-on: ubuntu-latest
     steps:
@@ -469,19 +513,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-django-2 -- -ra
+        run: tox -e py39-test-instrumentation-django-2 -- -ra
 
-  py38-test-instrumentation-dbapi:
+  py39-test-instrumentation-dbapi:
     name: instrumentation-dbapi 
     runs-on: ubuntu-latest
     steps:
@@ -491,19 +535,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-dbapi -- -ra
+        run: tox -e py39-test-instrumentation-dbapi -- -ra
 
-  py38-test-instrumentation-boto:
+  py39-test-instrumentation-boto:
     name: instrumentation-boto 
     runs-on: ubuntu-latest
     steps:
@@ -513,19 +557,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-boto -- -ra
+        run: tox -e py39-test-instrumentation-boto -- -ra
 
-  py38-test-instrumentation-asyncclick:
+  py39-test-instrumentation-asyncclick:
     name: instrumentation-asyncclick 
     runs-on: ubuntu-latest
     steps:
@@ -535,19 +579,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-asyncclick -- -ra
+        run: tox -e py39-test-instrumentation-asyncclick -- -ra
 
-  py38-test-instrumentation-click:
+  py39-test-instrumentation-click:
     name: instrumentation-click 
     runs-on: ubuntu-latest
     steps:
@@ -557,19 +601,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-click -- -ra
+        run: tox -e py39-test-instrumentation-click -- -ra
 
-  py38-test-instrumentation-elasticsearch-0:
+  py39-test-instrumentation-elasticsearch-0:
     name: instrumentation-elasticsearch-0 
     runs-on: ubuntu-latest
     steps:
@@ -579,19 +623,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-elasticsearch-0 -- -ra
+        run: tox -e py39-test-instrumentation-elasticsearch-0 -- -ra
 
-  py38-test-instrumentation-elasticsearch-1:
+  py39-test-instrumentation-elasticsearch-1:
     name: instrumentation-elasticsearch-1 
     runs-on: ubuntu-latest
     steps:
@@ -601,19 +645,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-elasticsearch-1 -- -ra
+        run: tox -e py39-test-instrumentation-elasticsearch-1 -- -ra
 
-  py38-test-instrumentation-elasticsearch-2:
+  py39-test-instrumentation-elasticsearch-2:
     name: instrumentation-elasticsearch-2 
     runs-on: ubuntu-latest
     steps:
@@ -623,19 +667,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-elasticsearch-2 -- -ra
+        run: tox -e py39-test-instrumentation-elasticsearch-2 -- -ra
 
-  py38-test-instrumentation-falcon-0:
+  py39-test-instrumentation-falcon-0:
     name: instrumentation-falcon-0 
     runs-on: ubuntu-latest
     steps:
@@ -645,19 +689,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-falcon-0 -- -ra
+        run: tox -e py39-test-instrumentation-falcon-0 -- -ra
 
-  py38-test-instrumentation-falcon-1:
+  py39-test-instrumentation-falcon-1:
     name: instrumentation-falcon-1 
     runs-on: ubuntu-latest
     steps:
@@ -667,19 +711,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-falcon-1 -- -ra
+        run: tox -e py39-test-instrumentation-falcon-1 -- -ra
 
-  py38-test-instrumentation-falcon-2:
+  py39-test-instrumentation-falcon-2:
     name: instrumentation-falcon-2 
     runs-on: ubuntu-latest
     steps:
@@ -689,19 +733,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-falcon-2 -- -ra
+        run: tox -e py39-test-instrumentation-falcon-2 -- -ra
 
-  py38-test-instrumentation-falcon-3:
+  py39-test-instrumentation-falcon-3:
     name: instrumentation-falcon-3 
     runs-on: ubuntu-latest
     steps:
@@ -711,19 +755,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-falcon-3 -- -ra
+        run: tox -e py39-test-instrumentation-falcon-3 -- -ra
 
-  py38-test-instrumentation-fastapi:
+  py39-test-instrumentation-fastapi:
     name: instrumentation-fastapi 
     runs-on: ubuntu-latest
     steps:
@@ -733,19 +777,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-fastapi -- -ra
+        run: tox -e py39-test-instrumentation-fastapi -- -ra
 
-  py38-test-instrumentation-flask-0:
+  py39-test-instrumentation-flask-0:
     name: instrumentation-flask-0 
     runs-on: ubuntu-latest
     steps:
@@ -755,19 +799,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-flask-0 -- -ra
+        run: tox -e py39-test-instrumentation-flask-0 -- -ra
 
-  py38-test-instrumentation-flask-1:
+  py39-test-instrumentation-flask-1:
     name: instrumentation-flask-1 
     runs-on: ubuntu-latest
     steps:
@@ -777,19 +821,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-flask-1 -- -ra
+        run: tox -e py39-test-instrumentation-flask-1 -- -ra
 
-  py38-test-instrumentation-flask-2:
+  py39-test-instrumentation-flask-2:
     name: instrumentation-flask-2 
     runs-on: ubuntu-latest
     steps:
@@ -799,19 +843,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-flask-2 -- -ra
+        run: tox -e py39-test-instrumentation-flask-2 -- -ra
 
-  py38-test-instrumentation-urllib:
+  py39-test-instrumentation-urllib:
     name: instrumentation-urllib 
     runs-on: ubuntu-latest
     steps:
@@ -821,19 +865,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-urllib -- -ra
+        run: tox -e py39-test-instrumentation-urllib -- -ra
 
-  py38-test-instrumentation-urllib3-0:
+  py39-test-instrumentation-urllib3-0:
     name: instrumentation-urllib3-0 
     runs-on: ubuntu-latest
     steps:
@@ -843,19 +887,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-urllib3-0 -- -ra
+        run: tox -e py39-test-instrumentation-urllib3-0 -- -ra
 
-  py38-test-instrumentation-urllib3-1:
+  py39-test-instrumentation-urllib3-1:
     name: instrumentation-urllib3-1 
     runs-on: ubuntu-latest
     steps:
@@ -865,19 +909,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-urllib3-1 -- -ra
+        run: tox -e py39-test-instrumentation-urllib3-1 -- -ra
 
-  py38-test-instrumentation-requests:
+  py39-test-instrumentation-requests:
     name: instrumentation-requests 
     runs-on: ubuntu-latest
     steps:
@@ -887,19 +931,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-requests -- -ra
+        run: tox -e py39-test-instrumentation-requests -- -ra
 
-  py38-test-instrumentation-starlette-oldest:
+  py39-test-instrumentation-starlette-oldest:
     name: instrumentation-starlette-oldest 
     runs-on: ubuntu-latest
     steps:
@@ -909,19 +953,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-starlette-oldest -- -ra
+        run: tox -e py39-test-instrumentation-starlette-oldest -- -ra
 
-  py38-test-instrumentation-starlette-latest:
+  py39-test-instrumentation-starlette-latest:
     name: instrumentation-starlette-latest 
     runs-on: ubuntu-latest
     steps:
@@ -931,19 +975,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-starlette-latest -- -ra
+        run: tox -e py39-test-instrumentation-starlette-latest -- -ra
 
-  py38-test-instrumentation-jinja2:
+  py39-test-instrumentation-jinja2:
     name: instrumentation-jinja2 
     runs-on: ubuntu-latest
     steps:
@@ -953,19 +997,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-jinja2 -- -ra
+        run: tox -e py39-test-instrumentation-jinja2 -- -ra
 
-  py38-test-instrumentation-logging:
+  py39-test-instrumentation-logging:
     name: instrumentation-logging 
     runs-on: ubuntu-latest
     steps:
@@ -975,19 +1019,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-logging -- -ra
+        run: tox -e py39-test-instrumentation-logging -- -ra
 
-  py38-test-exporter-richconsole:
+  py39-test-exporter-richconsole:
     name: exporter-richconsole 
     runs-on: ubuntu-latest
     steps:
@@ -997,19 +1041,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-exporter-richconsole -- -ra
+        run: tox -e py39-test-exporter-richconsole -- -ra
 
-  py38-test-exporter-prometheus-remote-write:
+  py39-test-exporter-prometheus-remote-write:
     name: exporter-prometheus-remote-write 
     runs-on: ubuntu-latest
     steps:
@@ -1019,19 +1063,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-exporter-prometheus-remote-write -- -ra
+        run: tox -e py39-test-exporter-prometheus-remote-write -- -ra
 
-  py38-test-instrumentation-mysql-0:
+  py39-test-instrumentation-mysql-0:
     name: instrumentation-mysql-0 
     runs-on: ubuntu-latest
     steps:
@@ -1041,19 +1085,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-mysql-0 -- -ra
+        run: tox -e py39-test-instrumentation-mysql-0 -- -ra
 
-  py38-test-instrumentation-mysql-1:
+  py39-test-instrumentation-mysql-1:
     name: instrumentation-mysql-1 
     runs-on: ubuntu-latest
     steps:
@@ -1063,19 +1107,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-mysql-1 -- -ra
+        run: tox -e py39-test-instrumentation-mysql-1 -- -ra
 
-  py38-test-instrumentation-mysqlclient:
+  py39-test-instrumentation-mysqlclient:
     name: instrumentation-mysqlclient 
     runs-on: ubuntu-latest
     steps:
@@ -1085,19 +1129,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-mysqlclient -- -ra
+        run: tox -e py39-test-instrumentation-mysqlclient -- -ra
 
-  py38-test-instrumentation-psycopg2:
+  py39-test-instrumentation-psycopg2:
     name: instrumentation-psycopg2 
     runs-on: ubuntu-latest
     steps:
@@ -1107,19 +1151,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-psycopg2 -- -ra
+        run: tox -e py39-test-instrumentation-psycopg2 -- -ra
 
-  py38-test-instrumentation-psycopg2-binary:
+  py39-test-instrumentation-psycopg2-binary:
     name: instrumentation-psycopg2-binary 
     runs-on: ubuntu-latest
     steps:
@@ -1129,19 +1173,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-psycopg2-binary -- -ra
+        run: tox -e py39-test-instrumentation-psycopg2-binary -- -ra
 
-  py38-test-instrumentation-psycopg:
+  py39-test-instrumentation-psycopg:
     name: instrumentation-psycopg 
     runs-on: ubuntu-latest
     steps:
@@ -1151,19 +1195,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-psycopg -- -ra
+        run: tox -e py39-test-instrumentation-psycopg -- -ra
 
-  py38-test-instrumentation-pymemcache-0:
+  py39-test-instrumentation-pymemcache-0:
     name: instrumentation-pymemcache-0 
     runs-on: ubuntu-latest
     steps:
@@ -1173,19 +1217,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymemcache-0 -- -ra
+        run: tox -e py39-test-instrumentation-pymemcache-0 -- -ra
 
-  py38-test-instrumentation-pymemcache-1:
+  py39-test-instrumentation-pymemcache-1:
     name: instrumentation-pymemcache-1 
     runs-on: ubuntu-latest
     steps:
@@ -1195,19 +1239,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymemcache-1 -- -ra
+        run: tox -e py39-test-instrumentation-pymemcache-1 -- -ra
 
-  py38-test-instrumentation-pymemcache-2:
+  py39-test-instrumentation-pymemcache-2:
     name: instrumentation-pymemcache-2 
     runs-on: ubuntu-latest
     steps:
@@ -1217,19 +1261,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymemcache-2 -- -ra
+        run: tox -e py39-test-instrumentation-pymemcache-2 -- -ra
 
-  py38-test-instrumentation-pymemcache-3:
+  py39-test-instrumentation-pymemcache-3:
     name: instrumentation-pymemcache-3 
     runs-on: ubuntu-latest
     steps:
@@ -1239,19 +1283,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymemcache-3 -- -ra
+        run: tox -e py39-test-instrumentation-pymemcache-3 -- -ra
 
-  py38-test-instrumentation-pymemcache-4:
+  py39-test-instrumentation-pymemcache-4:
     name: instrumentation-pymemcache-4 
     runs-on: ubuntu-latest
     steps:
@@ -1261,19 +1305,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymemcache-4 -- -ra
+        run: tox -e py39-test-instrumentation-pymemcache-4 -- -ra
 
-  py38-test-instrumentation-pymongo:
+  py39-test-instrumentation-pymongo:
     name: instrumentation-pymongo 
     runs-on: ubuntu-latest
     steps:
@@ -1283,19 +1327,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymongo -- -ra
+        run: tox -e py39-test-instrumentation-pymongo -- -ra
 
-  py38-test-instrumentation-pymysql:
+  py39-test-instrumentation-pymysql:
     name: instrumentation-pymysql 
     runs-on: ubuntu-latest
     steps:
@@ -1305,19 +1349,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymysql -- -ra
+        run: tox -e py39-test-instrumentation-pymysql -- -ra
 
-  py38-test-instrumentation-pymssql:
+  py39-test-instrumentation-pymssql:
     name: instrumentation-pymssql 
     runs-on: ubuntu-latest
     steps:
@@ -1327,19 +1371,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pymssql -- -ra
+        run: tox -e py39-test-instrumentation-pymssql -- -ra
 
-  py38-test-instrumentation-pyramid:
+  py39-test-instrumentation-pyramid:
     name: instrumentation-pyramid 
     runs-on: ubuntu-latest
     steps:
@@ -1349,19 +1393,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-pyramid -- -ra
+        run: tox -e py39-test-instrumentation-pyramid -- -ra
 
-  py38-test-instrumentation-asgi:
+  py39-test-instrumentation-asgi:
     name: instrumentation-asgi 
     runs-on: ubuntu-latest
     steps:
@@ -1371,19 +1415,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-asgi -- -ra
+        run: tox -e py39-test-instrumentation-asgi -- -ra
 
-  py38-test-instrumentation-asyncpg:
+  py39-test-instrumentation-asyncpg:
     name: instrumentation-asyncpg 
     runs-on: ubuntu-latest
     steps:
@@ -1393,19 +1437,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-asyncpg -- -ra
+        run: tox -e py39-test-instrumentation-asyncpg -- -ra
 
-  py38-test-instrumentation-sqlite3:
+  py39-test-instrumentation-sqlite3:
     name: instrumentation-sqlite3 
     runs-on: ubuntu-latest
     steps:
@@ -1415,19 +1459,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-sqlite3 -- -ra
+        run: tox -e py39-test-instrumentation-sqlite3 -- -ra
 
-  py38-test-instrumentation-wsgi:
+  py39-test-instrumentation-wsgi:
     name: instrumentation-wsgi 
     runs-on: ubuntu-latest
     steps:
@@ -1437,19 +1481,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-wsgi -- -ra
+        run: tox -e py39-test-instrumentation-wsgi -- -ra
 
-  py38-test-instrumentation-grpc-0:
+  py39-test-instrumentation-grpc-0:
     name: instrumentation-grpc-0 
     runs-on: ubuntu-latest
     steps:
@@ -1459,19 +1503,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-grpc-0 -- -ra
+        run: tox -e py39-test-instrumentation-grpc-0 -- -ra
 
-  py38-test-instrumentation-grpc-1:
+  py39-test-instrumentation-grpc-1:
     name: instrumentation-grpc-1 
     runs-on: ubuntu-latest
     steps:
@@ -1481,19 +1525,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-grpc-1 -- -ra
+        run: tox -e py39-test-instrumentation-grpc-1 -- -ra
 
-  py38-test-instrumentation-sqlalchemy-1:
+  py39-test-instrumentation-sqlalchemy-1:
     name: instrumentation-sqlalchemy-1 
     runs-on: ubuntu-latest
     steps:
@@ -1503,19 +1547,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-sqlalchemy-1 -- -ra
+        run: tox -e py39-test-instrumentation-sqlalchemy-1 -- -ra
 
-  py38-test-instrumentation-sqlalchemy-2:
+  py39-test-instrumentation-sqlalchemy-2:
     name: instrumentation-sqlalchemy-2 
     runs-on: ubuntu-latest
     steps:
@@ -1525,19 +1569,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-sqlalchemy-2 -- -ra
+        run: tox -e py39-test-instrumentation-sqlalchemy-2 -- -ra
 
-  py38-test-instrumentation-redis:
+  py39-test-instrumentation-redis:
     name: instrumentation-redis 
     runs-on: ubuntu-latest
     steps:
@@ -1547,19 +1591,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-redis -- -ra
+        run: tox -e py39-test-instrumentation-redis -- -ra
 
-  py38-test-instrumentation-remoulade:
+  py39-test-instrumentation-remoulade:
     name: instrumentation-remoulade 
     runs-on: ubuntu-latest
     steps:
@@ -1569,19 +1613,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-remoulade -- -ra
+        run: tox -e py39-test-instrumentation-remoulade -- -ra
 
-  py38-test-instrumentation-celery:
+  py39-test-instrumentation-celery:
     name: instrumentation-celery 
     runs-on: ubuntu-latest
     steps:
@@ -1591,19 +1635,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-celery -- -ra
+        run: tox -e py39-test-instrumentation-celery -- -ra
 
-  py38-test-instrumentation-system-metrics:
+  py39-test-instrumentation-system-metrics:
     name: instrumentation-system-metrics 
     runs-on: ubuntu-latest
     steps:
@@ -1613,19 +1657,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-system-metrics -- -ra
+        run: tox -e py39-test-instrumentation-system-metrics -- -ra
 
-  py38-test-instrumentation-threading:
+  py39-test-instrumentation-threading:
     name: instrumentation-threading 
     runs-on: ubuntu-latest
     steps:
@@ -1635,19 +1679,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-threading -- -ra
+        run: tox -e py39-test-instrumentation-threading -- -ra
 
-  py38-test-instrumentation-tornado:
+  py39-test-instrumentation-tornado:
     name: instrumentation-tornado 
     runs-on: ubuntu-latest
     steps:
@@ -1657,19 +1701,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-tornado -- -ra
+        run: tox -e py39-test-instrumentation-tornado -- -ra
 
-  py38-test-instrumentation-tortoiseorm:
+  py39-test-instrumentation-tortoiseorm:
     name: instrumentation-tortoiseorm 
     runs-on: ubuntu-latest
     steps:
@@ -1679,19 +1723,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-tortoiseorm -- -ra
+        run: tox -e py39-test-instrumentation-tortoiseorm -- -ra
 
-  py38-test-instrumentation-httpx-0:
+  py39-test-instrumentation-httpx-0:
     name: instrumentation-httpx-0 
     runs-on: ubuntu-latest
     steps:
@@ -1701,19 +1745,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-httpx-0 -- -ra
+        run: tox -e py39-test-instrumentation-httpx-0 -- -ra
 
-  py38-test-instrumentation-httpx-1:
+  py39-test-instrumentation-httpx-1:
     name: instrumentation-httpx-1 
     runs-on: ubuntu-latest
     steps:
@@ -1723,19 +1767,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-httpx-1 -- -ra
+        run: tox -e py39-test-instrumentation-httpx-1 -- -ra
 
-  py38-test-util-http:
+  py39-test-util-http:
     name: util-http 
     runs-on: ubuntu-latest
     steps:
@@ -1745,19 +1789,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-util-http -- -ra
+        run: tox -e py39-test-util-http -- -ra
 
-  py38-test-propagator-aws-xray-0:
+  py39-test-propagator-aws-xray-0:
     name: propagator-aws-xray-0 
     runs-on: ubuntu-latest
     steps:
@@ -1767,19 +1811,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-propagator-aws-xray-0 -- -ra
+        run: tox -e py39-test-propagator-aws-xray-0 -- -ra
 
-  py38-test-propagator-aws-xray-1:
+  py39-test-propagator-aws-xray-1:
     name: propagator-aws-xray-1 
     runs-on: ubuntu-latest
     steps:
@@ -1789,19 +1833,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-propagator-aws-xray-1 -- -ra
+        run: tox -e py39-test-propagator-aws-xray-1 -- -ra
 
-  py38-test-propagator-ot-trace:
+  py39-test-propagator-ot-trace:
     name: propagator-ot-trace 
     runs-on: ubuntu-latest
     steps:
@@ -1811,19 +1855,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-propagator-ot-trace -- -ra
+        run: tox -e py39-test-propagator-ot-trace -- -ra
 
-  py38-test-instrumentation-sio-pika-0:
+  py39-test-instrumentation-sio-pika-0:
     name: instrumentation-sio-pika-0 
     runs-on: ubuntu-latest
     steps:
@@ -1833,19 +1877,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-sio-pika-0 -- -ra
+        run: tox -e py39-test-instrumentation-sio-pika-0 -- -ra
 
-  py38-test-instrumentation-sio-pika-1:
+  py39-test-instrumentation-sio-pika-1:
     name: instrumentation-sio-pika-1 
     runs-on: ubuntu-latest
     steps:
@@ -1855,19 +1899,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-sio-pika-1 -- -ra
+        run: tox -e py39-test-instrumentation-sio-pika-1 -- -ra
 
-  py38-test-instrumentation-aio-pika-0:
+  py39-test-instrumentation-aio-pika-0:
     name: instrumentation-aio-pika-0 
     runs-on: ubuntu-latest
     steps:
@@ -1877,19 +1921,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aio-pika-0 -- -ra
+        run: tox -e py39-test-instrumentation-aio-pika-0 -- -ra
 
-  py38-test-instrumentation-aio-pika-1:
+  py39-test-instrumentation-aio-pika-1:
     name: instrumentation-aio-pika-1 
     runs-on: ubuntu-latest
     steps:
@@ -1899,19 +1943,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aio-pika-1 -- -ra
+        run: tox -e py39-test-instrumentation-aio-pika-1 -- -ra
 
-  py38-test-instrumentation-aio-pika-2:
+  py39-test-instrumentation-aio-pika-2:
     name: instrumentation-aio-pika-2 
     runs-on: ubuntu-latest
     steps:
@@ -1921,19 +1965,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aio-pika-2 -- -ra
+        run: tox -e py39-test-instrumentation-aio-pika-2 -- -ra
 
-  py38-test-instrumentation-aio-pika-3:
+  py39-test-instrumentation-aio-pika-3:
     name: instrumentation-aio-pika-3 
     runs-on: ubuntu-latest
     steps:
@@ -1943,19 +1987,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aio-pika-3 -- -ra
+        run: tox -e py39-test-instrumentation-aio-pika-3 -- -ra
 
-  py38-test-instrumentation-aiokafka:
+  py39-test-instrumentation-aiokafka:
     name: instrumentation-aiokafka 
     runs-on: ubuntu-latest
     steps:
@@ -1965,19 +2009,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-aiokafka -- -ra
+        run: tox -e py39-test-instrumentation-aiokafka -- -ra
 
-  py38-test-instrumentation-kafka-python:
+  py39-test-instrumentation-kafka-python:
     name: instrumentation-kafka-python 
     runs-on: ubuntu-latest
     steps:
@@ -1987,19 +2031,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-kafka-python -- -ra
+        run: tox -e py39-test-instrumentation-kafka-python -- -ra
 
-  py38-test-instrumentation-kafka-pythonng:
+  py39-test-instrumentation-kafka-pythonng:
     name: instrumentation-kafka-pythonng 
     runs-on: ubuntu-latest
     steps:
@@ -2009,19 +2053,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py39-test-instrumentation-kafka-pythonng -- -ra
 
-  py38-test-instrumentation-confluent-kafka:
+  py39-test-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka 
     runs-on: ubuntu-latest
     steps:
@@ -2031,19 +2075,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-confluent-kafka -- -ra
+        run: tox -e py39-test-instrumentation-confluent-kafka -- -ra
 
-  py38-test-instrumentation-asyncio:
+  py39-test-instrumentation-asyncio:
     name: instrumentation-asyncio 
     runs-on: ubuntu-latest
     steps:
@@ -2053,19 +2097,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-asyncio -- -ra
+        run: tox -e py39-test-instrumentation-asyncio -- -ra
 
-  py38-test-instrumentation-cassandra:
+  py39-test-instrumentation-cassandra:
     name: instrumentation-cassandra 
     runs-on: ubuntu-latest
     steps:
@@ -2075,19 +2119,19 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-instrumentation-cassandra -- -ra
+        run: tox -e py39-test-instrumentation-cassandra -- -ra
 
-  py38-test-processor-baggage:
+  py39-test-processor-baggage:
     name: processor-baggage 
     runs-on: ubuntu-latest
     steps:
@@ -2097,14 +2141,14 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py38-test-processor-baggage -- -ra
+        run: tox -e py39-test-processor-baggage -- -ra
