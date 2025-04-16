@@ -28,7 +28,7 @@ Usage
 .. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
 
     # Instrument Botocore
@@ -39,7 +39,7 @@ Usage
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
 API
@@ -58,13 +58,15 @@ for example:
 .. code: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-    import botocore
+    import botocore.session
 
     def request_hook(span, service_name, operation_name, api_params):
         # request hook logic
+        pass
 
     def response_hook(span, service_name, operation_name, result):
         # response hook logic
+        pass
 
     # Instrument Botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
@@ -74,40 +76,8 @@ for example:
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
-    ec2 = self.session.create_client("ec2", region_name="us-west-2")
+    ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
-
-Extensions
-----------
-
-The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
-for the following AWS services:
-
-- Bedrock Runtime
-- DynamoDB
-- Lambda
-- SNS
-- SQS
-
-Bedrock Runtime
-***************
-
-This extension implements the GenAI semantic conventions for the following API calls:
-
-- Converse
-- ConverseStream
-- InvokeModel
-- InvokeModelWithResponseStream
-
-For the Converse and ConverseStream APIs tracing, events and metrics are implemented.
-
-For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
-the available models, namely:
-- Amazon Titan models
-- Amazon Nova models
-- Anthropic Claude
-
-There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
 """
 
 import logging

@@ -1,0 +1,10 @@
+
+asyncclick~=8.0
+Flask~=3.0
+pytest==7.4.4
+anyio~=4.5
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-asyncclick
+-e instrumentation/opentelemetry-instrumentation-flask
+-e instrumentation/opentelemetry-instrumentation-wsgi
+-e util/opentelemetry-util-http

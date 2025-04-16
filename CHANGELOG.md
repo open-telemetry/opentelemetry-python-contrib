@@ -11,6 +11,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
+  ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+
+### Added
+
+- `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
+  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
+
+### Fixed
+
+- `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
+  and log as debug instead of exception
+  ([#3423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3423))
+
+## Version 1.32.0/0.53b0 (2025-04-10)
+
+### Added
+
+- `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
+  ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
+- `opentelemetry-instrumentation-botocore` Add support for GenAI tool events using Amazon Nova models and `InvokeModel*` APIs
+  ([#3385](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3385))
+- `opentelemetry-instrumentation` Make auto instrumentation use the same dependency resolver as manual instrumentation does
+  ([#3202](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3202))
+
+### Fixed
+
+- `opentelemetry-instrumentation` Fix client address is set to server address in new semconv
+  ([#3354](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3354))
+- `opentelemetry-instrumentation-dbapi`, `opentelemetry-instrumentation-django`,
+  `opentelemetry-instrumentation-sqlalchemy`: Fix sqlcomment for non string query and composable object.
+  ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
+- `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
+  ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
+  ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+- `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
+  ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
+
+
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
 ### Added
@@ -35,8 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3307))
 - Loosen `opentelemetry-instrumentation-starlette[instruments]` specifier
   ([#3304](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3304))
-- `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler
-  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 
 ### Fixed
 
@@ -113,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking changes
 
 - `opentelemetry-exporter-prometheus-remote-write` updated protobuf required version from 4.21 to 5.26 and regenerated protobufs
- ([#3219](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3219))
+  ([#3219](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3219))
 - `opentelemetry-instrumentation-sqlalchemy` including sqlcomment in `db.statement` span attribute value is now opt-in
   ([#3112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3112))
 - `opentelemetry-instrumentation-dbapi` including sqlcomment in `db.statement` span attribute value is now opt-in

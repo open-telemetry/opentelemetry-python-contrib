@@ -252,6 +252,7 @@ class _GenerateContentInstrumentationHelper:
         # need to be reflected back into the span attributes.
         #
         # See also: TODOS.md.
+        self._update_finish_reasons(response)
         self._maybe_update_token_counts(response)
         self._maybe_update_error_type(response)
         self._maybe_log_response(response)
@@ -274,6 +275,18 @@ class _GenerateContentInstrumentationHelper:
         )
         self._record_token_usage_metric()
         self._record_duration_metric()
+
+    def _update_finish_reasons(self, response):
+        if not response.candidates:
+            return
+        for candidate in response.candidates:
+            finish_reason = candidate.finish_reason
+            if finish_reason is None:
+                continue
+            finish_reason_str = finish_reason.name.lower().removeprefix(
+                "finish_reason_"
+            )
+            self._finish_reasons_set.add(finish_reason_str)
 
     def _maybe_update_token_counts(self, response: GenerateContentResponse):
         input_tokens = _get_response_property(
@@ -619,7 +632,7 @@ def _create_instrumented_async_generate_content(
 
 
 # Disabling type checking because this is not yet implemented and tested fully.
-def _create_instrumented_async_generate_content_stream(  # pyright: ignore
+def _create_instrumented_async_generate_content_stream(  # type: ignore
     snapshot: _MethodsSnapshot, otel_wrapper: OTelWrapper
 ):
     wrapped_func = snapshot.async_generate_content_stream
@@ -632,7 +645,7 @@ def _create_instrumented_async_generate_content_stream(  # pyright: ignore
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
-    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # pyright: ignore
+    ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
         helper = _GenerateContentInstrumentationHelper(
             self, otel_wrapper, model
         )

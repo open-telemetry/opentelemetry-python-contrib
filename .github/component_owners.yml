@@ -11,6 +11,9 @@ components:
     - oxeye-nikolay
     - nikosokolik
   
+  instrumentation/opentelemetry-instrumentation-asyncclick:
+    - jomcgi
+
   instrumentation/opentelemetry-instrumentation-kafka-python:
     - nozik
   
