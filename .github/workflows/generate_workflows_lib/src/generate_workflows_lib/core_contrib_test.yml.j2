@@ -13,10 +13,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: ${% raw %}{{ github.workflow }}-${{ github.head_ref || github.run_id }}{% endraw %}
-  cancel-in-progress: true
-
 env:
   CORE_REPO_SHA: ${% raw %}{{ inputs.CORE_REPO_SHA }}{% endraw %}
   CONTRIB_REPO_SHA: ${% raw %}{{ inputs.CONTRIB_REPO_SHA }}{% endraw %}
