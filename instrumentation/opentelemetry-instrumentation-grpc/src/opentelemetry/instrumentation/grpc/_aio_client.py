@@ -18,14 +18,14 @@ import logging
 import grpc
 from grpc.aio import ClientCallDetails, Metadata
 
-from opentelemetry.instrumentation.grpc._client import (
-    OpenTelemetryClientInterceptor,
-    _carrier_setter,
-)
+from opentelemetry import trace
+from opentelemetry.instrumentation.grpc._client import _carrier_setter
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import RpcSystemValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
+
+from ._client import _safe_invoke
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,25 @@ def _unary_done_callback(span, code, details, response_hook):
     return callback
 
 
-class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
+class _BaseAioClientInterceptor:
+    def __init__(
+        self, tracer, filter_=None, request_hook=None, response_hook=None
+    ):
+        self._tracer = tracer
+        self._filter = filter_
+        self._request_hook = request_hook
+        self._response_hook = response_hook
+
+    def _call_request_hook(self, span, request):
+        if not callable(self._request_hook):
+            return
+        _safe_invoke(self._request_hook, span, request)
+
+    def _call_response_hook(self, span, response):
+        if not callable(self._response_hook):
+            return
+        _safe_invoke(self._response_hook, span, response)
+
     @staticmethod
     def propagate_trace_in_details(client_call_details: ClientCallDetails):
         metadata = client_call_details.metadata
@@ -99,6 +117,22 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             end_on_exit=False,
             record_exception=False,
             set_status_on_exception=False,
+        )
+
+    def _start_span(self, method, **kwargs):
+        service, meth = method.lstrip("/").split("/", 1)
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: RpcSystemValues.GRPC.value,
+            SpanAttributes.RPC_SERVICE: service,
+            SpanAttributes.RPC_METHOD: meth,
+            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+        }
+
+        return self._tracer.start_as_current_span(
+            name=method,
+            kind=trace.SpanKind.CLIENT,
+            attributes=attributes,
+            **kwargs,
         )
 
     async def _wrap_unary_response(self, continuation, span):
