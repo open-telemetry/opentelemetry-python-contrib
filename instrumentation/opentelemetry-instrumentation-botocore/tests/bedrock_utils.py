@@ -41,7 +41,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
 )
 
 
-# pylint: disable=too-many-branches, too-many-locals
+# pylint: disable=too-many-branches, too-many-locals, too-many-statements
 def assert_completion_attributes_from_streaming_body(
     span: ReadableSpan,
     request_model: str,

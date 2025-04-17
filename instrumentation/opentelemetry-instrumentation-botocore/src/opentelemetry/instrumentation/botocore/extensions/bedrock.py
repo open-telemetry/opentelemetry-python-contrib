@@ -334,7 +334,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
         )
         # request for meta llama models does not contain stop_sequences field
-    
+
     def _extract_mistral_attributes(self, attributes, request_body):
         prompt = request_body.get("prompt")
         if prompt:
@@ -382,23 +382,29 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 if not messages:
                     model_id = self._call_context.params.get(_MODEL_ID_KEY)
                     if "amazon.titan" in model_id:
-                        if input_text := decoded_body.get("inputText"):
-                            messages = [
-                                {"role": "user", "content": [{"text": input_text}]}
-                            ]
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "inputText"
+                        )
                     elif "cohere.command-r" in model_id:
                         # chat_history can be converted to messages; for now, just use message
-                        if input_text := decoded_body.get("message"):
-                            messages = [
-                                {"role": "user", "content": [{"text": input_text}]}
-                            ]
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "message"
+                        )
                     elif "cohere.command" in model_id or "meta.llama" in model_id or "mistral.mistral" in model_id:
-                        if input_text := decoded_body.get("prompt"):
-                            messages = [
-                                {"role": "user", "content": [{"text": input_text}]}
-                            ]
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "prompt"
+                        )
 
         return system_messages + messages
+
+    def _get_messages_from_input_text(
+        self, decoded_body: dict[str, Any], input_name: str
+    ):
+        if input_text := decoded_body.get(input_name):
+            return [
+                {"role": "user", "content": [{"text": input_text}]}
+            ]
+        return []
 
     def before_service_call(
         self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
@@ -827,7 +833,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     token_usage_histogram.record(
                         output_tokens, output_attributes
                     )
-    
+
     def _handle_cohere_command_r_response(
         self,
         span: Span,
@@ -843,13 +849,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             span.set_attribute(
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["finish_reason"]]
             )
-        
+
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_invoke_cohere_command_r(
             response_body, capture_content
         )
         event_logger.emit(choice.to_choice_event())
-    
+
     def _handle_cohere_command_response(
         self,
         span: Span,
@@ -867,7 +873,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.set_attribute(
                     GEN_AI_RESPONSE_FINISH_REASONS, [generations["finish_reason"]]
                 )
-        
+
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_invoke_cohere_command(
             response_body, capture_content
@@ -913,7 +919,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(outputs["text"]))
             if "stop_reason" in outputs:
                 span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]])
-        
+
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_invoke_mistral_mistral(
             response_body, capture_content

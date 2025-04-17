@@ -536,7 +536,7 @@ class _Choice:
         else:
             message = {}
         return cls(message, response["finish_reason"], index=0)
-    
+
     @classmethod
     def from_invoke_cohere_command(
         cls, response: dict[str, Any], capture_content: bool
@@ -557,7 +557,7 @@ class _Choice:
         else:
             message = {}
         return cls(message, response["stop_reason"], index=0)
-    
+
     @classmethod
     def from_invoke_mistral_mistral(
         cls, response: dict[str, Any], capture_content: bool
