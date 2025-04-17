@@ -106,7 +106,7 @@ class ConfigSpanAttributesTestCase(TestCase):
             config={"system_instruction": "Yadda yadda yadda"}
         )
         self.assertNotIn(
-            "gcp.gen_ai.request.system_instruction", span.attributes
+            "gcp.gen_ai.operation.config.system_instruction", span.attributes
         )
         self.assertNotIn("gen_ai.request.system_instruction", span.attributes)
         for key in span.attributes:
@@ -127,7 +127,7 @@ class ConfigSpanAttributesTestCase(TestCase):
         )
         self.assertTrue(
             span.attributes[
-                "gcp.gen_ai.request.automatic_function_calling.ignore_call_history"
+                "gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"
             ]
         )
 
@@ -140,7 +140,7 @@ class ConfigSpanAttributesTestCase(TestCase):
             }
         )
         self.assertNotIn(
-            "gcp.gen_ai.request.automatic_function_calling.ignore_call_history",
+            "gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history",
             span.attributes,
         )
 
@@ -157,6 +157,6 @@ class ConfigSpanAttributesTestCase(TestCase):
         )
         self.assertTrue(
             span.attributes[
-                "gcp.gen_ai.request.automatic_function_calling.ignore_call_history"
+                "gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"
             ]
         )

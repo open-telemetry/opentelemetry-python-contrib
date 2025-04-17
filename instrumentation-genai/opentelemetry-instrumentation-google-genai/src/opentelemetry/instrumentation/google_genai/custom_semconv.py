@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-# Prefix to use for LLM model request attributes that are unique GCP
-# (or that have not yet been formally defined in the GenAI/LLM SIG).
-CUSTOM_LLM_REQUEST_PREFIX = "gcp.gen_ai.request"
+# Semantic Convention still being defined in:
+# https://github.com/open-telemetry/semantic-conventions/pull/2125
+GCP_GENAI_OPERATION_CONFIG = "gcp.gen_ai.operation.config"

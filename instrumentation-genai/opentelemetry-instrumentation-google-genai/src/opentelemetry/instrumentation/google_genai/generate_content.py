@@ -40,7 +40,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import error_attributes
 
 from .allowlist_util import AllowList
-from .custom_semconv import CUSTOM_LLM_REQUEST_PREFIX
+from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
@@ -160,11 +160,11 @@ def _add_request_options_to_span(
         _to_dict(config),
         # A custom prefix is used, because the names/structure of the
         # configuration is likely to be specific to Google Gen AI SDK.
-        key_prefix=CUSTOM_LLM_REQUEST_PREFIX,
+        key_prefix=GCP_GENAI_OPERATION_CONFIG,
         exclude_keys=[
             # System instruction can be overly long for a span attribute.
             # Additionally, it is recorded as an event (log), instead.
-            "gcp.gen_ai.request.system_instruction",
+            "gcp.gen_ai.operation.config.system_instruction",
         ],
         # Although a custom prefix is used by default, some of the attributes
         # are captured in common, standard, Semantic Conventions. For the
@@ -173,20 +173,20 @@ def _add_request_options_to_span(
         rename_keys={
             # TODO: add more entries here as more semantic conventions are
             # generalized to cover more of the available config options.
-            "gcp.gen_ai.request.temperature": gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
-            "gcp.gen_ai.request.top_k": gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
-            "gcp.gen_ai.request.top_p": gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
-            "gcp.gen_ai.request.candidate_count": gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT,
-            "gcp.gen_ai.request.max_output_tokens": gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
-            "gcp.gen_ai.request.stop_sequences": gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
-            "gcp.gen_ai.request.frequency_penalty": gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
-            "gcp.gen_ai.request.presence_penalty": gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
-            "gcp.gen_ai.request.seed": gen_ai_attributes.GEN_AI_REQUEST_SEED,
+            "gcp.gen_ai.operation.config.temperature": gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+            "gcp.gen_ai.operation.config.top_k": gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
+            "gcp.gen_ai.operation.config.top_p": gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
+            "gcp.gen_ai.operation.config.candidate_count": gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT,
+            "gcp.gen_ai.operation.config.max_output_tokens": gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+            "gcp.gen_ai.operation.config.stop_sequences": gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+            "gcp.gen_ai.operation.config.frequency_penalty": gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+            "gcp.gen_ai.operation.config.presence_penalty": gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+            "gcp.gen_ai.operation.config.seed": gen_ai_attributes.GEN_AI_REQUEST_SEED,
         },
     )
     for key, value in attributes.items():
         if key.startswith(
-            CUSTOM_LLM_REQUEST_PREFIX
+            GCP_GENAI_OPERATION_CONFIG
         ) and not allow_list.allowed(key):
             # The allowlist is used to control inclusion of the dynamic keys.
             continue
