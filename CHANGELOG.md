@@ -11,9 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
-  ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
-
 ### Added
 
 ### Fixed
@@ -21,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
   and log as debug instead of exception
   ([#3423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3423))
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation
+  ([#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383))
 
 - `opentelemetry-instrumentation-botocore` Add GenAI instrumentation for additional Bedrock models for InvokeModel API
   ([#3419](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3419))
