@@ -13,6 +13,8 @@
 # limitations under the License.
 # pylint:disable=cyclic-import
 
+from unittest import mock
+
 import grpc
 
 import opentelemetry.instrumentation.grpc
@@ -26,6 +28,7 @@ from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.sdk.trace import Span as SdkSpan
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -274,41 +277,26 @@ class TestClientProto(TestBase):
     ):  # pylint: disable=no-self-use
         """ensure that client interceptor closes the span only once even if the response is falsy."""
 
-        span_end_count = 0
-        tracer_provider, _exporter = self.create_tracer_provider()
-        tracer = tracer_provider.get_tracer(__name__)
-        original_start_span = tracer.start_span
+        with mock.patch.object(SdkSpan, "end") as span_end_mock:
+            tracer_provider, _exporter = self.create_tracer_provider()
+            tracer = tracer_provider.get_tracer(__name__)
 
-        def counting_span_end(original_end):
-            def wrapper(*args, **kwargs):
-                nonlocal span_end_count
-                span_end_count += 1
-                return original_end(*args, **kwargs)
+            interceptor = OpenTelemetryClientInterceptor(tracer)
 
-            return wrapper
+            def invoker(_request, _metadata):
+                return {}
 
-        def patched_start_span(*args, **kwargs):
-            span = original_start_span(*args, **kwargs)
-            span.end = counting_span_end(span.end)
-            return span
-
-        tracer.start_span = patched_start_span
-        interceptor = OpenTelemetryClientInterceptor(tracer)
-
-        def invoker(_request, _metadata):
-            return {}
-
-        request = Request(client_id=1, request_data="data")
-        interceptor.intercept_unary(
-            request,
-            {},
-            _UnaryClientInfo(
-                full_method="/GRPCTestServer/SimpleMethod",
-                timeout=None,
-            ),
-            invoker=invoker,
-        )
-        assert span_end_count == 1
+            request = Request(client_id=1, request_data="data")
+            interceptor.intercept_unary(
+                request,
+                {},
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod",
+                    timeout=None,
+                ),
+                invoker=invoker,
+            )
+            assert span_end_mock.call_count == 1
 
     def test_client_interceptor_trace_context_propagation(
         self,
