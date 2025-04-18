@@ -296,7 +296,7 @@ class TestClientProto(TestBase):
                 ),
                 invoker=invoker,
             )
-            assert span_end_mock.call_count == 1
+            self.assertEqual(span_end_mock.call_count, 1)
 
     def test_client_interceptor_trace_context_propagation(
         self,
