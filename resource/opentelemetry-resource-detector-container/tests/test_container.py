@@ -52,6 +52,20 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=f"""0::/system.slice/docker-{MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID]}.scope
+        """,
+    )
+    def test_container_id_detect_from_cgroup_file_with_suffix(
+        self, mock_cgroup_file
+    ):
+        actual = ContainerResourceDetector().detect()
+        self.assertDictEqual(
+            actual.attributes.copy(), MockContainerResourceAttributes
+        )
+
+    @patch(
         "opentelemetry.resource.detector.container._get_container_id_v1",
         return_value=None,
     )

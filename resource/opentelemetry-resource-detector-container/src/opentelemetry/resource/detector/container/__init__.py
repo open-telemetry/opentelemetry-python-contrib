@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from logging import getLogger
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
@@ -31,9 +32,14 @@ def _get_container_id_v1():
         ) as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
-                if len(line) > _CONTAINER_ID_LENGTH:
-                    container_id = line[-_CONTAINER_ID_LENGTH:]
+
+                match = re.search(
+                    r"^.*/(?:.*[-:])?([0-9a-f]+)(?:\.|\s*$)", line
+                )
+                if match is not None:
+                    container_id = match.group(1)
                     break
+
     except FileNotFoundError as exception:
         logger.warning("Failed to get container id. Exception: %s", exception)
     return container_id
