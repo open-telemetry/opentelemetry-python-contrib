@@ -274,7 +274,7 @@ class TestClientProto(TestBase):
 
     def test_client_interceptor_falsy_response(
         self,
-    ):  # pylint: disable=no-self-use
+    ):
         """ensure that client interceptor closes the span only once even if the response is falsy."""
 
         with mock.patch.object(SdkSpan, "end") as span_end_mock:
