@@ -33,10 +33,16 @@ class TestCase(unittest.TestCase):
         self._client = None
         self._uses_vertex = False
         self._credentials = FakeCredentials()
+        self._instrumentor_args = {}
 
     def _lazy_init(self):
-        self._instrumentation_context = InstrumentationContext()
+        self._instrumentation_context = InstrumentationContext(
+            **self._instrumentor_args
+        )
         self._instrumentation_context.install()
+
+    def set_instrumentor_constructor_kwarg(self, key, value):
+        self._instrumentor_args[key] = value
 
     @property
     def client(self):
