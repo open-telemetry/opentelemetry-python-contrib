@@ -111,9 +111,9 @@ class BaseInstrumentor(ABC):
         if not skip_dep_check:
             conflict = self._check_dependency_conflicts()
             if conflict:
-                _LOG.error(conflict)
                 if raise_exception_on_conflict:
                     raise DependencyConflictError(conflict)
+                _LOG.error(conflict)
                 return None
 
         # initialize semantic conventions opt-in if needed
