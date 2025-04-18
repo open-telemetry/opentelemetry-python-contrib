@@ -31,9 +31,9 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
     _Choice,
+    estimate_token_count,
     genai_capture_message_content,
     message_to_event,
-    estimate_token_count,
 )
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -105,6 +105,7 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 ]
 
 _MODEL_ID_KEY: str = "modelId"
+
 
 class _BedrockRuntimeExtension(_AwsSdkExtension):
     """
@@ -255,7 +256,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes, GEN_AI_REQUEST_MAX_TOKENS, config.get("maxTokenCount")
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, config.get("stopSequences")
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            config.get("stopSequences"),
         )
 
     def _extract_nova_attributes(self, attributes, request_body):
@@ -270,21 +273,29 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes, GEN_AI_REQUEST_MAX_TOKENS, config.get("max_new_tokens")
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, config.get("stopSequences")
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            config.get("stopSequences"),
         )
 
     def _extract_claude_attributes(self, attributes, request_body):
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_TEMPERATURE, request_body.get("temperature")
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, request_body.get("stop_sequences")
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            request_body.get("stop_sequences"),
         )
 
     def _extract_command_r_attributes(self, attributes, request_body):
@@ -293,16 +304,22 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_TEMPERATURE, request_body.get("temperature")
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("p")
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, request_body.get("stop_sequences")
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            request_body.get("stop_sequences"),
         )
 
     def _extract_command_attributes(self, attributes, request_body):
@@ -311,24 +328,34 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_TEMPERATURE, request_body.get("temperature")
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("p")
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, request_body.get("stop_sequences")
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            request_body.get("stop_sequences"),
         )
 
     def _extract_llama_attributes(self, attributes, request_body):
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_gen_len")
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_gen_len"),
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_TEMPERATURE, request_body.get("temperature")
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
@@ -339,13 +366,19 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         prompt = request_body.get("prompt")
         if prompt:
             self._set_if_not_none(
-                attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
+                attributes,
+                GEN_AI_USAGE_INPUT_TOKENS,
+                estimate_token_count(prompt),
             )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_MAX_TOKENS, request_body.get("max_tokens")
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
         )
         self._set_if_not_none(
-            attributes, GEN_AI_REQUEST_TEMPERATURE, request_body.get("temperature")
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
         )
         self._set_if_not_none(
             attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
@@ -361,7 +394,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
     def _get_request_messages(self):
         """Extracts and normalize system and user / assistant messages"""
-        input_text = None
         if system := self._call_context.params.get("system", []):
             system_messages = [{"role": "system", "content": system}]
         else:
@@ -390,20 +422,23 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                         messages = self._get_messages_from_input_text(
                             decoded_body, "message"
                         )
-                    elif "cohere.command" in model_id or "meta.llama" in model_id or "mistral.mistral" in model_id:
+                    elif (
+                        "cohere.command" in model_id
+                        or "meta.llama" in model_id
+                        or "mistral.mistral" in model_id
+                    ):
                         messages = self._get_messages_from_input_text(
                             decoded_body, "prompt"
                         )
 
         return system_messages + messages
 
+    # pylint: disable=no-self-use
     def _get_messages_from_input_text(
         self, decoded_body: dict[str, Any], input_name: str
     ):
         if input_text := decoded_body.get(input_name):
-            return [
-                {"role": "user", "content": [{"text": input_text}]}
-            ]
+            return [{"role": "user", "content": [{"text": input_text}]}]
         return []
 
     def before_service_call(
@@ -843,11 +878,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
     ):
         if "text" in response_body:
             span.set_attribute(
-                GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(response_body["text"])
+                GEN_AI_USAGE_OUTPUT_TOKENS,
+                estimate_token_count(response_body["text"]),
             )
         if "finish_reason" in response_body:
             span.set_attribute(
-                GEN_AI_RESPONSE_FINISH_REASONS, [response_body["finish_reason"]]
+                GEN_AI_RESPONSE_FINISH_REASONS,
+                [response_body["finish_reason"]],
             )
 
         event_logger = instrumentor_context.event_logger
@@ -867,11 +904,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             generations = response_body["generations"][0]
             if "text" in generations:
                 span.set_attribute(
-                    GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(generations["text"])
+                    GEN_AI_USAGE_OUTPUT_TOKENS,
+                    estimate_token_count(generations["text"]),
                 )
             if "finish_reason" in generations:
                 span.set_attribute(
-                    GEN_AI_RESPONSE_FINISH_REASONS, [generations["finish_reason"]]
+                    GEN_AI_RESPONSE_FINISH_REASONS,
+                    [generations["finish_reason"]],
                 )
 
         event_logger = instrumentor_context.event_logger
@@ -893,7 +932,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             )
         if "generation_token_count" in response_body:
             span.set_attribute(
-                GEN_AI_USAGE_OUTPUT_TOKENS, response_body["generation_token_count"],
+                GEN_AI_USAGE_OUTPUT_TOKENS,
+                response_body["generation_token_count"],
             )
         if "stop_reason" in response_body:
             span.set_attribute(
@@ -901,9 +941,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             )
 
         event_logger = instrumentor_context.event_logger
-        choice = _Choice.from_invoke_meta_llama(
-            response_body, capture_content
-        )
+        choice = _Choice.from_invoke_meta_llama(response_body, capture_content)
         event_logger.emit(choice.to_choice_event())
 
     def _handle_mistral_ai_response(
@@ -916,9 +954,14 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         if "outputs" in response_body:
             outputs = response_body["outputs"][0]
             if "text" in outputs:
-                span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, estimate_token_count(outputs["text"]))
+                span.set_attribute(
+                    GEN_AI_USAGE_OUTPUT_TOKENS,
+                    estimate_token_count(outputs["text"]),
+                )
             if "stop_reason" in outputs:
-                span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]])
+                span.set_attribute(
+                    GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]]
+                )
 
         event_logger = instrumentor_context.event_logger
         choice = _Choice.from_invoke_mistral_mistral(

@@ -358,9 +358,8 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             self._stream_done_callback(self._response)
             return
 
-def estimate_token_count(
-    message: str
-) -> int:
+
+def estimate_token_count(message: str) -> int:
     # https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization-prepare.html
     # use 6 chars per token to approximate token count when not provided in response body
     return math.ceil(len(message) / 6)

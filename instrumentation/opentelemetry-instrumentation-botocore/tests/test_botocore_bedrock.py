@@ -1178,7 +1178,7 @@ def get_invoke_model_body(
             "max_tokens": max_tokens,
             "temperature": temperature,
             "p": top_p,
-            "stop_sequences": stop_sequences
+            "stop_sequences": stop_sequences,
         }
     elif "cohere.command" in llm_model:
         body = {
@@ -1186,7 +1186,7 @@ def get_invoke_model_body(
             "max_tokens": max_tokens,
             "temperature": temperature,
             "p": top_p,
-            "stop_sequences": stop_sequences
+            "stop_sequences": stop_sequences,
         }
     elif "meta.llama" in llm_model:
         body = {
@@ -1201,7 +1201,7 @@ def get_invoke_model_body(
             "max_tokens": max_tokens,
             "temperature": temperature,
             "top_p": top_p,
-            "stop": stop_sequences
+            "stop": stop_sequences,
         }
     else:
         raise ValueError(f"No config for {llm_model}")
@@ -1224,7 +1224,15 @@ def get_model_name_from_family(llm_model):
 
 @pytest.mark.parametrize(
     "model_family",
-    ["amazon.nova", "amazon.titan", "anthropic.claude", "cohere.command-r", "cohere.command", "meta.llama", "mistral.mistral"],
+    [
+        "amazon.nova",
+        "amazon.titan",
+        "anthropic.claude",
+        "cohere.command-r",
+        "cohere.command",
+        "meta.llama",
+        "mistral.mistral",
+    ],
 )
 @pytest.mark.vcr()
 def test_invoke_model_with_content(
@@ -1236,7 +1244,12 @@ def test_invoke_model_with_content(
 ):
     # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
-    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 0.99 if model_family == "cohere.command-r" else 1, ["|"]
+    max_tokens, temperature, top_p, stop_sequences = (
+        10,
+        0.8,
+        0.99 if model_family == "cohere.command-r" else 1,
+        ["|"],
+    )
     body = get_invoke_model_body(
         llm_model_value, max_tokens, temperature, top_p, stop_sequences
     )
@@ -1284,7 +1297,7 @@ def test_invoke_model_with_content(
         finish_reason = "max_tokens"
     elif model_family == "cohere.command-r":
         message = {
-            "content":  "This is a test. How are you doing today",
+            "content": "This is a test. How are you doing today",
         }
         finish_reason = "MAX_TOKENS"
     elif model_family == "cohere.command":
@@ -1835,7 +1848,15 @@ def test_invoke_model_with_content_tool_call(
 
 @pytest.mark.parametrize(
     "model_family",
-    ["amazon.nova", "amazon.titan", "anthropic.claude", "cohere.command-r", "cohere.command", "meta.llama", "mistral.mistral"],
+    [
+        "amazon.nova",
+        "amazon.titan",
+        "anthropic.claude",
+        "cohere.command-r",
+        "cohere.command",
+        "meta.llama",
+        "mistral.mistral",
+    ],
 )
 @pytest.mark.vcr()
 def test_invoke_model_no_content(
@@ -1847,7 +1868,12 @@ def test_invoke_model_no_content(
 ):
     # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
-    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 0.99 if model_family == "cohere.command-r" else 1, ["|"]
+    max_tokens, temperature, top_p, stop_sequences = (
+        10,
+        0.8,
+        0.99 if model_family == "cohere.command-r" else 1,
+        ["|"],
+    )
     body = get_invoke_model_body(
         llm_model_value, max_tokens, temperature, top_p, stop_sequences
     )
