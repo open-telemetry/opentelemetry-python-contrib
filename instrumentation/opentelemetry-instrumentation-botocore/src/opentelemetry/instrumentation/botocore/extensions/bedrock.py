@@ -31,6 +31,7 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
     _Choice,
+    estimate_token_count,
     genai_capture_message_content,
     message_to_event,
 )
@@ -223,6 +224,23 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                         self._extract_claude_attributes(
                             attributes, request_body
                         )
+                    elif "cohere.command-r" in model_id:
+                        self._extract_command_r_attributes(
+                            attributes, request_body
+                        )
+                    elif "cohere.command" in model_id:
+                        self._extract_command_attributes(
+                            attributes, request_body
+                        )
+                    elif "meta.llama" in model_id:
+                        self._extract_llama_attributes(
+                            attributes, request_body
+                        )
+                    elif "mistral" in model_id:
+                        self._extract_mistral_attributes(
+                            attributes, request_body
+                        )
+
                 except json.JSONDecodeError:
                     _logger.debug("Error: Unable to parse the body as JSON")
 
@@ -280,6 +298,95 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             request_body.get("stop_sequences"),
         )
 
+    def _extract_command_r_attributes(self, attributes, request_body):
+        prompt = request_body.get("message")
+        self._set_if_not_none(
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
+        )
+        self._set_if_not_none(
+            attributes, GEN_AI_REQUEST_TOP_P, request_body.get("p")
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            request_body.get("stop_sequences"),
+        )
+
+    def _extract_command_attributes(self, attributes, request_body):
+        prompt = request_body.get("prompt")
+        self._set_if_not_none(
+            attributes, GEN_AI_USAGE_INPUT_TOKENS, estimate_token_count(prompt)
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
+        )
+        self._set_if_not_none(
+            attributes, GEN_AI_REQUEST_TOP_P, request_body.get("p")
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_STOP_SEQUENCES,
+            request_body.get("stop_sequences"),
+        )
+
+    def _extract_llama_attributes(self, attributes, request_body):
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_gen_len"),
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
+        )
+        self._set_if_not_none(
+            attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
+        )
+        # request for meta llama models does not contain stop_sequences field
+
+    def _extract_mistral_attributes(self, attributes, request_body):
+        prompt = request_body.get("prompt")
+        if prompt:
+            self._set_if_not_none(
+                attributes,
+                GEN_AI_USAGE_INPUT_TOKENS,
+                estimate_token_count(prompt),
+            )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_MAX_TOKENS,
+            request_body.get("max_tokens"),
+        )
+        self._set_if_not_none(
+            attributes,
+            GEN_AI_REQUEST_TEMPERATURE,
+            request_body.get("temperature"),
+        )
+        self._set_if_not_none(
+            attributes, GEN_AI_REQUEST_TOP_P, request_body.get("top_p")
+        )
+        self._set_if_not_none(
+            attributes, GEN_AI_REQUEST_STOP_SEQUENCES, request_body.get("stop")
+        )
+
     @staticmethod
     def _set_if_not_none(attributes, key, value):
         if value is not None:
@@ -287,7 +394,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
     def _get_request_messages(self):
         """Extracts and normalize system and user / assistant messages"""
-        input_text = None
         if system := self._call_context.params.get("system", []):
             system_messages = [{"role": "system", "content": system}]
         else:
@@ -304,14 +410,36 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     system_messages = [{"role": "system", "content": content}]
 
                 messages = decoded_body.get("messages", [])
+                # if no messages interface, convert to messages format from generic API
                 if not messages:
-                    # transform old school amazon titan invokeModel api to messages
-                    if input_text := decoded_body.get("inputText"):
-                        messages = [
-                            {"role": "user", "content": [{"text": input_text}]}
-                        ]
+                    model_id = self._call_context.params.get(_MODEL_ID_KEY)
+                    if "amazon.titan" in model_id:
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "inputText"
+                        )
+                    elif "cohere.command-r" in model_id:
+                        # chat_history can be converted to messages; for now, just use message
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "message"
+                        )
+                    elif (
+                        "cohere.command" in model_id
+                        or "meta.llama" in model_id
+                        or "mistral.mistral" in model_id
+                    ):
+                        messages = self._get_messages_from_input_text(
+                            decoded_body, "prompt"
+                        )
 
         return system_messages + messages
+
+    # pylint: disable=no-self-use
+    def _get_messages_from_input_text(
+        self, decoded_body: dict[str, Any], input_name: str
+    ):
+        if input_text := decoded_body.get(input_name):
+            return [{"role": "user", "content": [{"text": input_text}]}]
+        return []
 
     def before_service_call(
         self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
@@ -437,6 +565,22 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 )
             elif "anthropic.claude" in model_id:
                 self._handle_anthropic_claude_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
+            elif "cohere.command-r" in model_id:
+                self._handle_cohere_command_r_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
+            elif "cohere.command" in model_id:
+                self._handle_cohere_command_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
+            elif "meta.llama" in model_id:
+                self._handle_meta_llama_response(
+                    span, response_body, instrumentor_context, capture_content
+                )
+            elif "mistral" in model_id:
+                self._handle_mistral_ai_response(
                     span, response_body, instrumentor_context, capture_content
                 )
         except json.JSONDecodeError:
@@ -724,6 +868,106 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     token_usage_histogram.record(
                         output_tokens, output_attributes
                     )
+
+    def _handle_cohere_command_r_response(
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
+    ):
+        if "text" in response_body:
+            span.set_attribute(
+                GEN_AI_USAGE_OUTPUT_TOKENS,
+                estimate_token_count(response_body["text"]),
+            )
+        if "finish_reason" in response_body:
+            span.set_attribute(
+                GEN_AI_RESPONSE_FINISH_REASONS,
+                [response_body["finish_reason"]],
+            )
+
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_cohere_command_r(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
+
+    def _handle_cohere_command_response(
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
+    ):
+        if "generations" in response_body and response_body["generations"]:
+            generations = response_body["generations"][0]
+            if "text" in generations:
+                span.set_attribute(
+                    GEN_AI_USAGE_OUTPUT_TOKENS,
+                    estimate_token_count(generations["text"]),
+                )
+            if "finish_reason" in generations:
+                span.set_attribute(
+                    GEN_AI_RESPONSE_FINISH_REASONS,
+                    [generations["finish_reason"]],
+                )
+
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_cohere_command(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
+
+    def _handle_meta_llama_response(
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
+    ):
+        if "prompt_token_count" in response_body:
+            span.set_attribute(
+                GEN_AI_USAGE_INPUT_TOKENS, response_body["prompt_token_count"]
+            )
+        if "generation_token_count" in response_body:
+            span.set_attribute(
+                GEN_AI_USAGE_OUTPUT_TOKENS,
+                response_body["generation_token_count"],
+            )
+        if "stop_reason" in response_body:
+            span.set_attribute(
+                GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
+            )
+
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_meta_llama(response_body, capture_content)
+        event_logger.emit(choice.to_choice_event())
+
+    def _handle_mistral_ai_response(
+        self,
+        span: Span,
+        response_body: dict[str, Any],
+        instrumentor_context: _BotocoreInstrumentorContext,
+        capture_content: bool,
+    ):
+        if "outputs" in response_body:
+            outputs = response_body["outputs"][0]
+            if "text" in outputs:
+                span.set_attribute(
+                    GEN_AI_USAGE_OUTPUT_TOKENS,
+                    estimate_token_count(outputs["text"]),
+                )
+            if "stop_reason" in outputs:
+                span.set_attribute(
+                    GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]]
+                )
+
+        event_logger = instrumentor_context.event_logger
+        choice = _Choice.from_invoke_mistral_mistral(
+            response_body, capture_content
+        )
+        event_logger.emit(choice.to_choice_event())
 
     def on_error(
         self,

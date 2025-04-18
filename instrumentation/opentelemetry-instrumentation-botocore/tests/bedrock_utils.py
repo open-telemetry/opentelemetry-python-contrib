@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import Any
 
 from botocore.response import StreamingBody
@@ -40,7 +41,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
 )
 
 
-# pylint: disable=too-many-branches, too-many-locals
+# pylint: disable=too-many-branches, too-many-locals, too-many-statements
 def assert_completion_attributes_from_streaming_body(
     span: ReadableSpan,
     request_model: str,
@@ -54,6 +55,7 @@ def assert_completion_attributes_from_streaming_body(
     input_tokens = None
     output_tokens = None
     finish_reason = None
+    request_prompt = "Say this is a test"
     if response is not None:
         original_body = response["body"]
         body_content = original_body.read()
@@ -89,6 +91,33 @@ def assert_completion_attributes_from_streaming_body(
                 finish_reason = (response["stop_reason"],)
             else:
                 finish_reason = None
+        elif "cohere.command-r" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            text = response.get("text")
+            if text:
+                output_tokens = math.ceil(len(text) / 6)
+            finish_reason = (response["finish_reason"],)
+        elif "cohere.command" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            generations = response.get("generations")
+            if generations:
+                first_generation = generations[0]
+                output_tokens = math.ceil(len(first_generation["text"]) / 6)
+                finish_reason = (first_generation["finish_reason"],)
+        elif "meta.llama" in request_model:
+            if "prompt_token_count" in response:
+                input_tokens = response.get("prompt_token_count")
+            if "generation_token_count" in response:
+                output_tokens = response.get("generation_token_count")
+            if "stop_reason" in response:
+                finish_reason = (response["stop_reason"],)
+        elif "mistral.mistral" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            outputs = response.get("outputs")
+            if outputs:
+                first_output = outputs[0]
+                output_tokens = math.ceil(len(first_output["text"]) / 6)
+                finish_reason = (first_output["stop_reason"],)
 
     return assert_all_attributes(
         span,
