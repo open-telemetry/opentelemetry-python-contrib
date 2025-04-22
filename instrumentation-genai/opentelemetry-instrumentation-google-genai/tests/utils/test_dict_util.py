@@ -206,16 +206,6 @@ def test_flatten_with_mixed_structures():
         "foo.pydantic.int_value": 123,
     }
 
-def test_converts_tuple_with_json_fallback():
-    input_dict = {
-        "foo": ("abc", 123),
-    }
-    output = dict_util.flatten_dict(input_dict)
-    assert output == {
-        "foo.length": 2,
-        "foo[0]": "abc",
-        "foo[1]": 123,
-    }
 
 def test_converts_tuple_with_json_fallback():
     input_dict = {
@@ -227,6 +217,19 @@ def test_converts_tuple_with_json_fallback():
         "foo[0]": "abc",
         "foo[1]": 123,
     }
+
+
+def test_converts_tuple_with_json_fallback():
+    input_dict = {
+        "foo": ("abc", 123),
+    }
+    output = dict_util.flatten_dict(input_dict)
+    assert output == {
+        "foo.length": 2,
+        "foo[0]": "abc",
+        "foo[1]": 123,
+    }
+
 
 def test_json_conversion_handles_unicode():
     input_dict = {
@@ -238,6 +241,7 @@ def test_json_conversion_handles_unicode():
         "foo[0]": "❤️",
         "foo[1]": 123,
     }
+
 
 def test_flatten_with_complex_object_not_json_serializable():
     result = dict_util.flatten_dict(
