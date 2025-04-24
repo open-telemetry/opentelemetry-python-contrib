@@ -9,6 +9,10 @@ on:
     - 'release/*'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   # Set the SHA to the branch name if the PR has a label 'prepare-release' or 'backport' otherwise, set it to 'main'
   # For PRs you can change the inner fallback ('main')
@@ -27,6 +31,7 @@ jobs:
   spellcheck:
     name: spellcheck
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -45,6 +50,7 @@ jobs:
   docker-tests:
     name: docker-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -63,6 +69,7 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: |
       github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     steps:
@@ -83,6 +90,7 @@ jobs:
   generate:
     name: generate
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -104,6 +112,7 @@ jobs:
   generate-workflows:
     name: generate-workflows
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
       && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
@@ -128,6 +137,7 @@ jobs:
   shellcheck:
     name: shellcheck
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -146,6 +156,7 @@ jobs:
   ruff:
     name: ruff
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -164,6 +175,7 @@ jobs:
   typecheck:
     name: typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4

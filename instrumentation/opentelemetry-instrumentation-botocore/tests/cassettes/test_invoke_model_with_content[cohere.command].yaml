@@ -1,0 +1,66 @@
+interactions:
+- request:
+    body: |-
+      {
+        "prompt": "Say this is a test",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "p": 1,
+        "stop_sequences": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '103'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.3.0 md/arch#arm64 lang/python#3.10.16
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250410T223753Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-461bf523-e7a0388221ce8a1d7a31fc5b;Parent=a55a9398f0f3d364;Sampled=1
+      amz-sdk-invocation-id:
+      - 17fbe175-373f-4c10-8047-8bba2fd8e22c
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/cohere.command-light-text-v14/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "a09c1c60-6608-482a-b98d-764e4d87fcd1",
+          "generations": [
+            {
+              "id": "8b38ce59-5f77-4b79-82c3-58eb72d4b1a2",
+              "text": " Let it be a test of knowledge, skills,",
+              "finish_reason": "MAX_TOKENS"
+            }
+          ],
+          "prompt": "Say this is a test"
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 10 Apr 2025 22:37:53 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '248'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - a09c1c60-6608-482a-b98d-764e4d87fcd1
+    status:
+      code: 200
+      message: OK
+version: 1

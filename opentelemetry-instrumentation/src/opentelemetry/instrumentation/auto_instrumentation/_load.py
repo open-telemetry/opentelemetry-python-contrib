@@ -82,6 +82,14 @@ def _load_instrumentors(distro):
                 exc.conflict,
             )
             continue
+        except ModuleNotFoundError as exc:
+            # ModuleNotFoundError is raised when the library is not installed
+            # and the instrumentation is not required to be loaded.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
+            _logger.debug(
+                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
+            )
+            continue
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
             # instrumentors (usually requiring binary extensions) may fail to load
