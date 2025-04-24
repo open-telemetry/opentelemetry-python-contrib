@@ -12,20 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This variant of the requirements aims to test the system using
-# the oldest supported version of external dependencies.
 
-pytest==7.4.4
-pytest-asyncio==0.21.0
-pytest-vcr==1.0.2
-
-google-auth==2.15.0
-google-genai==1.0.0
-opentelemetry-api==1.31.1
-opentelemetry-sdk==1.31.1
-opentelemetry-semantic-conventions==0.52b1
-opentelemetry-instrumentation==0.52b1
-
-# Install locally from the folder. This path is relative to the
-# root directory, given invocation from "tox" at root level.
--e instrumentation-genai/opentelemetry-instrumentation-google-genai
+# Semantic Convention still being defined in:
+# https://github.com/open-telemetry/semantic-conventions/pull/2125
+GCP_GENAI_OPERATION_CONFIG = "gcp.gen_ai.operation.config"

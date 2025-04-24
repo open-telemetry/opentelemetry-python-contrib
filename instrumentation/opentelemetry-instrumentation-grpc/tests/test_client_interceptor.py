@@ -13,6 +13,8 @@
 # limitations under the License.
 # pylint:disable=cyclic-import
 
+from unittest import mock
+
 import grpc
 
 import opentelemetry.instrumentation.grpc
@@ -26,6 +28,7 @@ from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.sdk.trace import Span as SdkSpan
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -268,6 +271,32 @@ class TestClientProto(TestBase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+
+    def test_client_interceptor_falsy_response(
+        self,
+    ):
+        """ensure that client interceptor closes the span only once even if the response is falsy."""
+
+        with mock.patch.object(SdkSpan, "end") as span_end_mock:
+            tracer_provider, _exporter = self.create_tracer_provider()
+            tracer = tracer_provider.get_tracer(__name__)
+
+            interceptor = OpenTelemetryClientInterceptor(tracer)
+
+            def invoker(_request, _metadata):
+                return {}
+
+            request = Request(client_id=1, request_data="data")
+            interceptor.intercept_unary(
+                request,
+                {},
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod",
+                    timeout=None,
+                ),
+                invoker=invoker,
+            )
+            self.assertEqual(span_end_mock.call_count, 1)
 
     def test_client_interceptor_trace_context_propagation(
         self,

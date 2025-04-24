@@ -1172,6 +1172,37 @@ def get_invoke_model_body(
         set_if_not_none(body, "temperature", temperature)
         set_if_not_none(body, "top_p", top_p)
         set_if_not_none(body, "stop_sequences", stop_sequences)
+    elif "cohere.command-r" in llm_model:
+        body = {
+            "message": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "p": top_p,
+            "stop_sequences": stop_sequences,
+        }
+    elif "cohere.command" in llm_model:
+        body = {
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "p": top_p,
+            "stop_sequences": stop_sequences,
+        }
+    elif "meta.llama" in llm_model:
+        body = {
+            "prompt": prompt,
+            "max_gen_len": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+        }
+    elif "mistral.mistral" in llm_model:
+        body = {
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "stop": stop_sequences,
+        }
     else:
         raise ValueError(f"No config for {llm_model}")
 
@@ -1183,13 +1214,25 @@ def get_model_name_from_family(llm_model):
         "amazon.titan": "amazon.titan-text-lite-v1",
         "amazon.nova": "amazon.nova-micro-v1:0",
         "anthropic.claude": "anthropic.claude-v2",
+        "cohere.command-r": "cohere.command-r-v1:0",
+        "cohere.command": "cohere.command-light-text-v14",
+        "meta.llama": "meta.llama3-1-70b-instruct-v1:0",
+        "mistral.mistral": "mistral.mistral-7b-instruct-v0:2",
     }
     return llm_model_name[llm_model]
 
 
 @pytest.mark.parametrize(
     "model_family",
-    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+    [
+        "amazon.nova",
+        "amazon.titan",
+        "anthropic.claude",
+        "cohere.command-r",
+        "cohere.command",
+        "meta.llama",
+        "mistral.mistral",
+    ],
 )
 @pytest.mark.vcr()
 def test_invoke_model_with_content(
@@ -1201,7 +1244,12 @@ def test_invoke_model_with_content(
 ):
     # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
-    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    max_tokens, temperature, top_p, stop_sequences = (
+        10,
+        0.8,
+        0.99 if model_family == "cohere.command-r" else 1,
+        ["|"],
+    )
     body = get_invoke_model_body(
         llm_model_value, max_tokens, temperature, top_p, stop_sequences
     )
@@ -1219,7 +1267,7 @@ def test_invoke_model_with_content(
         top_p,
         temperature,
         max_tokens,
-        stop_sequences,
+        None if model_family == "meta.llama" else stop_sequences,
     )
 
     logs = log_exporter.get_finished_logs()
@@ -1247,6 +1295,26 @@ def test_invoke_model_with_content(
             ],
         }
         finish_reason = "max_tokens"
+    elif model_family == "cohere.command-r":
+        message = {
+            "content": "This is a test. How are you doing today",
+        }
+        finish_reason = "MAX_TOKENS"
+    elif model_family == "cohere.command":
+        message = {
+            "content": " Let it be a test of knowledge, skills,",
+        }
+        finish_reason = "MAX_TOKENS"
+    elif model_family == "meta.llama":
+        message = {
+            "content": " post. This is a test post. This is",
+        }
+        finish_reason = "length"
+    elif model_family == "mistral.mistral":
+        message = {
+            "content": "\n\nA man stands before a crowd of people",
+        }
+        finish_reason = "length"
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
     choice_body = {
         "index": 0,
@@ -1780,7 +1848,15 @@ def test_invoke_model_with_content_tool_call(
 
 @pytest.mark.parametrize(
     "model_family",
-    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+    [
+        "amazon.nova",
+        "amazon.titan",
+        "anthropic.claude",
+        "cohere.command-r",
+        "cohere.command",
+        "meta.llama",
+        "mistral.mistral",
+    ],
 )
 @pytest.mark.vcr()
 def test_invoke_model_no_content(
@@ -1792,7 +1868,12 @@ def test_invoke_model_no_content(
 ):
     # pylint:disable=too-many-locals
     llm_model_value = get_model_name_from_family(model_family)
-    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    max_tokens, temperature, top_p, stop_sequences = (
+        10,
+        0.8,
+        0.99 if model_family == "cohere.command-r" else 1,
+        ["|"],
+    )
     body = get_invoke_model_body(
         llm_model_value, max_tokens, temperature, top_p, stop_sequences
     )
@@ -1810,7 +1891,7 @@ def test_invoke_model_no_content(
         top_p,
         temperature,
         max_tokens,
-        stop_sequences,
+        None if model_family == "meta.llama" else stop_sequences,
     )
 
     logs = log_exporter.get_finished_logs()
@@ -1825,6 +1906,18 @@ def test_invoke_model_no_content(
     elif model_family == "amazon.titan":
         choice_message = {}
         finish_reason = "LENGTH"
+    elif model_family == "cohere.command-r":
+        choice_message = {}
+        finish_reason = "STOP_SEQUENCE"
+    elif model_family == "cohere.command":
+        choice_message = {}
+        finish_reason = "MAX_TOKENS"
+    elif model_family == "meta.llama":
+        choice_message = {}
+        finish_reason = "length"
+    elif model_family == "mistral.mistral":
+        choice_message = {}
+        finish_reason = "length"
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
