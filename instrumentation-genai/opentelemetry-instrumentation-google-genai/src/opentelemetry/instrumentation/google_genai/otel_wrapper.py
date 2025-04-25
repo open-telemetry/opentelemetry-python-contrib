@@ -20,6 +20,10 @@ from opentelemetry._events import Event
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
 
+from .custom_semconv import (
+    FUNCTION_TOOL_CALL_START_EVENT_NAME,
+    FUNCTION_TOOL_CALL_END_EVENT_NAME,
+)
 from .version import __version__ as _LIBRARY_VERSION
 
 _logger = logging.getLogger(__name__)
@@ -85,6 +89,16 @@ class OTelWrapper:
     def log_response_content(self, attributes, body):
         _logger.debug("Recording response.")
         event_name = "gen_ai.choice"
+        self._log_event(event_name, attributes, body)
+
+    def log_function_call_start(self, attributes, body):
+        _logger.debug("Recording function call start.")
+        event_name = FUNCTION_TOOL_CALL_START_EVENT_NAME
+        self._log_event(event_name, attributes, body)
+
+    def log_function_call_end(self, attributes, body):
+        _logger.debug("Recording function call end.")
+        event_name = FUNCTION_TOOL_CALL_END_EVENT_NAME
         self._log_event(event_name, attributes, body)
 
     def _log_event(self, event_name, attributes, body):

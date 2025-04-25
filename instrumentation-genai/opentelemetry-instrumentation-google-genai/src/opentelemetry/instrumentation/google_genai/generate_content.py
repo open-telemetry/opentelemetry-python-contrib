@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import functools
 import json
 import logging
@@ -28,6 +29,7 @@ from google.genai.types import (
     ContentListUnionDict,
     ContentUnion,
     ContentUnionDict,
+    GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
 )
@@ -44,6 +46,7 @@ from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
+from .tool_call_wrapper import wrapped as wrapped_tool
 
 _logger = logging.getLogger(__name__)
 
@@ -206,6 +209,23 @@ def _get_response_property(response: GenerateContentResponse, path: str):
     return current_context
 
 
+def _coerce_config_to_object(config: GenerateContentConfigOrDict) -> GenerateContentConfig:
+    if isinstance(config, GenerateContentConfig):
+        return config
+    # Input must be a dictionary; convert by invoking the constructor.
+    return GenerateContentConfig(**config)
+
+
+def _wrapped_config_with_tools(
+    otel_wrapper: OTelWrapper,
+    config: GenerateContentConfig):
+    if not config.tools:
+        return config
+    result = copy.copy(config)
+    result.tools = [wrapped_tool(tool, otel_wrapper) for tool in config.tools]
+    return result
+
+
 class _GenerateContentInstrumentationHelper:
     def __init__(
         self,
@@ -228,6 +248,15 @@ class _GenerateContentInstrumentationHelper:
         self._generate_content_config_key_allowlist = (
             generate_content_config_key_allowlist or AllowList()
         )
+
+    def wrapped_config(
+        self,
+        config: Optional[GenerateContentConfigOrDict]) -> Optional[GenerateContentConfig]:
+        if config is None:
+            return None
+        return _wrapped_config_with_tools(
+            self._otel_wrapper,
+            _coerce_config_to_object(config))
 
     def start_span_as_current_span(
         self, model_name, function_name, end_on_exit=True
@@ -556,7 +585,7 @@ def _create_instrumented_generate_content(
                     self,
                     model=model,
                     contents=contents,
-                    config=config,
+                    config=helper.wrapped_config(config),
                     **kwargs,
                 )
                 helper.process_response(response)
@@ -601,7 +630,7 @@ def _create_instrumented_generate_content_stream(
                     self,
                     model=model,
                     contents=contents,
-                    config=config,
+                    config=helper.wrapped_config(config),
                     **kwargs,
                 ):
                     helper.process_response(response)
@@ -646,7 +675,7 @@ def _create_instrumented_async_generate_content(
                     self,
                     model=model,
                     contents=contents,
-                    config=config,
+                    config=helper.wrapped_config(config),
                     **kwargs,
                 )
                 helper.process_response(response)
@@ -694,7 +723,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 self,
                 model=model,
                 contents=contents,
-                config=config,
+                config=helper.wrapped_config(config),
                 **kwargs,
             )
         except Exception as error:  # pylint: disable=broad-exception-caught
