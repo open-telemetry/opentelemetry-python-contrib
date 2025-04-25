@@ -89,5 +89,7 @@ jobs:
 
       - name: Add prepare-release label to PR
         if: steps.create_pr.outputs.pr_url != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr edit ${{ steps.create_pr.outputs.pr_url }}  --add-label "prepare-release"
