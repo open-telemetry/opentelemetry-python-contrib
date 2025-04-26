@@ -23,6 +23,8 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
+    _DURATION_HISTOGRAM_OLD_EXPLICIT_BOUNDS,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -762,6 +764,10 @@ class TestRequestsIntergrationMetric(TestBase):
                         "measures the duration of the outbound HTTP request",
                     )
                     for data_point in metric.data.data_points:
+                        self.assertEqual(
+                            data_point.explicit_bounds,
+                            _DURATION_HISTOGRAM_OLD_EXPLICIT_BOUNDS,
+                        )
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )
@@ -788,6 +794,10 @@ class TestRequestsIntergrationMetric(TestBase):
                         metric.description, "Duration of HTTP client requests."
                     )
                     for data_point in metric.data.data_points:
+                        self.assertEqual(
+                            data_point.explicit_bounds,
+                            _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
+                        )
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
                         )

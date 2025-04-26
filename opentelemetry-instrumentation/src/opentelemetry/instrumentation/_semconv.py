@@ -47,6 +47,43 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
+# Values defined in milliseconds
+_DURATION_HISTOGRAM_OLD_EXPLICIT_BOUNDS = (
+    0.0,
+    5.0,
+    10.0,
+    25.0,
+    50.0,
+    75.0,
+    100.0,
+    250.0,
+    500.0,
+    750.0,
+    1000.0,
+    2500.0,
+    5000.0,
+    7500.0,
+    10000.0,
+)
+
+# Values defined in seconds
+_DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    2.5,
+    5,
+    7.5,
+    10,
+)
+
 # These lists represent attributes for metrics that are currently supported
 
 _client_duration_attrs_old = [

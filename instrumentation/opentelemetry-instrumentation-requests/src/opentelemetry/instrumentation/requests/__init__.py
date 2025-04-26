@@ -87,6 +87,7 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
+    _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -445,6 +446,7 @@ class RequestsInstrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=_DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
             )
         _instrument(
             tracer,
