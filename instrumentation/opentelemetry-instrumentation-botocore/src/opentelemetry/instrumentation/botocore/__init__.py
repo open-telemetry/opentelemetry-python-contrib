@@ -112,6 +112,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
+from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger(__name__)
 
@@ -407,7 +408,7 @@ def _safe_invoke(function: Callable, *args):
         )
 
 
-def _get_server_attributes(endpoint_url: str) -> dict[str, str]:
+def _get_server_attributes(endpoint_url: str) -> Dict[str, AttributeValue]:
     """Extract server.* attributes from AWS endpoint URL."""
     parsed = urlparse(endpoint_url)
     attributes = {}
