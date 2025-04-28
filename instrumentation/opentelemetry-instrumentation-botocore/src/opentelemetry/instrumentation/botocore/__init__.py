@@ -82,7 +82,6 @@ for example:
 
 import logging
 from typing import Any, Callable, Collection, Dict, Optional, Tuple
-from urllib.parse import urlparse
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -100,6 +99,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.package import _instruments
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -112,7 +112,6 @@ from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +278,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             SpanAttributes.RPC_METHOD: call_context.operation,
             # TODO: update when semantic conventions exist
             "aws.region": call_context.region,
-            **_get_server_attributes(call_context.endpoint_url),
+            **get_server_attributes(call_context.endpoint_url),
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
@@ -406,13 +405,3 @@ def _safe_invoke(function: Callable, *args):
         logger.error(
             "Error when invoking function '%s'", function_name, exc_info=ex
         )
-
-
-def _get_server_attributes(endpoint_url: str) -> Dict[str, AttributeValue]:
-    """Extract server.* attributes from AWS endpoint URL."""
-    parsed = urlparse(endpoint_url)
-    attributes = {}
-    if parsed.hostname:
-        attributes[SpanAttributes.SERVER_ADDRESS] = parsed.hostname
-        attributes[SpanAttributes.SERVER_PORT] = parsed.port or 443
-    return attributes

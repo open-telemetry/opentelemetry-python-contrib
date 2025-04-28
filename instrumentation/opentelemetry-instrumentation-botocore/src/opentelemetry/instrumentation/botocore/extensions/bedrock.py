@@ -41,6 +41,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotoClientErrorT,
     _BotocoreInstrumentorContext,
 )
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes
 from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
@@ -163,6 +164,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes[GEN_AI_OPERATION_NAME] = (
                 GenAiOperationNameValues.CHAT.value
             )
+
+        server_attributes = get_server_attributes(
+            self._call_context.endpoint_url
+        )
+        attributes.update(server_attributes)
         return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):

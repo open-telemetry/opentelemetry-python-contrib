@@ -32,6 +32,9 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -39,7 +42,6 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 
 
 # pylint: disable=too-many-branches, too-many-locals, too-many-statements
@@ -238,8 +240,8 @@ def assert_all_attributes(
         request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     )
 
-    assert server_address == span.attributes[SpanAttributes.SERVER_ADDRESS]
-    assert server_port == span.attributes[SpanAttributes.SERVER_PORT]
+    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+    assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
     assert_equal_or_not_present(
         input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span
@@ -309,7 +311,12 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
 
 
 def assert_all_metric_attributes(
-    data_point, operation_name: str, model: str, error_type: str | None = None
+    data_point,
+    operation_name: str,
+    model: str,
+    error_type: str | None = None,
+    server_address: str = "bedrock-runtime.us-east-1.amazonaws.com",
+    server_port: int = 443,
 ):
     assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
     assert (
@@ -323,6 +330,14 @@ def assert_all_metric_attributes(
     )
     assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
     assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+
+    assert ServerAttributes.SERVER_ADDRESS in data_point.attributes
+    assert (
+        data_point.attributes[ServerAttributes.SERVER_ADDRESS]
+        == server_address
+    )
+    assert ServerAttributes.SERVER_PORT in data_point.attributes
+    assert data_point.attributes[ServerAttributes.SERVER_PORT] == server_port
 
     if error_type is not None:
         assert ERROR_TYPE in data_point.attributes
