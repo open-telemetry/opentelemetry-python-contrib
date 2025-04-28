@@ -21,9 +21,13 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
     remove,
 )
 
+from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
-from opentelemetry.instrumentation.utils import _get_opentelemetry_values
+from opentelemetry.instrumentation.utils import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    _get_opentelemetry_values
+)
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -96,6 +100,9 @@ def _wrap_create_engine(
 def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
+        if otel_context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return func(*args, **kwargs)
+
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT
         ) as span:
@@ -259,6 +266,9 @@ class EngineTracer:
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
+        if otel_context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return statement, params
+
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
