@@ -82,6 +82,7 @@ for example:
 
 import logging
 from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
@@ -277,6 +278,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             SpanAttributes.RPC_METHOD: call_context.operation,
             # TODO: update when semantic conventions exist
             "aws.region": call_context.region,
+            **_get_server_attributes(call_context.endpoint_url),
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
@@ -403,3 +405,13 @@ def _safe_invoke(function: Callable, *args):
         logger.error(
             "Error when invoking function '%s'", function_name, exc_info=ex
         )
+
+
+def _get_server_attributes(endpoint_url: str) -> dict[str, str]:
+    """Extract server.* attributes from AWS endpoint URL."""
+    parsed = urlparse(endpoint_url)
+    attributes = {}
+    if parsed.hostname:
+        attributes[SpanAttributes.SERVER_ADDRESS] = parsed.hostname
+        attributes[SpanAttributes.SERVER_PORT] = parsed.port or 443
+    return attributes
