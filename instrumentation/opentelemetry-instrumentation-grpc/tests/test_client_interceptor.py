@@ -170,6 +170,63 @@ class TestClientProto(TestBase):
             },
         )
 
+    def test_unary_stream_can_be_cancel(self):
+        responses = server_streaming_method(self._stub, serialize=False)
+        for response_num, _ in enumerate(responses):
+            if response_num == 1:
+                responses.cancel()
+                break
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "/GRPCTestServer/ServerStreamingMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
+                    0
+                ],
+            },
+        )
+
+    def test_finished_stream_cancel_does_not_change_status_of_span(self):
+        responses = server_streaming_method(self._stub, serialize=True)
+        responses.cancel()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "/GRPCTestServer/ServerStreamingMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
+            },
+        )
+
     def test_stream_unary(self):
         client_streaming_method(self._stub)
         spans = self.memory_exporter.get_finished_spans()
@@ -219,6 +276,38 @@ class TestClientProto(TestBase):
                 SpanAttributes.RPC_SERVICE: "GRPCTestServer",
                 SpanAttributes.RPC_SYSTEM: "grpc",
                 SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
+                    0
+                ],
+            },
+        )
+
+    def test_stream_stream_can_be_cancel(self):
+        responses = bidirectional_streaming_method(self._stub, serialize=False)
+        for response_num, _ in enumerate(responses):
+            if response_num == 1:
+                responses.cancel()
+                break
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationInfo(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertSpanHasAttributes(
+            span,
+            {
+                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
+                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
                     0
                 ],
             },

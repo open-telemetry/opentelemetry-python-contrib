@@ -460,6 +460,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2461))
 - Remove SDK dependency from opentelemetry-instrumentation-grpc
   ([#2474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2474))
+- `opentelemetry-instrumentation-grpc` User should be able to cancel grpc stream
+  ([#2093](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2093))
 - `opentelemetry-instrumentation-elasticsearch` Improved support for version 8
   ([#2420](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2420))
 - `opentelemetry-instrumentation-elasticsearch` Disabling instrumentation with native OTel support enabled
