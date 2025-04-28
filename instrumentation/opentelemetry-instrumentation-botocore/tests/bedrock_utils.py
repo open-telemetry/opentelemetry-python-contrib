@@ -39,6 +39,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 # pylint: disable=too-many-branches, too-many-locals, too-many-statements
@@ -221,6 +222,8 @@ def assert_all_attributes(
     request_temperature: int | None = None,
     request_max_tokens: int | None = None,
     request_stop_sequences: tuple[str] | None = None,
+    server_address: str = "bedrock-runtime.us-east-1.amazonaws.com",
+    server_port: int = 443,
 ):
     assert span.name == f"{operation_name} {request_model}"
     assert (
@@ -234,6 +237,9 @@ def assert_all_attributes(
     assert (
         request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     )
+
+    assert server_address == span.attributes[SpanAttributes.SERVER_ADDRESS]
+    assert server_port == span.attributes[SpanAttributes.SERVER_PORT]
 
     assert_equal_or_not_present(
         input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span
