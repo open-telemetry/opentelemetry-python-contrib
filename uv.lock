@@ -2903,6 +2903,7 @@ name = "opentelemetry-instrumentation-asyncclick"
 source = { editable = "instrumentation/opentelemetry-instrumentation-asyncclick" }
 dependencies = [
     { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
     { name = "typing-extensions" },
     { name = "wrapt" },
@@ -2918,6 +2919,7 @@ instruments = [
 requires-dist = [
     { name = "asyncclick", marker = "extra == 'instruments'", specifier = "~=8.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "typing-extensions", specifier = "~=4.12" },
     { name = "wrapt", specifier = "~=1.0" },
@@ -3111,6 +3113,7 @@ name = "opentelemetry-instrumentation-click"
 source = { editable = "instrumentation/opentelemetry-instrumentation-click" }
 dependencies = [
     { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
     { name = "wrapt" },
 ]
@@ -3124,6 +3127,7 @@ instruments = [
 requires-dist = [
     { name = "click", marker = "extra == 'instruments'", specifier = ">=8.1.3,<9.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
 ]
