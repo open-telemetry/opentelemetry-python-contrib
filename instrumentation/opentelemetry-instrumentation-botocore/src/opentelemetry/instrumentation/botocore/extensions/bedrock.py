@@ -15,6 +15,7 @@
 # Includes work from:
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -147,7 +148,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         )
 
     def _extract_metrics_attributes(self) -> _AttributeMapT:
-        attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+        attributes = {
+            GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value,
+            **get_server_attributes(self._call_context.endpoint_url),
+        }
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
@@ -165,10 +169,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GenAiOperationNameValues.CHAT.value
             )
 
-        server_attributes = get_server_attributes(
-            self._call_context.endpoint_url
-        )
-        attributes.update(server_attributes)
         return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):
