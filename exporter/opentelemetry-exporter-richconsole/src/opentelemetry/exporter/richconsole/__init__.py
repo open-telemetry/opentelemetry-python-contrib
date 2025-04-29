@@ -68,7 +68,9 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 
 def _ns_to_time(nanoseconds):
-    ts = datetime.datetime.fromtimestamp(nanoseconds / 1e9, datetime.timezone.utc)
+    ts = datetime.datetime.fromtimestamp(
+        nanoseconds / 1e9, datetime.timezone.utc
+    )
     return ts.strftime("%H:%M:%S.%f")
 
 
