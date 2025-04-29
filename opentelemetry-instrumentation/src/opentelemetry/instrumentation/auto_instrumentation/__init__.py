@@ -19,6 +19,12 @@ from os.path import abspath, dirname, pathsep
 from re import sub
 from shutil import which
 
+from opentelemetry.instrumentation.auto_instrumentation._load import (
+    _load_configurators,
+    _load_distro,
+    _load_instrumentors,
+)
+from opentelemetry.instrumentation.utils import _python_path_without_directory
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import entry_points
 
@@ -110,3 +116,20 @@ def run() -> None:
 
     executable = which(args.command)
     execl(executable, executable, *args.command_args)
+
+
+def initialize():
+    """Setup auto-instrumentation, called by the sitecustomize module"""
+    # prevents auto-instrumentation of subprocesses if code execs another python process
+    if "PYTHONPATH" in environ:
+        environ["PYTHONPATH"] = _python_path_without_directory(
+            environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
+        )
+
+    try:
+        distro = _load_distro()
+        distro.configure()
+        _load_configurators()
+        _load_instrumentors(distro)
+    except Exception:  # pylint: disable=broad-except
+        _logger.exception("Failed to auto initialize OpenTelemetry")

@@ -1,6 +1,6 @@
 pylint==3.0.2
 httpretty==1.1.4
-mypy==0.931
+pyright==v1.1.396
 sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
 sphinx-autodoc-typehints==1.25.2
@@ -8,7 +8,6 @@ pytest==7.4.4
 pytest-cov==4.1.0
 readme-renderer==42.0
 bleach==4.1.0 # transient dependency for readme-renderer
-protobuf~=3.13
 markupsafe>=2.0.1
 codespell==2.1.0
 requests==2.32.3

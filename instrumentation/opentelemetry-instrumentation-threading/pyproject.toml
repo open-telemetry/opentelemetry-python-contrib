@@ -23,10 +23,11 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
@@ -38,6 +39,7 @@ threading = "opentelemetry.instrumentation.threading:ThreadingInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/instrumentation/opentelemetry-instrumentation-threading"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/threading/version.py"

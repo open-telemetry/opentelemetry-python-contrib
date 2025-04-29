@@ -23,11 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-instrumentation-dbapi == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
+  "opentelemetry-instrumentation-dbapi == 0.54b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,7 @@ sqlite3 = "opentelemetry.instrumentation.sqlite3:SQLite3Instrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-sqlite3"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/sqlite3/version.py"

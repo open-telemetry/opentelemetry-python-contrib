@@ -27,17 +27,22 @@ When using the instrumentor, all clients will automatically trace requests.
 
 .. code-block:: python
 
-     import httpx
-     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+    import httpx
+    import asyncio
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-     url = "https://some.url/get"
-     HTTPXClientInstrumentor().instrument()
+    url = "https://example.com"
+    HTTPXClientInstrumentor().instrument()
 
-     with httpx.Client() as client:
-          response = client.get(url)
+    with httpx.Client() as client:
+        response = client.get(url)
 
-     async with httpx.AsyncClient() as client:
-          response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+
+    asyncio.run(get(url))
+
 
 Instrumenting single clients
 ****************************
@@ -49,18 +54,21 @@ use the `instrument_client` method.
 .. code-block:: python
 
     import httpx
+    import asyncio
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-    url = "https://some.url/get"
+    url = "https://example.com"
 
-    with httpx.Client(transport=telemetry_transport) as client:
+    with httpx.Client() as client:
         HTTPXClientInstrumentor.instrument_client(client)
         response = client.get(url)
 
-    async with httpx.AsyncClient(transport=telemetry_transport) as client:
-        HTTPXClientInstrumentor.instrument_client(client)
-        response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient() as client:
+            HTTPXClientInstrumentor.instrument_client(client)
+            response = await client.get(url)
 
+    asyncio.run(get(url))
 
 Uninstrument
 ************
@@ -91,12 +99,13 @@ If you don't want to use the instrumentor class, you can use the transport class
 .. code-block:: python
 
     import httpx
+    import asyncio
     from opentelemetry.instrumentation.httpx import (
         AsyncOpenTelemetryTransport,
         SyncOpenTelemetryTransport,
     )
 
-    url = "https://some.url/get"
+    url = "https://example.com"
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(transport)
 
@@ -106,8 +115,11 @@ If you don't want to use the instrumentor class, you can use the transport class
     transport = httpx.AsyncHTTPTransport()
     telemetry_transport = AsyncOpenTelemetryTransport(transport)
 
-    async with httpx.AsyncClient(transport=telemetry_transport) as client:
-        response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient(transport=telemetry_transport) as client:
+            response = await client.get(url)
+
+    asyncio.run(get(url))
 
 
 Request and response hooks
@@ -158,6 +170,7 @@ Or if you are using the transport classes directly:
 
 .. code-block:: python
 
+    import httpx
     from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
 
     def request_hook(span, request):

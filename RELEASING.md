@@ -21,12 +21,17 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-google-genai
+>
 > These libraries are also excluded from the general release.
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
 to pick a specific package to release. It follows the same versioning strategy and process as the general release.
 
 Long-term package release branch follows `package-release/{package-name}/v{major}.{minor}.x` (or `package-release/{package-name}/v{major}.{minor}bx`) naming pattern.
+
+The workflow will create two pull requests, one against the `main` and one against the `package-release/` branch; both should be merged in order to proceed with the release.
 
 ## Preparing a new patch release
 
@@ -54,6 +59,8 @@ to pick a specific package to release.
 
 The workflow can only be run against long-term release branch such as `package-release/{package-name}/v{major}.{minor}.x` or `package-release/{package-name}/v{major}.{minor}bx`.
 
+The workflow will create a pull request that should be merged in order to proceed with the release.
+
 ## Making the release
 
 * Run the [Release workflow](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/release.yml).
@@ -73,6 +80,8 @@ The workflow can only be run against long-term release branch such as `package-r
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-google-genai
 >
 > These libraries are also excluded from the general patch release.
 

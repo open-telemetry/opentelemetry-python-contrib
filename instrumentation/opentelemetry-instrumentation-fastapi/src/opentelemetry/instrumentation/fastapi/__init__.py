@@ -64,6 +64,10 @@ right after a span is created for a request and right before the span is finishe
 
 .. code-block:: python
 
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.trace import Span
+    from typing import Any
+
     def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
@@ -76,7 +80,7 @@ right after a span is created for a request and right before the span is finishe
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
@@ -186,9 +190,9 @@ from starlette.routing import Match
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.types import (
@@ -362,7 +366,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
     _instrumented_fastapi_apps = set()
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

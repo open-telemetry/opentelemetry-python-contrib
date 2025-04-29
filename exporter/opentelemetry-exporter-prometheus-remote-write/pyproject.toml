@@ -24,9 +24,10 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "protobuf ~= 4.21",
+  "protobuf ~= 5.26",
   "requests ~= 2.28",
   "opentelemetry-api ~= 1.12",
   "opentelemetry-sdk ~= 1.12",
@@ -35,6 +36,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/opentelemetry-exporter-prometheus-remote-write"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/exporter/prometheus_remote_write/version.py"

@@ -49,7 +49,7 @@ sed -i 's/import "gogoproto\/gogo.proto";/import "opentelemetry\/exporter\/prome
 echo "Removing clones..."
 rm -rf protobuf prometheus
 
-# Used libprotoc 3.21.1 & protoc 21.7
+# Used libprotoc 26
 echo "Compiling proto files to Python"
 protoc -I .  --python_out=../src ${SRC_DIR}/gogoproto/gogo.proto ${SRC_DIR}/remote.proto ${SRC_DIR}/types.proto
 

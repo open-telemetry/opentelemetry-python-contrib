@@ -23,6 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-sdk ~= 1.12",
@@ -40,6 +41,7 @@ aws_lambda = "opentelemetry.sdk.extension.aws.resource._lambda:AwsLambdaResource
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/sdk-extension/opentelemetry-sdk-extension-aws"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/sdk/extension/aws/version.py"

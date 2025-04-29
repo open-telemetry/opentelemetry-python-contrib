@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import logging
 import os
 from dataclasses import dataclass
 from importlib import import_module, reload
@@ -124,7 +126,10 @@ class TestAwsLambdaInstrumentorBase(TestBase):
         super().setUp()
         self.common_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "tests.mocks.lambda_function.handler"},
+            {
+                _HANDLER: "tests.mocks.lambda_function.handler",
+                "AWS_LAMBDA_FUNCTION_NAME": "mylambda",
+            },
         )
         self.common_env_patch.start()
 
@@ -466,15 +471,40 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         exc_env_patch.stop()
 
-    def test_lambda_handles_should_do_nothing_when_environment_variables_not_present(
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.logger")
+    def test_lambda_handles_should_do_nothing_when_aws_lambda_environment_variables_not_present(
+        self, logger_mock
+    ):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
+            clear=True,
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        exc_env_patch.stop()
+
+        logger_mock.warnings.assert_not_called()
+
+    def test_lambda_handles_should_warn_when_handler_environment_variable_not_present(
         self,
     ):
         exc_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: ""},
+            {"AWS_LAMBDA_FUNCTION_NAME": "mylambda"},
+            clear=True,
         )
         exc_env_patch.start()
-        AwsLambdaInstrumentor().instrument()
+        with self.assertLogs(level=logging.WARNING) as warning:
+            AwsLambdaInstrumentor().instrument()
+        self.assertEqual(len(warning.records), 1)
+        self.assertIn(
+            "This instrumentation requires the OpenTelemetry Lambda extension installed",
+            warning.records[0].message,
+        )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)

@@ -23,19 +23,20 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.50b0.dev",
-  "opentelemetry-semantic-conventions == 0.50b0.dev",
-  "opentelemetry-util-http == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.54b0.dev",
+  "opentelemetry-semantic-conventions == 0.54b0.dev",
+  "opentelemetry-util-http == 0.54b0.dev",
   "packaging >= 20.0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "falcon >= 1.4.1, < 3.1.2",
+  "falcon >= 1.4.1, < 5.0.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -43,6 +44,7 @@ falcon = "opentelemetry.instrumentation.falcon:FalconInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-falcon"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/falcon/version.py"

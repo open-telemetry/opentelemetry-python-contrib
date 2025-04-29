@@ -19,6 +19,7 @@ import MySQLdb
 import opentelemetry.instrumentation.mysqlclient
 from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
@@ -110,12 +111,14 @@ class TestMySQLClientIntegration(TestBase):
             cnx,
             enable_commenter=True,
             commenter_options={"foo": True},
+            enable_attribute_commenter=True,
         )
         cursor = cnx.cursor()
         cursor.execute("Select 1;")
         kwargs = mock_instrument_connection.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
+        self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
         mock_connect_module = mock.MagicMock(
@@ -148,6 +151,51 @@ class TestMySQLClientIntegration(TestBase):
             trace_id = format(span.get_span_context().trace_id, "032x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
+
+    def test_instrument_connection_with_dbapi_sqlcomment_enabled_stmt_enabled(
+        self,
+    ):
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+            mock_connect_module,
+        ), mock.patch(
+            "opentelemetry.instrumentation.dbapi.util_version",
+            return_value="foobar",
+        ):
+            cnx_proxy = MySQLClientInstrumentor().instrument_connection(
+                mock_connection,
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            cnx_proxy.cursor().execute("Select 1;")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -191,6 +239,10 @@ class TestMySQLClientIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
@@ -221,6 +273,12 @@ class TestMySQLClientIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 "Select 1;",
             )
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     @mock.patch("MySQLdb.connect")
@@ -233,10 +291,12 @@ class TestMySQLClientIntegration(TestBase):
         MySQLClientInstrumentor()._instrument(
             enable_commenter=True,
             commenter_options={"foo": True},
+            enable_attribute_commenter=True,
         )
         kwargs = mock_wrap_connect.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
+        self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
@@ -272,6 +332,52 @@ class TestMySQLClientIntegration(TestBase):
             trace_id = format(span.get_span_context().trace_id, "032x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
+
+    def test_instrument_with_dbapi_sqlcomment_enabled_stmt_enabled(
+        self,
+    ):
+        mock_connect_module = mock.MagicMock(
+            __name__="MySQLdb",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module._mysql.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysqlclient.MySQLdb",
+            mock_connect_module,
+        ), mock.patch(
+            "opentelemetry.instrumentation.dbapi.util_version",
+            return_value="foobar",
+        ):
+            MySQLClientInstrumentor()._instrument(
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            cnx = mock_connect_module.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("Select 1;")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -316,6 +422,10 @@ class TestMySQLClientIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     def test_instrument_with_dbapi_sqlcomment_not_enabled_default(
         self,
@@ -344,6 +454,12 @@ class TestMySQLClientIntegration(TestBase):
             cursor.execute("Select 1;")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                "Select 1;",
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 "Select 1;",
             )
 

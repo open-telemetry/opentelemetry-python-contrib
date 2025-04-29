@@ -15,7 +15,7 @@ translationstring==1.4
 typing_extensions==4.12.2
 venusian==3.1.0
 WebOb==1.8.8
-Werkzeug==3.0.3
+Werkzeug==3.0.6
 wrapt==1.16.0
 zipp==3.19.2
 zope.deprecation==5.0

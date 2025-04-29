@@ -133,6 +133,12 @@ For example,
 
 .. code-block:: python
 
+    from opentelemetry.trace import Span
+    from wsgiref.types import WSGIEnvironment
+    from typing import List
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
@@ -252,11 +258,11 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
@@ -321,7 +327,7 @@ def _rewrapped_app(
     duration_histogram_old=None,
     response_hook=None,
     excluded_urls=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
     def _wrapped_app(wrapped_app_environ, start_response):
@@ -392,7 +398,7 @@ def _rewrapped_app(
         duration_s = default_timer() - start
         if duration_histogram_old:
             duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.DEFAULT
+                attributes, _StabilityMode.DEFAULT
             )
 
             if request_route:
@@ -406,7 +412,7 @@ def _rewrapped_app(
             )
         if duration_histogram_new:
             duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                attributes, _HTTPStabilityMode.HTTP
+                attributes, _StabilityMode.HTTP
             )
 
             if request_route:
@@ -427,7 +433,7 @@ def _wrapped_before_request(
     excluded_urls=None,
     enable_commenter=True,
     commenter_options=None,
-    sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
 ):
     def _before_request():
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
@@ -548,7 +554,7 @@ class _InstrumentedFlask(flask.Flask):
     _enable_commenter = True
     _commenter_options = None
     _meter_provider = None
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

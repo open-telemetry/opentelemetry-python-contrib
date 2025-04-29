@@ -19,16 +19,31 @@ This library allows tracing PostgreSQL queries made by the
 Usage
 -----
 
+Start PostgreSQL:
+
+::
+
+    docker run -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DATABASE=database -p 5432:5432 postgres
+
+Run instrumented code:
+
 .. code-block:: python
 
+    import asyncio
     import asyncpg
     from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
-    conn = await asyncpg.connect(user='user', password='password',
-                                 database='database', host='127.0.0.1')
-    values = await conn.fetch('''SELECT 42;''')
+
+    async def main():
+        conn = await asyncpg.connect(user='user', password='password')
+
+        await conn.fetch('''SELECT 42;''')
+
+        await conn.close()
+
+    asyncio.run(main())
 
 API
 ---
@@ -150,8 +165,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
-        params = getattr(instance, "_params", {})
-        name = args[0] if args[0] else params.get("database", "postgresql")
+        params = getattr(instance, "_params", None)
+        name = (
+            args[0] if args[0] else getattr(params, "database", "postgresql")
+        )
 
         try:
             # Strip leading comments so we get the operation name.
@@ -185,11 +202,11 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     async def _do_cursor_execute(self, func, instance, args, kwargs):
         """Wrap cursor based functions. For every call this will generate a new span."""
         exception = None
-        params = getattr(instance._connection, "_params", {})
+        params = getattr(instance._connection, "_params", None)
         name = (
             instance._query
             if instance._query
-            else params.get("database", "postgresql")
+            else getattr(params, "database", "postgresql")
         )
 
         try:

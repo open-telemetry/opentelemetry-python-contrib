@@ -9,8 +9,20 @@ on:
     - 'release/*'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
-  CORE_REPO_SHA: main
+  # Set the SHA to the branch name if the PR has a label 'prepare-release' or 'backport' otherwise, set it to 'main'
+  # For PRs you can change the inner fallback ('main')
+  # For pushes you change the outer fallback ('main')
+  # The logic below is used during releases and depends on having an equivalent branch name in the core repo.
+  CORE_REPO_SHA: ${{ github.event_name == 'pull_request' && (
+       contains(github.event.pull_request.labels.*.name, 'prepare-release') && github.event.pull_request.head.ref ||
+       contains(github.event.pull_request.labels.*.name, 'backport') && github.event.pull_request.base.ref ||
+       'main'
+    ) || 'main' }}
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -19,17 +31,18 @@ jobs:
   spellcheck:
     name: spellcheck
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e spellcheck
@@ -37,17 +50,18 @@ jobs:
   docker-tests:
     name: docker-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e docker-tests
@@ -55,19 +69,20 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: |
       github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e docs
@@ -75,17 +90,18 @@ jobs:
   generate:
     name: generate
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e generate
@@ -96,6 +112,7 @@ jobs:
   generate-workflows:
     name: generate-workflows
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip generate-workflows')
       && github.event.pull_request.user.login != 'opentelemetrybot' && github.event_name == 'pull_request'
@@ -103,13 +120,13 @@ jobs:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e generate-workflows
@@ -120,17 +137,18 @@ jobs:
   shellcheck:
     name: shellcheck
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e shellcheck
@@ -138,17 +156,37 @@ jobs:
   ruff:
     name: ruff
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install tox
-        run: pip install tox
+        run: pip install tox-uv
 
       - name: Run tests
         run: tox -e ruff
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e typecheck

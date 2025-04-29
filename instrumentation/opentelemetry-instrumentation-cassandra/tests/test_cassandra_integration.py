@@ -43,6 +43,10 @@ class TestCassandraIntegration(TestBase):
         with self.disable_logging():
             CassandraInstrumentor().uninstrument()
 
+    @property
+    def _mocked_session(self):
+        return cassandra.cluster.Session(cluster=mock.Mock(), hosts=[])
+
     def test_instrument_uninstrument(self):
         instrumentation = CassandraInstrumentor()
         instrumentation.instrument()
@@ -67,7 +71,7 @@ class TestCassandraIntegration(TestBase):
     ):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
-        mock_connect.return_value = cassandra.cluster.Session()
+        mock_connect.return_value = self._mocked_session
 
         CassandraInstrumentor().instrument()
 
@@ -100,7 +104,7 @@ class TestCassandraIntegration(TestBase):
     ):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
-        mock_connect.return_value = cassandra.cluster.Session()
+        mock_connect.return_value = self._mocked_session
 
         resource = resources.Resource.create({})
         result = self.create_tracer_provider(resource=resource)
@@ -124,7 +128,7 @@ class TestCassandraIntegration(TestBase):
     ):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
-        mock_connect.return_value = cassandra.cluster.Session()
+        mock_connect.return_value = self._mocked_session
 
         tracer_provider = trace_api.NoOpTracerProvider()
         CassandraInstrumentor().instrument(tracer_provider=tracer_provider)

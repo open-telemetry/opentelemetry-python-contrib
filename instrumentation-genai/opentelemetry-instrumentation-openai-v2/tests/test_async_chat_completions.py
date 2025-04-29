@@ -68,6 +68,34 @@ async def test_async_chat_completion_with_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
+async def test_async_chat_completion_no_content(
+    span_exporter, log_exporter, async_openai_client, instrument_no_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = await async_openai_client.chat.completions.create(
+        messages=messages_value, model=llm_model_value, stream=False
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert_completion_attributes(spans[0], llm_model_value, response)
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    assert_message_in_logs(logs[0], "gen_ai.user.message", None, spans[0])
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {"role": "assistant"},
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
+
 @pytest.mark.asyncio()
 async def test_async_chat_completion_bad_endpoint(
     span_exporter, instrument_no_content
@@ -130,6 +158,7 @@ async def test_async_chat_completion_extra_params(
         max_tokens=50,
         stream=False,
         extra_body={"service_tier": "default"},
+        response_format={"type": "text"},
     )
 
     spans = span_exporter.get_finished_spans()
@@ -144,6 +173,12 @@ async def test_async_chat_completion_extra_params(
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER]
         == "default"
+    )
+    assert (
+        spans[0].attributes[
+            GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        ]
+        == "text"
     )
 
 
@@ -598,6 +633,55 @@ async def test_async_chat_completion_multiple_tools_streaming_no_content(
     )
 
 
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
+async def test_async_chat_completion_streaming_unsampled(
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content_unsampled,
+):
+    llm_model_value = "gpt-4"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    kwargs = {
+        "model": llm_model_value,
+        "messages": messages_value,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    response_stream_result = ""
+    response = await async_openai_client.chat.completions.create(**kwargs)
+    async for chunk in response:
+        if chunk.choices:
+            response_stream_result += chunk.choices[0].delta.content or ""
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 0
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_message = {"content": "Say this is a test"}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, None)
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {"role": "assistant", "content": response_stream_result},
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, None)
+
+    assert logs[0].log_record.trace_id is not None
+    assert logs[0].log_record.span_id is not None
+    assert logs[0].log_record.trace_flags == 0
+
+    assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
+    assert logs[0].log_record.span_id == logs[1].log_record.span_id
+    assert logs[0].log_record.trace_flags == logs[1].log_record.trace_flags
+
+
 async def async_chat_completion_multiple_tools_streaming(
     span_exporter, log_exporter, async_openai_client, expect_content
 ):
@@ -821,9 +905,12 @@ def assert_all_attributes(
 
 
 def assert_log_parent(log, span):
-    assert log.log_record.trace_id == span.get_span_context().trace_id
-    assert log.log_record.span_id == span.get_span_context().span_id
-    assert log.log_record.trace_flags == span.get_span_context().trace_flags
+    if span:
+        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.span_id == span.get_span_context().span_id
+        assert (
+            log.log_record.trace_flags == span.get_span_context().trace_flags
+        )
 
 
 def get_current_weather_tool_definition():

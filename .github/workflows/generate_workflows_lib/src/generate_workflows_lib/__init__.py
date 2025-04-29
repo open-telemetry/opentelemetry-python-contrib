@@ -53,6 +53,7 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
         "py310": "3.10",
         "py311": "3.11",
         "py312": "3.12",
+        "py313": "3.13",
     }
 
     test_job_datas = []
@@ -170,14 +171,14 @@ def get_misc_job_datas(tox_envs: list) -> list:
 
 
 def _generate_workflow(
-    job_datas: list, name: str, workflow_directory_path: Path
+    job_datas: list, name: str, workflow_directory_path: Path, max_jobs=250
 ):
     # Github seems to limit the amount of jobs in a workflow file, that is why
     # they are split in groups of 250 per workflow file.
     for file_number, job_datas in enumerate(
         [
-            job_datas[index : index + 250]
-            for index in range(0, len(job_datas), 250)
+            job_datas[index : index + max_jobs]
+            for index in range(0, len(job_datas), max_jobs)
         ]
     ):
         with open(
@@ -219,7 +220,7 @@ def generate_contrib_workflow(
         get_contrib_job_datas(
             get_tox_envs(Path(__file__).parent.joinpath("tox.ini"))
         ),
-        "contrib",
+        "core_contrib_test",
         workflow_directory_path,
     )
 

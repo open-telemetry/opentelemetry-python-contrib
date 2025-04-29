@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Collection, Optional, Union
+from typing import Collection
 
 from packaging.requirements import InvalidRequirement, Requirement
 
 from opentelemetry.util._importlib_metadata import (
-    Distribution,
     PackageNotFoundError,
     version,
 )
@@ -27,10 +28,10 @@ logger = getLogger(__name__)
 
 
 class DependencyConflict:
-    required: str = None
-    found: Optional[str] = None
+    required: str | None = None
+    found: str | None = None
 
-    def __init__(self, required, found=None):
+    def __init__(self, required: str | None, found: str | None = None):
         self.required = required
         self.found = found
 
@@ -38,27 +39,19 @@ class DependencyConflict:
         return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
-def get_dist_dependency_conflicts(
-    dist: Distribution,
-) -> Optional[DependencyConflict]:
-    instrumentation_deps = []
-    extra = "extra"
-    instruments = "instruments"
-    instruments_marker = {extra: instruments}
-    for dep in dist.requires:
-        if extra not in dep or instruments not in dep:
-            continue
+class DependencyConflictError(Exception):
+    conflict: DependencyConflict
 
-        req = Requirement(dep)
-        if req.marker.evaluate(instruments_marker):
-            instrumentation_deps.append(req)
+    def __init__(self, conflict: DependencyConflict):
+        self.conflict = conflict
 
-    return get_dependency_conflicts(instrumentation_deps)
+    def __str__(self):
+        return str(self.conflict)
 
 
 def get_dependency_conflicts(
-    deps: Collection[Union[str, Requirement]],
-) -> Optional[DependencyConflict]:
+    deps: Collection[str | Requirement],
+) -> DependencyConflict | None:
     for dep in deps:
         if isinstance(dep, Requirement):
             req = dep

@@ -24,12 +24,12 @@ import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -527,7 +527,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
         attrs = otel_wsgi.collect_request_attributes(
             self.environ,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
         self.assertDictEqual(
             attrs,
@@ -742,7 +742,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(
                 self.environ,
-                _HTTPStabilityMode.HTTP,
+                _StabilityMode.HTTP,
             ).items(),
             expected_new.items(),
         )
@@ -758,7 +758,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(
                 self.environ,
-                _HTTPStabilityMode.HTTP,
+                _StabilityMode.HTTP,
             ).items(),
             expected_new.items(),
         )
@@ -769,7 +769,7 @@ class TestWsgiAttributes(unittest.TestCase):
             self.span,
             "404 Not Found",
             {},
-            sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP,
         )
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
         expected_new = (
@@ -778,6 +778,19 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertEqual(self.span.set_attribute.call_count, 2)
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
         self.span.set_attribute.assert_has_calls(expected_new, any_order=True)
+
+    def test_response_attributes_noop(self):
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = False
+
+        attrs = {}
+        otel_wsgi.add_response_attributes(
+            mock_span, "404 Not Found", {}, duration_attrs=attrs
+        )
+
+        self.assertEqual(mock_span.set_attribute.call_count, 0)
+        self.assertEqual(mock_span.is_recording.call_count, 2)
+        self.assertEqual(attrs[SpanAttributes.HTTP_STATUS_CODE], 404)
 
     def test_credential_removal(self):
         self.environ["HTTP_HOST"] = "username:password@mock"

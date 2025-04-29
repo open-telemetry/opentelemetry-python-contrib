@@ -29,8 +29,8 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
@@ -150,7 +150,7 @@ class TestAioHttpIntegration(TestBase):
                 path = "test-path?query=param#foobar"
                 host, port = self._http_request(
                     trace_config=aiohttp_client.create_trace_config(
-                        sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                        sem_conv_opt_in_mode=_StabilityMode.HTTP
                     ),
                     url=f"/{path}",
                     status_code=status_code,
@@ -173,7 +173,7 @@ class TestAioHttpIntegration(TestBase):
                 path = "test-path?query=param#foobar"
                 host, port = self._http_request(
                     trace_config=aiohttp_client.create_trace_config(
-                        sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+                        sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
                     ),
                     url=f"/{path}",
                     status_code=status_code,
@@ -213,7 +213,7 @@ class TestAioHttpIntegration(TestBase):
         with self.subTest(status_code=200):
             self._http_request(
                 trace_config=aiohttp_client.create_trace_config(
-                    sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                    sem_conv_opt_in_mode=_StabilityMode.HTTP
                 ),
                 url="/test-path?query=param#foobar",
                 status_code=200,
@@ -230,7 +230,7 @@ class TestAioHttpIntegration(TestBase):
         with self.subTest(status_code=200):
             self._http_request(
                 trace_config=aiohttp_client.create_trace_config(
-                    sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+                    sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
                 ),
                 url="/test-path?query=param#foobar",
                 status_code=200,
@@ -398,7 +398,7 @@ class TestAioHttpIntegration(TestBase):
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                sem_conv_opt_in_mode=_StabilityMode.HTTP
             ),
             url="/test",
             request_handler=request_handler,
@@ -426,7 +426,7 @@ class TestAioHttpIntegration(TestBase):
 
         host, port = self._http_request(
             trace_config=aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+                sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
             ),
             url="/test",
             request_handler=request_handler,
@@ -546,7 +546,7 @@ class TestAioHttpIntegration(TestBase):
     def test_nonstandard_http_method_new_semconv(self):
         trace_configs = [
             aiohttp_client.create_trace_config(
-                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+                sem_conv_opt_in_mode=_StabilityMode.HTTP
             )
         ]
         app = HttpServerMock("nonstandard_method")

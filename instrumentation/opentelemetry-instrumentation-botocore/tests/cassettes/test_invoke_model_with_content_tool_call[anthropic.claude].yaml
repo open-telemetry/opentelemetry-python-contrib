@@ -1,0 +1,248 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "tools": [
+          {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The name of the city"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            }
+          }
+        ],
+        "max_tokens": 1000
+      }
+    headers:
+      Content-Length:
+      - '515'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250325T104306Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-707dba6e-fd8c6f2155d8bb2cca4f2be9;Parent=4b0c1b6755b4ba5f;Sampled=1
+      amz-sdk-invocation-id:
+      - d352356d-f036-41bb-9089-fc9401621c09
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.anthropic.claude-3-5-sonnet-20240620-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_01Vcemt76oWJo739rm2hmaxn",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-3-5-sonnet-20240620",
+          "content": [
+            {
+              "type": "text",
+              "text": "Certainly! I'll check the current weather for both Seattle and San Francisco using the available tool. I'll make two separate calls to the get_current_weather function, one for each city."
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_bdrk_01Y5MJKoHE4VJ5ZrhcVfM1gP",
+              "name": "get_current_weather",
+              "input": {
+                "location": "Seattle"
+              }
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_bdrk_014yQPSMntXHRmzGYxCbmBHE",
+              "name": "get_current_weather",
+              "input": {
+                "location": "San Francisco"
+              }
+            }
+          ],
+          "stop_reason": "tool_use",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 392,
+            "output_tokens": 135
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 25 Mar 2025 10:43:10 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '392'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '3712'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '135'
+      x-amzn-RequestId:
+      - e35fc4e1-e704-4785-985d-684916e41fd1
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "What is the weather in Seattle and San Francisco today? Please expect one tool call for Seattle and one for San Francisco",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Certainly! I'll check the current weather for both Seattle and San Francisco using the available tool. I'll make two separate calls to the get_current_weather function, one for each city."
+              },
+              {
+                "type": "tool_use",
+                "id": "toolu_bdrk_01Y5MJKoHE4VJ5ZrhcVfM1gP",
+                "name": "get_current_weather",
+                "input": {
+                  "location": "Seattle"
+                }
+              },
+              {
+                "type": "tool_use",
+                "id": "toolu_bdrk_014yQPSMntXHRmzGYxCbmBHE",
+                "name": "get_current_weather",
+                "input": {
+                  "location": "San Francisco"
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "toolu_bdrk_01Y5MJKoHE4VJ5ZrhcVfM1gP",
+                "content": "50 degrees and raining"
+              },
+              {
+                "type": "tool_result",
+                "tool_use_id": "toolu_bdrk_014yQPSMntXHRmzGYxCbmBHE",
+                "content": "70 degrees and sunny"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "tools": [
+          {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The name of the city"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            }
+          }
+        ],
+        "max_tokens": 1000
+      }
+    headers:
+      Content-Length:
+      - '1299'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250325T104310Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-60501822-2add5a653af51ee5ebd4ee49;Parent=66a9d0972d34fef2;Sampled=1
+      amz-sdk-invocation-id:
+      - 011563b5-68d3-49d6-8951-87739673b32c
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/us.anthropic.claude-3-5-sonnet-20240620-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_0177fGp1jEHWhhQXD31c6BEm",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-3-5-sonnet-20240620",
+          "content": [
+            {
+              "type": "text",
+              "text": "Based on the results from our weather tool, here's the current weather for Seattle and San Francisco:\n\n1. Seattle: The current weather in Seattle is 50 degrees and raining.\n2. San Francisco: The current weather in San Francisco is 70 degrees and sunny.\n\nAs you can see, the two cities are experiencing quite different weather conditions today. Seattle is having a cooler, rainy day, which is fairly typical for the Pacific Northwest. On the other hand, San Francisco is enjoying warmer temperatures and sunshine, making for a pleasant day in the Bay Area.\n\nIs there anything else you'd like to know about the weather in these cities or any other locations?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 604,
+            "output_tokens": 146
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 25 Mar 2025 10:43:15 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '604'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '4047'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '146'
+      x-amzn-RequestId:
+      - b34cbc84-44fe-4217-84f1-0b897a6880e0
+    status:
+      code: 200
+      message: OK
+version: 1

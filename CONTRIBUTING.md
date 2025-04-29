@@ -19,23 +19,31 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
 
 ## Index
 
-* [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
-* [Development](#development)
-  * [Troubleshooting](#troubleshooting)
-  * [Benchmarks](#benchmarks)
-* [Pull requests](#pull-requests)
-  * [How to Send Pull Requests](#how-to-send-pull-requests)
-  * [How to Receive Comments](#how-to-receive-comments)
-  * [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
-  * [How to Get PRs Merged](#how-to-get-prs-merged)
-* [Design Choices](#design-choices)
-  * [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
-* [Running Tests Locally](#running-tests-locally)
-  * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
-* [Style Guide](#style-guide)
-* [Guideline for instrumentations](#guideline-for-instrumentations)
-* [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
-* [Expectations from contributors](#expectations-from-contributors)
+- [Contributing to opentelemetry-python-contrib](#contributing-to-opentelemetry-python-contrib)
+  - [Index](#index)
+  - [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
+  - [Development](#development)
+    - [Virtual Environment](#virtual-environment)
+    - [Troubleshooting](#troubleshooting)
+    - [Benchmarks](#benchmarks)
+  - [Pull Requests](#pull-requests)
+    - [How to Send Pull Requests](#how-to-send-pull-requests)
+    - [How to Receive Comments](#how-to-receive-comments)
+    - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
+    - [How to Get PRs Merged](#how-to-get-prs-merged)
+  - [Design Choices](#design-choices)
+    - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
+  - [Running Tests Locally](#running-tests-locally)
+    - [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
+  - [Style Guide](#style-guide)
+  - [Guideline for instrumentations](#guideline-for-instrumentations)
+    - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
+  - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
+    - [Get Involved](#get-involved)
+  - [Expectations from contributors](#expectations-from-contributors)
+  - [Updating supported Python versions](#updating-supported-python-versions)
+    - [Bumping the Python baseline](#bumping-the-python-baseline)
+    - [Adding support for a new Python release](#adding-support-for-a-new-python-release)
 
 ## Find a Buddy and get Started Quickly
 
@@ -56,14 +64,20 @@ some aspects of development, including testing against multiple Python versions.
 To install `tox`, run:
 
 ```sh
-$ pip install tox
+pip install tox
+```
+
+You can also run tox with `uv` support. By default [tox.ini](./tox.ini) will automatically create a provisioned tox environment with `tox-uv`, but you can install it at host level:
+
+```sh
+pip install tox-uv
 ```
 
 You can run `tox` with the following arguments:
 
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
-* `tox -e docs` to regenerate the API docs
+* `tox -e docs` to regenerate all docs
 * `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
@@ -74,22 +88,38 @@ You can run `tox` with the following arguments:
 `ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
 
 ```console
-$ pip install pre-commit -c dev-requirements.txt
+pip install pre-commit -c dev-requirements.txt
 ```
 
 and run this command inside the git repository:
 
 ```console
-$ pre-commit install
+pre-commit install
 ```
 
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
 
+### Virtual Environment
+
+You can also create a single virtual environment to make it easier to run local tests.
+
+For that, you'll need to install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+
+After installing `uv`, you can run the following command:
+
+```sh
+uv sync
+```
+
+This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
+
 ### Troubleshooting
 
-> Some packages may require additional system wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests. or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
+Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
+
+For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
 ### Benchmarks
 
@@ -124,31 +154,45 @@ pull requests (PRs).
 To create a new PR, fork the project in GitHub and clone the upstream repo:
 
 ```sh
-$ git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
-$ cd opentelemetry-python-contrib
+git clone https://github.com/open-telemetry/opentelemetry-python-contrib.git
+cd opentelemetry-python-contrib
 ```
 
 Add your fork as an origin:
 
 ```sh
-$ git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
+git remote add fork https://github.com/YOUR_GITHUB_USERNAME/opentelemetry-python-contrib.git
 ```
 
-Run tests:
+make sure you have all supported versions of Python installed, install `tox` only for the first time:
 
 ```sh
-# make sure you have all supported versions of Python installed
-$ pip install tox  # only first time.
-$ tox  # execute in the root of the repository
+pip install tox tox-uv
+```
+
+Run tests in the root of the repository (this will run all tox environments and may take some time):
+
+```sh
+tox
 ```
 
 Check out a new branch, make modifications and push the branch to your fork:
 
 ```sh
-$ git checkout -b feature
-# edit files
-$ git commit
-$ git push fork feature
+git checkout -b feature
+```
+
+After you edit the files, stage changes in the current directory:
+
+```sh
+git add .
+```
+
+Then run the following to commit the changes:
+
+```sh
+git commit
+git push fork feature
 ```
 
 Open a pull request against the main `opentelemetry-python-contrib` repo.
@@ -272,7 +316,25 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 - Isolate sync and async test
   - For synchronous tests, the typical test case class is inherited from `opentelemetry.test.test_base.TestBase`. However, if you want to write asynchronous tests, the test case class should inherit also from `IsolatedAsyncioTestCase`. Adding asynchronous tests to a common test class can lead to tests passing without actually running, which can be misleading.
   - ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/60fb936b7e5371b3e5587074906c49fb873cbd76/instrumentation/opentelemetry-instrumentation-grpc/tests/test_aio_server_interceptor.py#L84>
-- All instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for the same version. That means that if you want to install your instrumentation you need to install its dependencies from this repo and the core repo also from git.
+- Most of the instrumentations have the same version. If you are going to develop a new instrumentation it would probably have `X.Y.dev` version and depends on `opentelemetry-instrumentation` and `opentelemetry-semantic-conventions` for a [compatible version](https://peps.python.org/pep-0440/#compatible-release). That means that you may need to install the instrumentation dependencies from this repo and the core repo from git.
+- Documentation
+  - When adding a new instrumentation remember to add an entry in `docs/instrumentation/` named `<instrumentation>/<instrumentation>.rst` to have the instrumentation documentation referenced from the index. You can use the entry template available [here](./_template/autodoc_entry.rst)
+- Testing
+  - When adding a new instrumentation remember to update `tox.ini` adding appropriate rules in `envlist`, `command_pre` and `commands` sections
+
+### Update supported instrumentation package versions
+
+- Navigate to the **instrumentation package directory:**
+  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+- At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+If you're adding support for a new version of the instrumentation package, follow these additional steps:
+
+- At the **instrumentation package directory:** Add new test-requirements.txt file with the respective package version required for testing
+- At the **root of the project directory**: Add a new test environment entry for the package version in [tox.ini](./tox.ini) and run `tox -e generate-workflows` to regenerate new workflows accordingly. In the same [tox.ini](./tox.ini) file, search for `opentelemetry-instrumentation-{package}/test-requirements` and add a new line to point to the new test-requirements.txt you created in the previous step so tox can install the correct requirements.
+
+Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2976), [#2845](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2845)
 
 ## Guideline for GenAI instrumentations
 

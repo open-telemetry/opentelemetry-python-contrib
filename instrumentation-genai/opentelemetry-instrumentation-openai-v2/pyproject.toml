@@ -23,11 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.28",
-  "opentelemetry-instrumentation ~= 0.49b0",
-  "opentelemetry-semantic-conventions ~= 0.49b0"
+  "opentelemetry-api ~= 1.30",
+  "opentelemetry-instrumentation ~= 0.51b0",
+  "opentelemetry-semantic-conventions ~= 0.51b0"
 ]
 
 [project.optional-dependencies]
@@ -39,7 +40,8 @@ instruments = [
 openai = "opentelemetry.instrumentation.openai_v2:OpenAIInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-openai-v2"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-openai-v2"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/openai_v2/version.py"

@@ -29,7 +29,6 @@ Usage
 
     # Enable instrumentation
     BotocoreInstrumentor().instrument()
-    AwsLambdaInstrumentor().instrument()
 
     # Lambda function
     def lambda_handler(event, context):
@@ -38,6 +37,8 @@ Usage
             print(bucket.name)
 
         return "200 OK"
+
+    AwsLambdaInstrumentor().instrument()
 
 API
 ---
@@ -54,6 +55,7 @@ for example:
 .. code:: python
 
     from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
+    from opentelemetry.propagate import get_global_textmap
 
     def custom_event_context_extractor(lambda_event):
         # If the `TraceContextTextMapPropagator` is the global propagator, we
@@ -429,6 +431,11 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                     the context is extracted from the HTTP headers of an API Gateway
                     request.
         """
+
+        # Don't try if we are not running on AWS Lambda
+        if "AWS_LAMBDA_FUNCTION_NAME" not in os.environ:
+            return
+
         lambda_handler = os.environ.get(ORIG_HANDLER, os.environ.get(_HANDLER))
         if not lambda_handler:
             logger.warning(

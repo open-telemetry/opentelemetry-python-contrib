@@ -57,12 +57,15 @@ for example:
 
     def request_hook(span, event):
         # request hook logic
+        pass
 
     def response_hook(span, event):
         # response hook logic
+        pass
 
     def failed_hook(span, event):
         # failed hook logic
+        pass
 
     # Instrument pymongo with hooks
     PymongoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook, failed_hook=failed_hook)
@@ -75,8 +78,10 @@ for example:
 
 """
 
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Callable, Collection
+from typing import Any, Callable, Collection, TypeVar
 
 from pymongo import monitoring
 
@@ -88,7 +93,7 @@ from opentelemetry.instrumentation.pymongo.utils import (
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -98,14 +103,21 @@ RequestHookT = Callable[[Span, monitoring.CommandStartedEvent], None]
 ResponseHookT = Callable[[Span, monitoring.CommandSucceededEvent], None]
 FailedHookT = Callable[[Span, monitoring.CommandFailedEvent], None]
 
+CommandEvent = TypeVar(
+    "CommandEvent",
+    monitoring.CommandStartedEvent,
+    monitoring.CommandSucceededEvent,
+    monitoring.CommandFailedEvent,
+)
 
-def dummy_callback(span, event): ...
+
+def dummy_callback(span: Span, event: CommandEvent): ...
 
 
 class CommandTracer(monitoring.CommandListener):
     def __init__(
         self,
-        tracer,
+        tracer: Tracer,
         request_hook: RequestHookT = dummy_callback,
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
@@ -195,10 +207,12 @@ class CommandTracer(monitoring.CommandListener):
                 _LOG.exception(hook_exception)
         span.end()
 
-    def _pop_span(self, event):
+    def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(self, command_name, event):
+    def _get_statement_by_command_name(
+        self, command_name: str, event: CommandEvent
+    ) -> str:
         statement = command_name
         command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
         command = event.command.get(command_attribute)
@@ -207,14 +221,16 @@ class CommandTracer(monitoring.CommandListener):
         return statement
 
 
-def _get_span_dict_key(event):
+def _get_span_dict_key(
+    event: CommandEvent,
+) -> int | tuple[int, tuple[str, int | None]]:
     if event.connection_id is not None:
         return event.request_id, event.connection_id
     return event.request_id
 
 
 class PymongoInstrumentor(BaseInstrumentor):
-    _commandtracer_instance = None  # type CommandTracer
+    _commandtracer_instance: CommandTracer | None = None
     # The instrumentation for PyMongo is based on the event listener interface
     # https://api.mongodb.com/python/current/api/pymongo/monitoring.html.
     # This interface only allows to register listeners and does not provide
@@ -225,7 +241,7 @@ class PymongoInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Integrate with pymongo to trace it using event listener.
         https://api.mongodb.com/python/current/api/pymongo/monitoring.html
 
@@ -259,6 +275,6 @@ class PymongoInstrumentor(BaseInstrumentor):
         # If already created, just enable it
         self._commandtracer_instance.is_enabled = True
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         if self._commandtracer_instance is not None:
             self._commandtracer_instance.is_enabled = False

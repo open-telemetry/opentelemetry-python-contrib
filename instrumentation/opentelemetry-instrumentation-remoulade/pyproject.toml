@@ -23,11 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.50b0.dev",
-  "opentelemetry-semantic-conventions == 0.50b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
+  "opentelemetry-semantic-conventions == 0.54b0.dev",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,7 @@ remoulade = "opentelemetry.instrumentation.remoulade:RemouladeInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-remoulade"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/remoulade/version.py"

@@ -2,14 +2,6 @@ sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
 sphinx-autodoc-typehints==1.25.2
 
-# Need to install the api/sdk in the venv for autodoc. Modifying sys.path
-# doesn't work for pkg_resources.
--e "git+https://github.com/open-telemetry/opentelemetry-python.git#egg=opentelemetry-api&subdirectory=opentelemetry-api"
--e "git+https://github.com/open-telemetry/opentelemetry-python.git#egg=opentelemetry-semantic-conventions&subdirectory=opentelemetry-semantic-conventions"
--e "git+https://github.com/open-telemetry/opentelemetry-python.git#egg=opentelemetry-sdk&subdirectory=opentelemetry-sdk"
--e "git+https://github.com/open-telemetry/opentelemetry-python-contrib.git#egg=opentelemetry-util-http&subdirectory=util/opentelemetry-util-http"
-./opentelemetry-instrumentation
-
 # Required by opentelemetry-instrumentation
 fastapi>=0.65.2
 pymemcache~=1.3
@@ -23,6 +15,7 @@ aiohttp~=3.0
 aiokafka~=0.11.0
 aiopg>=0.13.0,<1.3.0
 asyncpg>=0.12.0
+asyncclick~=8.0
 boto~=2.0
 botocore~=1.0
 boto3~=1.0
@@ -33,21 +26,23 @@ elasticsearch>=6.0,<9.0
 flask~=2.0
 falcon~=2.0
 grpcio~=1.27
+httpx>=0.18.0
 kafka-python>=2.0,<3.0
 mysql-connector-python~=8.0
 mysqlclient~=2.1.1
+openai >= 1.26.0
 psutil>=5
 psycopg~=3.1.17
 pika>=0.12.0
 pymongo~=4.6.3
 PyMySQL~=1.1.1
+pymssql~=2.3.2
 pyramid>=1.7
 redis>=2.6
 remoulade>=0.50
 sqlalchemy>=1.0
 tornado>=5.1.1
 tortoise-orm>=0.17.0
-httpx>=0.18.0
 
 # indirect dependency pins
 markupsafe==2.0.1

@@ -19,7 +19,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, overload
 from urllib.parse import urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
@@ -121,18 +121,16 @@ class SanitizeValue:
 _root = r"OTEL_PYTHON_{}"
 
 
-def get_traced_request_attrs(instrumentation):
+def get_traced_request_attrs(instrumentation: str) -> list[str]:
     traced_request_attrs = environ.get(
-        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS"), []
+        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS")
     )
-
     if traced_request_attrs:
-        traced_request_attrs = [
+        return [
             traced_request_attr.strip()
             for traced_request_attr in traced_request_attrs.split(",")
         ]
-
-    return traced_request_attrs
+    return []
 
 
 def get_excluded_urls(instrumentation: str) -> ExcludeList:
@@ -193,7 +191,15 @@ def normalise_response_header_name(header: str) -> str:
     return f"http.response.header.{key}"
 
 
-def sanitize_method(method: Optional[str]) -> Optional[str]:
+@overload
+def sanitize_method(method: str) -> str: ...
+
+
+@overload
+def sanitize_method(method: None) -> None: ...
+
+
+def sanitize_method(method: str | None) -> str | None:
     if method is None:
         return None
     method = method.upper()
