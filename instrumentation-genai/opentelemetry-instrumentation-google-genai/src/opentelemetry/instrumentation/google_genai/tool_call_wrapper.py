@@ -81,37 +81,82 @@ def _create_function_span_attributes(
     return result
 
 
+def _record_function_call_span_attributes(
+    otel_wrapper,
+    wrapped_function,
+    function_args,
+    function_kwargs):
+    """Records the details about a function invocation as span attributes."""
+    if not is_content_recording_enabled():
+        return
+    span = trace.get_current_span()
+    signature = inspect.signature(wrapped_function)
+    params = list(signature.parameters.values())
+    for index, entry in enumerate(function_args):
+        param_name = f"args[{index}]"
+        if index < len(params):
+            param_name = params[index].name
+        attribute_name = f"code.function.params.{param_name}"
+        span.set_attribute(attribute_name, _to_otel_value(entry))
+    for key, value in function_kwargs.items():
+        attribute_name = f"code.function.params.{key}"
+        span.set_attribute(attribute_name, _to_otel_value(value))
+
+
 def _record_function_call_event(
     otel_wrapper,
     wrapped_function,
     function_args,
     function_kwargs):
-  """Records the details about a function invocation as a log event."""
-  attributes = {
-    code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
-    CODE_MODULE: wrapped_function.__module__,
-    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT: len(function_args),
-    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT: len(function_kwargs)
-  }
-  body = {}
-  if is_content_recording_enabled():
-    body[FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS] = _to_otel_value(function_args)
-    body[FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS] = _to_otel_value(function_kwargs)
-  otel_wrapper.log_function_call_start(attributes, body)
+    """Records the details about a function invocation as a log event."""
+    attributes = {
+      code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
+      CODE_MODULE: wrapped_function.__module__,
+      FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT: len(function_args),
+      FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT: len(function_kwargs)
+    }
+    body = {}
+    if is_content_recording_enabled():
+      body[FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS] = _to_otel_value(function_args)
+      body[FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS] = _to_otel_value(function_kwargs)
+    otel_wrapper.log_function_call_start(attributes, body)
+
+
+def _record_function_call_arguments(
+    otel_wrapper,
+    wrapped_function,
+    function_args,
+    function_kwargs):
+    _record_function_call_span_attributes(otel_wrapper, wrapped_function, function_args, function_kwargs)
+    _record_function_call_event(otel_wrapper, wrapped_function, function_args, function_kwargs)
 
 
 def _record_function_call_result_event(
     otel_wrapper,
     wrapped_function,
     result):
-  attributes = {
-    code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
-    CODE_MODULE: wrapped_function.__module__,
-  }
-  body = {}
-  if is_content_recording_enabled():
-    body[FUNCTION_TOOL_CALL_END_EVENT_BODY_RESULT] = _to_otel_value(result)
-  otel_wrapper.log_function_call_end(attributes, body)
+    """Records the details about a function result as a log event."""
+    attributes = {
+      code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
+      CODE_MODULE: wrapped_function.__module__,
+    }
+    body = {}
+    if is_content_recording_enabled():
+      body[FUNCTION_TOOL_CALL_END_EVENT_BODY_RESULT] = _to_otel_value(result)
+    otel_wrapper.log_function_call_end(attributes, body)
+
+
+def _record_function_call_result_span_attributes(otel_wrapper, wrapped_function, result):
+    """Records the details about a function result as span attributes."""
+    if not is_content_recording_enabled():
+        return
+    span = trace.get_current_span()
+    span.set_attribute("code.function.return_value", _to_otel_value(result))
+
+
+def _record_function_call_result(otel_wrapper, wrapped_function, result):
+    _record_function_call_result_event(otel_wrapper, wrapped_function, result)
+    _record_function_call_result_span_attributes(otel_wrapper, wrapped_function, result)
 
 
 def _wrap_sync_tool_function(
@@ -124,9 +169,9 @@ def _wrap_sync_tool_function(
         span_name = _create_function_span_name(tool_function)
         attributes = _create_function_span_attributes(tool_function, args, kwargs, extra_span_attributes)
         with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_event(otel_wrapper, tool_function, args, kwargs)
+            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
             result = tool_function(*args, **kwargs)
-            _record_function_call_result_event(otel_wrapper, tool_function, result)
+            _record_function_call_result(otel_wrapper, tool_function, result)
             return result
     return wrapped_function
 
@@ -141,9 +186,9 @@ def _wrap_async_tool_function(
         span_name = _create_function_span_name(tool_function)
         attributes = _create_function_span_attributes(tool_function, args, kwargs, extra_span_attributes)
         with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_event(otel_wrapper, tool_function, args, kwargs)
+            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
             result = await tool_function(*args, **kwargs)
-            _record_function_call_result_event(otel_wrapper, tool_function, result)
+            _record_function_call_result(otel_wrapper, tool_function, result)
             return result
     return wrapped_function
 
