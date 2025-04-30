@@ -99,6 +99,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.package import _instruments
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -277,6 +278,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             SpanAttributes.RPC_METHOD: call_context.operation,
             # TODO: update when semantic conventions exist
             "aws.region": call_context.region,
+            **get_server_attributes(call_context.endpoint_url),
         }
 
         _safe_invoke(extension.extract_attributes, attributes)
