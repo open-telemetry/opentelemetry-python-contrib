@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# **IMPORTANT**:
-#
-#   This version should stay below "1.0" until the fundamentals
-#   in "TODOS.md" have been addressed. Please revisit the TODOs
-#   listed there before bumping to a stable version.
-__version__ = "0.3b0.dev"
+
+# Semantic Convention still being defined in:
+# https://github.com/open-telemetry/semantic-conventions/pull/2125
+GCP_GENAI_OPERATION_CONFIG = "gcp.gen_ai.operation.config"
