@@ -129,6 +129,8 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+
     def request_hook(span, request):
         pass
 

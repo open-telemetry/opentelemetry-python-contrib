@@ -22,8 +22,8 @@ charset-normalizer==3.4.0
 Deprecated==1.2.14
 docstring_parser==0.16
 exceptiongroup==1.2.2
-google-api-core==2.23.0
-google-auth==2.36.0
+google-api-core[grpc, async_rest]==2.23.0
+google-auth[aiohttp]==2.36.0
 google-cloud-aiplatform==1.79.0
 google-cloud-bigquery==3.27.0
 google-cloud-core==2.4.1

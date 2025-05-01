@@ -27,16 +27,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.52b0.dev",
-  "opentelemetry-instrumentation-asgi == 0.52b0.dev",
-  "opentelemetry-semantic-conventions == 0.52b0.dev",
-  "opentelemetry-util-http == 0.52b0.dev",
+  "opentelemetry-instrumentation == 0.54b0.dev",
+  "opentelemetry-instrumentation-asgi == 0.54b0.dev",
+  "opentelemetry-semantic-conventions == 0.54b0.dev",
+  "opentelemetry-util-http == 0.54b0.dev",
 ]
 
 [project.optional-dependencies]
-instruments = [
-  "starlette ~= 0.13.0",
-]
+instruments = ["starlette >= 0.13, <0.15"]
 
 [project.entry-points.opentelemetry_instrumentor]
 starlette = "opentelemetry.instrumentation.starlette:StarletteInstrumentor"
@@ -49,10 +47,7 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/instrumentation/starlette/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-]
+include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]

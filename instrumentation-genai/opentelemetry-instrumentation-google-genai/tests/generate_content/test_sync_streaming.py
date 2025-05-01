@@ -12,57 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: once the async streaming case has been implemented, we should have
-# two different tests here that inherit from "streaming_base" and "nonstreaming_base",
-# covering the cases of one response and multiple streaming responses.
+
+from .nonstreaming_base import NonStreamingTestCase
+from .streaming_base import StreamingTestCase
 
 
-from ..common.base import TestCase
+class StreamingMixin:
+    @property
+    def expected_function_name(self):
+        return "google.genai.Models.generate_content_stream"
 
-
-def create_valid_response(
-    response_text="The model response", input_tokens=10, output_tokens=20
-):
-    return {
-        "modelVersion": "gemini-2.0-flash-test123",
-        "usageMetadata": {
-            "promptTokenCount": input_tokens,
-            "candidatesTokenCount": output_tokens,
-            "totalTokenCount": input_tokens + output_tokens,
-        },
-        "candidates": [
-            {
-                "content": {
-                    "role": "model",
-                    "parts": [
-                        {
-                            "text": response_text,
-                        }
-                    ],
-                }
-            }
-        ],
-    }
-
-
-# Temporary test fixture just to ensure that the in-progress work to
-# implement this case doesn't break the original code.
-class TestGenerateContentSyncStreaming(TestCase):
-    def configure_valid_response(
-        self,
-        response_text="The model_response",
-        input_tokens=10,
-        output_tokens=20,
-    ):
-        self.requests.add_response(
-            create_valid_response(
-                response_text=response_text,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            )
-        )
-
-    def generate_content(self, *args, **kwargs):
+    def generate_content_stream(self, *args, **kwargs):
         result = []
         for response in self.client.models.generate_content_stream(  # pylint: disable=missing-kwoa
             *args, **kwargs
@@ -70,10 +30,18 @@ class TestGenerateContentSyncStreaming(TestCase):
             result.append(response)
         return result
 
-    def test_async_generate_content_not_broken_by_instrumentation(self):
-        self.configure_valid_response(response_text="Yep, it works!")
-        responses = self.generate_content(
-            model="gemini-2.0-flash", contents="Does this work?"
-        )
+
+class TestGenerateContentStreamingWithSingleResult(
+    StreamingMixin, NonStreamingTestCase
+):
+    def generate_content(self, *args, **kwargs):
+        responses = self.generate_content_stream(*args, **kwargs)
         self.assertEqual(len(responses), 1)
-        self.assertEqual(responses[0].text, "Yep, it works!")
+        return responses[0]
+
+
+class TestGenerateContentStreamingWithStreamedResults(
+    StreamingMixin, StreamingTestCase
+):
+    def generate_content(self, *args, **kwargs):
+        return self.generate_content_stream(*args, **kwargs)

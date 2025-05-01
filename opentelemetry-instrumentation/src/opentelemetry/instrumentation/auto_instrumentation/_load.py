@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import cached_property
 from logging import getLogger
 from os import environ
 
-from opentelemetry.instrumentation.dependencies import (
-    get_dist_dependency_conflicts,
-)
+from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_CONFIGURATOR,
@@ -26,34 +23,9 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
-from opentelemetry.util._importlib_metadata import (
-    EntryPoint,
-    distributions,
-    entry_points,
-)
+from opentelemetry.util._importlib_metadata import entry_points
 
 _logger = getLogger(__name__)
-
-
-class _EntryPointDistFinder:
-    @cached_property
-    def _mapping(self):
-        return {
-            self._key_for(ep): dist
-            for dist in distributions()
-            for ep in dist.entry_points
-        }
-
-    def dist_for(self, entry_point: EntryPoint):
-        dist = getattr(entry_point, "dist", None)
-        if dist:
-            return dist
-
-        return self._mapping.get(self._key_for(entry_point))
-
-    @staticmethod
-    def _key_for(entry_point: EntryPoint):
-        return f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
 
 
 def _load_distro() -> BaseDistro:
@@ -83,7 +55,6 @@ def _load_distro() -> BaseDistro:
 
 def _load_instrumentors(distro):
     package_to_exclude = environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, [])
-    entry_point_finder = _EntryPointDistFinder()
     if isinstance(package_to_exclude, str):
         package_to_exclude = package_to_exclude.split(",")
         # to handle users entering "requests , flask" or "requests, flask" with spaces
@@ -100,19 +71,25 @@ def _load_instrumentors(distro):
             continue
 
         try:
-            entry_point_dist = entry_point_finder.dist_for(entry_point)
-            conflict = get_dist_dependency_conflicts(entry_point_dist)
-            if conflict:
-                _logger.debug(
-                    "Skipping instrumentation %s: %s",
-                    entry_point.name,
-                    conflict,
-                )
-                continue
-
-            # tell instrumentation to not run dep checks again as we already did it above
-            distro.load_instrumentor(entry_point, skip_dep_check=True)
+            distro.load_instrumentor(
+                entry_point, raise_exception_on_conflict=True
+            )
             _logger.debug("Instrumented %s", entry_point.name)
+        except DependencyConflictError as exc:
+            _logger.debug(
+                "Skipping instrumentation %s: %s",
+                entry_point.name,
+                exc.conflict,
+            )
+            continue
+        except ModuleNotFoundError as exc:
+            # ModuleNotFoundError is raised when the library is not installed
+            # and the instrumentation is not required to be loaded.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
+            _logger.debug(
+                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
+            )
+            continue
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
             # instrumentors (usually requiring binary extensions) may fail to load

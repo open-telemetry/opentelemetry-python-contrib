@@ -39,6 +39,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 from typing import Any, Collection
 
 from wrapt import (
@@ -47,16 +49,56 @@ from wrapt import (
 
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.vertexai.package import _instruments
-from opentelemetry.instrumentation.vertexai.patch import (
-    generate_content_create,
-)
+from opentelemetry.instrumentation.vertexai.patch import MethodWrappers
 from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 
+def _methods_to_wrap(
+    method_wrappers: MethodWrappers,
+):
+    # This import is very slow, do it lazily in case instrument() is not called
+    # pylint: disable=import-outside-toplevel
+    from google.cloud.aiplatform_v1.services.prediction_service import (
+        async_client,
+        client,
+    )
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        async_client as async_client_v1beta1,
+    )
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        client as client_v1beta1,
+    )
+
+    for client_class in (
+        client.PredictionServiceClient,
+        client_v1beta1.PredictionServiceClient,
+    ):
+        yield (
+            client_class,
+            client_class.generate_content.__name__,  # type: ignore[reportUnknownMemberType]
+            method_wrappers.generate_content,
+        )
+
+    for client_class in (
+        async_client.PredictionServiceAsyncClient,
+        async_client_v1beta1.PredictionServiceAsyncClient,
+    ):
+        yield (
+            client_class,
+            client_class.generate_content.__name__,  # type: ignore[reportUnknownMemberType]
+            method_wrappers.agenerate_content,
+        )
+
+
 class VertexAIInstrumentor(BaseInstrumentor):
+    def __init__(self) -> None:
+        super().__init__()
+        self._methods_to_unwrap: list[tuple[Any, str]] = []
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -77,20 +119,19 @@ class VertexAIInstrumentor(BaseInstrumentor):
             event_logger_provider=event_logger_provider,
         )
 
-        wrap_function_wrapper(
-            module="google.cloud.aiplatform_v1beta1.services.prediction_service.client",
-            name="PredictionServiceClient.generate_content",
-            wrapper=generate_content_create(
-                tracer, event_logger, is_content_enabled()
-            ),
+        method_wrappers = MethodWrappers(
+            tracer, event_logger, is_content_enabled()
         )
-        wrap_function_wrapper(
-            module="google.cloud.aiplatform_v1.services.prediction_service.client",
-            name="PredictionServiceClient.generate_content",
-            wrapper=generate_content_create(
-                tracer, event_logger, is_content_enabled()
-            ),
-        )
+        for client_class, method_name, wrapper in _methods_to_wrap(
+            method_wrappers
+        ):
+            wrap_function_wrapper(
+                client_class,
+                name=method_name,
+                wrapper=wrapper,
+            )
+            self._methods_to_unwrap.append((client_class, method_name))
 
     def _uninstrument(self, **kwargs: Any) -> None:
-        """TODO: implemented in later PR"""
+        for client_class, method_name in self._methods_to_unwrap:
+            unwrap(client_class, method_name)

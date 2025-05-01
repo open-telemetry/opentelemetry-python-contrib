@@ -64,15 +64,14 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-google-genai",
-    "opentelemetry-instrumentation-vertexai",  # not released yet
 ]
 
-# We should not put any version limit for instrumentations that are released independently
-unversioned_packages = [
-    "opentelemetry-instrumentation-openai-v2",
-    "opentelemetry-instrumentation-vertexai",
-    "opentelemetry-instrumentation-google-genai",
-]
+# Static version specifiers for instrumentations that are released independently
+independent_packages = {
+    "opentelemetry-instrumentation-openai-v2": "",
+    "opentelemetry-instrumentation-vertexai": ">=2.0b0",
+    "opentelemetry-instrumentation-google-genai": "",
+}
 
 
 def main():
@@ -80,7 +79,7 @@ def main():
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages(
-        unversioned_packages=unversioned_packages
+        independent_packages=independent_packages
     ):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:

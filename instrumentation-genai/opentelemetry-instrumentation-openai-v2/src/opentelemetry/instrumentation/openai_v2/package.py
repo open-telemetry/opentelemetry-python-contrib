@@ -14,3 +14,5 @@
 
 
 _instruments = ("openai >= 1.26.0",)
+
+_supports_metrics = True
