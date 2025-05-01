@@ -41,19 +41,21 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    import requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
     # `request_obj` is an instance of requests.PreparedRequest
     def request_hook(span, request_obj):
         pass
 
     # `request_obj` is an instance of requests.PreparedRequest
     # `response` is an instance of requests.Response
-    def response_hook(span, request_obj, response)
+    def response_hook(span, request_obj, response):
         pass
 
     RequestsInstrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook)
+        request_hook=request_hook, response_hook=response_hook
     )
-
 
 Exclude lists
 *************
@@ -99,15 +101,14 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
     _set_http_scheme,
-    _set_http_status_code,
     _set_http_url,
+    _set_status,
     _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
     is_http_instrumentation_enabled,
     suppress_http_instrumentation,
 )
@@ -124,7 +125,6 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
@@ -138,6 +138,32 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
+
+
+def _set_http_status_code_attribute(
+    span,
+    status_code,
+    metric_attributes=None,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+):
+    status_code_str = str(status_code)
+    try:
+        status_code = int(status_code)
+    except ValueError:
+        status_code = -1
+    if metric_attributes is None:
+        metric_attributes = {}
+    # When we have durations we should set metrics only once
+    # Also the decision to include status code on a histogram should
+    # not be dependent on tracing decisions.
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        status_code_str,
+        server_span=False,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
 
 
 # pylint: disable=unused-argument
@@ -267,25 +293,12 @@ def _instrument(
 
             if isinstance(result, Response):
                 span_attributes = {}
-                if span.is_recording():
-                    _set_http_status_code(
-                        span_attributes,
-                        result.status_code,
-                        sem_conv_opt_in_mode,
-                    )
-                    _set_http_status_code(
-                        metric_labels, result.status_code, sem_conv_opt_in_mode
-                    )
-                    status_code = http_status_to_status_code(
-                        result.status_code
-                    )
-                    span.set_status(status_code)
-                    if (
-                        _report_new(sem_conv_opt_in_mode)
-                        and status_code is StatusCode.ERROR
-                    ):
-                        span_attributes[ERROR_TYPE] = str(result.status_code)
-                        metric_labels[ERROR_TYPE] = str(result.status_code)
+                _set_http_status_code_attribute(
+                    span,
+                    result.status_code,
+                    metric_labels,
+                    sem_conv_opt_in_mode,
+                )
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)

@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: |-
+      {
+        "message": "Say this is a test",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "p": 0.99,
+        "stop_sequences": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '107'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.3.0 md/arch#arm64 lang/python#3.10.16
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250410T224018Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-51673f20-3dd018601b078c785c032a50;Parent=c05b84f54e2c35ee;Sampled=1
+      amz-sdk-invocation-id:
+      - c81a224e-d8b3-4416-aaca-858b478b7db4
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/cohere.command-r-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "response_id": "379ed018/aa2df2bf-edc8-483f-8cd0-d22d04ba34ba",
+          "text": "This is a test. How are you doing today",
+          "generation_id": "2d74c447-266d-4286-8425-a92ad7fc0cbc",
+          "chat_history": [
+            {
+              "role": "USER",
+              "message": "Say this is a test"
+            },
+            {
+              "role": "CHATBOT",
+              "message": "This is a test. How are you doing today"
+            }
+          ],
+          "finish_reason": "MAX_TOKENS"
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 10 Apr 2025 22:40:18 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '196'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - c1fd38df-b669-4464-9f4b-4cf32c32fde8
+    status:
+      code: 200
+      message: OK
+version: 1

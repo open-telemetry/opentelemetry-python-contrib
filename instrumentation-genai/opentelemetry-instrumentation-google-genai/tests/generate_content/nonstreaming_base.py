@@ -16,32 +16,7 @@ import json
 import os
 import unittest
 
-from ..common.base import TestCase
-
-
-def create_valid_response(
-    response_text="The model response", input_tokens=10, output_tokens=20
-):
-    return {
-        "modelVersion": "gemini-2.0-flash-test123",
-        "usageMetadata": {
-            "promptTokenCount": input_tokens,
-            "candidatesTokenCount": output_tokens,
-            "totalTokenCount": input_tokens + output_tokens,
-        },
-        "candidates": [
-            {
-                "content": {
-                    "role": "model",
-                    "parts": [
-                        {
-                            "text": response_text,
-                        }
-                    ],
-                }
-            }
-        ],
-    }
+from .base import TestCase
 
 
 class NonStreamingTestCase(TestCase):
@@ -56,32 +31,28 @@ class NonStreamingTestCase(TestCase):
     def generate_content(self, *args, **kwargs):
         raise NotImplementedError("Must implement 'generate_content'.")
 
+    @property
     def expected_function_name(self):
         raise NotImplementedError("Must implement 'expected_function_name'.")
 
-    def configure_valid_response(
-        self,
-        response_text="The model_response",
-        input_tokens=10,
-        output_tokens=20,
-    ):
-        self.requests.add_response(
-            create_valid_response(
-                response_text=response_text,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            )
+    def _generate_and_get_span(self, config):
+        self.generate_content(
+            model="gemini-2.0-flash",
+            contents="Some input prompt",
+            config=config,
         )
+        self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
+        return self.otel.get_span_named("generate_content gemini-2.0-flash")
 
     def test_instrumentation_does_not_break_core_functionality(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         response = self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
         self.assertEqual(response.text, "Yep, it works!")
 
     def test_generates_span(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         response = self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
@@ -89,7 +60,7 @@ class NonStreamingTestCase(TestCase):
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
 
     def test_model_reflected_into_span_name(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         response = self.generate_content(
             model="gemini-1.5-flash", contents="Does this work?"
         )
@@ -97,7 +68,7 @@ class NonStreamingTestCase(TestCase):
         self.otel.assert_has_span_named("generate_content gemini-1.5-flash")
 
     def test_generated_span_has_minimal_genai_attributes(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
@@ -109,7 +80,7 @@ class NonStreamingTestCase(TestCase):
         )
 
     def test_generated_span_has_correct_function_name(self):
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
@@ -121,7 +92,7 @@ class NonStreamingTestCase(TestCase):
 
     def test_generated_span_has_vertex_ai_system_when_configured(self):
         self.set_use_vertex(True)
-        self.configure_valid_response(response_text="Yep, it works!")
+        self.configure_valid_response(text="Yep, it works!")
         self.generate_content(
             model="gemini-2.0-flash", contents="Does this work?"
         )
@@ -204,7 +175,7 @@ class NonStreamingTestCase(TestCase):
         os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
             "true"
         )
-        self.configure_valid_response(response_text="Some response content")
+        self.configure_valid_response(text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.choice")
         event_record = self.otel.get_event_named("gen_ai.choice")
@@ -217,7 +188,7 @@ class NonStreamingTestCase(TestCase):
         os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
             "false"
         )
-        self.configure_valid_response(response_text="Some response content")
+        self.configure_valid_response(text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.choice")
         event_record = self.otel.get_event_named("gen_ai.choice")

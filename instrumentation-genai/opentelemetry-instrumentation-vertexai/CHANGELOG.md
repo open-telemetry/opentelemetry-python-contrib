@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Version 2.0b0 (2025-02-21)
+- Implement uninstrument for `opentelemetry-instrumentation-vertexai`
+  ([#3328](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3328))
+- VertexAI support for async calling
+  ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386))
+
+## Version 2.0b0 (2025-02-24)
 
 - Added Vertex AI spans for request parameters
   ([#3192](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3192))

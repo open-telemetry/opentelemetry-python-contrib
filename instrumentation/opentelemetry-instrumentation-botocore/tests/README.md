@@ -1,7 +1,8 @@
 ## Recording calls
 
 If you need to record calls you may need to export authentication variables and the default region as environment
-variables in order to have the code work properly.
+variables in order to have the code work properly. The recorded tests assume the region us-east-1, so ensure that
+AWS_DEFAULT_REGION is set accordingly when recording new calls.
 Since tox blocks environment variables by default you need to override its configuration to let them pass:
 
 ```
