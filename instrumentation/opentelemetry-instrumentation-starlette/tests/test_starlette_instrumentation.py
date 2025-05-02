@@ -800,7 +800,6 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
 class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
-        super().setUp()
         self.test_env_patch = patch.dict(
             "os.environ",
             {
@@ -810,10 +809,11 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             },
         )
         self.test_env_patch.start()
+        super().setUp()
 
     def tearDown(self):
-        self.test_env_patch.stop()
         super().tearDown()
+        self.test_env_patch.stop()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
