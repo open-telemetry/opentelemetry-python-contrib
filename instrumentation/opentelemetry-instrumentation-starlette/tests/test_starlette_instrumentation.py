@@ -667,15 +667,23 @@ class TestBaseWithCustomHeaders(TestBase):
         )
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
+    def setUp(self):
+        super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
+
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -790,15 +798,23 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
 class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
+    def setUp(self):
+        super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
+
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
             "http.request.header.custom_test_header_1": (
@@ -913,22 +929,28 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
 class TestNonRecordingSpanWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
         super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
         reset_trace_globals()
         set_tracer_provider(tracer_provider=NoOpTracerProvider())
 
         self._app = self.create_app()
         self._client = TestClient(self._app)
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_header_not_present_in_non_recording_span(self):
         resp = self._client.get(
