@@ -54,7 +54,12 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .instruments import Instruments
-from .patch import async_chat_completions_create, chat_completions_create
+from .patch import (
+    async_chat_completions_create,
+    async_embeddings_create,
+    chat_completions_create,
+    embeddings_create,
+)
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -106,8 +111,27 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        # Add instrumentation for the embeddings API
+        wrap_function_wrapper(
+            module="openai.resources.embeddings",
+            name="Embeddings.create",
+            wrapper=embeddings_create(
+                tracer, event_logger, instruments, is_content_enabled()
+            ),
+        )
+
+        wrap_function_wrapper(
+            module="openai.resources.embeddings",
+            name="AsyncEmbeddings.create",
+            wrapper=async_embeddings_create(
+                tracer, event_logger, instruments, is_content_enabled()
+            ),
+        )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+        unwrap(openai.resources.embeddings.Embeddings, "create")
+        unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")

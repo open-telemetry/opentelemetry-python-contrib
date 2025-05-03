@@ -192,38 +192,65 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
-        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
-        or kwargs.get("top_p"),
-        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
-        GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
-            "presence_penalty"
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
-            "frequency_penalty"
-        ),
-        GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
     }
 
-    if (response_format := kwargs.get("response_format")) is not None:
-        # response_format may be string or object with a string in the `type` key
-        if isinstance(response_format, Mapping):
-            if (
-                response_format_type := response_format.get("type")
-            ) is not None:
+    # Add chat-specific attributes only for chat operations
+    if operation_name == GenAIAttributes.GenAiOperationNameValues.CHAT.value:
+        attributes.update(
+            {
+                GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get(
+                    "temperature"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
+                or kwargs.get("top_p"),
+                GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get(
+                    "max_tokens"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
+                    "presence_penalty"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
+                    "frequency_penalty"
+                ),
+                GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
+            }
+        )
+
+        if (response_format := kwargs.get("response_format")) is not None:
+            # response_format may be string or object with a string in the `type` key
+            if isinstance(response_format, Mapping):
+                if (
+                    response_format_type := response_format.get("type")
+                ) is not None:
+                    attributes[
+                        GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+                    ] = response_format_type
+            else:
                 attributes[
                     GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-                ] = response_format_type
-        else:
-            attributes[
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-            ] = response_format
+                ] = response_format
+
+        service_tier = kwargs.get("service_tier")
+        attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = (
+            service_tier if service_tier != "auto" else None
+        )
+
+    # Add embeddings-specific attributes
+    elif (
+        operation_name
+        == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+    ):
+        # Add embedding dimensions if specified
+        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
+            attributes["gen_ai.embeddings.dimensions"] = kwargs["dimensions"]
+
+        # Add encoding format if specified
+        if "encoding_format" in kwargs:
+            attributes["gen_ai.embeddings.encoding_format"] = kwargs[
+                "encoding_format"
+            ]
 
     set_server_address_and_port(client_instance, attributes)
-    service_tier = kwargs.get("service_tier")
-    attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = (
-        service_tier if service_tier != "auto" else None
-    )
 
     # filter out None values
     return {k: v for k, v in attributes.items() if v is not None}

@@ -1,0 +1,337 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Unit tests for OpenAI Async Embeddings API instrumentation."""
+
+from typing import Optional
+
+import pytest
+from openai import AsyncOpenAI, NotFoundError
+
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.semconv._incubating.attributes import (
+    error_attributes as ErrorAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
+)
+from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_with_content(
+    span_exporter, log_exporter, async_openai_client, instrument_with_content
+):
+    """Test creating embeddings asynchronously with content capture enabled"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for async embeddings"
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # Verify logs
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1  # Should contain the embeddings event
+
+    # Verify the content of the embeddings event
+    assert (
+        logs[0].log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        == GenAIAttributes.GenAiSystemValues.OPENAI.value
+    )
+
+    # Verify the input text is included in the event body
+    assert dict(logs[0].log_record.body)["content"] == input_text
+    assert_log_parent(logs[0], spans[0])
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_no_content(
+    span_exporter, log_exporter, async_openai_client, instrument_no_content
+):
+    """Test creating embeddings asynchronously with content capture disabled"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for async embeddings"
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # No logs should be emitted when content capture is disabled
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_with_dimensions(
+    span_exporter, metric_reader, async_openai_client, instrument_no_content
+):
+    """Test creating embeddings asynchronously with custom dimensions"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for async embeddings with dimensions"
+    dimensions = 512  # Using a smaller dimension than default
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+        dimensions=dimensions,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # Verify dimensions attribute is set correctly
+    assert spans[0].attributes["gen_ai.embeddings.dimensions"] == dimensions
+
+    # Verify actual embedding dimensions match the requested dimensions
+    assert len(response.data[0].embedding) == dimensions
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_with_batch_input(
+    span_exporter, metric_reader, async_openai_client, instrument_with_content
+):
+    """Test creating embeddings asynchronously with batch input"""
+    model_name = "text-embedding-3-small"
+    input_texts = [
+        "This is the first test string for async embeddings",
+        "This is the second test string for async embeddings",
+        "This is the third test string for async embeddings",
+    ]
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_texts,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # Verify results contain the same number of embeddings as input texts
+    assert len(response.data) == len(input_texts)
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_error_handling(
+    span_exporter, metric_reader, instrument_no_content
+):
+    """Test async embeddings error handling"""
+    model_name = "non-existent-embedding-model"
+    input_text = "This is a test for async embeddings with error"
+
+    client = AsyncOpenAI()
+
+    with pytest.raises(NotFoundError):
+        await client.embeddings.create(
+            model=model_name,
+            input=input_text,
+        )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_all_attributes(spans[0], model_name, operation_name="embeddings")
+    assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_token_metrics(
+    span_exporter, metric_reader, async_openai_client, instrument_no_content
+):
+    """Test that token usage metrics are correctly recorded for async embeddings"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for async embeddings token metrics"
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # Verify metrics
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+
+    # Verify token usage metric
+    token_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE
+        ),
+        None,
+    )
+    assert token_metric is not None
+
+    # Find the input token data point
+    input_token_point = None
+    output_token_point = None
+    for point in token_metric.data.data_points:
+        if (
+            point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+            == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
+        ):
+            input_token_point = point
+        elif (
+            point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
+            == GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value
+        ):
+            output_token_point = point
+
+    assert input_token_point is not None, "Input token metric not found"
+    assert output_token_point is not None, "Total token metric not found"
+
+    # Verify the token counts match what was reported in the response
+    assert input_token_point.sum == response.usage.prompt_tokens
+    assert output_token_point.sum == response.usage.total_tokens
+
+
+def assert_embedding_attributes(
+    span: ReadableSpan,
+    request_model: str,
+    response,
+):
+    """Assert that the span contains all required attributes for embeddings operation"""
+    # Use the common assertion function
+    assert_all_attributes(
+        span,
+        request_model,
+        response_id=None,  # Embeddings don't have a response ID
+        response_model=response.model,
+        input_tokens=response.usage.prompt_tokens,
+        output_tokens=response.usage.total_tokens,  # Use total_tokens for output_tokens
+        operation_name="embeddings",
+        server_address="api.openai.com",
+    )
+
+    # Assert embeddings-specific attributes
+    if (
+        hasattr(span, "attributes")
+        and "gen_ai.embeddings.dimensions" in span.attributes
+    ):
+        # If dimensions were specified, verify that they match the actual dimensions
+        assert span.attributes["gen_ai.embeddings.dimensions"] == len(
+            response.data[0].embedding
+        )
+
+    # Assert tokens are correctly recorded
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+        == response.usage.prompt_tokens
+    )
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        == response.usage.total_tokens
+    )
+
+
+def assert_all_attributes(
+    span: ReadableSpan,
+    request_model: str,
+    response_id: str = None,
+    response_model: str = None,
+    input_tokens: Optional[int] = None,
+    output_tokens: Optional[int] = None,
+    operation_name: str = "embeddings",
+    server_address: str = "api.openai.com",
+):
+    """Assert common attributes on the span"""
+    assert span.name == f"{operation_name} {request_model}"
+    assert (
+        operation_name
+        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+    )
+    assert (
+        GenAIAttributes.GenAiSystemValues.OPENAI.value
+        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+    )
+    assert (
+        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+    )
+
+    if response_model:
+        assert (
+            response_model
+            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
+        )
+    else:
+        assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
+
+    if response_id:
+        assert (
+            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
+        )
+    else:
+        assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
+
+    if input_tokens:
+        assert (
+            input_tokens
+            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+        )
+    else:
+        assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
+
+    if output_tokens:
+        assert (
+            output_tokens
+            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        )
+    else:
+        assert (
+            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
+        )
+
+    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+
+
+def assert_log_parent(log, span):
+    """Assert that the log record has the correct parent span context"""
+    if span:
+        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.span_id == span.get_span_context().span_id
+        assert (
+            log.log_record.trace_flags == span.get_span_context().trace_flags
+        )
