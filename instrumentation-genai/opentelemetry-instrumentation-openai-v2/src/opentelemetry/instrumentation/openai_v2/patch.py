@@ -173,7 +173,7 @@ def embeddings_create(
             )
         }
 
-        # Set embeddings dimensions if specified in the request
+        # Using a custom attribute "gen_ai.embeddings.dimensions". Will propose to semantic conventions.
         if "dimensions" in kwargs and kwargs["dimensions"] is not None:
             span_attributes["gen_ai.embeddings.dimensions"] = kwargs[
                 "dimensions"
