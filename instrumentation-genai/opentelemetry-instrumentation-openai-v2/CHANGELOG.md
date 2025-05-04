@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Added support for capturing and reporting system_fingerprint from OpenAI responses
-  ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
+  ([#3461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3461))
 - Record prompt and completion events regardless of span sampling decision.
   ([#3226](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3226))
 
