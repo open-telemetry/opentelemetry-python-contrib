@@ -24,6 +24,9 @@ from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
+    event_attributes as EventAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -52,17 +55,49 @@ def test_embeddings_with_content(
 
     # Verify logs
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 1  # Should contain the embeddings event
-
-    # Verify the content of the embeddings event
     assert (
-        logs[0].log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-        == GenAIAttributes.GenAiSystemValues.OPENAI.value
+        len(logs) == 2
+    )  # Should contain both input and output embeddings events
+
+    # Find input and output events
+    input_event = None
+    output_event = None
+    for log in logs:
+        if (
+            log.log_record.attributes.get(EventAttributes.EVENT_NAME)
+            == "gen_ai.embeddings.input"
+        ):
+            input_event = log
+        elif (
+            log.log_record.attributes.get(EventAttributes.EVENT_NAME)
+            == "gen_ai.embeddings.output"
+        ):
+            output_event = log
+
+    # Verify both events exist
+    assert input_event is not None, "Input embeddings event not found"
+    assert output_event is not None, "Output embeddings event not found"
+
+    # Verify input event content
+    input_content = {"content": input_text, "role": "user"}
+    assert_message_in_logs(
+        input_event, "gen_ai.embeddings.input", input_content, spans[0]
     )
 
-    # Verify the input text is included in the event body
-    assert dict(logs[0].log_record.body)["content"] == input_text
-    assert_log_parent(logs[0], spans[0])
+    # Verify output event content
+    # We don't need to specify exact values since the test provides a helper function to verify
+    output_content = {
+        "embeddings": [
+            {
+                "index": 0,
+                "embedding": response.data[0].embedding,
+                "object": "embedding",
+            }
+        ]
+    }
+    assert_message_in_logs(
+        output_event, "gen_ai.embeddings.output", output_content, spans[0]
+    )
 
 
 @pytest.mark.vcr()
@@ -466,3 +501,37 @@ def assert_log_parent(log, span):
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags
         )
+
+
+def assert_message_in_logs(log, event_name, expected_content, parent_span):
+    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    assert (
+        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        == GenAIAttributes.GenAiSystemValues.OPENAI.value
+    )
+
+    if not expected_content:
+        assert not log.log_record.body
+    else:
+        assert log.log_record.body
+        assert dict(log.log_record.body) == remove_none_values(
+            expected_content
+        )
+    assert_log_parent(log, parent_span)
+
+
+def remove_none_values(body):
+    result = {}
+    for key, value in body.items():
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            result[key] = remove_none_values(value)
+        elif isinstance(value, list):
+            result[key] = [
+                remove_none_values(i) if isinstance(i, dict) else i
+                for i in value
+            ]
+        else:
+            result[key] = value
+    return result

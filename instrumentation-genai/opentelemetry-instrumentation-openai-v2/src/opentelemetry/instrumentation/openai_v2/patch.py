@@ -442,16 +442,53 @@ def _set_embeddings_response_attributes(
             result.usage.total_tokens,
         )
 
-    # Emit event for embeddings if content capture is enabled
+    # Emit events for embeddings if content capture is enabled
     if capture_content:
-        input_event = Event(
-            name="gen_ai.embeddings",
-            attributes={
-                GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-            },
-            body={"content": input_text, "role": "user"},
+        from opentelemetry.semconv._incubating.attributes import (
+            event_attributes as EventAttributes,
         )
-        event_logger.emit(input_event)
+
+        # Emit input event
+        input_event_attributes = {
+            GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+            EventAttributes.EVENT_NAME: "gen_ai.embeddings.input",
+        }
+        event_logger.emit(
+            Event(
+                name="gen_ai.embeddings.input",
+                attributes=input_event_attributes,
+                body={"content": input_text, "role": "user"},
+            )
+        )
+
+        # Emit output event with embeddings data
+        if getattr(result, "data", None) and len(result.data) > 0:
+            embedding_data = []
+            for item in result.data:
+                if getattr(item, "embedding", None):
+                    embedding_data.append(
+                        {
+                            "index": item.index
+                            if hasattr(item, "index")
+                            else None,
+                            "embedding": item.embedding,
+                            "object": item.object
+                            if hasattr(item, "object")
+                            else "embedding",
+                        }
+                    )
+
+            output_event_attributes = {
+                GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+                EventAttributes.EVENT_NAME: "gen_ai.embeddings.output",
+            }
+            event_logger.emit(
+                Event(
+                    name="gen_ai.embeddings.output",
+                    attributes=output_event_attributes,
+                    body={"embeddings": embedding_data},
+                )
+            )
 
 
 class ToolCallBuffer:
