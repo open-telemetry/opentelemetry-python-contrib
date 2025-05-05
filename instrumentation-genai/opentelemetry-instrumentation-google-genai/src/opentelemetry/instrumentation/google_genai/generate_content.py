@@ -209,7 +209,9 @@ def _get_response_property(response: GenerateContentResponse, path: str):
     return current_context
 
 
-def _coerce_config_to_object(config: GenerateContentConfigOrDict) -> GenerateContentConfig:
+def _coerce_config_to_object(
+    config: GenerateContentConfigOrDict,
+) -> GenerateContentConfig:
     if isinstance(config, GenerateContentConfig):
         return config
     # Input must be a dictionary; convert by invoking the constructor.
@@ -217,8 +219,8 @@ def _coerce_config_to_object(config: GenerateContentConfigOrDict) -> GenerateCon
 
 
 def _wrapped_config_with_tools(
-    otel_wrapper: OTelWrapper,
-    config: GenerateContentConfig):
+    otel_wrapper: OTelWrapper, config: GenerateContentConfig
+):
     if not config.tools:
         return config
     result = copy.copy(config)
@@ -250,13 +252,13 @@ class _GenerateContentInstrumentationHelper:
         )
 
     def wrapped_config(
-        self,
-        config: Optional[GenerateContentConfigOrDict]) -> Optional[GenerateContentConfig]:
+        self, config: Optional[GenerateContentConfigOrDict]
+    ) -> Optional[GenerateContentConfig]:
         if config is None:
             return None
         return _wrapped_config_with_tools(
-            self._otel_wrapper,
-            _coerce_config_to_object(config))
+            self._otel_wrapper, _coerce_config_to_object(config)
+        )
 
     def start_span_as_current_span(
         self, model_name, function_name, end_on_exit=True

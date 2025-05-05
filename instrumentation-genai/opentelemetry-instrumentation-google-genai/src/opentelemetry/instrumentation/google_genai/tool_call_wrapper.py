@@ -12,34 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Optional, Union
-
 import functools
 import inspect
+from typing import Any, Callable, Optional, Union
 
+from google.genai.types import (
+    ToolListUnion,
+    ToolListUnionDict,
+    ToolOrDict,
+)
 
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import (
     code_attributes,
 )
-from google.genai.types import (
-    ToolOrDict,
-    ToolListUnion,
-    ToolListUnionDict,
-)
+
 from .custom_semconv import (
     CODE_MODULE,
-    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT,
-    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT,
-    FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS,
-    FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS,
     FUNCTION_TOOL_CALL_END_EVENT_BODY_RESULT,
-    TOOL_CALL_POSITIONAL_ARG_COUNT,
+    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT,
+    FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT,
+    FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS,
+    FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS,
     TOOL_CALL_KEYWORD_ARG_COUNT,
+    TOOL_CALL_POSITIONAL_ARG_COUNT,
 )
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
-
 
 ToolFunction = Callable[..., Any]
 
@@ -50,8 +49,10 @@ def _to_otel_value(python_value):
         return None
     if isinstance(python_value, list):
         return [_to_otel_value(x) for x in python_value]
-    if isinstance(python_value, dict): 
-        return dict([(key, _to_otel_value(val)) for (key, val) in python_value.items()])
+    if isinstance(python_value, dict):
+        return dict(
+            [(key, _to_otel_value(val)) for (key, val) in python_value.items()]
+        )
     if hasattr(python_value, "model_dump"):
         return python_value.model_dump()
     if hasattr(python_value, "__dict__"):
@@ -60,16 +61,14 @@ def _to_otel_value(python_value):
 
 
 def _create_function_span_name(wrapped_function):
-    """Constructs the span name for a given local function tool call.""" 
+    """Constructs the span name for a given local function tool call."""
     function_name = wrapped_function.__name__
     return f"tool_call {function_name}"
 
 
 def _create_function_span_attributes(
-    wrapped_function,
-    function_args,
-    function_kwargs,
-    extra_span_attributes):
+    wrapped_function, function_args, function_kwargs, extra_span_attributes
+):
     """Creates the attributes for a tool call function span."""
     result = {}
     if extra_span_attributes:
@@ -82,10 +81,8 @@ def _create_function_span_attributes(
 
 
 def _record_function_call_span_attributes(
-    otel_wrapper,
-    wrapped_function,
-    function_args,
-    function_kwargs):
+    otel_wrapper, wrapped_function, function_args, function_kwargs
+):
     """Records the details about a function invocation as span attributes."""
     if not is_content_recording_enabled():
         return
@@ -104,49 +101,56 @@ def _record_function_call_span_attributes(
 
 
 def _record_function_call_event(
-    otel_wrapper,
-    wrapped_function,
-    function_args,
-    function_kwargs):
+    otel_wrapper, wrapped_function, function_args, function_kwargs
+):
     """Records the details about a function invocation as a log event."""
     attributes = {
-      code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
-      CODE_MODULE: wrapped_function.__module__,
-      FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT: len(function_args),
-      FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT: len(function_kwargs)
+        code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
+        CODE_MODULE: wrapped_function.__module__,
+        FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT: len(
+            function_args
+        ),
+        FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT: len(
+            function_kwargs
+        ),
     }
     body = {}
     if is_content_recording_enabled():
-      body[FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS] = _to_otel_value(function_args)
-      body[FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS] = _to_otel_value(function_kwargs)
+        body[FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS] = (
+            _to_otel_value(function_args)
+        )
+        body[FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS] = (
+            _to_otel_value(function_kwargs)
+        )
     otel_wrapper.log_function_call_start(attributes, body)
 
 
 def _record_function_call_arguments(
-    otel_wrapper,
-    wrapped_function,
-    function_args,
-    function_kwargs):
-    _record_function_call_span_attributes(otel_wrapper, wrapped_function, function_args, function_kwargs)
-    _record_function_call_event(otel_wrapper, wrapped_function, function_args, function_kwargs)
+    otel_wrapper, wrapped_function, function_args, function_kwargs
+):
+    _record_function_call_span_attributes(
+        otel_wrapper, wrapped_function, function_args, function_kwargs
+    )
+    _record_function_call_event(
+        otel_wrapper, wrapped_function, function_args, function_kwargs
+    )
 
 
-def _record_function_call_result_event(
-    otel_wrapper,
-    wrapped_function,
-    result):
+def _record_function_call_result_event(otel_wrapper, wrapped_function, result):
     """Records the details about a function result as a log event."""
     attributes = {
-      code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
-      CODE_MODULE: wrapped_function.__module__,
+        code_attributes.CODE_FUNCTION_NAME: wrapped_function.__name__,
+        CODE_MODULE: wrapped_function.__module__,
     }
     body = {}
     if is_content_recording_enabled():
-      body[FUNCTION_TOOL_CALL_END_EVENT_BODY_RESULT] = _to_otel_value(result)
+        body[FUNCTION_TOOL_CALL_END_EVENT_BODY_RESULT] = _to_otel_value(result)
     otel_wrapper.log_function_call_end(attributes, body)
 
 
-def _record_function_call_result_span_attributes(otel_wrapper, wrapped_function, result):
+def _record_function_call_result_span_attributes(
+    otel_wrapper, wrapped_function, result
+):
     """Records the details about a function result as span attributes."""
     if not is_content_recording_enabled():
         return
@@ -156,23 +160,33 @@ def _record_function_call_result_span_attributes(otel_wrapper, wrapped_function,
 
 def _record_function_call_result(otel_wrapper, wrapped_function, result):
     _record_function_call_result_event(otel_wrapper, wrapped_function, result)
-    _record_function_call_result_span_attributes(otel_wrapper, wrapped_function, result)
+    _record_function_call_result_span_attributes(
+        otel_wrapper, wrapped_function, result
+    )
 
 
 def _wrap_sync_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
     extra_span_attributes: Optional[dict[str, str]] = None,
-    **kwargs):
+    **kwargs,
+):
     @functools.wraps(tool_function)
     def wrapped_function(*args, **kwargs):
         span_name = _create_function_span_name(tool_function)
-        attributes = _create_function_span_attributes(tool_function, args, kwargs, extra_span_attributes)
-        with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
+        attributes = _create_function_span_attributes(
+            tool_function, args, kwargs, extra_span_attributes
+        )
+        with otel_wrapper.start_as_current_span(
+            span_name, attributes=attributes
+        ):
+            _record_function_call_arguments(
+                otel_wrapper, tool_function, args, kwargs
+            )
             result = tool_function(*args, **kwargs)
             _record_function_call_result(otel_wrapper, tool_function, result)
             return result
+
     return wrapped_function
 
 
@@ -180,35 +194,55 @@ def _wrap_async_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
     extra_span_attributes: Optional[dict[str, str]] = None,
-    **kwargs):
+    **kwargs,
+):
     @functools.wraps(tool_function)
     async def wrapped_function(*args, **kwargs):
         span_name = _create_function_span_name(tool_function)
-        attributes = _create_function_span_attributes(tool_function, args, kwargs, extra_span_attributes)
-        with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
+        attributes = _create_function_span_attributes(
+            tool_function, args, kwargs, extra_span_attributes
+        )
+        with otel_wrapper.start_as_current_span(
+            span_name, attributes=attributes
+        ):
+            _record_function_call_arguments(
+                otel_wrapper, tool_function, args, kwargs
+            )
             result = await tool_function(*args, **kwargs)
             _record_function_call_result(otel_wrapper, tool_function, result)
             return result
+
     return wrapped_function
 
 
-def _wrap_tool_function(tool_function: ToolFunction, otel_wrapper: OTelWrapper, **kwargs):
+def _wrap_tool_function(
+    tool_function: ToolFunction, otel_wrapper: OTelWrapper, **kwargs
+):
     if inspect.iscoroutinefunction(tool_function):
         return _wrap_async_tool_function(tool_function, otel_wrapper, **kwargs)
     return _wrap_sync_tool_function(tool_function, otel_wrapper, **kwargs)
 
 
 def wrapped(
-    tool_or_tools: Optional[Union[ToolFunction, ToolOrDict, ToolListUnion, ToolListUnionDict]],
+    tool_or_tools: Optional[
+        Union[ToolFunction, ToolOrDict, ToolListUnion, ToolListUnionDict]
+    ],
     otel_wrapper: OTelWrapper,
-    **kwargs):
+    **kwargs,
+):
     if tool_or_tools is None:
         return None
     if isinstance(tool_or_tools, list):
-        return [wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools]
+        return [
+            wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools
+        ]
     if isinstance(tool_or_tools, dict):
-        return dict([(key, wrapped(value, otel_wrapper, **kwargs)) for (key, value) in tool_or_tools.items()])
+        return dict(
+            [
+                (key, wrapped(value, otel_wrapper, **kwargs))
+                for (key, value) in tool_or_tools.items()
+            ]
+        )
     if callable(tool_or_tools):
         return _wrap_tool_function(tool_or_tools, otel_wrapper, **kwargs)
     return tool_or_tools

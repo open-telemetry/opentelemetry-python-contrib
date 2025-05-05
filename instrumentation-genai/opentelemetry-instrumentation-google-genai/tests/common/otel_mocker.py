@@ -172,7 +172,7 @@ class OTelMocker:
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
-        assert span is None, f'Found unexpected span named {name}'
+        assert span is None, f"Found unexpected span named {name}"
 
     def get_event_named(self, event_name):
         for event in self.get_finished_logs():

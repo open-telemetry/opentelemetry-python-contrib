@@ -21,8 +21,8 @@ from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
 
 from .custom_semconv import (
-    FUNCTION_TOOL_CALL_START_EVENT_NAME,
     FUNCTION_TOOL_CALL_END_EVENT_NAME,
+    FUNCTION_TOOL_CALL_START_EVENT_NAME,
 )
 from .version import __version__ as _LIBRARY_VERSION
 

@@ -18,24 +18,26 @@ import unittest
 from google.genai import types as genai_types
 
 from opentelemetry._events import get_event_logger_provider
+from opentelemetry.instrumentation.google_genai import (
+    otel_wrapper,
+    tool_call_wrapper,
+)
 from opentelemetry.metrics import get_meter_provider
 from opentelemetry.trace import get_tracer_provider
 
-from opentelemetry.instrumentation.google_genai import tool_call_wrapper
-from opentelemetry.instrumentation.google_genai import otel_wrapper
 from ..common import otel_mocker
 
 
 class TestCase(unittest.TestCase):
-
     def setUp(self):
         self._otel = otel_mocker.OTelMocker()
         self._otel.install()
         self._otel_wrapper = otel_wrapper.OTelWrapper.from_providers(
             get_tracer_provider(),
             get_event_logger_provider(),
-            get_meter_provider())
-    
+            get_meter_provider(),
+        )
+
     @property
     def otel(self):
         return self._otel
@@ -46,9 +48,8 @@ class TestCase(unittest.TestCase):
 
     def wrap(self, tool_or_tools, **kwargs):
         return tool_call_wrapper.wrapped(
-            tool_or_tools,
-            self.otel_wrapper,
-            **kwargs)
+            tool_or_tools, self.otel_wrapper, **kwargs
+        )
 
     def test_wraps_none(self):
         result = self.wrap(None)
@@ -57,6 +58,7 @@ class TestCase(unittest.TestCase):
     def test_wraps_single_tool_function(self):
         def foo():
             pass
+
         wrapped_foo = self.wrap(foo)
         self.otel.assert_does_not_have_span_named("tool_call foo")
         foo()
@@ -67,8 +69,10 @@ class TestCase(unittest.TestCase):
     def test_wraps_multiple_tool_functions_as_list(self):
         def foo():
             pass
+
         def bar():
             pass
+
         wrapped_functions = self.wrap([foo, bar])
         wrapped_foo = wrapped_functions[0]
         wrapped_bar = wrapped_functions[1]
@@ -84,16 +88,14 @@ class TestCase(unittest.TestCase):
         wrapped_bar()
         self.otel.assert_has_span_named("tool_call bar")
 
-
     def test_wraps_multiple_tool_functions_as_dict(self):
         def foo():
             pass
+
         def bar():
             pass
-        wrapped_functions = self.wrap({
-            "foo": foo,
-            "bar": bar
-        })
+
+        wrapped_functions = self.wrap({"foo": foo, "bar": bar})
         wrapped_foo = wrapped_functions["foo"]
         wrapped_bar = wrapped_functions["bar"]
         self.otel.assert_does_not_have_span_named("tool_call foo")
@@ -111,6 +113,7 @@ class TestCase(unittest.TestCase):
     def test_wraps_async_tool_function(self):
         async def foo():
             pass
+
         wrapped_foo = self.wrap(foo)
         self.otel.assert_does_not_have_span_named("tool_call foo")
         asyncio.run(foo())

@@ -31,8 +31,12 @@ TOOL_CALL_KEYWORD_ARG_COUNT = "gen_ai.tool.keyword_args.count"
 # Semantic Convention to be defined.
 # https://github.com/open-telemetry/semantic-conventions/issues/2185
 FUNCTION_TOOL_CALL_START_EVENT_NAME = "function_call.start"
-FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT = "positional_argument_count"
-FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT = "keyword_argument_count"
+FUNCTION_TOOL_CALL_START_EVENT_ATTRS_POSITIONAL_ARGS_COUNT = (
+    "positional_argument_count"
+)
+FUNCTION_TOOL_CALL_START_EVENT_ATTRS_KEYWORD_ARGS_COUNT = (
+    "keyword_argument_count"
+)
 FUNCTION_TOOL_CALL_START_EVENT_BODY_POSITIONAL_ARGS = "positional_arguments"
 FUNCTION_TOOL_CALL_START_EVENT_BODY_KEYWORD_ARGS = "keyword_arguments"
 
