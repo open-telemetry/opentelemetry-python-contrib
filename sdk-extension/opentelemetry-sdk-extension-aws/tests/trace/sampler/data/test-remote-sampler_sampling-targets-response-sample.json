@@ -1,0 +1,20 @@
+{
+    "LastRuleModification": 1707551387.0,
+    "SamplingTargetDocuments": [
+        {
+            "FixedRate": 0.0,
+            "Interval": 100000,
+            "ReservoirQuota": 100000,
+            "ReservoirQuotaTTL": 9999999999.0,
+            "RuleName": "test"
+        },
+        {
+            "FixedRate": 0.0,
+            "Interval": 1000,
+            "ReservoirQuota": 100,
+            "ReservoirQuotaTTL": 9999999999.0,
+            "RuleName": "Default"
+        }
+    ],
+    "UnprocessedStatistics": []
+}
