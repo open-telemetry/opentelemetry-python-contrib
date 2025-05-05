@@ -95,7 +95,9 @@ class TestCase(unittest.TestCase):
         def otherfunction():
             pass
 
-        wrapped_functions = self.wrap({"somefunction": somefunction, "otherfunction": otherfunction})
+        wrapped_functions = self.wrap(
+            {"somefunction": somefunction, "otherfunction": otherfunction}
+        )
         wrapped_somefunction = wrapped_functions["somefunction"]
         wrapped_otherfunction = wrapped_functions["otherfunction"]
         self.otel.assert_does_not_have_span_named("tool_call somefunction")

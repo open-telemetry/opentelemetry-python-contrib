@@ -114,7 +114,8 @@ class ToolCallInstrumentationTestCase(TestCase):
             generated_span.attributes["code.function.params.someparam"], "123"
         )
         self.assertEqual(
-            generated_span.attributes["code.function.params.otherparam"], "'abc'"
+            generated_span.attributes["code.function.params.otherparam"],
+            "'abc'",
         )
 
     def test_tool_calls_do_not_record_parameter_values_if_not_enabled(self):
@@ -145,8 +146,12 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction(123, otherparam="abc")
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
-        self.assertNotIn("code.function.params.someparam", generated_span.attributes)
-        self.assertNotIn("code.function.params.otherparam", generated_span.attributes)
+        self.assertNotIn(
+            "code.function.params.someparam", generated_span.attributes
+        )
+        self.assertNotIn(
+            "code.function.params.otherparam", generated_span.attributes
+        )
 
     def test_tool_calls_record_return_values_on_span_if_enabled(self):
         os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
