@@ -26,5 +26,3 @@ class TestUtils(unittest.TestCase):
         CeleryInstrumentor().uninstrument()
         self.assertIsNotNone(first.metrics)
         self.assertIsNotNone(second.metrics)
-        self.assertEqual(first.task_id_to_start_time, {})
-        self.assertEqual(second.task_id_to_start_time, {})
