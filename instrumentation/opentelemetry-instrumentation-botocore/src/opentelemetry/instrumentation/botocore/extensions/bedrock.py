@@ -15,6 +15,7 @@
 # Includes work from:
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -41,6 +42,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotoClientErrorT,
     _BotocoreInstrumentorContext,
 )
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes
 from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
@@ -146,7 +148,10 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         )
 
     def _extract_metrics_attributes(self) -> _AttributeMapT:
-        attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
+        attributes = {
+            GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value,
+            **get_server_attributes(self._call_context.endpoint_url),
+        }
 
         model_id = self._call_context.params.get(_MODEL_ID_KEY)
         if not model_id:
@@ -163,6 +168,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             attributes[GEN_AI_OPERATION_NAME] = (
                 GenAiOperationNameValues.CHAT.value
             )
+
         return attributes
 
     def extract_attributes(self, attributes: _AttributeMapT):

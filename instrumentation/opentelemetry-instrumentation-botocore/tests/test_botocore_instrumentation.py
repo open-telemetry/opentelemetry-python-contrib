@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 from unittest.mock import ANY, Mock, patch
 
 import botocore.session
@@ -63,6 +64,9 @@ class TestBotocoreInstrumentor(TestBase):
             "aws.region": self.region,
             "retry_attempts": 0,
             SpanAttributes.HTTP_STATUS_CODE: 200,
+            # Some services like IAM or STS have a global endpoint and exclude specified region.
+            SpanAttributes.SERVER_ADDRESS: f"{service.lower()}.{'' if self.region == 'aws-global' else self.region + '.'}amazonaws.com",
+            SpanAttributes.SERVER_PORT: 443,
         }
 
     def assert_only_span(self):
@@ -330,6 +334,7 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
+        expected[SpanAttributes.SERVER_ADDRESS] = "sts.amazonaws.com"
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
@@ -497,3 +502,54 @@ class TestBotocoreInstrumentor(TestBase):
                 response_hook_result_attribute_name: 0,
             },
         )
+
+    @mock_aws
+    def test_server_attributes(self):
+        # Test regional endpoint
+        ec2 = self._make_client("ec2")
+        ec2.describe_instances()
+        self.assert_span(
+            "EC2",
+            "DescribeInstances",
+            attributes={
+                SpanAttributes.SERVER_ADDRESS: f"ec2.{self.region}.amazonaws.com",
+                SpanAttributes.SERVER_PORT: 443,
+            },
+        )
+        self.memory_exporter.clear()
+
+        # Test global endpoint
+        iam_global = self._make_client("iam")
+        iam_global.list_users()
+        self.assert_span(
+            "IAM",
+            "ListUsers",
+            attributes={
+                SpanAttributes.SERVER_ADDRESS: "iam.amazonaws.com",
+                SpanAttributes.SERVER_PORT: 443,
+                "aws.region": "aws-global",
+            },
+        )
+
+    @mock_aws
+    def test_server_attributes_with_custom_endpoint(self):
+        with patch.dict(
+            os.environ,
+            {"MOTO_S3_CUSTOM_ENDPOINTS": "https://proxy.amazon.org:2025"},
+        ):
+            s3 = self.session.create_client(
+                "s3",
+                region_name=self.region,
+                endpoint_url="https://proxy.amazon.org:2025",
+            )
+
+            s3.list_buckets()
+
+            self.assert_span(
+                "S3",
+                "ListBuckets",
+                attributes={
+                    SpanAttributes.SERVER_ADDRESS: "proxy.amazon.org",
+                    SpanAttributes.SERVER_PORT: 2025,
+                },
+            )
