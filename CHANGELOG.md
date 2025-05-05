@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-celery` Add three additional worker metrics to count active and prefetched tasks, as well as prefetch duration
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+
+### Fixed
+
+- `opentelemetry-instrumentation-celery` Fix a memory leak where a reference to a task identifier is kept indefinitely
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-celery` Rename `flower.task.runtime.seconds` metric to `messaging.process.duration` according to semconv
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
@@ -19,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - infra(ci): Fix git pull failures in core contrib test
   ([#3357](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3357))
+
+## Version 1.34.0/0.55b0 (2025-06-04)
 
 ### Added
 

@@ -20,6 +20,10 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
 
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_CLIENT_ID,
+    MESSAGING_OPERATION_NAME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 
@@ -217,6 +221,14 @@ def retrieve_task_id(kwargs):
     return task_id
 
 
+def retrieve_request(kwargs):
+    request = kwargs.get("request")
+    if request is None:
+        logger.debug("Unable to retrieve the request from signal arguments")
+
+    return request
+
+
 def retrieve_task_id_from_request(kwargs):
     # retry signal does not include task_id as argument so use request argument
     request = kwargs.get("request")
@@ -250,3 +262,17 @@ def retrieve_reason(kwargs):
     if not reason:
         logger.debug("Unable to retrieve the retry reason")
     return reason
+
+
+def get_metrics_attributes_from_request(request):
+    return {
+        MESSAGING_OPERATION_NAME: request.task.name,
+        MESSAGING_CLIENT_ID: request.hostname,
+    }
+
+
+def get_metrics_attributes_from_task(task):
+    return {
+        MESSAGING_OPERATION_NAME: task.name,
+        MESSAGING_CLIENT_ID: task.request.hostname,
+    }
