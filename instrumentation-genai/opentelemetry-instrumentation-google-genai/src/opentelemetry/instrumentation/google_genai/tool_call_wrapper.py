@@ -50,9 +50,7 @@ def _to_otel_value(python_value):
     if isinstance(python_value, list):
         return [_to_otel_value(x) for x in python_value]
     if isinstance(python_value, dict):
-        return dict(
-            [(key, _to_otel_value(val)) for (key, val) in python_value.items()]
-        )
+        return {key:_to_otel_value(val) for (key, val) in python_value.items()}
     if hasattr(python_value, "model_dump"):
         return python_value.model_dump()
     if hasattr(python_value, "__dict__"):
@@ -237,12 +235,7 @@ def wrapped(
             wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools
         ]
     if isinstance(tool_or_tools, dict):
-        return dict(
-            [
-                (key, wrapped(value, otel_wrapper, **kwargs))
-                for (key, value) in tool_or_tools.items()
-            ]
-        )
+        return {key: wrapped(value, otel_wrapper, **kwargs) for (key, value) in tool_or_tools.items()}
     if callable(tool_or_tools):
         return _wrap_tool_function(tool_or_tools, otel_wrapper, **kwargs)
     return tool_or_tools
