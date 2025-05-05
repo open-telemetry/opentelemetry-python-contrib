@@ -57,6 +57,22 @@ The hooks can be configured as follows:
         request_hook=request_hook, response_hook=response_hook
     )
 
+Custom Duration Histogram Boundaries
+************************************
+To customize the duration histogram bucket boundaries used for HTTP client request duration metrics,
+you can provide a list of values when instrumenting:
+
+.. code:: python
+
+    import requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+    custom_boundaries = [0, 5, 10, 25, 50, 100, 250, 500, 1000]
+
+    RequestsInstrumentor().instrument(
+        duration_histogram_boundaries=custom_boundaries
+    )
+
 Exclude lists
 *************
 To exclude certain URLs from being tracked, set the environment variable ``OTEL_PYTHON_REQUESTS_EXCLUDED_URLS``
@@ -87,7 +103,8 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
-    _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
+    DURATION_HISTOGRAM_EXPLICIT_BOUNDS_NEW,
+    DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -411,8 +428,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global
                 ``request_hook``: An optional callback that is invoked right after a span is created.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
-                ``excluded_urls``: A string containing a comma-delimited
-                    list of regexes used to exclude URLs from tracking
+                ``excluded_urls``: A string containing a comma-delimited list of regexes used to exclude URLs from tracking
+                ``duration_histogram_boundaries``: A list of float values representing the explicit bucket boundaries for the duration histogram.
         """
         semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
@@ -427,6 +444,9 @@ class RequestsInstrumentor(BaseInstrumentor):
         )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
+        duration_histogram_boundaries = kwargs.get(
+            "duration_histogram_boundaries"
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -439,6 +459,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=duration_histogram_boundaries
+                or DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD,
             )
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
@@ -446,7 +468,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
-                explicit_bucket_boundaries_advisory=_DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
+                explicit_bucket_boundaries_advisory=duration_histogram_boundaries
+                or DURATION_HISTOGRAM_EXPLICIT_BOUNDS_NEW,
             )
         _instrument(
             tracer,

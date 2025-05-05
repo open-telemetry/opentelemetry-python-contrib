@@ -23,8 +23,8 @@ from requests.models import Response
 import opentelemetry.instrumentation.requests
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
-    _DURATION_HISTOGRAM_OLD_EXPLICIT_BOUNDS,
+    DURATION_HISTOGRAM_EXPLICIT_BOUNDS_NEW,
+    DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -125,6 +125,7 @@ class RequestsIntegrationTestBase(abc.ABC):
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().uninstrument()
         httpretty.disable()
 
@@ -732,6 +733,7 @@ class TestRequestsIntergrationMetric(TestBase):
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().uninstrument()
         httpretty.disable()
 
@@ -766,7 +768,7 @@ class TestRequestsIntergrationMetric(TestBase):
                     for data_point in metric.data.data_points:
                         self.assertEqual(
                             data_point.explicit_bounds,
-                            _DURATION_HISTOGRAM_OLD_EXPLICIT_BOUNDS,
+                            DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD,
                         )
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
@@ -796,7 +798,7 @@ class TestRequestsIntergrationMetric(TestBase):
                     for data_point in metric.data.data_points:
                         self.assertEqual(
                             data_point.explicit_bounds,
-                            _DURATION_HISTOGRAM_NEW_EXPLICIT_BOUNDS,
+                            DURATION_HISTOGRAM_EXPLICIT_BOUNDS_NEW,
                         )
                         self.assertDictEqual(
                             expected_attributes, dict(data_point.attributes)
@@ -842,6 +844,38 @@ class TestRequestsIntergrationMetric(TestBase):
                                 dict(data_point.attributes),
                             )
                         self.assertEqual(data_point.count, 1)
+
+    def test_custom_histogram_boundaries(self):
+        RequestsInstrumentor().uninstrument()
+        custom_boundaries = (0, 1, 2, 5, 10, 20, 50, 100)
+        meter_provider, memory_reader = self.create_meter_provider()
+        RequestsInstrumentor().instrument(
+            meter_provider=meter_provider,
+            duration_histogram_boundaries=custom_boundaries,
+        )
+
+        self.perform_request(self.URL)
+        metrics = memory_reader.get_metrics_data().resource_metrics[0]
+        self.assertEqual(len(metrics.scope_metrics), 1)
+        data_point = metrics.scope_metrics[0].metrics[0].data.data_points[0]
+        self.assertEqual(data_point.explicit_bounds, custom_boundaries)
+        self.assertEqual(data_point.count, 1)
+
+    def test_custom_histogram_boundaries_new_semconv(self):
+        RequestsInstrumentor().uninstrument()
+        custom_boundaries = (0, 5, 10, 25, 50, 100, 250, 500, 1000)
+        meter_provider, memory_reader = self.create_meter_provider()
+        RequestsInstrumentor().instrument(
+            meter_provider=meter_provider,
+            duration_histogram_boundaries=custom_boundaries,
+        )
+
+        self.perform_request(self.URL)
+        metrics = memory_reader.get_metrics_data().resource_metrics[0]
+        self.assertEqual(len(metrics.scope_metrics), 1)
+        data_point = metrics.scope_metrics[0].metrics[0].data.data_points[0]
+        self.assertEqual(data_point.explicit_bounds, custom_boundaries)
+        self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_non_recording_span(self):
         expected_attributes = {
