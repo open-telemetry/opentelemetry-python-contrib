@@ -67,7 +67,7 @@ you can provide a list of values when instrumenting:
     import requests
     from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
-    custom_boundaries = [0, 5, 10, 25, 50, 100, 250, 500, 1000]
+    custom_boundaries = [0.0, 5.0, 10.0, 25.0, 50.0, 100.0]
 
     RequestsInstrumentor().instrument(
         duration_histogram_boundaries=custom_boundaries
