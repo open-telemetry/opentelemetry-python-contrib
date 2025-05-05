@@ -56,70 +56,70 @@ class TestCase(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_wraps_single_tool_function(self):
-        def foo():
+        def somefunction():
             pass
 
-        wrapped_foo = self.wrap(foo)
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        foo()
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        wrapped_foo()
-        self.otel.assert_has_span_named("tool_call foo")
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        somefunction()
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        wrapped_somefunction()
+        self.otel.assert_has_span_named("tool_call somefunction")
 
     def test_wraps_multiple_tool_functions_as_list(self):
-        def foo():
+        def somefunction():
             pass
 
-        def bar():
+        def otherfunction():
             pass
 
-        wrapped_functions = self.wrap([foo, bar])
-        wrapped_foo = wrapped_functions[0]
-        wrapped_bar = wrapped_functions[1]
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        foo()
-        bar()
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        wrapped_foo()
-        self.otel.assert_has_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        wrapped_bar()
-        self.otel.assert_has_span_named("tool_call bar")
+        wrapped_functions = self.wrap([somefunction, otherfunction])
+        wrapped_somefunction = wrapped_functions[0]
+        wrapped_otherfunction = wrapped_functions[1]
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        somefunction()
+        otherfunction()
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        wrapped_somefunction()
+        self.otel.assert_has_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        wrapped_otherfunction()
+        self.otel.assert_has_span_named("tool_call otherfunction")
 
     def test_wraps_multiple_tool_functions_as_dict(self):
-        def foo():
+        def somefunction():
             pass
 
-        def bar():
+        def otherfunction():
             pass
 
-        wrapped_functions = self.wrap({"foo": foo, "bar": bar})
-        wrapped_foo = wrapped_functions["foo"]
-        wrapped_bar = wrapped_functions["bar"]
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        foo()
-        bar()
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        wrapped_foo()
-        self.otel.assert_has_span_named("tool_call foo")
-        self.otel.assert_does_not_have_span_named("tool_call bar")
-        wrapped_bar()
-        self.otel.assert_has_span_named("tool_call bar")
+        wrapped_functions = self.wrap({"somefunction": somefunction, "otherfunction": otherfunction})
+        wrapped_somefunction = wrapped_functions["somefunction"]
+        wrapped_otherfunction = wrapped_functions["otherfunction"]
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        somefunction()
+        otherfunction()
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        wrapped_somefunction()
+        self.otel.assert_has_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        wrapped_otherfunction()
+        self.otel.assert_has_span_named("tool_call otherfunction")
 
     def test_wraps_async_tool_function(self):
-        async def foo():
+        async def somefunction():
             pass
 
-        wrapped_foo = self.wrap(foo)
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        asyncio.run(foo())
-        self.otel.assert_does_not_have_span_named("tool_call foo")
-        asyncio.run(wrapped_foo())
-        self.otel.assert_has_span_named("tool_call foo")
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        asyncio.run(somefunction())
+        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        asyncio.run(wrapped_somefunction())
+        self.otel.assert_has_span_named("tool_call somefunction")
 
     def test_preserves_tool_dict(self):
         tool_dict = genai_types.ToolDict()
