@@ -20,6 +20,9 @@ from openai import Stream
 
 from opentelemetry._events import Event, EventLogger
 from opentelemetry.semconv._incubating.attributes import (
+    event_attributes as EventAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -438,10 +441,6 @@ def _set_embeddings_response_attributes(
 
     # Emit events for embeddings if content capture is enabled
     if capture_content:
-        from opentelemetry.semconv._incubating.attributes import (
-            event_attributes as EventAttributes,
-        )
-
         # Emit input event
         input_event_attributes = {
             GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
