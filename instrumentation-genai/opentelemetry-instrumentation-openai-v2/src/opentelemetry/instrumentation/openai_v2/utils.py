@@ -242,7 +242,9 @@ def get_llm_request_attributes(
     ):
         # Add embedding dimensions if specified
         if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            attributes["gen_ai.embeddings.dimensions"] = kwargs["dimensions"]
+            attributes["gen_ai.embeddings.dimension.count"] = kwargs[
+                "dimensions"
+            ]
 
         # Add encoding format if specified
         # Using a custom attribute "gen_ai.embeddings.encoding_format". Will propose to semantic conventions.

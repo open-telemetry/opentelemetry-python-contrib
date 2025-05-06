@@ -173,9 +173,9 @@ def embeddings_create(
             )
         }
 
-        # Using a custom attribute "gen_ai.embeddings.dimensions". Will propose to semantic conventions.
+        # Using a custom attribute "gen_ai.embeddings.dimension.count". Will propose to semantic conventions.
         if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            span_attributes["gen_ai.embeddings.dimensions"] = kwargs[
+            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
                 "dimensions"
             ]
 
@@ -240,7 +240,7 @@ def async_embeddings_create(
 
         # Set embeddings dimensions if specified in the request
         if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            span_attributes["gen_ai.embeddings.dimensions"] = kwargs[
+            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
                 "dimensions"
             ]
 
@@ -303,10 +303,10 @@ def _record_metrics(
         ],
     }
 
-    if "gen_ai.embeddings.dimensions" in span_attributes:
-        common_attributes["gen_ai.embeddings.dimensions"] = span_attributes[
-            "gen_ai.embeddings.dimensions"
-        ]
+    if "gen_ai.embeddings.dimension.count" in span_attributes:
+        common_attributes["gen_ai.embeddings.dimension.count"] = (
+            span_attributes["gen_ai.embeddings.dimension.count"]
+        )
 
     if error_type:
         common_attributes["error.type"] = error_type
@@ -425,7 +425,7 @@ def _set_embeddings_response_attributes(
         if getattr(first_embedding, "embedding", None):
             set_span_attribute(
                 span,
-                "gen_ai.embeddings.dimensions",
+                "gen_ai.embeddings.dimension.count",
                 len(first_embedding.embedding),
             )
 

@@ -146,7 +146,9 @@ async def test_async_embeddings_with_dimensions(
     assert_embedding_attributes(spans[0], model_name, response)
 
     # Verify dimensions attribute is set correctly
-    assert spans[0].attributes["gen_ai.embeddings.dimensions"] == dimensions
+    assert (
+        spans[0].attributes["gen_ai.embeddings.dimension.count"] == dimensions
+    )
 
     # Verify actual embedding dimensions match the requested dimensions
     assert len(response.data[0].embedding) == dimensions
@@ -283,10 +285,10 @@ def assert_embedding_attributes(
     # Assert embeddings-specific attributes
     if (
         hasattr(span, "attributes")
-        and "gen_ai.embeddings.dimensions" in span.attributes
+        and "gen_ai.embeddings.dimension.count" in span.attributes
     ):
         # If dimensions were specified, verify that they match the actual dimensions
-        assert span.attributes["gen_ai.embeddings.dimensions"] == len(
+        assert span.attributes["gen_ai.embeddings.dimension.count"] == len(
             response.data[0].embedding
         )
 
