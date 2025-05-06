@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: |-
+      {
+        "message": "Say this is a test",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "p": 0.9,
+        "stop_sequences": [
+          "|"
+        ]
+      }
+    headers:
+      Content-Length:
+      - '106'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.3.0 md/arch#arm64 lang/python#3.10.16
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250410T165615Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-d11162cc-5e3ef3bd07c5f9eb3ad25214;Parent=0a40817ca75eead7;Sampled=1
+      amz-sdk-invocation-id:
+      - 54acc108-181d-4437-a0a2-8293496f892d
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/cohere.command-r-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "response_id": "379ed018/64bcb4c2-902c-4646-9e54-3e5e90c3b11e",
+          "text": "This is a test.<",
+          "generation_id": "dcf7f3e3-a611-4fb5-85fe-ae09e6b2eaea",
+          "chat_history": [
+            {
+              "role": "USER",
+              "message": "Say this is a test"
+            },
+            {
+              "role": "CHATBOT",
+              "message": "This is a test.<"
+            }
+          ],
+          "finish_reason": "STOP_SEQUENCE"
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 10 Apr 2025 16:56:15 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '141'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '5'
+      x-amzn-RequestId:
+      - 4d1ce10c-03d3-4579-8bab-a0e4eb14a8d0
+    status:
+      code: 200
+      message: OK
+version: 1

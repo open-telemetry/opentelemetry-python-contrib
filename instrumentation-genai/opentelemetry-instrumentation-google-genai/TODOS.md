@@ -4,7 +4,6 @@
 
 Here are some TODO items required to achieve stability for this package:
 
- - Add more span-level attributes for request configuration
  - Add more span-level attributes for response information
  - Verify and correct formatting of events:
    - Including the 'role' field for message events
