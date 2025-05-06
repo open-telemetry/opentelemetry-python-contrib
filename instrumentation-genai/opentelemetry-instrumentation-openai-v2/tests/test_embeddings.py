@@ -226,7 +226,7 @@ def test_embeddings_with_encoding_format(
 
     # Verify encoding_format attribute is set correctly
     assert (
-        spans[0].attributes["gen_ai.embeddings.encoding_format"]
+        spans[0].attributes["gen_ai.request.encoding_formats"]
         == encoding_format
     )
 
