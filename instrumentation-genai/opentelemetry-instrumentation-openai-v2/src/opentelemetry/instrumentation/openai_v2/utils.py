@@ -247,7 +247,6 @@ def get_llm_request_attributes(
             ]
 
         # Add encoding format if specified
-        # Using a custom attribute "gen_ai.embeddings.encoding_format". Will propose to semantic conventions.
         if "encoding_format" in kwargs:
             attributes["gen_ai.request.encoding_formats"] = kwargs[
                 "encoding_format"
