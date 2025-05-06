@@ -340,6 +340,7 @@ def _record_metrics(
     )
 
     if result and getattr(result, "usage", None):
+        # Always record input tokens
         input_attributes = {
             **common_attributes,
             GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
@@ -349,19 +350,18 @@ def _record_metrics(
             attributes=input_attributes,
         )
 
-        token_count = (
-            result.usage.total_tokens
-            if operation_name
-            == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
-            else result.usage.completion_tokens
-        )
-        attributes = {
-            **common_attributes,
-            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
-        }
-        instruments.token_usage_histogram.record(
-            token_count, attributes=attributes
-        )
+        # For embeddings, don't record output tokens as all tokens are input tokens
+        if (
+            operation_name
+            != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+        ):
+            output_attributes = {
+                **common_attributes,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+            }
+            instruments.token_usage_histogram.record(
+                result.usage.completion_tokens, attributes=output_attributes
+            )
 
 
 def _set_response_attributes(
@@ -436,11 +436,7 @@ def _set_embeddings_response_attributes(
             GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
             result.usage.prompt_tokens,
         )
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-            result.usage.total_tokens,
-        )
+        # Don't set output tokens for embeddings as all tokens are input tokens
 
     # Emit events for embeddings if content capture is enabled
     if capture_content:

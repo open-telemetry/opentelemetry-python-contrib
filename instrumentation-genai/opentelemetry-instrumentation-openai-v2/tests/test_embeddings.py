@@ -376,25 +376,18 @@ def test_embeddings_token_metrics(
 
     # Find the input token data point
     input_token_point = None
-    output_token_point = None
     for point in token_metric.data.data_points:
         if (
             point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
             == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
         ):
             input_token_point = point
-        elif (
-            point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
-            == GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value
-        ):
-            output_token_point = point
+            break
 
     assert input_token_point is not None, "Input token metric not found"
-    assert output_token_point is not None, "Output token metric not found"
 
     # Verify the token counts match what was reported in the response
     assert input_token_point.sum == response.usage.prompt_tokens
-    assert output_token_point.sum == response.usage.total_tokens
 
 
 def assert_embedding_attributes(
@@ -410,7 +403,7 @@ def assert_embedding_attributes(
         response_id=None,  # Embeddings don't have a response ID
         response_model=response.model,
         input_tokens=response.usage.prompt_tokens,
-        output_tokens=response.usage.total_tokens,  # Use total_tokens for output_tokens
+        output_tokens=None,  # Embeddings don't have separate output tokens
         operation_name="embeddings",
         server_address="api.openai.com",
     )
@@ -429,10 +422,6 @@ def assert_embedding_attributes(
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
         == response.usage.prompt_tokens
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == response.usage.total_tokens
     )
 
 
