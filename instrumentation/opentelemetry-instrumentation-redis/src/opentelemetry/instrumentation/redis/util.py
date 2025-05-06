@@ -16,14 +16,17 @@
 Some utils used by the redis integration
 """
 
-from typing import Any
+from __future__ import annotations
 
-from opentelemetry.instrumentation.redis.types import (
-    AsyncPipelineInstance,
-    AsyncRedisInstance,
-    PipelineInstance,
-    RedisInstance,
-)
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from opentelemetry.instrumentation.redis.custom_types import (
+        AsyncPipelineInstance,
+        AsyncRedisInstance,
+        PipelineInstance,
+        RedisInstance,
+    )
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
@@ -60,7 +63,7 @@ def _extract_conn_attributes(conn_kwargs):
     return attributes
 
 
-def _format_command_args(args):
+def _format_command_args(args: list[str]):
     """Format and sanitize command arguments, and trim them as needed"""
     cmd_max_len = 1000
     value_too_long_mark = "..."

@@ -152,7 +152,7 @@ if TYPE_CHECKING:
     import redis.cluster
     import redis.connection
 
-    from opentelemetry.instrumentation.redis.types import (
+    from opentelemetry.instrumentation.redis.custom_types import (
         AsyncPipelineInstance,
         AsyncRedisInstance,
         PipelineInstance,
