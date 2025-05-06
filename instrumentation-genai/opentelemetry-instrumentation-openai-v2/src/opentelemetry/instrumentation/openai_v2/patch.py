@@ -184,7 +184,7 @@ def embeddings_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-            end_on_exit=False,
+            end_on_exit=True,
         ) as span:
             # Store the input for later use in the response attributes
             input_text = kwargs.get("input", "")
@@ -200,7 +200,6 @@ def embeddings_create(
                         span, result, event_logger, capture_content, input_text
                     )
 
-                span.end()
                 return result
 
             except Exception as error:
@@ -249,7 +248,7 @@ def async_embeddings_create(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
-            end_on_exit=False,
+            end_on_exit=True,
         ) as span:
             # Store the input for later use in the response attributes
             input_text = kwargs.get("input", "")
@@ -265,7 +264,6 @@ def async_embeddings_create(
                         span, result, event_logger, capture_content, input_text
                     )
 
-                span.end()
                 return result
 
             except Exception as error:
