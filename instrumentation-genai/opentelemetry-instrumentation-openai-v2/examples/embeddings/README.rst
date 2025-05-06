@@ -1,5 +1,5 @@
 OpenTelemetry OpenAI Embeddings API Instrumentation Example
-========================================================
+===========================================================
 
 This is an example of how to instrument OpenAI Embeddings API calls with zero code changes,
 using ``opentelemetry-instrument``.
