@@ -291,22 +291,21 @@ def _record_metrics(
     instruments: Instruments,
     duration: float,
     result,
-    span_attributes: dict,
+    request_attributes: dict,
     error_type: Optional[str],
     operation_name: str,
 ):
-    """Generalized function to record metrics for both chat and embeddings operations."""
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
             GenAIAttributes.GEN_AI_REQUEST_MODEL
         ],
     }
 
-    if "gen_ai.embeddings.dimension.count" in span_attributes:
+    if "gen_ai.embeddings.dimension.count" in request_attributes:
         common_attributes["gen_ai.embeddings.dimension.count"] = (
-            span_attributes["gen_ai.embeddings.dimension.count"]
+            request_attributes["gen_ai.embeddings.dimension.count"]
         )
 
     if error_type:
@@ -325,13 +324,13 @@ def _record_metrics(
             result.system_fingerprint
         )
 
-    if ServerAttributes.SERVER_ADDRESS in span_attributes:
-        common_attributes[ServerAttributes.SERVER_ADDRESS] = span_attributes[
-            ServerAttributes.SERVER_ADDRESS
-        ]
+    if ServerAttributes.SERVER_ADDRESS in request_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = (
+            request_attributes[ServerAttributes.SERVER_ADDRESS]
+        )
 
-    if ServerAttributes.SERVER_PORT in span_attributes:
-        common_attributes[ServerAttributes.SERVER_PORT] = span_attributes[
+    if ServerAttributes.SERVER_PORT in request_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[
             ServerAttributes.SERVER_PORT
         ]
 
