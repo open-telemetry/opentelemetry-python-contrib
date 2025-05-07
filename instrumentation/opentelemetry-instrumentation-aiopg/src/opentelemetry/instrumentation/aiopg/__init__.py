@@ -23,40 +23,53 @@ Usage
 
 .. code-block:: python
 
+    import asyncio
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
     # Call instrument() to wrap all database connections
     AiopgInstrumentor().instrument()
 
-    cnx = await aiopg.connect(database='Database')
-    cursor = await cnx.cursor()
-    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
-    await cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.close()
-    cnx.close()
+    dsn = 'user=user password=password host=127.0.0.1'
 
-    pool = await aiopg.create_pool(database='Database')
+    async def connect():
+        cnx = await aiopg.connect(dsn)
+        cursor = await cnx.cursor()
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute("INSERT INTO test (testField) VALUES (123)")
+        cursor.close()
+        cnx.close()
 
-    cnx = await pool.acquire()
-    cursor = await cnx.cursor()
-    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
-    await cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.close()
-    cnx.close()
+    async def create_pool():
+        pool = await aiopg.create_pool(dsn)
+        cnx = await pool.acquire()
+        cursor = await cnx.cursor()
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute("INSERT INTO test (testField) VALUES (123)")
+        cursor.close()
+        cnx.close()
+
+    asyncio.run(connect())
+    asyncio.run(create_pool())
 
 .. code-block:: python
 
+    import asyncio
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
 
+    dsn = 'user=user password=password host=127.0.0.1'
+
     # Alternatively, use instrument_connection for an individual connection
-    cnx = await aiopg.connect(database='Database')
-    instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
-    cursor = await instrumented_cnx.cursor()
-    await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
-    await cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.close()
-    instrumented_cnx.close()
+    async def go():
+        cnx = await aiopg.connect(dsn)
+        instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
+        cursor = await instrumented_cnx.cursor()
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute("INSERT INTO test (testField) VALUES (123)")
+        cursor.close()
+        instrumented_cnx.close()
+
+    asyncio.run(go())
 
 API
 ---
