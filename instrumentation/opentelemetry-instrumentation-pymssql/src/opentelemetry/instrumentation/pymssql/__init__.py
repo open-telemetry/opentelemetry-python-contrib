@@ -30,7 +30,8 @@ Usage
 
     cnx = pymssql.connect(database="MSSQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
@@ -44,7 +45,8 @@ Usage
     cnx = pymssql.connect(database="MSSQL_Database")
     instrumented_cnx = PyMSSQLInstrumentor().instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     instrumented_cnx.commit()
     cursor.close()
     instrumented_cnx.close()
