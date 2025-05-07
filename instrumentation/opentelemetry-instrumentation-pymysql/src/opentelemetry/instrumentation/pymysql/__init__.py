@@ -31,11 +31,11 @@ Usage
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
-
 
 .. code:: python
 
@@ -53,7 +53,8 @@ Usage
         }
     )
     cursor = instrumented_cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     instrumented_cnx.commit()
     cursor.close()
     instrumented_cnx.close()
@@ -75,11 +76,11 @@ Usage
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
-
 
 For example,
 ::
