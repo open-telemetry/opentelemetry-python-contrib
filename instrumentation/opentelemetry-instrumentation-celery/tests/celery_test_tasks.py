@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from celery import Celery
 
 from opentelemetry import baggage
 
 
 class Config:
-    result_backend = "rpc"
-    broker_backend = "memory"
+    result_backend = "rpc://"
+    without_gossip = True
+    without_heartbeat = True
+    without_mingle = True
 
 
 app = Celery(broker="memory:///")
@@ -31,8 +35,14 @@ class CustomError(Exception):
 
 
 @app.task
-def task_add(num_a, num_b):
-    return num_a + num_b
+def task_add(x=1, y=2):
+    return x + y
+
+
+@app.task
+def task_sleep(sleep_time):
+    time.sleep(sleep_time)
+    return 1
 
 
 @app.task
