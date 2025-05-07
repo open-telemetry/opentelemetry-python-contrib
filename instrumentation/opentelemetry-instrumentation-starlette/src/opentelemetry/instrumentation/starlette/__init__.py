@@ -332,7 +332,7 @@ class _InstrumentedStarlette(applications.Starlette):
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 
     def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
+        _InstrumentedStarlette._instrumented_starlette_apps.discard(self)
 
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:

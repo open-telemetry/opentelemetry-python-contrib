@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from starlette import applications
 from starlette.responses import PlainTextResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -621,10 +621,7 @@ class TestBaseWithCustomHeaders(TestBase):
 
     @staticmethod
     def create_starlette_app():
-        app = applications.Starlette()
-
-        @app.route("/foobar")
-        def _(request):
+        def foobar(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -636,8 +633,7 @@ class TestBaseWithCustomHeaders(TestBase):
                 },
             )
 
-        @app.websocket_route("/foobar_web")
-        async def _(websocket: WebSocket) -> None:
+        async def foobar_web(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(
@@ -663,20 +659,30 @@ class TestBaseWithCustomHeaders(TestBase):
             if message.get("type") == "websocket.disconnect":
                 pass
 
-        return app
+        return applications.Starlette(
+            routes=[
+                Route("/foobar", foobar),
+                WebSocketRoute("/foobar_web", foobar_web),
+            ]
+        )
 
 
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-        },
-    )
-    def setUp(self) -> None:
+    def setUp(self):
         super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -793,16 +799,21 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
 
 class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-        },
-    )
-    def setUp(self) -> None:
+    def setUp(self):
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
         super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self.test_env_patch.stop()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -918,22 +929,28 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
 class TestNonRecordingSpanWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
         super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
         reset_trace_globals()
         set_tracer_provider(tracer_provider=NoOpTracerProvider())
 
         self._app = self.create_app()
         self._client = TestClient(self._app)
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_header_not_present_in_non_recording_span(self):
         resp = self._client.get(
