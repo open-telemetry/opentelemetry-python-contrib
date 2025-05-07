@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
+  ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
+
 ### Fixed
 
 - `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
