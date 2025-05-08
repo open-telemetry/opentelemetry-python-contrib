@@ -48,7 +48,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 # Values defined in milliseconds
-DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD = (
+HTTP_DURATION_HISTOGRAM_BUCKETS_OLD = (
     0.0,
     5.0,
     10.0,
@@ -67,7 +67,7 @@ DURATION_HISTOGRAM_EXPLICIT_BOUNDS_OLD = (
 )
 
 # Values defined in seconds
-DURATION_HISTOGRAM_EXPLICIT_BOUNDS_NEW = (
+HTTP_DURATION_HISTOGRAM_BUCKETS_NEW = (
     0.005,
     0.01,
     0.025,
