@@ -20,6 +20,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from opentelemetry.semconv.trace import (
+    DbSystemValues,
+    NetTransportValues,
+    SpanAttributes,
+)
+from opentelemetry.trace import Span
+
 if TYPE_CHECKING:
     from opentelemetry.instrumentation.redis.custom_types import (
         AsyncPipelineInstance,
@@ -27,12 +34,6 @@ if TYPE_CHECKING:
         PipelineInstance,
         RedisInstance,
     )
-from opentelemetry.semconv.trace import (
-    DbSystemValues,
-    NetTransportValues,
-    SpanAttributes,
-)
-from opentelemetry.trace import Span
 
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
