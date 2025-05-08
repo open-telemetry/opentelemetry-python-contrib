@@ -13,45 +13,45 @@
 # limitations under the License.
 #
 """
-Instrument `redis`_ to report Redis queries.
+Instrument `valkey`_ to report Valkey queries.
 
 There are two options for instrumenting code. The first option is to use the
 ``opentelemetry-instrument`` executable which will automatically
-instrument your Redis client. The second is to programmatically enable
+instrument your Valkey client. The second is to programmatically enable
 instrumentation via the following code:
 
-.. _redis: https://pypi.org/project/redis/
+.. _valkey: https://pypi.org/project/valkey/
 
 Usage
 -----
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey
 
 
-    # Instrument redis
-    RedisInstrumentor().instrument()
+    # Instrument valkey
+    ValkeyInstrumentor().instrument()
 
     # This will report a span with the default settings
-    client = redis.StrictRedis(host="localhost", port=6379)
+    client = valkey.StrictValkey(host="localhost", port=6379)
     client.get("my-key")
 
-Async Redis clients (i.e. redis.asyncio.Redis) are also instrumented in the same way:
+Async Valkey clients (i.e. valkey.asyncio.Valkey) are also instrumented in the same way:
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis.asyncio
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey.asyncio
 
 
-    # Instrument redis
-    RedisInstrumentor().instrument()
+    # Instrument valkey
+    ValkeyInstrumentor().instrument()
 
     # This will report a span with the default settings
-    async def redis_get():
-        client = redis.asyncio.Redis(host="localhost", port=6379)
+    async def valkey_get():
+        client = valkey.asyncio.Valkey(host="localhost", port=6379)
         await client.get("my-key")
 
 The `instrument` method accepts the following keyword args:
@@ -59,17 +59,17 @@ The `instrument` method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
 
 request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
-this function signature is:  def request_hook(span: Span, instance: redis.connection.Connection, args, kwargs) -> None
+this function signature is:  def request_hook(span: Span, instance: valkey.connection.Connection, args, kwargs) -> None
 
 response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
-this function signature is: def response_hook(span: Span, instance: redis.connection.Connection, response) -> None
+this function signature is: def response_hook(span: Span, instance: valkey.connection.Connection, response) -> None
 
 for example:
 
 .. code: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey
 
     def request_hook(span, instance, args, kwargs):
         if span and span.is_recording():
@@ -79,11 +79,11 @@ for example:
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    # Instrument redis with hooks
-    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    # Instrument valkey with hooks
+    ValkeyInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
     # This will report a span with the default settings and the custom attributes added from the hooks
-    client = redis.StrictRedis(host="localhost", port=6379)
+    client = valkey.StrictValkey(host="localhost", port=6379)
     client.get("my-key")
 
 
@@ -95,19 +95,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, Collection
 
-import redis
+import valkey
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.redis.package import _instruments
-from opentelemetry.instrumentation.redis.util import (
+from opentelemetry.instrumentation.valkey.package import _instruments
+from opentelemetry.instrumentation.valkey.util import (
     _extract_conn_attributes,
     _format_command_args,
     _set_span_attribute_if_value,
     _value_or_none,
 )
-from opentelemetry.instrumentation.redis.version import __version__
+from opentelemetry.instrumentation.valkey.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, StatusCode, Tracer
@@ -115,51 +115,51 @@ from opentelemetry.trace import Span, StatusCode, Tracer
 if TYPE_CHECKING:
     from typing import Awaitable, TypeVar
 
-    import redis.asyncio.client
-    import redis.asyncio.cluster
-    import redis.client
-    import redis.cluster
-    import redis.connection
+    import valkey.asyncio.client
+    import valkey.asyncio.cluster
+    import valkey.client
+    import valkey.cluster
+    import valkey.connection
 
     _RequestHookT = Callable[
-        [Span, redis.connection.Connection, list[Any], dict[str, Any]], None
+        [Span, valkey.connection.Connection, list[Any], dict[str, Any]], None
     ]
-    _ResponseHookT = Callable[[Span, redis.connection.Connection, Any], None]
+    _ResponseHookT = Callable[[Span, valkey.connection.Connection, Any], None]
 
     AsyncPipelineInstance = TypeVar(
         "AsyncPipelineInstance",
-        redis.asyncio.client.Pipeline,
-        redis.asyncio.cluster.ClusterPipeline,
+        valkey.asyncio.client.Pipeline,
+        valkey.asyncio.cluster.ClusterPipeline,
     )
-    AsyncRedisInstance = TypeVar(
-        "AsyncRedisInstance", redis.asyncio.Redis, redis.asyncio.RedisCluster
+    AsyncValkeyInstance = TypeVar(
+        "AsyncValkeyInstance", valkey.asyncio.Valkey, valkey.asyncio.ValkeyCluster
     )
     PipelineInstance = TypeVar(
         "PipelineInstance",
-        redis.client.Pipeline,
-        redis.cluster.ClusterPipeline,
+        valkey.client.Pipeline,
+        valkey.cluster.ClusterPipeline,
     )
-    RedisInstance = TypeVar(
-        "RedisInstance", redis.client.Redis, redis.cluster.RedisCluster
+    ValkeyInstance = TypeVar(
+        "ValkeyInstance", valkey.client.Valkey, valkey.cluster.ValkeyCluster
     )
     R = TypeVar("R")
 
 
-_DEFAULT_SERVICE = "redis"
+_DEFAULT_SERVICE = "valkey"
 
 
-_REDIS_ASYNCIO_VERSION = (4, 2, 0)
-if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
-    import redis.asyncio
+_VALKEY_ASYNCIO_VERSION = (4, 2, 0)
+if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
+    import valkey.asyncio
 
-_REDIS_CLUSTER_VERSION = (4, 1, 0)
-_REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
+_VALKEY_CLUSTER_VERSION = (4, 1, 0)
+_VALKEY_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 
 def _set_connection_attributes(
-    span: Span, conn: RedisInstance | AsyncRedisInstance
+    span: Span, conn: ValkeyInstance | AsyncValkeyInstance
 ) -> None:
     if not span.is_recording() or not hasattr(conn, "connection_pool"):
         return
@@ -170,13 +170,13 @@ def _set_connection_attributes(
 
 
 def _build_span_name(
-    instance: RedisInstance | AsyncRedisInstance, cmd_args: tuple[Any, ...]
+    instance: ValkeyInstance | AsyncValkeyInstance, cmd_args: tuple[Any, ...]
 ) -> str:
     if len(cmd_args) > 0 and cmd_args[0]:
         if cmd_args[0] == "FT.SEARCH":
-            name = "redis.search"
+            name = "valkey.search"
         elif cmd_args[0] == "FT.CREATE":
-            name = "redis.create_index"
+            name = "valkey.create_index"
         else:
             name = cmd_args[0]
     else:
@@ -222,7 +222,7 @@ def _instrument(
 ):
     def _traced_execute_command(
         func: Callable[..., R],
-        instance: RedisInstance,
+        instance: ValkeyInstance,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> R:
@@ -234,14 +234,14 @@ def _instrument(
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
-                span.set_attribute("db.redis.args_length", len(args))
-                if span.name == "redis.create_index":
+                span.set_attribute("db.valkey.args_length", len(args))
+                if span.name == "valkey.create_index":
                     _add_create_attributes(span, args)
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
             if span.is_recording():
-                if span.name == "redis.search":
+                if span.name == "valkey.search":
                     _add_search_attributes(span, response, args)
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -266,13 +266,13 @@ def _instrument(
                 span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
-                    "db.redis.pipeline_length", len(command_stack)
+                    "db.valkey.pipeline_length", len(command_stack)
                 )
 
             response = None
             try:
                 response = func(*args, **kwargs)
-            except redis.WatchError as watch_exception:
+            except valkey.WatchError as watch_exception:
                 span.set_status(StatusCode.UNSET)
                 exception = watch_exception
 
@@ -286,9 +286,9 @@ def _instrument(
 
     def _add_create_attributes(span: Span, args: tuple[Any, ...]):
         _set_span_attribute_if_value(
-            span, "redis.create_index.index", _value_or_none(args, 1)
+            span, "valkey.create_index.index", _value_or_none(args, 1)
         )
-        # According to: https://github.com/redis/redis-py/blob/master/redis/commands/search/commands.py#L155 schema is last argument for execute command
+        # According to: https://github.com/valkey/valkey-py/blob/master/valkey/commands/search/commands.py#L155 schema is last argument for execute command
         try:
             schema_index = args.index("SCHEMA")
         except ValueError:
@@ -304,26 +304,26 @@ def _instrument(
         )
         _set_span_attribute_if_value(
             span,
-            "redis.create_index.fields",
+            "valkey.create_index.fields",
             field_attribute,
         )
 
     def _add_search_attributes(span: Span, response, args):
         _set_span_attribute_if_value(
-            span, "redis.search.index", _value_or_none(args, 1)
+            span, "valkey.search.index", _value_or_none(args, 1)
         )
         _set_span_attribute_if_value(
-            span, "redis.search.query", _value_or_none(args, 2)
+            span, "valkey.search.query", _value_or_none(args, 2)
         )
         # Parse response from search
-        # https://redis.io/docs/latest/commands/ft.search/
+        # https://github.com/valkey-io/valkey-search/blob/main/COMMANDS.md#ftsearch
         # Response in format:
         # [number_of_returned_documents, index_of_first_returned_doc, first_doc(as a list), index_of_second_returned_doc, second_doc(as a list) ...]
         # Returned documents in array format:
         # [first_field_name, first_field_value, second_field_name, second_field_value ...]
         number_of_returned_documents = _value_or_none(response, 0)
         _set_span_attribute_if_value(
-            span, "redis.search.total", number_of_returned_documents
+            span, "valkey.search.total", number_of_returned_documents
         )
         if "NOCONTENT" in args or not number_of_returned_documents:
             return
@@ -334,43 +334,43 @@ def _instrument(
                 for attribute_name_index in range(0, len(document), 2):
                     _set_span_attribute_if_value(
                         span,
-                        f"redis.search.xdoc_{document_index}.{document[attribute_name_index]}",
+                        f"valkey.search.xdoc_{document_index}.{document[attribute_name_index]}",
                         document[attribute_name_index + 1],
                     )
 
     pipeline_class = (
-        "BasePipeline" if redis.VERSION < (3, 0, 0) else "Pipeline"
+        "BasePipeline" if valkey.VERSION < (3, 0, 0) else "Pipeline"
     )
-    redis_class = "StrictRedis" if redis.VERSION < (3, 0, 0) else "Redis"
+    valkey_class = "StrictValkey" if valkey.VERSION < (3, 0, 0) else "Valkey"
 
     wrap_function_wrapper(
-        "redis", f"{redis_class}.execute_command", _traced_execute_command
+        "valkey", f"{valkey_class}.execute_command", _traced_execute_command
     )
     wrap_function_wrapper(
-        "redis.client",
+        "valkey.client",
         f"{pipeline_class}.execute",
         _traced_execute_pipeline,
     )
     wrap_function_wrapper(
-        "redis.client",
+        "valkey.client",
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
     )
-    if redis.VERSION >= _REDIS_CLUSTER_VERSION:
+    if valkey.VERSION >= _VALKEY_CLUSTER_VERSION:
         wrap_function_wrapper(
-            "redis.cluster",
-            "RedisCluster.execute_command",
+            "valkey.cluster",
+            "ValkeyCluster.execute_command",
             _traced_execute_command,
         )
         wrap_function_wrapper(
-            "redis.cluster",
+            "valkey.cluster",
             "ClusterPipeline.execute",
             _traced_execute_pipeline,
         )
 
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
-        instance: AsyncRedisInstance,
+        instance: AsyncValkeyInstance,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Awaitable[R]:
@@ -383,7 +383,7 @@ def _instrument(
             if span.is_recording():
                 span.set_attribute(SpanAttributes.DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
-                span.set_attribute("db.redis.args_length", len(args))
+                span.set_attribute("db.valkey.args_length", len(args))
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = await func(*args, **kwargs)
@@ -412,13 +412,13 @@ def _instrument(
                 span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
-                    "db.redis.pipeline_length", len(command_stack)
+                    "db.valkey.pipeline_length", len(command_stack)
                 )
 
             response = None
             try:
                 response = await func(*args, **kwargs)
-            except redis.WatchError as watch_exception:
+            except valkey.WatchError as watch_exception:
                 span.set_status(StatusCode.UNSET)
                 exception = watch_exception
 
@@ -430,37 +430,37 @@ def _instrument(
 
         return response
 
-    if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
+    if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
         wrap_function_wrapper(
-            "redis.asyncio",
-            f"{redis_class}.execute_command",
+            "valkey.asyncio",
+            f"{valkey_class}.execute_command",
             _async_traced_execute_command,
         )
         wrap_function_wrapper(
-            "redis.asyncio.client",
+            "valkey.asyncio.client",
             f"{pipeline_class}.execute",
             _async_traced_execute_pipeline,
         )
         wrap_function_wrapper(
-            "redis.asyncio.client",
+            "valkey.asyncio.client",
             f"{pipeline_class}.immediate_execute_command",
             _async_traced_execute_command,
         )
-    if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
+    if valkey.VERSION >= _VALKEY_ASYNCIO_CLUSTER_VERSION:
         wrap_function_wrapper(
-            "redis.asyncio.cluster",
-            "RedisCluster.execute_command",
+            "valkey.asyncio.cluster",
+            "ValkeyCluster.execute_command",
             _async_traced_execute_command,
         )
         wrap_function_wrapper(
-            "redis.asyncio.cluster",
+            "valkey.asyncio.cluster",
             "ClusterPipeline.execute",
             _async_traced_execute_pipeline,
         )
 
 
-class RedisInstrumentor(BaseInstrumentor):
-    """An instrumentor for Redis.
+class ValkeyInstrumentor(BaseInstrumentor):
+    """An instrumentor for Valkey.
 
     See `BaseInstrumentor`
     """
@@ -469,7 +469,7 @@ class RedisInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs: Any):
-        """Instruments the redis module
+        """Instruments the valkey module
 
         Args:
             **kwargs: Optional arguments
@@ -491,31 +491,31 @@ class RedisInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Any):
-        if redis.VERSION < (3, 0, 0):
-            unwrap(redis.StrictRedis, "execute_command")
-            unwrap(redis.StrictRedis, "pipeline")
-            unwrap(redis.Redis, "pipeline")
+        if valkey.VERSION < (3, 0, 0):
+            unwrap(valkey.StrictValkey, "execute_command")
+            unwrap(valkey.StrictValkey, "pipeline")
+            unwrap(valkey.Valkey, "pipeline")
             unwrap(
-                redis.client.BasePipeline,  # pylint:disable=no-member
+                valkey.client.BasePipeline,  # pylint:disable=no-member
                 "execute",
             )
             unwrap(
-                redis.client.BasePipeline,  # pylint:disable=no-member
+                valkey.client.BasePipeline,  # pylint:disable=no-member
                 "immediate_execute_command",
             )
         else:
-            unwrap(redis.Redis, "execute_command")
-            unwrap(redis.Redis, "pipeline")
-            unwrap(redis.client.Pipeline, "execute")
-            unwrap(redis.client.Pipeline, "immediate_execute_command")
-        if redis.VERSION >= _REDIS_CLUSTER_VERSION:
-            unwrap(redis.cluster.RedisCluster, "execute_command")
-            unwrap(redis.cluster.ClusterPipeline, "execute")
-        if redis.VERSION >= _REDIS_ASYNCIO_VERSION:
-            unwrap(redis.asyncio.Redis, "execute_command")
-            unwrap(redis.asyncio.Redis, "pipeline")
-            unwrap(redis.asyncio.client.Pipeline, "execute")
-            unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
-        if redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION:
-            unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
-            unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
+            unwrap(valkey.Valkey, "execute_command")
+            unwrap(valkey.Valkey, "pipeline")
+            unwrap(valkey.client.Pipeline, "execute")
+            unwrap(valkey.client.Pipeline, "immediate_execute_command")
+        if valkey.VERSION >= _VALKEY_CLUSTER_VERSION:
+            unwrap(valkey.cluster.ValkeyCluster, "execute_command")
+            unwrap(valkey.cluster.ClusterPipeline, "execute")
+        if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
+            unwrap(valkey.asyncio.Valkey, "execute_command")
+            unwrap(valkey.asyncio.Valkey, "pipeline")
+            unwrap(valkey.asyncio.client.Pipeline, "execute")
+            unwrap(valkey.asyncio.client.Pipeline, "immediate_execute_command")
+        if valkey.VERSION >= _VALKEY_ASYNCIO_CLUSTER_VERSION:
+            unwrap(valkey.asyncio.cluster.ValkeyCluster, "execute_command")
+            unwrap(valkey.asyncio.cluster.ClusterPipeline, "execute")

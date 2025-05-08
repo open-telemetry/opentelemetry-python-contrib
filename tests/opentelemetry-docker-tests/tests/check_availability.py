@@ -19,7 +19,7 @@ import mysql.connector
 import psycopg2
 import pymongo
 import pyodbc
-import redis
+import valkey
 
 MONGODB_COLLECTION_NAME = "test"
 MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "opentelemetry-tests")
@@ -106,7 +106,7 @@ def check_postgres_connection():
 
 @retryable
 def check_redis_connection():
-    connection = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
+    connection = valkey.Redis(host=REDIS_HOST, port=REDIS_PORT)
     connection.hgetall("*")
 
 

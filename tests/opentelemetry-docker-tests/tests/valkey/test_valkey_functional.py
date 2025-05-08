@@ -26,27 +26,27 @@ from valkey.commands.search.query import Query
 from valkey.exceptions import ResponseError
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
-class TestRedisInstrument(TestBase):
+class TestValkeyInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379)
-        self.redis_client.flushall()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self.valkey_client = valkey.Valkey(port=6379)
+        self.valkey_client.flushall()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
         super().tearDown()
 
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0
+            span.attributes.get("db.valkey.database_index"), 0
         )
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
@@ -54,10 +54,10 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
 
     def test_long_command_sanitized(self):
-        RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        ValkeyInstrumentor().uninstrument()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
-        self.redis_client.mget(*range(2000))
+        self.valkey_client.mget(*range(2000))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -73,7 +73,7 @@ class TestRedisInstrument(TestBase):
         )
 
     def test_long_command(self):
-        self.redis_client.mget(*range(1000))
+        self.valkey_client.mget(*range(1000))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -89,10 +89,10 @@ class TestRedisInstrument(TestBase):
         )
 
     def test_basics_sanitized(self):
-        RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        ValkeyInstrumentor().uninstrument()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
-        self.assertIsNone(self.redis_client.get("cheese"))
+        self.assertIsNone(self.valkey_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -100,10 +100,10 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
 
     def test_basics(self):
-        self.assertIsNone(self.redis_client.get("cheese"))
+        self.assertIsNone(self.valkey_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -111,13 +111,13 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
 
     def test_pipeline_traced_sanitized(self):
-        RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        ValkeyInstrumentor().uninstrument()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
-        with self.redis_client.pipeline(transaction=False) as pipeline:
+        with self.valkey_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
             pipeline.rpush("foo", "éé")
             pipeline.hgetall("xxx")
@@ -131,10 +131,10 @@ class TestRedisInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
 
     def test_pipeline_traced(self):
-        with self.redis_client.pipeline(transaction=False) as pipeline:
+        with self.valkey_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
             pipeline.rpush("foo", "éé")
             pipeline.hgetall("xxx")
@@ -148,13 +148,13 @@ class TestRedisInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
 
     def test_pipeline_immediate_sanitized(self):
-        RedisInstrumentor().uninstrument()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        ValkeyInstrumentor().uninstrument()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
-        with self.redis_client.pipeline() as pipeline:
+        with self.valkey_client.pipeline() as pipeline:
             pipeline.set("a", 1)
             pipeline.immediate_execute_command("SET", "b", 2)
             pipeline.execute()
@@ -170,7 +170,7 @@ class TestRedisInstrument(TestBase):
         )
 
     def test_pipeline_immediate(self):
-        with self.redis_client.pipeline() as pipeline:
+        with self.valkey_client.pipeline() as pipeline:
             pipeline.set("a", 1)
             pipeline.immediate_execute_command("SET", "b", 2)
             pipeline.execute()
@@ -186,11 +186,11 @@ class TestRedisInstrument(TestBase):
         )
 
     def test_parent(self):
-        """Ensure OpenTelemetry works with redis."""
-        ot_tracer = trace.get_tracer("redis_svc")
+        """Ensure OpenTelemetry works with valkey."""
+        ot_tracer = trace.get_tracer("valkey_svc")
 
-        with ot_tracer.start_as_current_span("redis_get"):
-            self.assertIsNone(self.redis_client.get("cheese"))
+        with ot_tracer.start_as_current_span("valkey_get"):
+            self.assertIsNone(self.valkey_client.get("cheese"))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -200,31 +200,31 @@ class TestRedisInstrument(TestBase):
         self.assertIsNone(parent_span.parent)
         self.assertIs(child_span.parent, parent_span.get_span_context())
 
-        self.assertEqual(parent_span.name, "redis_get")
-        self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
+        self.assertEqual(parent_span.name, "valkey_get")
+        self.assertEqual(parent_span.instrumentation_info.name, "valkey_svc")
 
         self.assertEqual(child_span.name, "GET")
 
 
-class TestRedisClusterInstrument(TestBase):
+class TestValkeyClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.cluster.RedisCluster(
+        self.valkey_client = valkey.cluster.ValkeyCluster(
             host="localhost", port=7000
         )
-        self.redis_client.flushall()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self.valkey_client.flushall()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
 
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
     def test_basics(self):
-        self.assertIsNone(self.redis_client.get("cheese"))
+        self.assertIsNone(self.valkey_client.get("cheese"))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -232,10 +232,10 @@ class TestRedisClusterInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
 
     def test_pipeline_traced(self):
-        with self.redis_client.pipeline(transaction=False) as pipeline:
+        with self.valkey_client.pipeline(transaction=False) as pipeline:
             pipeline.set("blah", 32)
             pipeline.rpush("foo", "éé")
             pipeline.hgetall("xxx")
@@ -249,14 +249,14 @@ class TestRedisClusterInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
 
     def test_parent(self):
-        """Ensure OpenTelemetry works with redis."""
-        ot_tracer = trace.get_tracer("redis_svc")
+        """Ensure OpenTelemetry works with valkey."""
+        ot_tracer = trace.get_tracer("valkey_svc")
 
-        with ot_tracer.start_as_current_span("redis_get"):
-            self.assertIsNone(self.redis_client.get("cheese"))
+        with ot_tracer.start_as_current_span("valkey_get"):
+            self.assertIsNone(self.valkey_client.get("cheese"))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -266,8 +266,8 @@ class TestRedisClusterInstrument(TestBase):
         self.assertIsNone(parent_span.parent)
         self.assertIs(child_span.parent, parent_span.get_span_context())
 
-        self.assertEqual(parent_span.name, "redis_get")
-        self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
+        self.assertEqual(parent_span.name, "valkey_get")
+        self.assertEqual(parent_span.instrumentation_info.name, "valkey_svc")
 
         self.assertEqual(child_span.name, "GET")
 
@@ -277,22 +277,22 @@ def async_call(coro):
     return loop.run_until_complete(coro)
 
 
-class TestAsyncRedisInstrument(TestBase):
+class TestAsyncValkeyInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.asyncio.Redis(port=6379)
-        async_call(self.redis_client.flushall())
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self.valkey_client = valkey.asyncio.Valkey(port=6379)
+        async_call(self.valkey_client.flushall())
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
         super().tearDown()
 
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_REDIS_DATABASE_INDEX), 0
+            span.attributes.get("db.valkey.database_index"), 0
         )
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
@@ -300,7 +300,7 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
 
     def test_long_command(self):
-        async_call(self.redis_client.mget(*range(1000)))
+        async_call(self.valkey_client.mget(*range(1000)))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -316,7 +316,7 @@ class TestAsyncRedisInstrument(TestBase):
         )
 
     def test_basics(self):
-        self.assertIsNone(async_call(self.redis_client.get("cheese")))
+        self.assertIsNone(async_call(self.valkey_client.get("cheese")))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -324,7 +324,7 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -336,7 +336,7 @@ class TestAsyncRedisInstrument(TestBase):
             nonlocal finish_time
 
             # delay coroutine creation from coroutine execution
-            coro = self.redis_client.get("foo")
+            coro = self.valkey_client.get("foo")
             coro_created_time = time_ns()
             await coro
             finish_time = time_ns()
@@ -351,7 +351,7 @@ class TestAsyncRedisInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
+            async with self.valkey_client.pipeline(
                 transaction=False
             ) as pipeline:
                 pipeline.set("blah", 32)
@@ -369,7 +369,7 @@ class TestAsyncRedisInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
 
     def test_pipeline_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -377,7 +377,7 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
+            async with self.valkey_client.pipeline(
                 transaction=False
             ) as pipeline:
                 nonlocal coro_created_time
@@ -402,7 +402,7 @@ class TestAsyncRedisInstrument(TestBase):
 
     def test_pipeline_immediate(self):
         async def pipeline_immediate():
-            async with self.redis_client.pipeline() as pipeline:
+            async with self.valkey_client.pipeline() as pipeline:
                 pipeline.set("a", 1)
                 await pipeline.immediate_execute_command("SET", "b", 2)
                 await pipeline.execute()
@@ -425,7 +425,7 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
+            async with self.valkey_client.pipeline(
                 transaction=False
             ) as pipeline:
                 nonlocal coro_created_time
@@ -447,11 +447,11 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertTrue(span.end_time < finish_time)
 
     def test_parent(self):
-        """Ensure OpenTelemetry works with redis."""
-        ot_tracer = trace.get_tracer("redis_svc")
+        """Ensure OpenTelemetry works with valkey."""
+        ot_tracer = trace.get_tracer("valkey_svc")
 
-        with ot_tracer.start_as_current_span("redis_get"):
-            self.assertIsNone(async_call(self.redis_client.get("cheese")))
+        with ot_tracer.start_as_current_span("valkey_get"):
+            self.assertIsNone(async_call(self.valkey_client.get("cheese")))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -461,31 +461,31 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertIsNone(parent_span.parent)
         self.assertIs(child_span.parent, parent_span.get_span_context())
 
-        self.assertEqual(parent_span.name, "redis_get")
-        self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
+        self.assertEqual(parent_span.name, "valkey_get")
+        self.assertEqual(parent_span.instrumentation_info.name, "valkey_svc")
 
         self.assertEqual(child_span.name, "GET")
 
 
-class TestAsyncRedisClusterInstrument(TestBase):
+class TestAsyncValkeyClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.asyncio.cluster.RedisCluster(
+        self.valkey_client = valkey.asyncio.cluster.ValkeyCluster(
             host="localhost", port=7000
         )
-        async_call(self.redis_client.flushall())
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        async_call(self.valkey_client.flushall())
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
         super().tearDown()
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
 
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
     def test_basics(self):
-        self.assertIsNone(async_call(self.redis_client.get("cheese")))
+        self.assertIsNone(async_call(self.valkey_client.get("cheese")))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -493,7 +493,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -505,7 +505,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
             nonlocal finish_time
 
             # delay coroutine creation from coroutine execution
-            coro = self.redis_client.get("foo")
+            coro = self.valkey_client.get("foo")
             coro_created_time = time_ns()
             await coro
             finish_time = time_ns()
@@ -520,7 +520,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
+            async with self.valkey_client.pipeline(
                 transaction=False
             ) as pipeline:
                 pipeline.set("blah", 32)
@@ -538,7 +538,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
 
     def test_pipeline_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -546,7 +546,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(
+            async with self.valkey_client.pipeline(
                 transaction=False
             ) as pipeline:
                 nonlocal coro_created_time
@@ -570,11 +570,11 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self.assertTrue(span.end_time < finish_time)
 
     def test_parent(self):
-        """Ensure OpenTelemetry works with redis."""
-        ot_tracer = trace.get_tracer("redis_svc")
+        """Ensure OpenTelemetry works with valkey."""
+        ot_tracer = trace.get_tracer("valkey_svc")
 
-        with ot_tracer.start_as_current_span("redis_get"):
-            self.assertIsNone(async_call(self.redis_client.get("cheese")))
+        with ot_tracer.start_as_current_span("valkey_get"):
+            self.assertIsNone(async_call(self.valkey_client.get("cheese")))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -584,21 +584,21 @@ class TestAsyncRedisClusterInstrument(TestBase):
         self.assertIsNone(parent_span.parent)
         self.assertIs(child_span.parent, parent_span.get_span_context())
 
-        self.assertEqual(parent_span.name, "redis_get")
-        self.assertEqual(parent_span.instrumentation_info.name, "redis_svc")
+        self.assertEqual(parent_span.name, "valkey_get")
+        self.assertEqual(parent_span.instrumentation_info.name, "valkey_svc")
 
         self.assertEqual(child_span.name, "GET")
 
 
-class TestRedisDBIndexInstrument(TestBase):
+class TestValkeyDBIndexInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379, db=10)
-        self.redis_client.flushall()
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        self.valkey_client = valkey.Valkey(port=6379, db=10)
+        self.valkey_client.flushall()
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
     def tearDown(self):
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
         super().tearDown()
 
     def _check_span(self, span, name):
@@ -609,11 +609,11 @@ class TestRedisDBIndexInstrument(TestBase):
         )
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 10
+            span.attributes["db.valkey.database_index"], 10
         )
 
     def test_get(self):
-        self.assertIsNone(self.redis_client.get("foo"))
+        self.assertIsNone(self.valkey_client.get("foo"))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
@@ -623,23 +623,23 @@ class TestRedisDBIndexInstrument(TestBase):
         )
 
 
-class TestRedisearchInstrument(TestBase):
+class TestValkeyearchInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379)
-        self.redis_client.flushall()
+        self.valkey_client = valkey.Valkey(port=6379)
+        self.valkey_client.flushall()
         self.embedding_dim = 256
-        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
         self.prepare_data()
         self.create_index()
 
     def tearDown(self):
-        RedisInstrumentor().uninstrument()
+        ValkeyInstrumentor().uninstrument()
         super().tearDown()
 
     def prepare_data(self):
         try:
-            self.redis_client.ft("idx:test_vss").dropindex(True)
+            self.valkey_client.ft("idx:test_vss").dropindex(True)
         except ResponseError:
             print("No such index")
         item = {
@@ -647,7 +647,7 @@ class TestRedisearchInstrument(TestBase):
             "value": "test_value",
             "embeddings": [0.1] * 256,
         }
-        pipeline = self.redis_client.pipeline()
+        pipeline = self.valkey_client.pipeline()
         pipeline.json().set("test:001", "$", item)
         res = pipeline.execute()
         assert False not in res
@@ -670,24 +670,24 @@ class TestRedisearchInstrument(TestBase):
         definition = IndexDefinition(
             prefix=["test:"], index_type=IndexType.JSON
         )
-        res = self.redis_client.ft("idx:test_vss").create_index(
+        res = self.valkey_client.ft("idx:test_vss").create_index(
             fields=schema, definition=definition
         )
         assert "OK" in str(res)
 
-    def test_redis_create_index(self):
+    def test_valkey_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
         span = next(
-            span for span in spans if span.name == "redis.create_index"
+            span for span in spans if span.name == "valkey.create_index"
         )
-        assert "redis.create_index.fields" in span.attributes
+        assert "valkey.create_index.fields" in span.attributes
 
-    def test_redis_query(self):
+    def test_valkey_query(self):
         query = "@name:test"
-        self.redis_client.ft("idx:test_vss").search(Query(query))
+        self.valkey_client.ft("idx:test_vss").search(Query(query))
 
         spans = self.memory_exporter.get_finished_spans()
-        span = next(span for span in spans if span.name == "redis.search")
+        span = next(span for span in spans if span.name == "valkey.search")
 
-        assert span.attributes.get("redis.search.query") == query
-        assert span.attributes.get("redis.search.total") == 1
+        assert span.attributes.get("valkey.search.query") == query
+        assert span.attributes.get("valkey.search.total") == 1

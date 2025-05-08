@@ -13,23 +13,22 @@
 # limitations under the License.
 #
 """
-Some utils used by the redis integration
+Some utils used by the valkey integration
 """
 
 from opentelemetry.semconv.trace import (
-    DbSystemValues,
     NetTransportValues,
     SpanAttributes,
 )
 
 
 def _extract_conn_attributes(conn_kwargs):
-    """Transform redis conn info into dict"""
+    """Transform valkey conn info into dict"""
     attributes = {
-        SpanAttributes.DB_SYSTEM: DbSystemValues.REDIS.value,
+        SpanAttributes.DB_SYSTEM: "valkey",
     }
     db = conn_kwargs.get("db", 0)
-    attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX] = db
+    attributes["db.valkey.database_index"] = db
     if "path" in conn_kwargs:
         attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
         attributes[SpanAttributes.NET_TRANSPORT] = (

@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("redis >= 2.6",)
+_instruments = ("valkey >= 6.0.0",)

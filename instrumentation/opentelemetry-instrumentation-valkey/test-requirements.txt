@@ -1,16 +1,16 @@
 asgiref==3.8.1
 async-timeout==4.0.3
 Deprecated==1.2.14
-fakeredis==2.23.3
+fakeredis==2.29.0
 iniconfig==2.0.0
 packaging==24.0
 pluggy==1.5.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
-redis==5.0.1
+valkey==6.1.0
 tomli==2.0.1
 typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
--e instrumentation/opentelemetry-instrumentation-redis
+-e instrumentation/opentelemetry-instrumentation-valkey
