@@ -101,6 +101,7 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.valkey.package import _instruments
 from opentelemetry.instrumentation.valkey.util import (
     _extract_conn_attributes,
@@ -109,7 +110,6 @@ from opentelemetry.instrumentation.valkey.util import (
     _value_or_none,
 )
 from opentelemetry.instrumentation.valkey.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, StatusCode, Tracer
 
@@ -133,7 +133,9 @@ if TYPE_CHECKING:
         valkey.asyncio.cluster.ClusterPipeline,
     )
     AsyncValkeyInstance = TypeVar(
-        "AsyncValkeyInstance", valkey.asyncio.Valkey, valkey.asyncio.ValkeyCluster
+        "AsyncValkeyInstance",
+        valkey.asyncio.Valkey,
+        valkey.asyncio.ValkeyCluster,
     )
     PipelineInstance = TypeVar(
         "PipelineInstance",

@@ -111,7 +111,8 @@ def check_postgres_connection():
 def check_redis_connection():
     connection = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
     connection.hgetall("*")
-    
+
+
 @retryable
 def check_valkey_connection():
     connection = valkey.Valkey(host=VALKEY_HOST, port=VALKEY_PORT)

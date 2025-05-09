@@ -17,9 +17,6 @@ from time import time_ns
 
 import valkey
 import valkey.asyncio
-from valkey.commands.search.indexDefinition import IndexDefinition, IndexType
-from valkey.commands.search.query import Query
-from valkey.exceptions import ResponseError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
@@ -41,9 +38,7 @@ class TestValkeyInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes.get("db.valkey.database_index"), 0
-        )
+        self.assertEqual(span.attributes.get("db.valkey.database_index"), 0)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
@@ -287,9 +282,7 @@ class TestAsyncValkeyInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes.get("db.valkey.database_index"), 0
-        )
+        self.assertEqual(span.attributes.get("db.valkey.database_index"), 0)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
@@ -604,9 +597,7 @@ class TestValkeyDBIndexInstrument(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
-        self.assertEqual(
-            span.attributes["db.valkey.database_index"], 10
-        )
+        self.assertEqual(span.attributes["db.valkey.database_index"], 10)
 
     def test_get(self):
         self.assertIsNone(self.valkey_client.get("foo"))
