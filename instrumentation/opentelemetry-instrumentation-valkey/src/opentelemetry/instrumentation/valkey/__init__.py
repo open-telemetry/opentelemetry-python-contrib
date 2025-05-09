@@ -96,6 +96,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Collection
 
 import valkey
+import valkey.asyncio
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
@@ -146,10 +147,6 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_SERVICE = "valkey"
-
-
-import valkey.asyncio
-
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 

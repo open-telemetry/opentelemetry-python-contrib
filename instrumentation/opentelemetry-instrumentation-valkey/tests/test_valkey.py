@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-from unittest import IsolatedAsyncioTestCase, mock
+from unittest import mock
 from unittest.mock import AsyncMock
 
-import pytest
 import valkey
 import valkey.asyncio
-from valkey.exceptions import ConnectionError as valkey_ConnectionError
-from redis.exceptions import ConnectionError as redis_ConnectionError
-from valkey.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
@@ -314,4 +310,3 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.NET_TRANSPORT],
             NetTransportValues.OTHER.value,
         )
-
