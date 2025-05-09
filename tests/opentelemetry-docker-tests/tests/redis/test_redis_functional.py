@@ -15,15 +15,15 @@
 import asyncio
 from time import time_ns
 
-import valkey
-import valkey.asyncio
-from valkey.commands.search.field import (
+import redis
+import redis.asyncio
+from redis.commands.search.field import (
     TextField,
     VectorField,
 )
-from valkey.commands.search.indexDefinition import IndexDefinition, IndexType
-from valkey.commands.search.query import Query
-from valkey.exceptions import ResponseError
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from redis.exceptions import ResponseError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
@@ -34,7 +34,7 @@ from opentelemetry.test.test_base import TestBase
 class TestRedisInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379)
+        self.redis_client = redis.Redis(port=6379)
         self.redis_client.flushall()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -209,7 +209,7 @@ class TestRedisInstrument(TestBase):
 class TestRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.cluster.RedisCluster(
+        self.redis_client = redis.cluster.RedisCluster(
             host="localhost", port=7000
         )
         self.redis_client.flushall()
@@ -280,7 +280,7 @@ def async_call(coro):
 class TestAsyncRedisInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.asyncio.Redis(port=6379)
+        self.redis_client = redis.asyncio.Redis(port=6379)
         async_call(self.redis_client.flushall())
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -470,7 +470,7 @@ class TestAsyncRedisInstrument(TestBase):
 class TestAsyncRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.asyncio.cluster.RedisCluster(
+        self.redis_client = redis.asyncio.cluster.RedisCluster(
             host="localhost", port=7000
         )
         async_call(self.redis_client.flushall())
@@ -593,7 +593,7 @@ class TestAsyncRedisClusterInstrument(TestBase):
 class TestRedisDBIndexInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379, db=10)
+        self.redis_client = redis.Redis(port=6379, db=10)
         self.redis_client.flushall()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -626,7 +626,7 @@ class TestRedisDBIndexInstrument(TestBase):
 class TestRedisearchInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = valkey.Redis(port=6379)
+        self.redis_client = redis.Redis(port=6379)
         self.redis_client.flushall()
         self.embedding_dim = 256
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
