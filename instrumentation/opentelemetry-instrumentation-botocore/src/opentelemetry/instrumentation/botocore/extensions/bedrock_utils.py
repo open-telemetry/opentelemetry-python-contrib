@@ -138,6 +138,11 @@ class ConverseStreamWrapper(ObjectProxy):
 
             return
 
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._stream_done_callback(self._response)
+
 
 # pylint: disable=abstract-method
 class InvokeModelWithResponseStreamWrapper(ObjectProxy):
@@ -163,6 +168,11 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         self._content_block = {}
         self._tool_json_input_buf = ""
         self._record_message = False
+
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._stream_done_callback(self._response)
 
     def __iter__(self):
         try:
