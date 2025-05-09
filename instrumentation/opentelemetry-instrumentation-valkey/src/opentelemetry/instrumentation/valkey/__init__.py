@@ -148,12 +148,7 @@ if TYPE_CHECKING:
 _DEFAULT_SERVICE = "valkey"
 
 
-_VALKEY_ASYNCIO_VERSION = (4, 2, 0)
-if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
-    import valkey.asyncio
-
-_VALKEY_CLUSTER_VERSION = (4, 1, 0)
-_VALKEY_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
+import valkey.asyncio
 
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
@@ -338,10 +333,8 @@ def _instrument(
                         document[attribute_name_index + 1],
                     )
 
-    pipeline_class = (
-        "BasePipeline" if valkey.VERSION < (3, 0, 0) else "Pipeline"
-    )
-    valkey_class = "StrictValkey" if valkey.VERSION < (3, 0, 0) else "Valkey"
+    pipeline_class = "Pipeline"
+    valkey_class = "Valkey"
 
     wrap_function_wrapper(
         "valkey", f"{valkey_class}.execute_command", _traced_execute_command
@@ -356,17 +349,16 @@ def _instrument(
         f"{pipeline_class}.immediate_execute_command",
         _traced_execute_command,
     )
-    if valkey.VERSION >= _VALKEY_CLUSTER_VERSION:
-        wrap_function_wrapper(
-            "valkey.cluster",
-            "ValkeyCluster.execute_command",
-            _traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "valkey.cluster",
-            "ClusterPipeline.execute",
-            _traced_execute_pipeline,
-        )
+    wrap_function_wrapper(
+        "valkey.cluster",
+        "ValkeyCluster.execute_command",
+        _traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.cluster",
+        "ClusterPipeline.execute",
+        _traced_execute_pipeline,
+    )
 
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
@@ -430,33 +422,31 @@ def _instrument(
 
         return response
 
-    if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
-        wrap_function_wrapper(
-            "valkey.asyncio",
-            f"{valkey_class}.execute_command",
-            _async_traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "valkey.asyncio.client",
-            f"{pipeline_class}.execute",
-            _async_traced_execute_pipeline,
-        )
-        wrap_function_wrapper(
-            "valkey.asyncio.client",
-            f"{pipeline_class}.immediate_execute_command",
-            _async_traced_execute_command,
-        )
-    if valkey.VERSION >= _VALKEY_ASYNCIO_CLUSTER_VERSION:
-        wrap_function_wrapper(
-            "valkey.asyncio.cluster",
-            "ValkeyCluster.execute_command",
-            _async_traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "valkey.asyncio.cluster",
-            "ClusterPipeline.execute",
-            _async_traced_execute_pipeline,
-        )
+    wrap_function_wrapper(
+        "valkey.asyncio",
+        f"{valkey_class}.execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.client",
+        f"{pipeline_class}.execute",
+        _async_traced_execute_pipeline,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.client",
+        f"{pipeline_class}.immediate_execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.cluster",
+        "ValkeyCluster.execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.cluster",
+        "ClusterPipeline.execute",
+        _async_traced_execute_pipeline,
+    )
 
 
 class ValkeyInstrumentor(BaseInstrumentor):
@@ -491,31 +481,15 @@ class ValkeyInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Any):
-        if valkey.VERSION < (3, 0, 0):
-            unwrap(valkey.StrictValkey, "execute_command")
-            unwrap(valkey.StrictValkey, "pipeline")
-            unwrap(valkey.Valkey, "pipeline")
-            unwrap(
-                valkey.client.BasePipeline,  # pylint:disable=no-member
-                "execute",
-            )
-            unwrap(
-                valkey.client.BasePipeline,  # pylint:disable=no-member
-                "immediate_execute_command",
-            )
-        else:
-            unwrap(valkey.Valkey, "execute_command")
-            unwrap(valkey.Valkey, "pipeline")
-            unwrap(valkey.client.Pipeline, "execute")
-            unwrap(valkey.client.Pipeline, "immediate_execute_command")
-        if valkey.VERSION >= _VALKEY_CLUSTER_VERSION:
-            unwrap(valkey.cluster.ValkeyCluster, "execute_command")
-            unwrap(valkey.cluster.ClusterPipeline, "execute")
-        if valkey.VERSION >= _VALKEY_ASYNCIO_VERSION:
-            unwrap(valkey.asyncio.Valkey, "execute_command")
-            unwrap(valkey.asyncio.Valkey, "pipeline")
-            unwrap(valkey.asyncio.client.Pipeline, "execute")
-            unwrap(valkey.asyncio.client.Pipeline, "immediate_execute_command")
-        if valkey.VERSION >= _VALKEY_ASYNCIO_CLUSTER_VERSION:
-            unwrap(valkey.asyncio.cluster.ValkeyCluster, "execute_command")
-            unwrap(valkey.asyncio.cluster.ClusterPipeline, "execute")
+        unwrap(valkey.Valkey, "execute_command")
+        unwrap(valkey.Valkey, "pipeline")
+        unwrap(valkey.client.Pipeline, "execute")
+        unwrap(valkey.client.Pipeline, "immediate_execute_command")
+        unwrap(valkey.cluster.ValkeyCluster, "execute_command")
+        unwrap(valkey.cluster.ClusterPipeline, "execute")
+        unwrap(valkey.asyncio.Valkey, "execute_command")
+        unwrap(valkey.asyncio.Valkey, "pipeline")
+        unwrap(valkey.asyncio.client.Pipeline, "execute")
+        unwrap(valkey.asyncio.client.Pipeline, "immediate_execute_command")
+        unwrap(valkey.asyncio.cluster.ValkeyCluster, "execute_command")
+        unwrap(valkey.asyncio.cluster.ClusterPipeline, "execute")
