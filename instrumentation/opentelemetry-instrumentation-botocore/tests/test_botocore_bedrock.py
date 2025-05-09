@@ -1157,9 +1157,7 @@ def test_converse_stream_close_before_consumption(
         request_max_tokens=max_tokens,
         request_stop_sequences=stop_sequences,
     )
-    # No error status check - span should be closed normally
-    assert span.status.status_code != StatusCode.ERROR
-
+    assert span.status.status_code == StatusCode.UNSET
     logs = log_exporter.get_finished_logs()
 
     assert len(logs) == 1
@@ -2709,8 +2707,7 @@ def test_invoke_model_with_response_stream_close_before_consumption(
         if model_family == "meta.llama"
         else stop_sequences,
     )
-    # No error status check - span should be closed normally
-    assert span.status.status_code != StatusCode.ERROR
+    assert span.status.status_code == StatusCode.UNSET
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
