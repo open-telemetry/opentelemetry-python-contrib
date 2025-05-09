@@ -644,7 +644,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    span.end()
+                    if span.is_recording():
+                        span.end()
 
                 def stream_error_callback(exception):
                     self._on_stream_error_callback(
@@ -684,7 +685,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    span.end()
+                    if span.is_recording():
+                        span.end()
 
                 def invoke_model_stream_error_callback(exception):
                     self._on_stream_error_callback(
