@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
+  ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
 - `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
   ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
 
