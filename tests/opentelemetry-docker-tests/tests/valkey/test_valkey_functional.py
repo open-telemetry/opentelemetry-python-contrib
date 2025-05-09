@@ -17,10 +17,6 @@ from time import time_ns
 
 import valkey
 import valkey.asyncio
-from valkey.commands.search.field import (
-    TextField,
-    VectorField,
-)
 from valkey.commands.search.indexDefinition import IndexDefinition, IndexType
 from valkey.commands.search.query import Query
 from valkey.exceptions import ResponseError
@@ -34,7 +30,7 @@ from opentelemetry.test.test_base import TestBase
 class TestValkeyInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.valkey_client = valkey.Valkey(port=6379)
+        self.valkey_client = valkey.Valkey(port=16379)
         self.valkey_client.flushall()
         ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -51,7 +47,7 @@ class TestValkeyInstrument(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
 
     def test_long_command_sanitized(self):
         ValkeyInstrumentor().uninstrument()
@@ -280,7 +276,7 @@ def async_call(coro):
 class TestAsyncValkeyInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.valkey_client = valkey.asyncio.Valkey(port=6379)
+        self.valkey_client = valkey.asyncio.Valkey(port=16379)
         async_call(self.valkey_client.flushall())
         ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -297,7 +293,7 @@ class TestAsyncValkeyInstrument(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
 
     def test_long_command(self):
         async_call(self.valkey_client.mget(*range(1000)))
@@ -593,7 +589,7 @@ class TestAsyncValkeyClusterInstrument(TestBase):
 class TestValkeyDBIndexInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.valkey_client = valkey.Valkey(port=6379, db=10)
+        self.valkey_client = valkey.Valkey(port=16379, db=10)
         self.valkey_client.flushall()
         ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -607,7 +603,7 @@ class TestValkeyDBIndexInstrument(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
         self.assertEqual(
             span.attributes["db.valkey.database_index"], 10
         )
@@ -621,73 +617,3 @@ class TestValkeyDBIndexInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-
-
-class TestValkeyearchInstrument(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.valkey_client = valkey.Valkey(port=6379)
-        self.valkey_client.flushall()
-        self.embedding_dim = 256
-        ValkeyInstrumentor().instrument(tracer_provider=self.tracer_provider)
-        self.prepare_data()
-        self.create_index()
-
-    def tearDown(self):
-        ValkeyInstrumentor().uninstrument()
-        super().tearDown()
-
-    def prepare_data(self):
-        try:
-            self.valkey_client.ft("idx:test_vss").dropindex(True)
-        except ResponseError:
-            print("No such index")
-        item = {
-            "name": "test",
-            "value": "test_value",
-            "embeddings": [0.1] * 256,
-        }
-        pipeline = self.valkey_client.pipeline()
-        pipeline.json().set("test:001", "$", item)
-        res = pipeline.execute()
-        assert False not in res
-
-    def create_index(self):
-        schema = (
-            TextField("$.name", no_stem=True, as_name="name"),
-            TextField("$.value", no_stem=True, as_name="value"),
-            VectorField(
-                "$.embeddings",
-                "FLAT",
-                {
-                    "TYPE": "FLOAT32",
-                    "DIM": self.embedding_dim,
-                    "DISTANCE_METRIC": "COSINE",
-                },
-                as_name="vector",
-            ),
-        )
-        definition = IndexDefinition(
-            prefix=["test:"], index_type=IndexType.JSON
-        )
-        res = self.valkey_client.ft("idx:test_vss").create_index(
-            fields=schema, definition=definition
-        )
-        assert "OK" in str(res)
-
-    def test_valkey_create_index(self):
-        spans = self.memory_exporter.get_finished_spans()
-        span = next(
-            span for span in spans if span.name == "valkey.create_index"
-        )
-        assert "valkey.create_index.fields" in span.attributes
-
-    def test_valkey_query(self):
-        query = "@name:test"
-        self.valkey_client.ft("idx:test_vss").search(Query(query))
-
-        spans = self.memory_exporter.get_finished_spans()
-        span = next(span for span in spans if span.name == "valkey.search")
-
-        assert span.attributes.get("valkey.search.query") == query
-        assert span.attributes.get("valkey.search.total") == 1

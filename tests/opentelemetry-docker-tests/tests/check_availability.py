@@ -19,6 +19,7 @@ import mysql.connector
 import psycopg2
 import pymongo
 import pyodbc
+import redis
 import valkey
 
 MONGODB_COLLECTION_NAME = "test"
@@ -37,6 +38,8 @@ POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
 POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
+VALKEY_HOST = os.getenv("VALKEY_HOST", "localhost")
+VALKEY_PORT = int(os.getenv("VALKEY_PORT ", "16379"))
 MSSQL_DB_NAME = os.getenv("MSSQL_DB_NAME", "opentelemetry-tests")
 MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
@@ -106,7 +109,12 @@ def check_postgres_connection():
 
 @retryable
 def check_redis_connection():
-    connection = valkey.Redis(host=REDIS_HOST, port=REDIS_PORT)
+    connection = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
+    connection.hgetall("*")
+    
+@retryable
+def check_valkey_connection():
+    connection = valkey.Valkey(host=VALKEY_HOST, port=VALKEY_PORT)
     connection.hgetall("*")
 
 
@@ -139,6 +147,7 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
+    check_valkey_connection()
     check_mssql_connection()
     setup_mssql_db()
 
