@@ -11,7 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.33.0/0.54b0 (2025-05-09)
+
 ### Added
+
+- `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
+  ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
+- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
+  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
 
 ### Fixed
 
@@ -31,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
   ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
 - `opentelemetry-instrumentation-sqlalchemy` Respect suppress_instrumentation functionality ([#3477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3477))
+
 
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
