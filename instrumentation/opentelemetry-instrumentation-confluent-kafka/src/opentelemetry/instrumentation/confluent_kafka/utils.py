@@ -3,9 +3,17 @@ from typing import List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_DESTINATION_TEMPORARY,
+    MESSAGING_KAFKA_DESTINATION_PARTITION,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
-    MessagingOperationValues,
     SpanAttributes,
 )
 from opentelemetry.trace import Link, SpanKind
@@ -114,32 +122,29 @@ def _enrich_span(
     topic,
     partition: Optional[int] = None,
     offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[MessagingOperationTypeValues] = None,
 ):
     if not span.is_recording():
         return
 
-    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-
+    span.set_attribute(MESSAGING_SYSTEM, "kafka")
+    span.set_attribute(MESSAGING_DESTINATION_NAME, topic)
     if partition is not None:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-
+        span.set_attribute(MESSAGING_KAFKA_DESTINATION_PARTITION, partition)
     span.set_attribute(
         SpanAttributes.MESSAGING_DESTINATION_KIND,
         MessagingDestinationKindValues.QUEUE.value,
     )
-
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(MESSAGING_OPERATION, operation.value)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+        span.set_attribute(MESSAGING_DESTINATION_TEMPORARY, True)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
     if partition is not None and offset is not None and topic:
         span.set_attribute(
-            SpanAttributes.MESSAGING_MESSAGE_ID,
+            MESSAGING_MESSAGE_ID,
             f"{topic}.{partition}.{offset}",
         )
 
