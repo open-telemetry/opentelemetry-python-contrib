@@ -68,6 +68,7 @@ tomli==2.0.1
 typing_extensions==4.12.2
 tzdata==2024.1
 urllib3==1.26.19
+valkey[libvalkey]==6.1.0
 vine==5.1.0
 wcwidth==0.2.13
 websocket-client==0.59.0
