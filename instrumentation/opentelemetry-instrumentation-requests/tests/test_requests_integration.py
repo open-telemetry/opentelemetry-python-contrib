@@ -51,6 +51,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -59,7 +60,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
     HTTP_URL,
 )
-from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
@@ -167,7 +167,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            "https://opentelemetry.io/schemas/1.11.0",
+            SpanAttributes.SCHEMA_URL,
         )
 
         self.assertEqual(
@@ -199,7 +199,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            "https://opentelemetry.io/schemas/1.21.0",
+            SpanAttributes.SCHEMA_URL,
         )
         self.assertEqual(
             span.attributes,
