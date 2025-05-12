@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+### Fixed
+
+- `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
+  ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
 ### Added
@@ -37,8 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3447](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3447))
 - `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
   ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
-- `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
-  ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+
 
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
