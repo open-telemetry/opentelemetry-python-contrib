@@ -111,10 +111,17 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.params.someparam"], "123"
+            generated_span.attributes["code.function.parameters.someparam.type"], "int"
         )
         self.assertEqual(
-            generated_span.attributes["code.function.params.otherparam"],
+            generated_span.attributes["code.function.parameters.otherparam.type"],
+            "str",
+        )
+        self.assertEqual(
+            generated_span.attributes["code.function.parameters.someparam.value"], "123"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.function.parameters.otherparam.value"],
             "'abc'",
         )
 
@@ -146,11 +153,18 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction(123, otherparam="abc")
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
-        self.assertNotIn(
-            "code.function.params.someparam", generated_span.attributes
+        self.assertEqual(
+            generated_span.attributes["code.function.parameters.someparam.type"], "int"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.function.parameters.otherparam.type"],
+            "str",
         )
         self.assertNotIn(
-            "code.function.params.otherparam", generated_span.attributes
+            "code.function.parameters.someparam.value", generated_span.attributes
+        )
+        self.assertNotIn(
+            "code.function.parameters.otherparam.value", generated_span.attributes
         )
 
     def test_tool_calls_record_return_values_on_span_if_enabled(self):
@@ -182,7 +196,10 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.return_value"], "125"
+            generated_span.attributes["code.function.return.type"], "int"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.function.return.value"], "125"
         )
 
     def test_tool_calls_do_not_record_return_values_if_not_enabled(self):
@@ -213,6 +230,9 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction(123)
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.assertEqual(
+            generated_span.attributes["code.function.return.type"], "int"
+        )
         self.assertNotIn(
-            "code.function.return_value", generated_span.attributes
+            "code.function.return.value", generated_span.attributes
         )
