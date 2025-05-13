@@ -97,15 +97,15 @@ def _record_function_call_arguments(
             span.set_attribute(value_attribute, _to_otel_value(value))
 
 
-def _record_function_call_result(
-    otel_wrapper, wrapped_function, result
-):
+def _record_function_call_result(otel_wrapper, wrapped_function, result):
     """Records the details about a function result as span attributes."""
     include_values = is_content_recording_enabled()
     span = trace.get_current_span()
     span.set_attribute("code.function.return.type", type(result).__name__)
     if include_values:
-        span.set_attribute("code.function.return.value", _to_otel_value(result))
+        span.set_attribute(
+            "code.function.return.value", _to_otel_value(result)
+        )
 
 
 def _wrap_sync_tool_function(

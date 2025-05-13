@@ -111,17 +111,27 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.type"], "int"
+            generated_span.attributes[
+                "code.function.parameters.someparam.type"
+            ],
+            "int",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.type"
+            ],
             "str",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.value"], "123"
+            generated_span.attributes[
+                "code.function.parameters.someparam.value"
+            ],
+            "123",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.value"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.value"
+            ],
             "'abc'",
         )
 
@@ -154,17 +164,24 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("tool_call somefunction")
         generated_span = self.otel.get_span_named("tool_call somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.type"], "int"
+            generated_span.attributes[
+                "code.function.parameters.someparam.type"
+            ],
+            "int",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.type"
+            ],
             "str",
         )
         self.assertNotIn(
-            "code.function.parameters.someparam.value", generated_span.attributes
+            "code.function.parameters.someparam.value",
+            generated_span.attributes,
         )
         self.assertNotIn(
-            "code.function.parameters.otherparam.value", generated_span.attributes
+            "code.function.parameters.otherparam.value",
+            generated_span.attributes,
         )
 
     def test_tool_calls_record_return_values_on_span_if_enabled(self):
