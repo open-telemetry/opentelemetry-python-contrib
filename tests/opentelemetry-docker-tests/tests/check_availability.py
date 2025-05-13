@@ -42,7 +42,7 @@ MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
 MSSQL_USER = os.getenv("MSSQL_USER", "sa")
 MSSQL_PASSWORD = os.getenv("MSSQL_PASSWORD", "yourStrong(!)Password")
-RETRY_COUNT = 8
+RETRY_COUNT = 10
 RETRY_INTERVAL = 5  # Seconds
 
 logger = logging.getLogger(__name__)
