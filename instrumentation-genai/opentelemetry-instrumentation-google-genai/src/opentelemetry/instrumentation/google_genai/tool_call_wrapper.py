@@ -71,10 +71,8 @@ def _create_function_span_attributes(
 
 
 def _record_function_call_argument(
-    span,
-    param_name,
-    param_value,
-    include_values):
+    span, param_name, param_value, include_values
+):
     attribute_prefix = f"code.function.parameters.{param_name}"
     type_attribute = f"{attribute_prefix}.type"
     span.set_attribute(type_attribute, type(param_value).__name__)
