@@ -70,6 +70,19 @@ def _create_function_span_attributes(
     return result
 
 
+def _record_function_call_argument(
+    span,
+    param_name,
+    param_value,
+    include_values):
+    attribute_prefix = f"code.function.parameters.{param_name}"
+    type_attribute = f"{attribute_prefix}.type"
+    span.set_attribute(type_attribute, type(param_value).__name__)
+    if include_values:
+        value_attribute = f"{attribute_prefix}.value"
+        span.set_attribute(value_attribute, _to_otel_value(param_value))
+
+
 def _record_function_call_arguments(
     otel_wrapper, wrapped_function, function_args, function_kwargs
 ):
@@ -82,19 +95,9 @@ def _record_function_call_arguments(
         param_name = f"args[{index}]"
         if index < len(params):
             param_name = params[index].name
-        attribute_prefix = f"code.function.parameters.{param_name}"
-        type_attribute = f"{attribute_prefix}.type"
-        span.set_attribute(type_attribute, type(entry).__name__)
-        if include_values:
-            value_attribute = f"{attribute_prefix}.value"
-            span.set_attribute(value_attribute, _to_otel_value(entry))
+        _record_function_call_argument(span, param_name, entry, include_values)
     for key, value in function_kwargs.items():
-        attribute_prefix = f"code.function.parameters.{key}"
-        type_attribute = f"{attribute_prefix}.type"
-        span.set_attribute(type_attribute, type(value).__name__)
-        if include_values:
-            value_attribute = f"{attribute_prefix}.value"
-            span.set_attribute(value_attribute, _to_otel_value(value))
+        _record_function_call_argument(span, key, value, include_values)
 
 
 def _record_function_call_result(otel_wrapper, wrapped_function, result):
