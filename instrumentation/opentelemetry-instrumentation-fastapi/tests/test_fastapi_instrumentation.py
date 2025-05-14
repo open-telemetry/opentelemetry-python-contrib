@@ -16,7 +16,6 @@
 
 import unittest
 from contextlib import ExitStack
-from importlib.metadata import PackageNotFoundError
 from timeit import default_timer
 from unittest.mock import Mock, call, patch
 
