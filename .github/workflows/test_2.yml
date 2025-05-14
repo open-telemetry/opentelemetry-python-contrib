@@ -9,8 +9,20 @@ on:
     - 'release/*'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
-  CORE_REPO_SHA: main
+  # Set the SHA to the branch name if the PR has a label 'prepare-release' or 'backport' otherwise, set it to 'main'
+  # For PRs you can change the inner fallback ('main')
+  # For pushes you change the outer fallback ('main')
+  # The logic below is used during releases and depends on having an equivalent branch name in the core repo.
+  CORE_REPO_SHA: ${{ github.event_name == 'pull_request' && (
+       contains(github.event.pull_request.labels.*.name, 'prepare-release') && github.event.pull_request.head.ref ||
+       contains(github.event.pull_request.labels.*.name, 'backport') && github.event.pull_request.base.ref ||
+       'main'
+    ) || 'main' }}
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -19,6 +31,7 @@ jobs:
   py313-test-instrumentation-threading_ubuntu-latest:
     name: instrumentation-threading 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -37,6 +50,7 @@ jobs:
   pypy3-test-instrumentation-threading_ubuntu-latest:
     name: instrumentation-threading pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -55,6 +69,7 @@ jobs:
   py38-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -73,6 +88,7 @@ jobs:
   py39-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -91,6 +107,7 @@ jobs:
   py310-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -109,6 +126,7 @@ jobs:
   py311-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -127,6 +145,7 @@ jobs:
   py312-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -145,6 +164,7 @@ jobs:
   py313-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -163,6 +183,7 @@ jobs:
   pypy3-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -181,6 +202,7 @@ jobs:
   py38-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -199,6 +221,7 @@ jobs:
   py39-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -217,6 +240,7 @@ jobs:
   py310-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -235,6 +259,7 @@ jobs:
   py311-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -253,6 +278,7 @@ jobs:
   py312-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -271,6 +297,7 @@ jobs:
   py313-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -289,6 +316,7 @@ jobs:
   pypy3-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -307,6 +335,7 @@ jobs:
   py38-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -325,6 +354,7 @@ jobs:
   py38-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -343,6 +373,7 @@ jobs:
   py39-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -361,6 +392,7 @@ jobs:
   py39-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -379,6 +411,7 @@ jobs:
   py310-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -397,6 +430,7 @@ jobs:
   py310-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -415,6 +449,7 @@ jobs:
   py311-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -433,6 +468,7 @@ jobs:
   py311-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -451,6 +487,7 @@ jobs:
   py312-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -469,6 +506,7 @@ jobs:
   py312-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -487,6 +525,7 @@ jobs:
   py313-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -505,6 +544,7 @@ jobs:
   pypy3-test-instrumentation-httpx-0_ubuntu-latest:
     name: instrumentation-httpx-0 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -523,6 +563,7 @@ jobs:
   pypy3-test-instrumentation-httpx-1_ubuntu-latest:
     name: instrumentation-httpx-1 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -541,6 +582,7 @@ jobs:
   py38-test-util-http_ubuntu-latest:
     name: util-http 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -559,6 +601,7 @@ jobs:
   py39-test-util-http_ubuntu-latest:
     name: util-http 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -577,6 +620,7 @@ jobs:
   py310-test-util-http_ubuntu-latest:
     name: util-http 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -595,6 +639,7 @@ jobs:
   py311-test-util-http_ubuntu-latest:
     name: util-http 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -613,6 +658,7 @@ jobs:
   py312-test-util-http_ubuntu-latest:
     name: util-http 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -631,6 +677,7 @@ jobs:
   py313-test-util-http_ubuntu-latest:
     name: util-http 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -649,6 +696,7 @@ jobs:
   pypy3-test-util-http_ubuntu-latest:
     name: util-http pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -667,6 +715,7 @@ jobs:
   py38-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -685,6 +734,7 @@ jobs:
   py38-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -703,6 +753,7 @@ jobs:
   py39-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -721,6 +772,7 @@ jobs:
   py39-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -739,6 +791,7 @@ jobs:
   py310-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -757,6 +810,7 @@ jobs:
   py310-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -775,6 +829,7 @@ jobs:
   py311-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -793,6 +848,7 @@ jobs:
   py311-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -811,6 +867,7 @@ jobs:
   py312-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -829,6 +886,7 @@ jobs:
   py312-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -847,6 +905,7 @@ jobs:
   py313-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -865,6 +924,7 @@ jobs:
   py313-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -883,6 +943,7 @@ jobs:
   pypy3-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -901,6 +962,7 @@ jobs:
   pypy3-test-propagator-aws-xray-1_ubuntu-latest:
     name: propagator-aws-xray-1 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -919,6 +981,7 @@ jobs:
   py38-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -937,6 +1000,7 @@ jobs:
   py39-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -955,6 +1019,7 @@ jobs:
   py310-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -973,6 +1038,7 @@ jobs:
   py311-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -991,6 +1057,7 @@ jobs:
   py312-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1009,6 +1076,7 @@ jobs:
   py313-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1027,6 +1095,7 @@ jobs:
   pypy3-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1045,6 +1114,7 @@ jobs:
   py38-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1063,6 +1133,7 @@ jobs:
   py38-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1081,6 +1152,7 @@ jobs:
   py39-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1099,6 +1171,7 @@ jobs:
   py39-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1117,6 +1190,7 @@ jobs:
   py310-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1135,6 +1209,7 @@ jobs:
   py310-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1153,6 +1228,7 @@ jobs:
   py311-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1171,6 +1247,7 @@ jobs:
   py311-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1189,6 +1266,7 @@ jobs:
   py312-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1207,6 +1285,7 @@ jobs:
   py312-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1225,6 +1304,7 @@ jobs:
   py313-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1243,6 +1323,7 @@ jobs:
   py313-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1261,6 +1342,7 @@ jobs:
   pypy3-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1279,6 +1361,7 @@ jobs:
   pypy3-test-instrumentation-sio-pika-1_ubuntu-latest:
     name: instrumentation-sio-pika-1 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1297,6 +1380,7 @@ jobs:
   py38-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1315,6 +1399,7 @@ jobs:
   py38-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1333,6 +1418,7 @@ jobs:
   py38-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1351,6 +1437,7 @@ jobs:
   py38-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1369,6 +1456,7 @@ jobs:
   py39-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1387,6 +1475,7 @@ jobs:
   py39-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1405,6 +1494,7 @@ jobs:
   py39-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1423,6 +1513,7 @@ jobs:
   py39-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1441,6 +1532,7 @@ jobs:
   py310-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1459,6 +1551,7 @@ jobs:
   py310-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1477,6 +1570,7 @@ jobs:
   py310-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1495,6 +1589,7 @@ jobs:
   py310-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1513,6 +1608,7 @@ jobs:
   py311-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1531,6 +1627,7 @@ jobs:
   py311-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1549,6 +1646,7 @@ jobs:
   py311-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1567,6 +1665,7 @@ jobs:
   py311-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1585,6 +1684,7 @@ jobs:
   py312-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1603,6 +1703,7 @@ jobs:
   py312-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1621,6 +1722,7 @@ jobs:
   py312-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1639,6 +1741,7 @@ jobs:
   py312-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1657,6 +1760,7 @@ jobs:
   py313-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1675,6 +1779,7 @@ jobs:
   py313-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1693,6 +1798,7 @@ jobs:
   py313-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1711,6 +1817,7 @@ jobs:
   py313-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1729,6 +1836,7 @@ jobs:
   pypy3-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1747,6 +1855,7 @@ jobs:
   pypy3-test-instrumentation-aio-pika-1_ubuntu-latest:
     name: instrumentation-aio-pika-1 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1765,6 +1874,7 @@ jobs:
   pypy3-test-instrumentation-aio-pika-2_ubuntu-latest:
     name: instrumentation-aio-pika-2 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1783,6 +1893,7 @@ jobs:
   pypy3-test-instrumentation-aio-pika-3_ubuntu-latest:
     name: instrumentation-aio-pika-3 pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1801,6 +1912,7 @@ jobs:
   py38-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1819,6 +1931,7 @@ jobs:
   py39-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1837,6 +1950,7 @@ jobs:
   py310-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1855,6 +1969,7 @@ jobs:
   py311-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1873,6 +1988,7 @@ jobs:
   py312-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1891,6 +2007,7 @@ jobs:
   py313-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1909,6 +2026,7 @@ jobs:
   pypy3-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1927,6 +2045,7 @@ jobs:
   py38-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1945,6 +2064,7 @@ jobs:
   py39-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1963,6 +2083,7 @@ jobs:
   py310-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1981,6 +2102,7 @@ jobs:
   py311-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1999,6 +2121,7 @@ jobs:
   py38-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2017,6 +2140,7 @@ jobs:
   py39-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2035,6 +2159,7 @@ jobs:
   py310-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2053,6 +2178,7 @@ jobs:
   py311-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2071,6 +2197,7 @@ jobs:
   py312-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2089,6 +2216,7 @@ jobs:
   py313-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2107,6 +2235,7 @@ jobs:
   pypy3-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2125,6 +2254,7 @@ jobs:
   pypy3-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2143,6 +2273,7 @@ jobs:
   py38-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2161,6 +2292,7 @@ jobs:
   py39-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2179,6 +2311,7 @@ jobs:
   py310-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2197,6 +2330,7 @@ jobs:
   py311-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2215,6 +2349,7 @@ jobs:
   py312-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2233,6 +2368,7 @@ jobs:
   py313-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2251,6 +2387,7 @@ jobs:
   py38-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2269,6 +2406,7 @@ jobs:
   py39-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2287,6 +2425,7 @@ jobs:
   py310-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2305,6 +2444,7 @@ jobs:
   py311-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2323,6 +2463,7 @@ jobs:
   py312-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2341,6 +2482,7 @@ jobs:
   py313-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2359,6 +2501,7 @@ jobs:
   py38-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2377,6 +2520,7 @@ jobs:
   py39-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2395,6 +2539,7 @@ jobs:
   py310-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2413,6 +2558,7 @@ jobs:
   py311-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2431,6 +2577,7 @@ jobs:
   py312-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2449,6 +2596,7 @@ jobs:
   py313-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2467,6 +2615,7 @@ jobs:
   pypy3-test-instrumentation-cassandra_ubuntu-latest:
     name: instrumentation-cassandra pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2485,6 +2634,7 @@ jobs:
   py38-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2503,6 +2653,7 @@ jobs:
   py39-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.9 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2521,6 +2672,7 @@ jobs:
   py310-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.10 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2539,6 +2691,7 @@ jobs:
   py311-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.11 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2557,6 +2710,7 @@ jobs:
   py312-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.12 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2575,6 +2729,7 @@ jobs:
   py313-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.13 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -2593,6 +2748,7 @@ jobs:
   pypy3-test-processor-baggage_ubuntu-latest:
     name: processor-baggage pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from platform import python_implementation
 from unittest.mock import patch
 
 import pytest
@@ -282,6 +283,10 @@ class TestValidation(unittest.TestCase):
             )
 
 
+@pytest.mark.skipif(
+    python_implementation() == "PyPy",
+    reason="Fails with pypy 3.8, bump cramjam when 3.9 is baseline",
+)
 # Ensures export is successful with valid export_records and config
 @patch("requests.post")
 def test_valid_export(mock_post, prom_rw, metric):

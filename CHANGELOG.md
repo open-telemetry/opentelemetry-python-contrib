@@ -11,6 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.33.0/0.54b0 (2025-05-09)
+
+### Added
+
+- `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
+  ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
+- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
+  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
+
+### Fixed
+
+- `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
+  and log as debug instead of exception
+  ([#3423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3423))
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation
+  ([#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383))
+- `opentelemetry-instrumentation-botocore` Add GenAI instrumentation for additional Bedrock models for InvokeModel API
+  ([#3419](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3419))
+- `opentelemetry-instrumentation` don't print duplicated conflict log error message
+  ([#3432](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3432))
+- `opentelemetry-instrumentation-grpc` Check for None result in gRPC
+  ([#3380](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3381))
+- `opentelemetry-instrumentation-[asynclick/click]` Add missing opentelemetry-instrumentation dep
+  ([#3447](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3447))
+- `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
+  ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
+
+
+## Version 1.32.0/0.53b0 (2025-04-10)
+
 ### Added
 
 - `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
@@ -29,6 +59,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3113](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3113))
 - `opentelemetry-instrumentation-grpc` Fix error when using gprc versions <= 1.50.0 with unix sockets.
   ([[#3393](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3393)])
+- `opentelemetry-instrumentation-asyncio` Fix duplicate instrumentation.
+  ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
+- `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
+  ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
+
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
