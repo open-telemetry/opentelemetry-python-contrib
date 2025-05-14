@@ -322,8 +322,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 ):  # usually true
                     outer_server_error_middleware = ServerErrorMiddleware(
                         app=otel_middleware,
-                        handler=inner_server_error_middleware.handler,
-                        debug=inner_server_error_middleware.debug,
                     )
                 else:
                     # Something else seems to have patched things, or maybe Starlette changed.
