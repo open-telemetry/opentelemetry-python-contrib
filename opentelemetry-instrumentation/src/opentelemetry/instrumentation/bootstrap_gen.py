@@ -102,7 +102,7 @@ libraries = [
     },
     {
         "library": "fastapi ~= 0.92",
-        "instrumentation": "opentelemetry-instrumentation-fastapi==0.53b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-fastapi==0.55b0.dev",
     },
     {
         "library": "flask >= 1.0",
