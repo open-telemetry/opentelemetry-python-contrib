@@ -1072,26 +1072,6 @@ class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
             )
 
 
-def mock_version_with_fastapi(*args, **kwargs):
-    req_name = args[0]
-    if req_name == "fastapi":
-        # TODO: Value now matters
-        return "0.109"
-    raise PackageNotFoundError()
-
-
-def mock_version_with_old_fastapi(*args, **kwargs):
-    req_name = args[0]
-    if req_name == "fastapi":
-        # TODO: Value now matters
-        return "0.92"
-    raise PackageNotFoundError()
-
-
-def mock_version_without_fastapi(*args, **kwargs):
-    raise PackageNotFoundError()
-
-
 class TestAutoInstrumentation(TestBaseAutoFastAPI):
     """Test the auto-instrumented variant
 
