@@ -59,7 +59,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
-    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_SERVER_NAME,
     HTTP_STATUS_CODE,
