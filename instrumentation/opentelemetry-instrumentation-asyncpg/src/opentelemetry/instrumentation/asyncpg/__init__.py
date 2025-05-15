@@ -78,7 +78,7 @@ from opentelemetry.trace.status import Status, StatusCode
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
     """Get network and database attributes from connection."""
-    span_attributes = {DB_SYSTEM_NAME: DbSystemValues.POSTGRESQL.value}
+    span_attributes = {DB_SYSTEM: DbSystemValues.POSTGRESQL.value}
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
     # https://github.com/MagicStack/asyncpg/blob/master/asyncpg/connection.py#L68
