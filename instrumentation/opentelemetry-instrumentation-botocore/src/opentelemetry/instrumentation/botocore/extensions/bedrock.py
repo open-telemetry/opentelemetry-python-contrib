@@ -499,18 +499,22 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     [stop_reason],
                 )
 
-        event_logger = instrumentor_context.event_logger
-        choice = _Choice.from_converse(result, capture_content)
-        # this path is used by streaming apis, in that case we are already out of the span
-        # context so need to add the span context manually
-        span_ctx = span.get_span_context()
-        event_logger.emit(
-            choice.to_choice_event(
-                trace_id=span_ctx.trace_id,
-                span_id=span_ctx.span_id,
-                trace_flags=span_ctx.trace_flags,
+        # In case of an early stream closure, the result may not contain outputs
+        if self._stream_has_output(result) and self._stream_has_content(
+            result
+        ):
+            event_logger = instrumentor_context.event_logger
+            choice = _Choice.from_converse(result, capture_content)
+            # this path is used by streaming apis, in that case we are already out of the span
+            # context so need to add the span context manually
+            span_ctx = span.get_span_context()
+            event_logger.emit(
+                choice.to_choice_event(
+                    trace_id=span_ctx.trace_id,
+                    span_id=span_ctx.span_id,
+                    trace_flags=span_ctx.trace_flags,
+                )
             )
-        )
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
@@ -642,7 +646,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    span.end()
+                    if span.is_recording():
+                        span.end()
 
                 def stream_error_callback(exception):
                     self._on_stream_error_callback(
@@ -682,7 +687,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    span.end()
+                    if span.is_recording():
+                        span.end()
 
                 def invoke_model_stream_error_callback(exception):
                     self._on_stream_error_callback(
@@ -781,9 +787,13 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stopReason"]]
             )
 
-        event_logger = instrumentor_context.event_logger
-        choice = _Choice.from_converse(response_body, capture_content)
-        event_logger.emit(choice.to_choice_event())
+        # In case of an early stream closure, the result may not contain outputs
+        if self._stream_has_output(response_body) and self._stream_has_content(
+            response_body
+        ):
+            event_logger = instrumentor_context.event_logger
+            choice = _Choice.from_converse(response_body, capture_content)
+            event_logger.emit(choice.to_choice_event())
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
@@ -1004,3 +1014,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 duration,
                 attributes=metrics_attributes,
             )
+
+    def _stream_has_output(self, response_body: dict[str, Any]):
+        return "output" in response_body
+
+    def _stream_has_content(self, response_body: dict[str, Any]):
+        return "message" in response_body["output"]
