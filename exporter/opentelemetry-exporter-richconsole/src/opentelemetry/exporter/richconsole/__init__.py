@@ -64,7 +64,9 @@ from rich.tree import Tree
 import opentelemetry.trace
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 
 
 def _ns_to_time(nanoseconds):
@@ -120,7 +122,7 @@ def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
             label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
         )
         for attribute in span.attributes:
-            if attribute == SpanAttributes.DB_STATEMENT:
+            if attribute == DB_STATEMENT:
                 attributes.add(
                     Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] ")
                 )
