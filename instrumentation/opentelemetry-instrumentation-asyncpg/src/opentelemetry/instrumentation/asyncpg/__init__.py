@@ -63,15 +63,16 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
+    DB_SYSTEM,
     DB_USER,
+    DbSystemValues,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
     NET_TRANSPORT,
+    NetTransportValues,
 )
-from opentelemetry.semconv.attributes.db_attributes import DB_SYSTEM_NAME
-from opentelemetry.semconv.trace import DbSystemValues, NetTransportValues
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
