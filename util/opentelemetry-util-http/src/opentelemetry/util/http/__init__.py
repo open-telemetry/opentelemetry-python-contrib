@@ -160,8 +160,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """Given a string url, remove the username and password only if it is a valid url"""
-    # Modifying current functionality of removing url credentials and instead replacing the username and password with the keyword "REDACTED" as per the semantic conventions for http-spans (https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md)
+    """ Given a string url, replace the username and password with the keyword "REDACTED "only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
