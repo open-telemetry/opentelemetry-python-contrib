@@ -46,6 +46,17 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import NET_HOST_PORT
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -55,7 +66,6 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
@@ -85,15 +95,15 @@ _recommended_attrs_old = {
     "http.server.active_requests": _server_active_requests_count_attrs_old,
     "http.server.duration": {
         *_server_duration_attrs_old,
-        SpanAttributes.HTTP_TARGET,
+        HTTP_TARGET,
     },
     "http.server.response.size": {
         *_server_duration_attrs_old,
-        SpanAttributes.HTTP_TARGET,
+        HTTP_TARGET,
     },
     "http.server.request.size": {
         *_server_duration_attrs_old,
-        SpanAttributes.HTTP_TARGET,
+        HTTP_TARGET,
     },
 }
 
@@ -245,8 +255,8 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             span
             for span in spans
             if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
+                HTTP_URL in span.attributes
+                or HTTP_TARGET in span.attributes
             )
         ]
 
@@ -256,11 +266,11 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
 
         for span in spans_with_http_attributes:
             self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+                "/sub/home", span.attributes[HTTP_TARGET]
             )
         self.assertEqual(
             "https://testserver:443/sub/home",
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes[HTTP_URL],
         )
 
 
@@ -309,8 +319,8 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
             span
             for span in spans
             if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
+                HTTP_URL in span.attributes
+                or HTTP_TARGET in span.attributes
             )
         ]
 
@@ -319,11 +329,11 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
 
         for span in spans_with_http_attributes:
             self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+                "/sub/home", span.attributes[HTTP_TARGET]
             )
         self.assertEqual(
             "https://testserver:443/sub/home",
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes[HTTP_URL],
         )
 
 
@@ -382,12 +392,12 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         for span in spans:
             self.assertIn("GET /user/{username}", span.name)
         self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
+            spans[-1].attributes[HTTP_ROUTE], "/user/{username}"
         )
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
         self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
+            spans[-1].attributes[HTTP_FLAVOR], "1.1"
         )
 
     def test_fastapi_excluded_urls(self):
@@ -511,21 +521,21 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
-            SpanAttributes.NET_HOST_PORT: 443,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_TARGET: "/foobar",
+            HTTP_METHOD: "GET",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
+            NET_HOST_PORT: 443,
+            HTTP_STATUS_CODE: 200,
+            HTTP_TARGET: "/foobar",
         }
         expected_requests_count_attributes = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_METHOD: "GET",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -593,14 +603,14 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration = max(round((default_timer() - start) * 1000), 0)
         duration_s = max(default_timer() - start, 0)
         expected_duration_attributes_old = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
-            SpanAttributes.NET_HOST_PORT: 443,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_TARGET: "/foobar",
+            HTTP_METHOD: "GET",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
+            NET_HOST_PORT: 443,
+            HTTP_STATUS_CODE: 200,
+            HTTP_TARGET: "/foobar",
         }
         expected_duration_attributes_new = {
             HTTP_REQUEST_METHOD: "GET",
@@ -610,11 +620,11 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_ROUTE: "/foobar",
         }
         expected_requests_count_attributes = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_METHOD: "GET",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
             HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "https",
         }
@@ -676,21 +686,21 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.request("NONSTANDARD", "/foobar")
         duration = max(round((default_timer() - start) * 1000), 0)
         expected_duration_attributes = {
-            SpanAttributes.HTTP_METHOD: "_OTHER",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
-            SpanAttributes.NET_HOST_PORT: 443,
-            SpanAttributes.HTTP_STATUS_CODE: 405,
-            SpanAttributes.HTTP_TARGET: "/foobar",
+            HTTP_METHOD: "_OTHER",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
+            NET_HOST_PORT: 443,
+            HTTP_STATUS_CODE: 405,
+            HTTP_TARGET: "/foobar",
         }
         expected_requests_count_attributes = {
-            SpanAttributes.HTTP_METHOD: "_OTHER",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_METHOD: "_OTHER",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
         }
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for metric in (
@@ -758,14 +768,14 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration = max(round((default_timer() - start) * 1000), 0)
         duration_s = max(default_timer() - start, 0)
         expected_duration_attributes_old = {
-            SpanAttributes.HTTP_METHOD: "_OTHER",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
-            SpanAttributes.NET_HOST_PORT: 443,
-            SpanAttributes.HTTP_STATUS_CODE: 405,
-            SpanAttributes.HTTP_TARGET: "/foobar",
+            HTTP_METHOD: "_OTHER",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
+            NET_HOST_PORT: 443,
+            HTTP_STATUS_CODE: 405,
+            HTTP_TARGET: "/foobar",
         }
         expected_duration_attributes_new = {
             HTTP_REQUEST_METHOD: "_OTHER",
@@ -775,11 +785,11 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_ROUTE: "/foobar",
         }
         expected_requests_count_attributes = {
-            SpanAttributes.HTTP_METHOD: "_OTHER",
-            SpanAttributes.HTTP_HOST: "testserver:443",
-            SpanAttributes.HTTP_SCHEME: "https",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SERVER_NAME: "testserver",
+            HTTP_METHOD: "_OTHER",
+            HTTP_HOST: "testserver:443",
+            HTTP_SCHEME: "https",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SERVER_NAME: "testserver",
             HTTP_REQUEST_METHOD: "_OTHER",
             URL_SCHEME: "https",
         }
@@ -1204,8 +1214,8 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
             span
             for span in spans
             if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
+                HTTP_URL in span.attributes
+                or HTTP_TARGET in span.attributes
             )
         ]
 
@@ -1214,11 +1224,11 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
 
         for span in spans_with_http_attributes:
             self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+                "/sub/home", span.attributes[HTTP_TARGET]
             )
         self.assertEqual(
             "https://testserver:443/sub/home",
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes[HTTP_URL],
         )
 
 
@@ -1297,8 +1307,8 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
             span
             for span in spans
             if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
+                HTTP_URL in span.attributes
+                or HTTP_TARGET in span.attributes
             )
         ]
 
@@ -1307,11 +1317,11 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
 
         for span in spans_with_http_attributes:
             self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
+                "/sub/home", span.attributes[HTTP_TARGET]
             )
         self.assertEqual(
             "https://testserver:443/sub/home",
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes[HTTP_URL],
         )
 
 
