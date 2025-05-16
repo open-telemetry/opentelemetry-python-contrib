@@ -26,8 +26,8 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-instrumentation == 0.54b0",
-  "opentelemetry-semantic-conventions == 0.54b0",
+  "opentelemetry-instrumentation == 0.54b1",
+  "opentelemetry-semantic-conventions == 0.54b1",
   "opentelemetry-propagator-aws-xray ~= 1.0",
 ]
 
