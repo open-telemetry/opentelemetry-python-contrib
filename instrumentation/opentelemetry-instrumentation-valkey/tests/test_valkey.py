@@ -256,7 +256,9 @@ class TestValkey(TestBase):
         )
 
     def test_attributes_tcp(self):
-        valkey_client = valkey.Valkey.from_url("valkey://foo:bar@1.1.1.1:6380/1")
+        valkey_client = valkey.Valkey.from_url(
+            "valkey://foo:bar@1.1.1.1:6380/1"
+        )
 
         with mock.patch.object(valkey_client, "connection"):
             valkey_client.set("key", "value")
