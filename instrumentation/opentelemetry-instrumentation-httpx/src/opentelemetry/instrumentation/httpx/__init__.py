@@ -1149,6 +1149,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
+    # pylint: disable=too-many-branches
     @classmethod
     def instrument_client(
         cls,
