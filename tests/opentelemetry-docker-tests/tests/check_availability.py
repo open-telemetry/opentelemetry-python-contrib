@@ -42,8 +42,8 @@ MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
 MSSQL_USER = os.getenv("MSSQL_USER", "sa")
 MSSQL_PASSWORD = os.getenv("MSSQL_PASSWORD", "yourStrong(!)Password")
-RETRY_COUNT = 8
-RETRY_INTERVAL = 5  # Seconds
+RETRY_COUNT = 5
+RETRY_INITIAL_INTERVAL = 2  # Seconds
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,8 @@ def retryable(func):
                 func()
                 return
             except Exception as ex:  # pylint: disable=broad-except
+                # Exponential backoff
+                backoff_interval = RETRY_INITIAL_INTERVAL * (2**i)
                 logger.error(
                     "waiting for %s, retry %d/%d [%s]",
                     func.__name__,
@@ -63,7 +65,7 @@ def retryable(func):
                     RETRY_COUNT,
                     ex,
                 )
-            time.sleep(RETRY_INTERVAL)
+            time.sleep(backoff_interval)
         raise Exception(f"waiting for {func.__name__} failed")
 
     return wrapper
