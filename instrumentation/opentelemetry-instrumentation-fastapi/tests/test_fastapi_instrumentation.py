@@ -46,15 +46,6 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.attributes.http_attributes import (
-    HTTP_REQUEST_METHOD,
-    HTTP_RESPONSE_STATUS_CODE,
-    HTTP_ROUTE,
-)
-from opentelemetry.semconv.attributes.network_attributes import (
-    NETWORK_PROTOCOL_VERSION,
-)
-from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -66,6 +57,15 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_URL,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import NET_HOST_PORT
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
