@@ -11,11 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
+  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+
 ### Breaking changes
 
 - `opentelemetry-instrumentation-botocore` Use `cloud.region` instead of `aws.region` span attribute as per semantic conventions.
   ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
-
+- `opentelemetry-instrumentation-fastapi`: Drop support for FastAPI versions earlier than `0.98`
+  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
@@ -100,8 +106,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-redis` Add missing entry in doc string for `def _instrument`
   ([#3247](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3247))
-- `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
-  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 - `opentelemetry-instrumentation-botocore` sns-extension: Change destination name attribute
   to match topic ARN and redact phone number from attributes
   ([#3249](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3249))
