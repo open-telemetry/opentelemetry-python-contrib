@@ -66,6 +66,7 @@ dependencies = [
   "opentelemetry-instrumentation-openai-v2[instruments]",
 ]
 
+
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
 package = false # https://docs.astral.sh/uv/reference/settings/#package
@@ -147,6 +148,7 @@ members = [
 # TODO: remove after python 3.8 is dropped
 exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-google-genai",
+  "instrumentation/opentelemetry-instrumentation-starlette",
 ]
 
 [tool.ruff]
