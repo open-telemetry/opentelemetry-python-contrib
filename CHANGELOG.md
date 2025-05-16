@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-valkey` Instrumentation for Valkey
+  ([#3478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3478))
 - `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
   ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
 - `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.

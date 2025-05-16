@@ -58,6 +58,7 @@ dependencies = [
   "opentelemetry-instrumentation-tortoiseorm",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
+  "opentelemetry-instrumentation-valkey[instruments]",
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
@@ -127,6 +128,7 @@ opentelemetry-instrumentation-tornado = { workspace = true }
 opentelemetry-instrumentation-tortoiseorm = { workspace = true }
 opentelemetry-instrumentation-urllib = { workspace = true }
 opentelemetry-instrumentation-urllib3 = { workspace = true }
+opentelemetry-instrumentation-valkey = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }

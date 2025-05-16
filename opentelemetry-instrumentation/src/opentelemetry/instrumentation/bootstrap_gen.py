@@ -212,6 +212,10 @@ libraries = [
         "library": "urllib3 >= 1.0.0, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-urllib3==0.55b0.dev",
     },
+    {
+        "library": "valkey[libvalkey] >= 6.1.0",
+        "instrumentation": "opentelemetry-instrumentation-valkey==0.54b0.dev",
+    },
 ]
 default_instrumentations = [
     "opentelemetry-instrumentation-asyncio==0.55b0.dev",

@@ -80,6 +80,7 @@ dependencies = [
     "opentelemetry-instrumentation-tortoiseorm==0.55b0.dev",
     "opentelemetry-instrumentation-urllib==0.55b0.dev",
     "opentelemetry-instrumentation-urllib3==0.55b0.dev",
+    "opentelemetry-instrumentation-valkey==0.55b0.dev",
     "opentelemetry-instrumentation-wsgi==0.55b0.dev",
 ]
 
