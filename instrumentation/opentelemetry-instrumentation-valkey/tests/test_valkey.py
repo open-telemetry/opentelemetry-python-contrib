@@ -128,7 +128,7 @@ class TestValkey(TestBase):
         connection = valkey.connection.Connection()
         valkey_client.connection = connection
 
-        response_attribute_name = "db.redis.response"
+        response_attribute_name = "db.valkey.response"
 
         def response_hook(span, conn, response):
             span.set_attribute(response_attribute_name, response)
@@ -256,7 +256,7 @@ class TestValkey(TestBase):
         )
 
     def test_attributes_tcp(self):
-        valkey_client = valkey.Redis.from_url("redis://foo:bar@1.1.1.1:6380/1")
+        valkey_client = valkey.Valkey.from_url("valkey://foo:bar@1.1.1.1:6380/1")
 
         with mock.patch.object(valkey_client, "connection"):
             valkey_client.set("key", "value")
@@ -280,7 +280,7 @@ class TestValkey(TestBase):
         )
 
     def test_attributes_unix_socket(self):
-        valkey_client = valkey.Redis.from_url(
+        valkey_client = valkey.Valkey.from_url(
             "unix://foo@/path/to/socket.sock?db=3&password=bar"
         )
 
