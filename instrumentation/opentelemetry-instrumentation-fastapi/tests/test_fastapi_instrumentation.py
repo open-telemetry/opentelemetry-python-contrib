@@ -207,6 +207,7 @@ class TestBaseFastAPI(TestBase):
             return {"message": "ok"}
 
         app.mount("/sub", app=sub_app)
+        app.host("testserver2", sub_app)
 
         return app
 
@@ -262,6 +263,10 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             "https://testserver:443/sub/home",
             span.attributes[SpanAttributes.HTTP_URL],
         )
+
+    def test_host_fastapi_call(self):
+        client = TestClient(self._app, base_url="https://testserver2")
+        client.get("/")
 
 
 class TestBaseAutoFastAPI(TestBaseFastAPI):

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Use `cloud.region` instead of `aws.region` span attribute as per semantic conventions.
   ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
 
+### Fixed
+
+- `opentelemetry-instrumentation-starlette` Fixes a crash when host-based routing is used ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507/))
+- `opentelemetry-instrumentation-fastapi` Fixes a crash when host-based routing is used ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507/))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
@@ -44,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
   ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
 
-
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
 ### Added
@@ -69,7 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
 - `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
   ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
-
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 

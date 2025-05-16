@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from starlette import applications
 from starlette.responses import PlainTextResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Host, Mount, Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -139,6 +139,10 @@ class TestStarletteManualInstrumentation(TestBase):
                 "http://testserver/sub/home",
                 span.attributes[SpanAttributes.HTTP_URL],
             )
+
+    def test_host_starlette_call(self):
+        client = TestClient(self._app, base_url="http://testserver2")
+        client.get("/")
 
     def test_starlette_route_attribute_added(self):
         """Ensure that starlette routes are used as the span name."""
@@ -298,6 +302,7 @@ class TestStarletteManualInstrumentation(TestBase):
                 Route("/user/{username}", home),
                 Route("/healthzz", health),
                 Mount("/sub", app=sub_app),
+                Host("testserver2", sub_app),
             ],
         )
 
