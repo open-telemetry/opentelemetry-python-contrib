@@ -25,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
 - `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
   ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
-- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
+- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
+  ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
 
 ### Fixed
 
