@@ -16,10 +16,10 @@
 import asyncio
 from unittest.mock import Mock, patch
 
+import tornado.websocket
 from http_server_mock import HttpServerMock
 from tornado.httpclient import HTTPClientError
 from tornado.testing import AsyncHTTPTestCase
-import tornado.websocket
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.propagators import (
@@ -455,12 +455,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
     @tornado.testing.gen_test()
     async def test_websockethandler(self):
         ws_client = await tornado.websocket.websocket_connect(
-            'ws://127.0.0.1:{}/echo_socket'.format(self.get_http_port())
+            f"ws://127.0.0.1:{self.get_http_port()}/echo_socket"
         )
 
-        await ws_client.write_message('world')
+        await ws_client.write_message("world")
         resp = await ws_client.read_message()
-        self.assertEqual(resp, 'hello world')
+        self.assertEqual(resp, "hello world")
 
         ws_client.close()
         await asyncio.sleep(0.5)
@@ -495,7 +495,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(close_span.name, "audit_on_close")
         self.assertFalse(close_span.context.is_remote)
         self.assertEqual(close_span.parent.span_id, req_span.context.span_id)
-        self.assertEqual(close_span.context.trace_id, msg_span.context.trace_id)
+        self.assertEqual(
+            close_span.context.trace_id, msg_span.context.trace_id
+        )
         self.assertEqual(close_span.kind, SpanKind.INTERNAL)
 
     def test_exclude_lists(self):

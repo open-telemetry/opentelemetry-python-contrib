@@ -359,7 +359,11 @@ def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
     )
 
     if issubclass(cls, tornado.websocket.WebSocketHandler):
-        _wrap(cls, "on_close", partial(_WebSocketHandler_on_close, tracer, server_histograms))
+        _wrap(
+            cls,
+            "on_close",
+            partial(_websockethandler_on_close, tracer, server_histograms),
+        )
     else:
         _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     return True
@@ -408,12 +412,16 @@ def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
         _record_on_finish_metrics(server_histograms, handler)
         _finish_span(tracer, handler)
 
-def _WebSocketHandler_on_close(tracer, server_histograms, func, handler, args, kwargs):
+
+def _websockethandler_on_close(
+    tracer, server_histograms, func, handler, args, kwargs
+):
     try:
         func()
     finally:
         _record_on_finish_metrics(server_histograms, handler)
         _finish_span(tracer, handler)
+
 
 def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
     error = None

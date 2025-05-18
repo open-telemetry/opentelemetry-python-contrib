@@ -2,8 +2,8 @@
 import time
 
 import tornado.web
-from tornado import gen
 import tornado.websocket
+from tornado import gen
 
 
 class AsyncHandler(tornado.web.RequestHandler):
@@ -114,7 +114,7 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
 class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, message):
         with self.application.tracer.start_as_current_span("audit_message"):
-            self.write_message(f'hello {message}')
+            self.write_message(f"hello {message}")
 
     def on_close(self):
         with self.application.tracer.start_as_current_span("audit_on_close"):
