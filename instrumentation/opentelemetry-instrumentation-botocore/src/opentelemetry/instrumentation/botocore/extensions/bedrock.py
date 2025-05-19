@@ -606,11 +606,14 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         span: Span,
         exception,
         instrumentor_context: _BotocoreInstrumentorContext,
+        span_ended: bool,
     ):
         span.set_status(Status(StatusCode.ERROR, str(exception)))
         if span.is_recording():
             span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-        span.end()
+
+        if not span_ended:
+            span.end()
 
         metrics = instrumentor_context.metrics
         metrics_attributes = {
@@ -642,16 +645,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 result["stream"], EventStream
             ):
 
-                def stream_done_callback(response):
+                def stream_done_callback(response, span_ended):
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    if span.is_recording():
+
+                    if not span_ended:
                         span.end()
 
-                def stream_error_callback(exception):
+                def stream_error_callback(exception, span_ended):
                     self._on_stream_error_callback(
-                        span, exception, instrumentor_context
+                        span, exception, instrumentor_context, span_ended
                     )
 
                 result["stream"] = ConverseStreamWrapper(
@@ -682,17 +686,17 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         elif self._call_context.operation == "InvokeModelWithResponseStream":
             if "body" in result and isinstance(result["body"], EventStream):
 
-                def invoke_model_stream_done_callback(response):
+                def invoke_model_stream_done_callback(response, span_ended):
                     # the callback gets data formatted as the simpler converse API
                     self._converse_on_success(
                         span, response, instrumentor_context, capture_content
                     )
-                    if span.is_recording():
+                    if not span_ended:
                         span.end()
 
-                def invoke_model_stream_error_callback(exception):
+                def invoke_model_stream_error_callback(exception, span_ended):
                     self._on_stream_error_callback(
-                        span, exception, instrumentor_context
+                        span, exception, instrumentor_context, span_ended
                     )
 
                 result["body"] = InvokeModelWithResponseStreamWrapper(
