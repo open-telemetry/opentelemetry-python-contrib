@@ -93,10 +93,10 @@ def _create_function_span_attributes(
     result = {}
     if extra_span_attributes:
         result.update(extra_span_attributes)
-    result["gen_ai.operation.name"] = "execute_tool" 
+    result["gen_ai.operation.name"] = "execute_tool"
     result["gen_ai.tool.name"] = wrapped_function.__name__
     if wrapped_function.__doc__:
-      result["gen_ai.tool.description"] = wrapped_function.__doc__
+        result["gen_ai.tool.description"] = wrapped_function.__doc__
     result[code_attributes.CODE_FUNCTION_NAME] = wrapped_function.__name__
     result["code.module"] = wrapped_function.__module__
     result["code.args.positional.count"] = len(function_args)

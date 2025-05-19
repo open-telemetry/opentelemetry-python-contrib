@@ -148,7 +148,6 @@ class TestCase(unittest.TestCase):
     def test_has_description_if_doc_string_present(self):
         def somefunction():
             """An example tool call function."""
-            pass
 
         wrapped_somefunction = self.wrap(somefunction)
         self.otel.assert_does_not_have_span_named("execute_tool somefunction")
