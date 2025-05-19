@@ -35,11 +35,7 @@ ToolFunction = Callable[..., Any]
 
 
 def _is_primitive(value):
-    primitive_types = [str, int, bool, float]
-    for ptype in primitive_types:
-        if isinstance(value, ptype):
-            return True
-    return False
+    return isinstance(value, (str, int, bool, float))
 
 
 def _to_otel_value(python_value):
