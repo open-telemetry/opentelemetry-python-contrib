@@ -219,12 +219,14 @@ def _coerce_config_to_object(
 
 
 def _wrapped_config_with_tools(
-    otel_wrapper: OTelWrapper, config: GenerateContentConfig
+    otel_wrapper: OTelWrapper,
+    config: GenerateContentConfig,
+    **kwargs,
 ):
     if not config.tools:
         return config
     result = copy.copy(config)
-    result.tools = [wrapped_tool(tool, otel_wrapper) for tool in config.tools]
+    result.tools = [wrapped_tool(tool, otel_wrapper, **kwargs) for tool in config.tools]
     return result
 
 
@@ -257,7 +259,9 @@ class _GenerateContentInstrumentationHelper:
         if config is None:
             return None
         return _wrapped_config_with_tools(
-            self._otel_wrapper, _coerce_config_to_object(config)
+            self._otel_wrapper,
+            _coerce_config_to_object(config),
+            extra_span_attributes={"gen_ai.system": self._genai_system},
         )
 
     def start_span_as_current_span(

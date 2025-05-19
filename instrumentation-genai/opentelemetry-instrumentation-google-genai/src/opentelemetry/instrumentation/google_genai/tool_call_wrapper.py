@@ -147,7 +147,7 @@ def _wrap_sync_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
     extra_span_attributes: Optional[dict[str, str]] = None,
-    **kwargs,
+    **unused_kwargs,
 ):
     @functools.wraps(tool_function)
     def wrapped_function(*args, **kwargs):
@@ -172,7 +172,7 @@ def _wrap_async_tool_function(
     tool_function: ToolFunction,
     otel_wrapper: OTelWrapper,
     extra_span_attributes: Optional[dict[str, str]] = None,
-    **kwargs,
+    **unused_kwargs,
 ):
     @functools.wraps(tool_function)
     async def wrapped_function(*args, **kwargs):

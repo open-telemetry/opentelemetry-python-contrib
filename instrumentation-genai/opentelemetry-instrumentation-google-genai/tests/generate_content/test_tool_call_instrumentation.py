@@ -44,12 +44,19 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction = tools[0]
 
         self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
-        wrapped_somefunction(somearg="someparam")
+        wrapped_somefunction("someparam")
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            generated_span.attributes["code.function.name"], "somefunction"
+        self.assertIn(
+            "gen_ai.system", generated_span.attributes
         )
+        self.assertEqual(
+            generated_span.attributes["gen_ai.tool.name"], "somefunction"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.positional.count"], 1)
+        self.assertEqual(
+            generated_span.attributes["code.args.keyword.count"], 0)
 
     def test_tool_calls_with_config_object_outputs_spans(self):
         calls = []
@@ -75,12 +82,19 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction = tools[0]
 
         self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
-        wrapped_somefunction(somearg="someparam")
+        wrapped_somefunction("someparam")
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            generated_span.attributes["code.function.name"], "somefunction"
+        self.assertIn(
+            "gen_ai.system", generated_span.attributes
         )
+        self.assertEqual(
+            generated_span.attributes["gen_ai.tool.name"], "somefunction"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.positional.count"], 1)
+        self.assertEqual(
+            generated_span.attributes["code.args.keyword.count"], 0)
 
     @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
     def test_tool_calls_record_parameter_values_on_span_if_enabled(self):
