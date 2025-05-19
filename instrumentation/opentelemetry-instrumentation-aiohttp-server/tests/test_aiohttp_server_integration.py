@@ -24,7 +24,11 @@ from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
@@ -127,15 +131,11 @@ async def test_status_code_instrumentation(
 
     [span] = memory_exporter.get_finished_spans()
 
-    assert expected_method.value == span.attributes[SpanAttributes.HTTP_METHOD]
-    assert (
-        expected_status_code
-        == span.attributes[SpanAttributes.HTTP_STATUS_CODE]
-    )
+    assert expected_method.value == span.attributes[HTTP_METHOD]
+    assert expected_status_code == span.attributes[HTTP_STATUS_CODE]
 
     assert (
-        f"http://{server.host}:{server.port}{url}"
-        == span.attributes[SpanAttributes.HTTP_URL]
+        f"http://{server.host}:{server.port}{url}" == span.attributes[HTTP_URL]
     )
 
 
