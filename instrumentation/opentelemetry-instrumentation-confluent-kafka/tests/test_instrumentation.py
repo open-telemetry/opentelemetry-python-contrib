@@ -26,7 +26,6 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
     KafkaContextSetter,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_NAME,
     MESSAGING_KAFKA_DESTINATION_PARTITION,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
@@ -132,7 +131,7 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_OPERATION: "process",
                     MESSAGING_KAFKA_DESTINATION_PARTITION: 0,
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-10",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-10",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-10.0.0",
                 },
@@ -144,7 +143,7 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_OPERATION: "process",
                     MESSAGING_KAFKA_DESTINATION_PARTITION: 2,
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-20",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-20",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-20.2.4",
                 },
@@ -156,7 +155,7 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_OPERATION: "process",
                     MESSAGING_KAFKA_DESTINATION_PARTITION: 1,
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-30",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-30",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-30.1.3",
                 },
@@ -199,7 +198,7 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-1",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
             },
@@ -209,7 +208,7 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-2",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
             },
@@ -219,7 +218,7 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-3",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
             },
@@ -257,7 +256,7 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_OPERATION: "process",
                     MESSAGING_KAFKA_DESTINATION_PARTITION: 0,
                     MESSAGING_SYSTEM: "kafka",
-                    MESSAGING_DESTINATION_NAME: "topic-a",
+                    SpanAttributes.MESSAGING_DESTINATION: "topic-a",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                     MESSAGING_MESSAGE_ID: "topic-a.0.0",
                 },
@@ -293,7 +292,7 @@ class TestConfluentKafka(TestBase):
 
     def _assert_topic(self, span, expected_topic: str) -> None:
         self.assertEqual(
-            span.attributes[MESSAGING_DESTINATION_NAME],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
             expected_topic,
         )
 

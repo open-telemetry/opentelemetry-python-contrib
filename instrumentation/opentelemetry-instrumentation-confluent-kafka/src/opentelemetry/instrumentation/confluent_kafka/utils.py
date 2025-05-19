@@ -4,7 +4,6 @@ from typing import List, Optional
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_NAME,
     MESSAGING_DESTINATION_TEMPORARY,
     MESSAGING_KAFKA_DESTINATION_PARTITION,
     MESSAGING_MESSAGE_ID,
@@ -128,7 +127,7 @@ def _enrich_span(
         return
 
     span.set_attribute(MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(MESSAGING_DESTINATION_NAME, topic)
+    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
     if partition is not None:
         span.set_attribute(MESSAGING_KAFKA_DESTINATION_PARTITION, partition)
     span.set_attribute(
