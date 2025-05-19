@@ -56,7 +56,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_TARGET,
     HTTP_URL,
 )
-from opentelemetry.semconv._incubating.attributes.net_attributes import NET_HOST_PORT
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_PORT,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -254,10 +256,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                HTTP_URL in span.attributes
-                or HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We expect only one span to have the HTTP attributes set (the SERVER span from the app itself)
@@ -265,9 +264,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         self.assertEqual(1, len(spans_with_http_attributes))
 
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[HTTP_TARGET]
-            )
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
@@ -318,19 +315,14 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                HTTP_URL in span.attributes
-                or HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
         self.assertEqual(2, len(spans_with_http_attributes))
 
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[HTTP_TARGET]
-            )
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
@@ -391,14 +383,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /user/{username}", span.name)
-        self.assertEqual(
-            spans[-1].attributes[HTTP_ROUTE], "/user/{username}"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_ROUTE], "/user/{username}")
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
-        self.assertEqual(
-            spans[-1].attributes[HTTP_FLAVOR], "1.1"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_FLAVOR], "1.1")
 
     def test_fastapi_excluded_urls(self):
         """Ensure that given fastapi routes are excluded."""
@@ -1213,19 +1201,14 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                HTTP_URL in span.attributes
-                or HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
         self.assertEqual(2, len(spans_with_http_attributes))
 
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[HTTP_TARGET]
-            )
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
@@ -1306,19 +1289,14 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                HTTP_URL in span.attributes
-                or HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
         self.assertEqual(2, len(spans_with_http_attributes))
 
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[HTTP_TARGET]
-            )
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
