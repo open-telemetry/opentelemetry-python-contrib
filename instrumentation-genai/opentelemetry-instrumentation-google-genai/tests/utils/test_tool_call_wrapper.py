@@ -14,6 +14,7 @@
 
 import asyncio
 import unittest
+from unittest.mock import patch
 
 from google.genai import types as genai_types
 
@@ -60,11 +61,14 @@ class TestCase(unittest.TestCase):
             pass
 
         wrapped_somefunction = self.wrap(somefunction)
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
         somefunction()
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
         wrapped_somefunction()
-        self.otel.assert_has_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["gen_ai.operation.name"], "execute_tool")
+        self.assertEqual(span.attributes["gen_ai.tool.name"], "somefunction")
 
     def test_wraps_multiple_tool_functions_as_list(self):
         def somefunction():
@@ -76,17 +80,17 @@ class TestCase(unittest.TestCase):
         wrapped_functions = self.wrap([somefunction, otherfunction])
         wrapped_somefunction = wrapped_functions[0]
         wrapped_otherfunction = wrapped_functions[1]
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         somefunction()
         otherfunction()
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         wrapped_somefunction()
-        self.otel.assert_has_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         wrapped_otherfunction()
-        self.otel.assert_has_span_named("tool_call otherfunction")
+        self.otel.assert_has_span_named("execute_tool otherfunction")
 
     def test_wraps_multiple_tool_functions_as_dict(self):
         def somefunction():
@@ -100,30 +104,135 @@ class TestCase(unittest.TestCase):
         )
         wrapped_somefunction = wrapped_functions["somefunction"]
         wrapped_otherfunction = wrapped_functions["otherfunction"]
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         somefunction()
         otherfunction()
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         wrapped_somefunction()
-        self.otel.assert_has_span_named("tool_call somefunction")
-        self.otel.assert_does_not_have_span_named("tool_call otherfunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         wrapped_otherfunction()
-        self.otel.assert_has_span_named("tool_call otherfunction")
+        self.otel.assert_has_span_named("execute_tool otherfunction")
 
     def test_wraps_async_tool_function(self):
         async def somefunction():
             pass
 
         wrapped_somefunction = self.wrap(somefunction)
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
         asyncio.run(somefunction())
-        self.otel.assert_does_not_have_span_named("tool_call somefunction")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
         asyncio.run(wrapped_somefunction())
-        self.otel.assert_has_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
 
     def test_preserves_tool_dict(self):
         tool_dict = genai_types.ToolDict()
         wrapped_tool_dict = self.wrap(tool_dict)
         self.assertEqual(tool_dict, wrapped_tool_dict)
+
+    def test_does_not_have_description_if_no_doc_string(self):
+        def somefunction():
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction()
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction()
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertNotIn("gen_ai.tool.description", span.attributes)
+
+    def test_has_description_if_doc_string_present(self):
+        def somefunction():
+            """An example tool call function."""
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction()
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction()
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["gen_ai.tool.description"], "An example tool call function.")
+
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    def test_handles_primitive_int_arg(self):
+        def somefunction(arg=None):
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction(12345)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction(12345)
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "int")
+        self.assertEqual(span.attributes["code.function.parameters.arg.value"], 12345)
+
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    def test_handles_primitive_string_arg(self):
+        def somefunction(arg=None):
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction("a string value")
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction("a string value")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "str")
+        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "a string value")
+
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    def test_handles_dict_arg(self):
+        def somefunction(arg=None):
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction({'key': 'value'})
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction({'key': 'value'})
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "dict")
+        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "{\"key\": \"value\"}")
+
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    def test_handles_primitive_list_arg(self):
+        def somefunction(arg=None):
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction([1, 2, 3])
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction([1, 2, 3])
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
+        # A conversion is required here, because the Open Telemetry code converts the
+        # list into a tuple. (But this conversion isn't happening in "tool_call_wrapper.py").
+        self.assertEqual(
+            list(span.attributes["code.function.parameters.arg.value"]), [1, 2, 3])
+
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    def test_handles_heterogenous_list_arg(self):
+        def somefunction(arg=None):
+            pass
+
+        wrapped_somefunction = self.wrap(somefunction)
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        somefunction([123, "abc"])
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
+        wrapped_somefunction([123, "abc"])
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
+        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "[123, \"abc\"]")

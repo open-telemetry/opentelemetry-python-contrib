@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from unittest.mock import patch
 
 import google.genai.types as genai_types
 
@@ -43,10 +43,10 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
 
-        self.assertIsNone(self.otel.get_span_named("tool_call somefunction"))
+        self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
         wrapped_somefunction(somearg="someparam")
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes["code.function.name"], "somefunction"
         )
@@ -74,18 +74,16 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
 
-        self.assertIsNone(self.otel.get_span_named("tool_call somefunction"))
+        self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
         wrapped_somefunction(somearg="someparam")
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes["code.function.name"], "somefunction"
         )
 
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
     def test_tool_calls_record_parameter_values_on_span_if_enabled(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         calls = []
 
         def handle(*args, **kwargs):
@@ -108,8 +106,8 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
         wrapped_somefunction(123, otherparam="abc")
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes[
                 "code.function.parameters.someparam.type"
@@ -126,19 +124,17 @@ class ToolCallInstrumentationTestCase(TestCase):
             generated_span.attributes[
                 "code.function.parameters.someparam.value"
             ],
-            "123",
+            123,
         )
         self.assertEqual(
             generated_span.attributes[
                 "code.function.parameters.otherparam.value"
             ],
-            "'abc'",
+            "abc",
         )
 
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"})
     def test_tool_calls_do_not_record_parameter_values_if_not_enabled(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "false"
-        )
         calls = []
 
         def handle(*args, **kwargs):
@@ -161,8 +157,8 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
         wrapped_somefunction(123, otherparam="abc")
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes[
                 "code.function.parameters.someparam.type"
@@ -184,10 +180,8 @@ class ToolCallInstrumentationTestCase(TestCase):
             generated_span.attributes,
         )
 
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
     def test_tool_calls_record_return_values_on_span_if_enabled(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         calls = []
 
         def handle(*args, **kwargs):
@@ -210,19 +204,17 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
         wrapped_somefunction(123)
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes["code.function.return.type"], "int"
         )
         self.assertEqual(
-            generated_span.attributes["code.function.return.value"], "125"
+            generated_span.attributes["code.function.return.value"], 125
         )
 
+    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"})
     def test_tool_calls_do_not_record_return_values_if_not_enabled(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "false"
-        )
         calls = []
 
         def handle(*args, **kwargs):
@@ -245,8 +237,8 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
         wrapped_somefunction(123)
-        self.otel.assert_has_span_named("tool_call somefunction")
-        generated_span = self.otel.get_span_named("tool_call somefunction")
+        self.otel.assert_has_span_named("execute_tool somefunction")
+        generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
             generated_span.attributes["code.function.return.type"], "int"
         )

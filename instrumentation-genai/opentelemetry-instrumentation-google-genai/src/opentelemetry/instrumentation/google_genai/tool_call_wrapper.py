@@ -14,6 +14,7 @@
 
 import functools
 import inspect
+import json
 from typing import Any, Callable, Optional, Union
 
 from google.genai.types import (
@@ -33,10 +34,18 @@ from .otel_wrapper import OTelWrapper
 ToolFunction = Callable[..., Any]
 
 
+def _is_primitive(value):
+    primitive_types = [str, int, bool, float]
+    for ptype in primitive_types:
+        if isinstance(value, ptype):
+            return True
+    return False
+
+
 def _to_otel_value(python_value):
     """Coerces parameters to something representable with Open Telemetry."""
-    if python_value is None:
-        return None
+    if python_value is None or _is_primitive(python_value):
+        return python_value
     if isinstance(python_value, list):
         return [_to_otel_value(x) for x in python_value]
     if isinstance(python_value, dict):
@@ -50,10 +59,31 @@ def _to_otel_value(python_value):
     return repr(python_value)
 
 
+def _is_homogenous_primitive_list(value):
+    if not isinstance(value, list):
+        return False
+    if not value:
+        return True
+    if not _is_primitive(value[0]):
+        return False
+    first_type = type(value[0])
+    for entry in value[1:]:
+        if not isinstance(entry, first_type):
+            return False
+    return True
+
+
+def _to_otel_attribute(python_value):
+    otel_value = _to_otel_value(python_value)
+    if _is_primitive(otel_value) or _is_homogenous_primitive_list(otel_value):
+        return otel_value
+    return json.dumps(otel_value)
+
+
 def _create_function_span_name(wrapped_function):
     """Constructs the span name for a given local function tool call."""
     function_name = wrapped_function.__name__
-    return f"tool_call {function_name}"
+    return f"execute_tool {function_name}"
 
 
 def _create_function_span_attributes(
@@ -63,6 +93,10 @@ def _create_function_span_attributes(
     result = {}
     if extra_span_attributes:
         result.update(extra_span_attributes)
+    result["gen_ai.operation.name"] = "execute_tool" 
+    result["gen_ai.tool.name"] = wrapped_function.__name__
+    if wrapped_function.__doc__:
+      result["gen_ai.tool.description"] = wrapped_function.__doc__
     result[code_attributes.CODE_FUNCTION_NAME] = wrapped_function.__name__
     result["code.module"] = wrapped_function.__module__
     result["code.args.positional.count"] = len(function_args)
@@ -78,7 +112,7 @@ def _record_function_call_argument(
     span.set_attribute(type_attribute, type(param_value).__name__)
     if include_values:
         value_attribute = f"{attribute_prefix}.value"
-        span.set_attribute(value_attribute, _to_otel_value(param_value))
+        span.set_attribute(value_attribute, _to_otel_attribute(param_value))
 
 
 def _record_function_call_arguments(
@@ -105,7 +139,7 @@ def _record_function_call_result(otel_wrapper, wrapped_function, result):
     span.set_attribute("code.function.return.type", type(result).__name__)
     if include_values:
         span.set_attribute(
-            "code.function.return.value", _to_otel_value(result)
+            "code.function.return.value", _to_otel_attribute(result)
         )
 
 
