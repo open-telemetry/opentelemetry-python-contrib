@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
 
 
+### Added
+- `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
+  ([#](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/))
+
+
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
 ### Added

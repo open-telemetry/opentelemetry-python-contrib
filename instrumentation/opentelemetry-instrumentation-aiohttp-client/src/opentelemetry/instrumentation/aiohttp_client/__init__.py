@@ -90,6 +90,7 @@ API
 
 import types
 import typing
+from timeit import default_timer
 from typing import Collection
 
 import aiohttp
@@ -99,10 +100,14 @@ import yarl
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _set_http_method,
     _set_http_url,
     _set_status,
@@ -115,8 +120,13 @@ from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
 )
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials, sanitize_method
@@ -172,11 +182,14 @@ def _set_http_status_code_attribute(
     )
 
 
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 def create_trace_config(
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
     tracer_provider: TracerProvider = None,
+    meter_provider: MeterProvider = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
@@ -205,6 +218,7 @@ def create_trace_config(
     :param Callable request_hook: Optional callback that can modify span name and request params.
     :param Callable response_hook: Optional callback that can modify span name and response params.
     :param tracer_provider: optional TracerProvider from which to get a Tracer
+    :param meter_provider: optional Meter provider to use
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`
@@ -214,19 +228,67 @@ def create_trace_config(
     # Explicitly specify the type for the `request_hook` and `response_hook` param and rtype to work
     # around this issue.
 
+    schema_url = _get_schema_url(sem_conv_opt_in_mode)
+
     tracer = get_tracer(
         __name__,
         __version__,
         tracer_provider,
-        schema_url=_get_schema_url(sem_conv_opt_in_mode),
+        schema_url=schema_url,
     )
 
-    # TODO: Use this when we have durations for aiohttp-client
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+        schema_url,
+    )
+
+    start_time = 0
+
+    duration_histogram_old = None
+    if _report_old(sem_conv_opt_in_mode):
+        duration_histogram_old = meter.create_histogram(
+            name=MetricInstruments.HTTP_CLIENT_DURATION,
+            unit="ms",
+            description="measures the duration of the outbound HTTP request",
+        )
+    duration_histogram_new = None
+    if _report_new(sem_conv_opt_in_mode):
+        duration_histogram_new = meter.create_histogram(
+            name=HTTP_CLIENT_REQUEST_DURATION,
+            unit="s",
+            description="Duration of HTTP client requests.",
+        )
+
     metric_attributes = {}
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
+        elapsed_time = max(default_timer() - trace_config_ctx.start_time, 0)
         context_api.detach(trace_config_ctx.token)
         trace_config_ctx.span.end()
+
+        if trace_config_ctx.duration_histogram_old is not None:
+            duration_attrs_old = _filter_semconv_duration_attrs(
+                metric_attributes,
+                _client_duration_attrs_old,
+                _client_duration_attrs_new,
+                _StabilityMode.DEFAULT,
+            )
+            trace_config_ctx.duration_histogram_old.record(
+                max(round(elapsed_time * 1000), 0),
+                attributes=duration_attrs_old,
+            )
+        if trace_config_ctx.duration_histogram_new is not None:
+            duration_attrs_new = _filter_semconv_duration_attrs(
+                metric_attributes,
+                _client_duration_attrs_old,
+                _client_duration_attrs_new,
+                _StabilityMode.HTTP,
+            )
+            trace_config_ctx.duration_histogram_new.record(
+                elapsed_time, attributes=duration_attrs_new
+            )
 
     async def on_request_start(
         unused_session: aiohttp.ClientSession,
@@ -237,6 +299,7 @@ def create_trace_config(
             trace_config_ctx.span = None
             return
 
+        trace_config_ctx.start_time = default_timer()
         method = params.method
         request_span_name = _get_span_name(method)
         request_url = (
@@ -248,6 +311,12 @@ def create_trace_config(
         span_attributes = {}
         _set_http_method(
             span_attributes,
+            method,
+            sanitize_method(method),
+            sem_conv_opt_in_mode,
+        )
+        _set_http_method(
+            metric_attributes,
             method,
             sanitize_method(method),
             sem_conv_opt_in_mode,
@@ -298,6 +367,7 @@ def create_trace_config(
             exc_type = type(params.exception).__qualname__
             if _report_new(sem_conv_opt_in_mode):
                 trace_config_ctx.span.set_attribute(ERROR_TYPE, exc_type)
+                metric_attributes[ERROR_TYPE] = exc_type
 
             trace_config_ctx.span.set_status(
                 Status(StatusCode.ERROR, exc_type)
@@ -312,7 +382,12 @@ def create_trace_config(
     def _trace_config_ctx_factory(**kwargs):
         kwargs.setdefault("trace_request_ctx", {})
         return types.SimpleNamespace(
-            tracer=tracer, url_filter=url_filter, **kwargs
+            tracer=tracer,
+            url_filter=url_filter,
+            start_time=start_time,
+            duration_histogram_old=duration_histogram_old,
+            duration_histogram_new=duration_histogram_new,
+            **kwargs,
         )
 
     trace_config = aiohttp.TraceConfig(
@@ -328,6 +403,7 @@ def create_trace_config(
 
 def _instrument(
     tracer_provider: TracerProvider = None,
+    meter_provider: MeterProvider = None,
     url_filter: _UrlFilterT = None,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
@@ -357,6 +433,7 @@ def _instrument(
             request_hook=request_hook,
             response_hook=response_hook,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
         trace_config._is_instrumented_by_opentelemetry = True
@@ -401,6 +478,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``meter_provider``: a MeterProvider, defaults to global
                 ``url_filter``: A callback to process the requested URL prior to adding
                     it as a span attribute. This can be useful to remove sensitive data
                     such as API keys or user personal information.
@@ -415,6 +493,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
         )
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
+            meter_provider=kwargs.get("meter_provider"),
             url_filter=kwargs.get("url_filter"),
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
