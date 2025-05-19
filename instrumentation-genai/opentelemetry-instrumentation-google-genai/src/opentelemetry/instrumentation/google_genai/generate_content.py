@@ -226,7 +226,9 @@ def _wrapped_config_with_tools(
     if not config.tools:
         return config
     result = copy.copy(config)
-    result.tools = [wrapped_tool(tool, otel_wrapper, **kwargs) for tool in config.tools]
+    result.tools = [
+        wrapped_tool(tool, otel_wrapper, **kwargs) for tool in config.tools
+    ]
     return result
 
 

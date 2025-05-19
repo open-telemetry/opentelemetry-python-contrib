@@ -67,7 +67,9 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction()
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["gen_ai.operation.name"], "execute_tool")
+        self.assertEqual(
+            span.attributes["gen_ai.operation.name"], "execute_tool"
+        )
         self.assertEqual(span.attributes["gen_ai.tool.name"], "somefunction")
 
     def test_wraps_multiple_tool_functions_as_list(self):
@@ -156,9 +158,15 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction()
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["gen_ai.tool.description"], "An example tool call function.")
+        self.assertEqual(
+            span.attributes["gen_ai.tool.description"],
+            "An example tool call function.",
+        )
 
-    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_handles_primitive_int_arg(self):
         def somefunction(arg=None):
             pass
@@ -170,10 +178,17 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction(12345)
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "int")
-        self.assertEqual(span.attributes["code.function.parameters.arg.value"], 12345)
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.type"], "int"
+        )
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.value"], 12345
+        )
 
-    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_handles_primitive_string_arg(self):
         def somefunction(arg=None):
             pass
@@ -185,25 +200,41 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction("a string value")
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "str")
-        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "a string value")
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.type"], "str"
+        )
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.value"],
+            "a string value",
+        )
 
-    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_handles_dict_arg(self):
         def somefunction(arg=None):
             pass
 
         wrapped_somefunction = self.wrap(somefunction)
         self.otel.assert_does_not_have_span_named("execute_tool somefunction")
-        somefunction({'key': 'value'})
+        somefunction({"key": "value"})
         self.otel.assert_does_not_have_span_named("execute_tool somefunction")
-        wrapped_somefunction({'key': 'value'})
+        wrapped_somefunction({"key": "value"})
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "dict")
-        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "{\"key\": \"value\"}")
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.type"], "dict"
+        )
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.value"],
+            '{"key": "value"}',
+        )
 
-    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_handles_primitive_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -215,13 +246,20 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction([1, 2, 3])
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.type"], "list"
+        )
         # A conversion is required here, because the Open Telemetry code converts the
         # list into a tuple. (But this conversion isn't happening in "tool_call_wrapper.py").
         self.assertEqual(
-            list(span.attributes["code.function.parameters.arg.value"]), [1, 2, 3])
+            list(span.attributes["code.function.parameters.arg.value"]),
+            [1, 2, 3],
+        )
 
-    @patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"})
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_handles_heterogenous_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -233,5 +271,10 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction([123, "abc"])
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
-        self.assertEqual(span.attributes["code.function.parameters.arg.value"], "[123, \"abc\"]")
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.type"], "list"
+        )
+        self.assertEqual(
+            span.attributes["code.function.parameters.arg.value"],
+            '[123, "abc"]',
+        )
