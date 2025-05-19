@@ -209,6 +209,7 @@ from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import (
@@ -472,7 +473,7 @@ def _get_default_span_details(scope):
     if method == "_OTHER":
         method = "HTTP"
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket
