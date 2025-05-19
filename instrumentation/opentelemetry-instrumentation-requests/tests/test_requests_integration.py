@@ -35,6 +35,18 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -51,7 +63,6 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -161,9 +172,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -187,7 +198,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            SpanAttributes.SCHEMA_URL,
+            "https://opentelemetry.io/schemas/1.21.0",
         )
         self.assertEqual(
             span.attributes,
@@ -223,22 +234,22 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            SpanAttributes.SCHEMA_URL,
+            "https://opentelemetry.io/schemas/1.21.0",
         )
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
+                HTTP_METHOD: "GET",
                 HTTP_REQUEST_METHOD: "GET",
-                SpanAttributes.HTTP_URL: url_with_port,
+                HTTP_URL: url_with_port,
                 URL_FULL: url_with_port,
-                SpanAttributes.HTTP_HOST: "mock",
+                HTTP_HOST: "mock",
                 SERVER_ADDRESS: "mock",
                 NETWORK_PEER_ADDRESS: "mock",
-                SpanAttributes.NET_PEER_PORT: 80,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                NET_PEER_PORT: 80,
+                HTTP_STATUS_CODE: 200,
                 HTTP_RESPONSE_STATUS_CODE: 200,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
+                HTTP_FLAVOR: "1.1",
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
@@ -262,9 +273,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "_OTHER",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 405,
+                HTTP_METHOD: "_OTHER",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 405,
             },
         )
 
@@ -365,9 +376,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
@@ -406,9 +415,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
         self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
         self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
@@ -523,9 +530,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
             },
         )
@@ -555,8 +562,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -604,8 +611,8 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -626,9 +633,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 500,
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -684,7 +691,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(span.attributes[HTTP_URL], self.URL)
 
     def test_if_headers_equals_none(self):
         result = requests.get(self.URL, headers=None, timeout=5)
@@ -745,13 +752,13 @@ class TestRequestsIntergrationMetric(TestBase):
         self.perform_request(self.URL)
 
         expected_attributes = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
         for (
@@ -809,13 +816,13 @@ class TestRequestsIntergrationMetric(TestBase):
         self.perform_request(self.URL)
 
         expected_attributes_old = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
         expected_attributes_new = {
@@ -879,13 +886,13 @@ class TestRequestsIntergrationMetric(TestBase):
 
     def test_basic_metric_non_recording_span(self):
         expected_attributes = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
