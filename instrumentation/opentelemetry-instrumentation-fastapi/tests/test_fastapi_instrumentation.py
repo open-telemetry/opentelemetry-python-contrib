@@ -263,10 +263,10 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         self.assertEqual(len(spans), 3)
         span = spans[0]
         assert span.name == "GET /error http send"
-        assert span.attributes[SpanAttributes.HTTP_STATUS_CODE] == 500
+        assert span.attributes[HTTP_STATUS_CODE] == 500
         span = spans[2]
         assert span.name == "GET /error"
-        assert span.attributes[SpanAttributes.HTTP_TARGET] == "/error"
+        assert span.attributes[HTTP_TARGET] == "/error"
 
     def test_sub_app_fastapi_call(self):
         """

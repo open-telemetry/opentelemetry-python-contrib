@@ -210,7 +210,6 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import (
     get_excluded_urls,
