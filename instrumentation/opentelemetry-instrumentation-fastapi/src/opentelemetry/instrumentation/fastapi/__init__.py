@@ -182,11 +182,16 @@ API
 
 from __future__ import annotations
 
+import functools
 import logging
+import types
 from typing import Collection, Literal
 
 import fastapi
+from starlette.applications import Starlette
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match
+from starlette.types import ASGIApp
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -203,9 +208,9 @@ from opentelemetry.instrumentation.asgi.types import (
 from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.metrics import get_meter
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import get_tracer
+from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -226,13 +231,13 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app,
+        app: fastapi.FastAPI,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
-        tracer_provider=None,
-        meter_provider=None,
-        excluded_urls=None,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        excluded_urls: str | None = None,
         http_capture_headers_server_request: list[str] | None = None,
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
@@ -284,21 +289,56 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
-            app.add_middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=excluded_urls,
-                default_span_details=_get_default_span_details,
-                server_request_hook=server_request_hook,
-                client_request_hook=client_request_hook,
-                client_response_hook=client_response_hook,
-                # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
-                tracer=tracer,
-                meter=meter,
-                http_capture_headers_server_request=http_capture_headers_server_request,
-                http_capture_headers_server_response=http_capture_headers_server_response,
-                http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
-                exclude_spans=exclude_spans,
+            # Instead of using `app.add_middleware` we monkey patch `build_middleware_stack` to insert our middleware
+            # as the outermost middleware.
+            # Otherwise `OpenTelemetryMiddleware` would have unhandled exceptions tearing through it and would not be able
+            # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
+
+            def build_middleware_stack(self: Starlette) -> ASGIApp:
+                inner_server_error_middleware: ASGIApp = (  # type: ignore
+                    self._original_build_middleware_stack()  # type: ignore
+                )
+                otel_middleware = OpenTelemetryMiddleware(
+                    inner_server_error_middleware,
+                    excluded_urls=excluded_urls,
+                    default_span_details=_get_default_span_details,
+                    server_request_hook=server_request_hook,
+                    client_request_hook=client_request_hook,
+                    client_response_hook=client_response_hook,
+                    # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
+                    tracer=tracer,
+                    meter=meter,
+                    http_capture_headers_server_request=http_capture_headers_server_request,
+                    http_capture_headers_server_response=http_capture_headers_server_response,
+                    http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
+                    exclude_spans=exclude_spans,
+                )
+                # Wrap in an outer layer of ServerErrorMiddleware so that any exceptions raised in OpenTelemetryMiddleware
+                # are handled.
+                # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
+                # to impact the user's application just because we wrapped the middlewares in this order.
+                if isinstance(
+                    inner_server_error_middleware, ServerErrorMiddleware
+                ):  # usually true
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware,
+                    )
+                else:
+                    # Something else seems to have patched things, or maybe Starlette changed.
+                    # Just create a default ServerErrorMiddleware.
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware
+                    )
+                return outer_server_error_middleware
+
+            app._original_build_middleware_stack = app.build_middleware_stack
+            app.build_middleware_stack = types.MethodType(
+                functools.wraps(app.build_middleware_stack)(
+                    build_middleware_stack
+                ),
+                app,
             )
+
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
@@ -309,11 +349,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        original_build_middleware_stack = getattr(
+            app, "_original_build_middleware_stack", None
+        )
+        if original_build_middleware_stack:
+            app.build_middleware_stack = original_build_middleware_stack
+            del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
@@ -341,12 +382,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         _InstrumentedFastAPI._http_capture_headers_sanitize_fields = (
             kwargs.get("http_capture_headers_sanitize_fields")
         )
-        _excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFastAPI._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
-        )
+        _InstrumentedFastAPI._excluded_urls = kwargs.get("excluded_urls")
         _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
         _InstrumentedFastAPI._exclude_spans = kwargs.get("exclude_spans")
         fastapi.FastAPI = _InstrumentedFastAPI
@@ -365,43 +401,29 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _server_request_hook: ServerRequestHook = None
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
+    _http_capture_headers_server_request: list[str] | None = None
+    _http_capture_headers_server_response: list[str] | None = None
+    _http_capture_headers_sanitize_fields: list[str] | None = None
+    _exclude_spans: list[Literal["receive", "send"]] | None = None
+
     _instrumented_fastapi_apps = set()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        tracer = get_tracer(
-            __name__,
-            __version__,
-            _InstrumentedFastAPI._tracer_provider,
-            schema_url=_get_schema_url(
-                _InstrumentedFastAPI._sem_conv_opt_in_mode
-            ),
+        FastAPIInstrumentor.instrument_app(
+            self,
+            server_request_hook=self._server_request_hook,
+            client_request_hook=self._client_request_hook,
+            client_response_hook=self._client_response_hook,
+            tracer_provider=self._tracer_provider,
+            meter_provider=self._meter_provider,
+            excluded_urls=self._excluded_urls,
+            http_capture_headers_server_request=self._http_capture_headers_server_request,
+            http_capture_headers_server_response=self._http_capture_headers_server_response,
+            http_capture_headers_sanitize_fields=self._http_capture_headers_sanitize_fields,
+            exclude_spans=self._exclude_spans,
         )
-        meter = get_meter(
-            __name__,
-            __version__,
-            _InstrumentedFastAPI._meter_provider,
-            schema_url=_get_schema_url(
-                _InstrumentedFastAPI._sem_conv_opt_in_mode
-            ),
-        )
-        self.add_middleware(
-            OpenTelemetryMiddleware,
-            excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            default_span_details=_get_default_span_details,
-            server_request_hook=_InstrumentedFastAPI._server_request_hook,
-            client_request_hook=_InstrumentedFastAPI._client_request_hook,
-            client_response_hook=_InstrumentedFastAPI._client_response_hook,
-            # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
-            tracer=tracer,
-            meter=meter,
-            http_capture_headers_server_request=_InstrumentedFastAPI._http_capture_headers_server_request,
-            http_capture_headers_server_response=_InstrumentedFastAPI._http_capture_headers_server_response,
-            http_capture_headers_sanitize_fields=_InstrumentedFastAPI._http_capture_headers_sanitize_fields,
-            exclude_spans=_InstrumentedFastAPI._exclude_spans,
-        )
-        self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
