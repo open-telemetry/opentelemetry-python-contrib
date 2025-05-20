@@ -500,9 +500,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 )
 
         # In case of an early stream closure, the result may not contain outputs
-        if self._stream_has_output(result) and self._stream_has_content(
-            result
-        ):
+        if self._stream_has_output_content(result):
             event_logger = instrumentor_context.event_logger
             choice = _Choice.from_converse(result, capture_content)
             # this path is used by streaming apis, in that case we are already out of the span
@@ -792,9 +790,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             )
 
         # In case of an early stream closure, the result may not contain outputs
-        if self._stream_has_output(response_body) and self._stream_has_content(
-            response_body
-        ):
+        if self._stream_has_output_content(response_body):
             event_logger = instrumentor_context.event_logger
             choice = _Choice.from_converse(response_body, capture_content)
             event_logger.emit(choice.to_choice_event())
@@ -1019,8 +1015,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 attributes=metrics_attributes,
             )
 
-    def _stream_has_output(self, response_body: dict[str, Any]):
-        return "output" in response_body
-
-    def _stream_has_content(self, response_body: dict[str, Any]):
-        return "message" in response_body["output"]
+    def _stream_has_output_content(self, response_body: dict[str, Any]):
+        return (
+            "output" in response_body and "message" in response_body["output"]
+        )
