@@ -270,6 +270,7 @@ from opentelemetry.util.http import (
     normalise_response_header_name,
     remove_url_credentials,
     sanitize_method,
+    redact_query_parameters
 )
 
 if TYPE_CHECKING:
@@ -365,9 +366,9 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_URL] = remove_url_credentials(
+            result[SpanAttributes.HTTP_URL] = redact_query_parameters(remove_url_credentials(
                 wsgiref_util.request_uri(environ)
-            )
+            ))
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:

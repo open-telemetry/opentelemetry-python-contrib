@@ -137,6 +137,7 @@ from opentelemetry.util.http import (
     parse_excluded_urls,
     remove_url_credentials,
     sanitize_method,
+    redact_query_parameters,
 )
 from opentelemetry.util.types import Attributes
 
@@ -257,7 +258,7 @@ def _instrument(
 
         span_name = _get_span_name(method)
 
-        url = remove_url_credentials(url)
+        url = redact_query_parameters(remove_url_credentials(url))
 
         data = getattr(request, "data", None)
         request_size = 0 if data is None else len(data)

@@ -119,7 +119,7 @@ from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
+from opentelemetry.util.http import remove_url_credentials, sanitize_method, redact_query_parameters
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
@@ -240,9 +240,9 @@ def create_trace_config(
         method = params.method
         request_span_name = _get_span_name(method)
         request_url = (
-            remove_url_credentials(trace_config_ctx.url_filter(params.url))
+            redact_query_parameters(remove_url_credentials(trace_config_ctx.url_filter(params.url)))
             if callable(trace_config_ctx.url_filter)
-            else remove_url_credentials(str(params.url))
+            else redact_query_parameters(remove_url_credentials(str(params.url)))
         )
 
         span_attributes = {}

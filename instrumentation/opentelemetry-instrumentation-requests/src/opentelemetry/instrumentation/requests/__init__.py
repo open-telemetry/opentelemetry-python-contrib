@@ -149,6 +149,7 @@ from opentelemetry.util.http import (
     parse_excluded_urls,
     remove_url_credentials,
     sanitize_method,
+    redact_query_parameters,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
 
@@ -232,7 +233,8 @@ def _instrument(
         method = request.method
         span_name = get_default_span_name(method)
 
-        url = remove_url_credentials(request.url)
+        url = redact_query_parameters(remove_url_credentials(request.url))
+
 
         span_attributes = {}
         _set_http_method(
