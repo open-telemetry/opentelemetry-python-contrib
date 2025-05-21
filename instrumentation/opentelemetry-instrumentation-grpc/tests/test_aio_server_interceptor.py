@@ -60,10 +60,7 @@ class Servicer(GRPCTestServerServicer):
 async def run_with_test_server(
     runnable, servicer=Servicer(), interceptors=None
 ):
-    if interceptors is not None:
-        server = grpc.aio.server(interceptors=interceptors)
-    else:
-        server = grpc.aio.server()
+    server = grpc.aio.server(interceptors=interceptors)
 
     add_GRPCTestServerServicer_to_server(servicer, server)
 
