@@ -20,6 +20,7 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -522,6 +523,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertAlmostEqual(
                                 duration_s, point.sum, places=1
                             )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -552,7 +557,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertEqual(point.value, 0)
 
     def _assert_basic_metric(
-        self, expected_duration_attributes, expected_requests_count_attributes
+        self,
+        expected_duration_attributes,
+        expected_requests_count_attributes,
+        expected_histogram_explicit_bounds=None,
     ):
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
@@ -564,6 +572,11 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 expected_duration_attributes,
                                 dict(point.attributes),
                             )
+                            if expected_histogram_explicit_bounds is not None:
+                                self.assertEqual(
+                                    expected_histogram_explicit_bounds,
+                                    point.explicit_bounds,
+                                )
                             self.assertEqual(point.count, 1)
                         elif isinstance(point, NumberDataPoint):
                             self.assertDictEqual(
@@ -613,6 +626,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     def test_basic_metric_nonstandard_http_method_success(self):
@@ -654,6 +668,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     @patch.dict(
@@ -679,6 +694,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     def test_metric_uninstrument(self):
