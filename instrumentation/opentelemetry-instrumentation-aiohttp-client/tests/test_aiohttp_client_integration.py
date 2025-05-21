@@ -30,6 +30,8 @@ from http_server_mock import HttpServerMock
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _StabilityMode,
@@ -164,6 +166,10 @@ class TestAioHttpIntegration(TestBase):
                         HTTP_METHOD: "GET",
                     },
                 )
+                self.assertEqual(
+                    duration_data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                )
                 index += 1
 
     def test_status_codes_new_semconv(self):
@@ -206,6 +212,10 @@ class TestAioHttpIntegration(TestBase):
                         duration_data_point.attributes.get(ERROR_TYPE),
                         str(status_code.value),
                     )
+                self.assertEqual(
+                    duration_data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                )
                 index += 1
 
     def test_status_codes_both_semconv(self):
