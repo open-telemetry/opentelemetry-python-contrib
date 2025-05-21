@@ -254,6 +254,7 @@ def create_trace_config(
             name=MetricInstruments.HTTP_CLIENT_DURATION,
             unit="ms",
             description="measures the duration of the outbound HTTP request",
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
         )
     duration_histogram_new = None
     if _report_new(sem_conv_opt_in_mode):
