@@ -399,6 +399,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_wsgi_metrics_new_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
@@ -435,6 +436,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_wsgi_metrics_both_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
