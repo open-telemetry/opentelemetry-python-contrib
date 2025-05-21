@@ -153,7 +153,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -205,7 +207,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, servicer=TwoSpanServicer(), interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request,
+            servicer=TwoSpanServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -252,7 +258,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for response in channel.unary_stream(rpc_call)(msg):
                 print(response)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -306,7 +314,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for response in channel.unary_stream(rpc_call)(msg):
                 print(response)
 
-        await run_with_test_server(request, servicer=TwoSpanServicer(), interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request,
+            servicer=TwoSpanServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -366,7 +378,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         lifetime_servicer = SpanLifetimeServicer()
         active_span_before_call = trace.get_current_span()
 
-        await run_with_test_server(request, servicer=lifetime_servicer, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request,
+            servicer=lifetime_servicer,
+            interceptors=[aio_server_interceptor()],
+        )
 
         active_span_in_handler = lifetime_servicer.span
         active_span_after_call = trace.get_current_span()
@@ -389,7 +405,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             await request(channel)
             await request(channel)
 
-        await run_with_test_server(sequential_requests, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            sequential_requests, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -449,7 +467,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             await asyncio.gather(request(channel), request(channel))
 
         await run_with_test_server(
-            concurrent_requests, servicer=LatchedServicer(), interceptors=[aio_server_interceptor()]
+            concurrent_requests,
+            servicer=LatchedServicer(),
+            interceptors=[aio_server_interceptor()],
         )
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -503,7 +523,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
             self.assertEqual(cm.exception.details(), failure_message)
 
-        await run_with_test_server(request, servicer=AbortServicer(), interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request,
+            servicer=AbortServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -568,7 +592,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             )
             self.assertEqual(cm.exception.details(), failure_message)
 
-        await run_with_test_server(request, servicer=AbortServicer(), interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request,
+            servicer=AbortServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -616,10 +644,14 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 return await channel.unary_unary(rpc_call)(msg)
 
             class MockInterceptor(grpc.aio.ServerInterceptor):
-                async def intercept_service(self, continuation, handler_call_details):
+                async def intercept_service(
+                    self, continuation, handler_call_details
+                ):
                     return await continuation(handler_call_details)
 
-            await run_with_test_server(request, interceptors=(MockInterceptor(),))
+            await run_with_test_server(
+                request, interceptors=(MockInterceptor(),)
+            )
 
         finally:
             grpc_server_instrumentor.uninstrument()
@@ -650,6 +682,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 ],
             },
         )
+
 
 def get_latch(num):
     """Get a countdown latch function for use in n threads."""

@@ -108,7 +108,9 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         try:
             with self.server(max_workers=1) as (server, channel):
-                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+                server.add_generic_rpc_handlers(
+                    (UnaryUnaryRpcHandler(handler),)
+                )
                 rpc_call = "TestServicer/handler"
                 try:
                     server.start()
