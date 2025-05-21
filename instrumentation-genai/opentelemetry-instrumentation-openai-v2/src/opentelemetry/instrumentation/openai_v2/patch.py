@@ -26,6 +26,7 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.trace.span import SpanContext
 
 from .instruments import Instruments
 from .utils import (
@@ -404,9 +405,7 @@ class StreamWrapper:
                         name="gen_ai.choice",
                         attributes=event_attributes,
                         body=body,
-                        trace_id=span_ctx.trace_id,
-                        span_id=span_ctx.span_id,
-                        trace_flags=span_ctx.trace_flags,
+                        span_context=span_ctx,
                     )
                 )
 
