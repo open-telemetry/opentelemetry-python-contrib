@@ -216,6 +216,8 @@ import httpx
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -510,6 +512,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
         self._duration_histogram_new = None
         if _report_new(self._sem_conv_opt_in_mode):
@@ -517,6 +520,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         self._request_hook = request_hook
         self._response_hook = response_hook
@@ -692,6 +696,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
         self._duration_histogram_new = None
         if _report_new(self._sem_conv_opt_in_mode):
@@ -699,6 +704,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         self._request_hook = request_hook
@@ -895,6 +901,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
         duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
@@ -902,6 +909,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         wrap_function_wrapper(
@@ -1200,6 +1208,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
         duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
@@ -1207,6 +1216,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         if iscoroutinefunction(request_hook):

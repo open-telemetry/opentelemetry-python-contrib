@@ -26,6 +26,8 @@ from wrapt import ObjectProxy
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -240,6 +242,14 @@ class BaseTestCases:
                     SpanAttributes.HTTP_SCHEME: "http",
                 },
             )
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertTrue(duration_data_point.min >= 0)
+            self.assertTrue(duration_data_point.max >= 0)
+            self.assertTrue(duration_data_point.sum >= 0)
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
 
         def test_nonstandard_http_method(self):
             respx.route(method="NONSTANDARD").mock(
@@ -320,6 +330,10 @@ class BaseTestCases:
                     NETWORK_PROTOCOL_VERSION: "1.1",
                     ERROR_TYPE: "405",
                 },
+            )
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         def test_basic_new_semconv(self):
