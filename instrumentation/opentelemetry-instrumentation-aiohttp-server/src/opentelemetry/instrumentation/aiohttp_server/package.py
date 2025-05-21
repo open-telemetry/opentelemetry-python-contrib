@@ -14,3 +14,5 @@
 
 
 _instruments = ("aiohttp ~= 3.0",)
+
+_supports_metrics = True

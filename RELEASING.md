@@ -41,6 +41,8 @@ The workflow will create two pull requests, one against the `main` and one again
   * Press the "Run workflow" button, then select the release branch from the dropdown list,
     e.g. `release/v1.9.x`, then enter the pull request number that you want to backport,
     then click the "Run workflow" button below that.
+  * Add the label `backport` to the generated pull request.
+  * In case label automation doesn't work, just close and reopen the PR so that the workflow will take into account the label automation we have in place.
   * Review and merge the backport pull request that it generates.
 * Merge a pull request to the release branch updating the `CHANGELOG.md`.
   * The heading for the unreleased entries should be `## Unreleased`.
@@ -48,6 +50,7 @@ The workflow will create two pull requests, one against the `main` and one again
   * Press the "Run workflow" button, then select the release branch from the dropdown list,
     e.g. `release/v1.9.x`, and click the "Run workflow" button below that.
   * Review and merge the pull request that it creates for updating the version.
+* Note: If you are doing a patch release in `-contrib` repo, you should also do an equivalent patch release in `-core` repo (even if there's no fix to release), otherwise tests in CI will fail.
 
 ### Preparing a patch release for individual package
 
