@@ -262,6 +262,7 @@ def create_trace_config(
             name=HTTP_CLIENT_REQUEST_DURATION,
             unit="s",
             description="Duration of HTTP client requests.",
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     metric_attributes = {}
