@@ -100,6 +100,8 @@ import yarl
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
