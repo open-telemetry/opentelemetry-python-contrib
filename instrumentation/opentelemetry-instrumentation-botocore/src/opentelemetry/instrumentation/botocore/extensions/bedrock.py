@@ -506,9 +506,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         span_ctx = span.get_span_context()
         event_logger.emit(
             choice.to_choice_event(
-                trace_id=span_ctx.trace_id,
-                span_id=span_ctx.span_id,
-                trace_flags=span_ctx.trace_flags,
+                span_context=span_ctx,
             )
         )
 
