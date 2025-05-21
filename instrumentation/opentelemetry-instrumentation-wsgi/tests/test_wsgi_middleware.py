@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -418,6 +419,11 @@ class TestWsgiApplication(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -456,6 +462,11 @@ class TestWsgiApplication(WsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
