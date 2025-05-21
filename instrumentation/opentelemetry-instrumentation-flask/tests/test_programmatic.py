@@ -562,6 +562,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_requests_count_attributes,
         expected_histogram_explicit_bounds=None,
     ):
+        # pylint: disable=too-many-nested-blocks
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
