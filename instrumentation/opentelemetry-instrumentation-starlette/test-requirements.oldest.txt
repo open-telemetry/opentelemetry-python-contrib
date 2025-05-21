@@ -24,10 +24,8 @@ anyio==4.9.0 ; python_full_version >= '3.9'
     # via
     #   httpx
     #   starlette
-asgiref==3.0.0
+asgiref==3.8.1
     # via opentelemetry-instrumentation-asgi
-async-timeout==3.0.1
-    # via asgiref
 certifi==2025.4.26
     # via
     #   httpcore
@@ -91,13 +89,15 @@ tomli==2.2.1 ; python_full_version < '3.11'
 typing-extensions==4.13.2 ; python_full_version < '3.13'
     # via
     #   anyio
+    #   asgiref
     #   starlette
 urllib3==2.2.3 ; python_full_version < '3.9'
     # via requests
 urllib3==2.4.0 ; python_full_version >= '3.9'
     # via requests
-wrapt==1.10.0
+wrapt==1.14.0
     # via
+    #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
     #   deprecated
     #   opentelemetry-instrumentation
 zipp==3.20.2 ; python_full_version < '3.9'

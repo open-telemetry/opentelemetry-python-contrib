@@ -91,8 +91,9 @@ urllib3==2.2.3 ; python_full_version < '3.9'
     # via requests
 urllib3==2.3.0 ; python_full_version >= '3.9'
     # via requests
-wrapt==1.17.2
+wrapt==1.14.1
     # via
+    #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
     #   deprecated
     #   opentelemetry-instrumentation
 zipp==3.20.2 ; python_full_version < '3.9'
