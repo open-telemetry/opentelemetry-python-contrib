@@ -1246,6 +1246,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_new_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
@@ -1290,6 +1291,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_both_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
