@@ -13,6 +13,6 @@
 # limitations under the License.
 
 
-_instruments = ("starlette >= 0.37.2",)
+_instruments = ("starlette >= 0.13",)
 
 _supports_metrics = True

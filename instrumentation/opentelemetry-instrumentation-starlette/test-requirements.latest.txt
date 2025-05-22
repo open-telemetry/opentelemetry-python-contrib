@@ -35,10 +35,6 @@ charset-normalizer==3.4.1
     # via requests
 colorama==0.4.6 ; sys_platform == 'win32'
     # via pytest
-deprecated==1.2.18
-    # via
-    #   opentelemetry-api
-    #   opentelemetry-semantic-conventions
 exceptiongroup==1.2.2 ; python_full_version < '3.11'
     # via
     #   anyio
@@ -82,20 +78,19 @@ starlette==0.46.2 ; python_full_version >= '3.9'
     # via opentelemetry-instrumentation-starlette
 tomli==2.2.1 ; python_full_version < '3.11'
     # via pytest
-typing-extensions==4.12.2 ; python_full_version < '3.13'
+typing-extensions==4.12.2
     # via
     #   anyio
     #   asgiref
+    #   opentelemetry-api
+    #   opentelemetry-semantic-conventions
     #   starlette
 urllib3==2.2.3 ; python_full_version < '3.9'
     # via requests
 urllib3==2.3.0 ; python_full_version >= '3.9'
     # via requests
 wrapt==1.14.1
-    # via
-    #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
-    #   deprecated
-    #   opentelemetry-instrumentation
+    # via opentelemetry-instrumentation
 zipp==3.20.2 ; python_full_version < '3.9'
     # via importlib-metadata
 zipp==3.21.0 ; python_full_version >= '3.9'

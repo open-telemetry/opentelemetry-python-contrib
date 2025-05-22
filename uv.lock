@@ -58,7 +58,6 @@ members = [
     "opentelemetry-instrumentation-requests",
     "opentelemetry-instrumentation-sqlalchemy",
     "opentelemetry-instrumentation-sqlite3",
-    "opentelemetry-instrumentation-starlette",
     "opentelemetry-instrumentation-system-metrics",
     "opentelemetry-instrumentation-threading",
     "opentelemetry-instrumentation-tornado",
@@ -3281,7 +3280,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'instruments'", specifier = "~=0.58" },
+    { name = "fastapi", marker = "extra == 'instruments'", specifier = "~=0.92" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", editable = "instrumentation/opentelemetry-instrumentation-asgi" },
@@ -3816,34 +3815,6 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
-]
-provides-extras = ["instruments"]
-
-[[package]]
-name = "opentelemetry-instrumentation-starlette"
-source = { editable = "instrumentation/opentelemetry-instrumentation-starlette" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-asgi" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "opentelemetry-util-http" },
-]
-
-[package.optional-dependencies]
-instruments = [
-    { name = "starlette", version = "0.44.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "starlette", version = "0.46.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
-    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-asgi", editable = "instrumentation/opentelemetry-instrumentation-asgi" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-    { name = "starlette", marker = "extra == 'instruments'", specifier = ">=0.37.2" },
 ]
 provides-extras = ["instruments"]
 
