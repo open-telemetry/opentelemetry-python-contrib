@@ -239,7 +239,7 @@ class StarletteInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        if not getattr(app, "is_instrumented_by_opentelemetry", False):
+        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
@@ -251,7 +251,7 @@ class StarletteInstrumentor(BaseInstrumentor):
                 tracer=tracer,
                 meter=meter,
             )
-            app.is_instrumented_by_opentelemetry = True
+            app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
             if app not in _InstrumentedStarlette._instrumented_starlette_apps:
@@ -332,7 +332,7 @@ class _InstrumentedStarlette(applications.Starlette):
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 
     def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
+        _InstrumentedStarlette._instrumented_starlette_apps.discard(self)
 
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:
