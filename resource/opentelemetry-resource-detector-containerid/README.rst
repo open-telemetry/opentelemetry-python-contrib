@@ -14,17 +14,17 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-container
+    pip install opentelemetry-resource-detector-containerid
 
 ---------------------------
 
-Usage example for `opentelemetry-resource-detector-container`
+Usage example for `opentelemetry-resource-detector-containerid`
 
 .. code-block:: python
 
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.resource.detector.container import (
+    from opentelemetry.resource.detector.containerid import (
         ContainerResourceDetector,
     )
     from opentelemetry.sdk.resources import get_aggregated_resources
