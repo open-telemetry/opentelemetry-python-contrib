@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from starlette import applications
 from starlette.responses import PlainTextResponse
-from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -621,7 +621,10 @@ class TestBaseWithCustomHeaders(TestBase):
 
     @staticmethod
     def create_starlette_app():
-        def foobar(request):
+        app = applications.Starlette()
+
+        @app.route("/foobar")
+        def _(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -633,7 +636,8 @@ class TestBaseWithCustomHeaders(TestBase):
                 },
             )
 
-        async def foobar_web(websocket: WebSocket) -> None:
+        @app.websocket_route("/foobar_web")
+        async def _(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(
@@ -659,17 +663,11 @@ class TestBaseWithCustomHeaders(TestBase):
             if message.get("type") == "websocket.disconnect":
                 pass
 
-        return applications.Starlette(
-            routes=[
-                Route("/foobar", foobar),
-                WebSocketRoute("/foobar_web", foobar_web),
-            ]
-        )
+        return app
 
 
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
-        super().setUp()
         self.test_env_patch = patch.dict(
             "os.environ",
             {
@@ -679,6 +677,7 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
             },
         )
         self.test_env_patch.start()
+        super().setUp()
 
     def tearDown(self):
         self.test_env_patch.stop()
@@ -812,8 +811,8 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
         super().setUp()
 
     def tearDown(self):
-        super().tearDown()
         self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
