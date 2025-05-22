@@ -330,10 +330,9 @@ def _map_finish_reason(
     | content_v1beta1.Candidate.FinishReason,
 ) -> FinishReason | str:
     EnumType = type(finish_reason)  # pylint: disable=invalid-name
-    if (
-        finish_reason is EnumType.FINISH_REASON_UNSPECIFIED
-        or finish_reason is EnumType.OTHER
-    ):
+    if finish_reason is EnumType.FINISH_REASON_UNSPECIFIED:
+        return ""
+    if finish_reason is EnumType.OTHER:
         return "error"
     if finish_reason is EnumType.STOP:
         return "stop"
