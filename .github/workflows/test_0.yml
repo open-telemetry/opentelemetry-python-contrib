@@ -636,8 +636,27 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-google-genai-latest -- -ra
 
-  py39-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container 3.9 Ubuntu
+  py38-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.8 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py38-test-resource-detector-containerid -- -ra
+
+  py39-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -653,10 +672,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-resource-detector-container -- -ra
+        run: tox -e py39-test-resource-detector-containerid -- -ra
 
-  py310-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container 3.10 Ubuntu
+  py310-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -672,10 +691,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-container -- -ra
+        run: tox -e py310-test-resource-detector-containerid -- -ra
 
-  py311-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container 3.11 Ubuntu
+  py311-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -691,10 +710,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-resource-detector-container -- -ra
+        run: tox -e py311-test-resource-detector-containerid -- -ra
 
-  py312-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container 3.12 Ubuntu
+  py312-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -710,10 +729,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-resource-detector-container -- -ra
+        run: tox -e py312-test-resource-detector-containerid -- -ra
 
-  py313-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container 3.13 Ubuntu
+  py313-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -729,10 +748,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-resource-detector-container -- -ra
+        run: tox -e py313-test-resource-detector-containerid -- -ra
 
-  pypy3-test-resource-detector-container_ubuntu-latest:
-    name: resource-detector-container pypy-3.9 Ubuntu
+  pypy3-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid pypy-3.8 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -748,7 +767,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-resource-detector-container -- -ra
+        run: tox -e pypy3-test-resource-detector-containerid -- -ra
 
   py39-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 3.9 Ubuntu
