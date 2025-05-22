@@ -15,7 +15,9 @@
 from unittest.mock import mock_open, patch
 
 from opentelemetry import trace as trace_api
-from opentelemetry.resource.detector.containerid import ContainerResourceDetector
+from opentelemetry.resource.detector.containerid import (
+    ContainerResourceDetector,
+)
 from opentelemetry.sdk.resources import get_aggregated_resources
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.test.test_base import TestBase
