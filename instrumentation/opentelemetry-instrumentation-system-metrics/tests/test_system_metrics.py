@@ -855,6 +855,24 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("process.context_switches", expected)
 
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        system_metrics = SystemMetricsInstrumentor()
+        system_metrics.instrument(meter_provider=meter_provider)
+
+        seen_metrics = set()
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    seen_metrics.add(metric.name)
+        self.assertNotIn("process.context_switches", seen_metrics)
+
     @mock.patch("psutil.Process.num_threads")
     def test_thread_count(self, mock_process_thread_num):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
@@ -945,6 +963,27 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics(
             f"process.runtime.{self.implementation}.context_switches", expected
+        )
+
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_runtime_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        reader = InMemoryMetricReader()
+        meter_provider = MeterProvider(metric_readers=[reader])
+        system_metrics = SystemMetricsInstrumentor()
+        system_metrics.instrument(meter_provider=meter_provider)
+
+        seen_metrics = set()
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    seen_metrics.add(metric.name)
+        self.assertNotIn(
+            f"process.runtime.{self.implementation}.context_switches",
+            seen_metrics,
         )
 
     @mock.patch("psutil.Process.num_threads")
