@@ -176,10 +176,12 @@ API
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Collection, cast
+from functools import partial
+from typing import TYPE_CHECKING, Any, Collection
 
 from starlette import applications
 from starlette.routing import Match
+from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.asgi.types import (
@@ -190,6 +192,7 @@ from opentelemetry.instrumentation.asgi.types import (
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import TracerProvider, get_tracer
@@ -215,7 +218,7 @@ class StarletteInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`.
     """
 
-    _original_starlette = None
+    _instrumented_starlette_apps: set[applications.Starlette] = set()
 
     @staticmethod
     def instrument_app(
@@ -240,22 +243,14 @@ class StarletteInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         if not getattr(app, "is_instrumented_by_opentelemetry", False):
-            app.add_middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=_excluded_urls,
-                default_span_details=_get_default_span_details,
-                server_request_hook=server_request_hook,
-                client_request_hook=client_request_hook,
-                client_response_hook=client_response_hook,
-                # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
-                tracer=tracer,
-                meter=meter,
+            StarletteInstrumentor._add_instrumentation_middleware(
+                app,
+                tracer,
+                meter,
+                server_request_hook,
+                client_request_hook,
+                client_response_hook,
             )
-            app.is_instrumented_by_opentelemetry = True
-
-            # adding apps to set for uninstrumenting
-            if app not in _InstrumentedStarlette._instrumented_starlette_apps:
-                _InstrumentedStarlette._instrumented_starlette_apps.add(app)
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
@@ -271,68 +266,90 @@ class StarletteInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
-        self._original_starlette = applications.Starlette
-        _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedStarlette._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedStarlette._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
-        _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
+        tracer_provider = kwargs.get("tracer_provider")
+        server_request_hook = kwargs.get("server_request_hook")
+        client_request_hook = kwargs.get("client_request_hook")
+        client_response_hook = kwargs.get("client_response_hook")
+        meter_provider = kwargs.get("meter_provider")
 
-        applications.Starlette = _InstrumentedStarlette
-
-    def _uninstrument(self, **kwargs: Any):
-        """uninstrumenting all created apps by user"""
-        for instance in _InstrumentedStarlette._instrumented_starlette_apps:
-            self.uninstrument_app(instance)
-        _InstrumentedStarlette._instrumented_starlette_apps.clear()
-        applications.Starlette = self._original_starlette
-
-
-class _InstrumentedStarlette(applications.Starlette):
-    _tracer_provider: TracerProvider | None = None
-    _meter_provider: MeterProvider | None = None
-    _server_request_hook: ServerRequestHook = None
-    _client_request_hook: ClientRequestHook = None
-    _client_response_hook: ClientResponseHook = None
-    _instrumented_starlette_apps: set[applications.Starlette] = set()
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
         tracer = get_tracer(
             __name__,
             __version__,
-            _InstrumentedStarlette._tracer_provider,
+            tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         meter = get_meter(
             __name__,
             __version__,
-            _InstrumentedStarlette._meter_provider,
+            meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        self.add_middleware(
+
+        def instrumented_init(
+            wrapped,
+            instance,
+            args,
+            kwargs,
+            tracer,
+            meter,
+            server_request_hook,
+            client_request_hook,
+            client_response_hook,
+        ):
+            result = wrapped(*args, **kwargs)
+            StarletteInstrumentor._add_instrumentation_middleware(
+                instance,
+                tracer,
+                meter,
+                server_request_hook,
+                client_request_hook,
+                client_response_hook,
+            )
+
+            return result
+
+        # Wrap Starlette's __init__ method to add instrumentation
+        wrap_function_wrapper(
+            applications.Starlette,
+            "__init__",
+            partial(
+                instrumented_init,
+                tracer=tracer,
+                meter=meter,
+                server_request_hook=server_request_hook,
+                client_request_hook=client_request_hook,
+                client_response_hook=client_response_hook,
+            ),
+        )
+
+    def _uninstrument(self, **kwargs: Any):
+        for app in list(StarletteInstrumentor._instrumented_starlette_apps):
+            self.uninstrument_app(app)
+
+        unwrap(applications.Starlette, "__init__")
+
+    @staticmethod
+    def _add_instrumentation_middleware(
+        app: applications.Starlette,
+        tracer,
+        meter,
+        server_request_hook,
+        client_request_hook,
+        client_response_hook,
+    ):
+        app.add_middleware(
             OpenTelemetryMiddleware,
             excluded_urls=_excluded_urls,
             default_span_details=_get_default_span_details,
-            server_request_hook=_InstrumentedStarlette._server_request_hook,
-            client_request_hook=_InstrumentedStarlette._client_request_hook,
-            client_response_hook=_InstrumentedStarlette._client_response_hook,
-            # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+            server_request_hook=server_request_hook,
+            client_request_hook=client_request_hook,
+            client_response_hook=client_response_hook,
             tracer=tracer,
             meter=meter,
         )
-        self._is_instrumented_by_opentelemetry = True
+        app._is_instrumented_by_opentelemetry = True
         # adding apps to set for uninstrumenting
-        _InstrumentedStarlette._instrumented_starlette_apps.add(self)
-
-    def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
+        StarletteInstrumentor._instrumented_starlette_apps.add(app)
 
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:
@@ -349,7 +366,7 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     Returns:
         The path to the route if found, otherwise None.
     """
-    app = cast(applications.Starlette, scope["app"])
+    app = scope["app"]
     route: str | None = None
 
     for starlette_route in app.routes:

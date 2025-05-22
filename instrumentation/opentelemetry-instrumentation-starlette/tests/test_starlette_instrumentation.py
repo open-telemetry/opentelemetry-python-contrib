@@ -572,15 +572,15 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
         removing as expected.
         """
         instrumentor = otel_starlette.StarletteInstrumentor()
-        original = applications.Starlette
+        original = applications.Starlette.__init__
         instrumentor.instrument()
         try:
-            instrumented = applications.Starlette
+            instrumented = applications.Starlette.__init__
             self.assertIsNot(original, instrumented)
         finally:
             instrumentor.uninstrument()
 
-        should_be_original = applications.Starlette
+        should_be_original = applications.Starlette.__init__
         self.assertIs(original, should_be_original)
 
 
