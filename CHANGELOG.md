@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-celery` Fix a memory leak where a reference to a task identifier is kept indefinitely
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
 
 ### Breaking changes
 
@@ -22,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
 - `opentelemetry-instrumentation-fastapi`: Drop support for FastAPI versions earlier than `0.92`
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-celery` Rename `flower.task.runtime.seconds` metric to `messaging.process.duration` according to semconv
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+
+### Added
+
+- `opentelemetry-instrumentation-celery` Add three additional worker metrics to count active and prefetched tasks, as well as prefetch duration
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
