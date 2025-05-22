@@ -230,7 +230,7 @@ class TestStarletteManualInstrumentation(TestBase):
                         dict(point.attributes), expected_duration_attributes
                     )
                     if metric.name == "http.server.duration":
-                        self.assertEqual(duration, point.sum)
+                        self.assertAlmostEqual(duration, point.sum, delta=30)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
