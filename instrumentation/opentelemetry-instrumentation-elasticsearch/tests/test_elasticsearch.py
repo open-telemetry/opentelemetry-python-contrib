@@ -31,7 +31,10 @@ from opentelemetry.instrumentation.elasticsearch import (
     ElasticsearchInstrumentor,
 )
 from opentelemetry.instrumentation.elasticsearch.utils import sanitize_body
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -76,15 +79,15 @@ def get_elasticsearch_client(*args, **kwargs):
 )
 class TestElasticsearchIntegration(TestBase):
     search_attributes = {
-        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        DB_SYSTEM: "elasticsearch",
         "elasticsearch.url": "/test-index/_search",
         "elasticsearch.method": helpers.dsl_search_method,
         "elasticsearch.target": "test-index",
-        SpanAttributes.DB_STATEMENT: str({"query": {"bool": {"filter": "?"}}}),
+        DB_STATEMENT: str({"query": {"bool": {"filter": "?"}}}),
     }
 
     create_attributes = {
-        SpanAttributes.DB_SYSTEM: "elasticsearch",
+        DB_SYSTEM: "elasticsearch",
         "elasticsearch.url": "/test-index",
         "elasticsearch.method": "HEAD",
     }
@@ -361,13 +364,13 @@ class TestElasticsearchIntegration(TestBase):
         )
 
         attributes = {
-            SpanAttributes.DB_SYSTEM: "elasticsearch",
+            DB_SYSTEM: "elasticsearch",
             "elasticsearch.url": "/test-index",
             "elasticsearch.method": "PUT",
         }
         self.assertSpanHasAttributes(span2, attributes)
         self.assertEqual(
-            literal_eval(span2.attributes[SpanAttributes.DB_STATEMENT]),
+            literal_eval(span2.attributes[DB_STATEMENT]),
             helpers.dsl_create_statement,
         )
 
@@ -408,13 +411,13 @@ class TestElasticsearchIntegration(TestBase):
         span = spans[0]
         self.assertEqual(span.name, helpers.dsl_index_span_name)
         attributes = {
-            SpanAttributes.DB_SYSTEM: "elasticsearch",
+            DB_SYSTEM: "elasticsearch",
             "elasticsearch.url": helpers.dsl_index_url,
             "elasticsearch.method": "PUT",
         }
         self.assertSpanHasAttributes(span, attributes)
         self.assertEqual(
-            literal_eval(span.attributes[SpanAttributes.DB_STATEMENT]),
+            literal_eval(span.attributes[DB_STATEMENT]),
             {
                 "body": "A few words here, a few words there",
                 "title": "About searching",
