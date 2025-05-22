@@ -109,6 +109,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_REGION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
@@ -276,8 +279,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             SpanAttributes.RPC_SYSTEM: "aws-api",
             SpanAttributes.RPC_SERVICE: call_context.service_id,
             SpanAttributes.RPC_METHOD: call_context.operation,
-            # TODO: update when semantic conventions exist
-            "aws.region": call_context.region,
+            CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
 
