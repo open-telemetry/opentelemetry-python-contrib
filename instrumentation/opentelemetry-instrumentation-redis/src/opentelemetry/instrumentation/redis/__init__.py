@@ -135,7 +135,9 @@ from opentelemetry.instrumentation.redis.util import (
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.db_attributes import DB_STATEMENT
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.trace import (
     StatusCode,
     Tracer,
