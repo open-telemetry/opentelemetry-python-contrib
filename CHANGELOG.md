@@ -48,8 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-[asynclick/click]` Add missing opentelemetry-instrumentation dep
   ([#3447](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3447))
 - `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
-  ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448
-- `opentelemetry-instrumentation-starlette` Remove max version constraint on starlete, increase min version ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
+  ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
+- `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
+  ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
 
 
 ## Version 1.32.0/0.53b0 (2025-04-10)
