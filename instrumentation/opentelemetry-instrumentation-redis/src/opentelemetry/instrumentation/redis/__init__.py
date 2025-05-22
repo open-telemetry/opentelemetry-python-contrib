@@ -135,7 +135,7 @@ from opentelemetry.instrumentation.redis.util import (
 )
 from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import DB_STATEMENT
 from opentelemetry.trace import (
     StatusCode,
     Tracer,
@@ -200,7 +200,7 @@ def _traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
                 if span.name == "redis.create_index":
@@ -239,7 +239,7 @@ def _traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                span.set_attribute(DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
@@ -281,7 +281,7 @@ def _async_traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
             if callable(request_hook):
@@ -317,7 +317,7 @@ def _async_traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                span.set_attribute(DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
