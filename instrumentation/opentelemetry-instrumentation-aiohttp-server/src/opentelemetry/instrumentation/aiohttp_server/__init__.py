@@ -57,7 +57,7 @@ from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls, remove_url_credentials, redact_query_parameters
+from opentelemetry.util.http import get_excluded_urls, redact_url
 
 _duration_attrs = [
     SpanAttributes.HTTP_METHOD,
@@ -146,7 +146,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         SpanAttributes.HTTP_ROUTE: _get_view_func(request),
         SpanAttributes.HTTP_FLAVOR: f"{request.version.major}.{request.version.minor}",
         SpanAttributes.HTTP_TARGET: request.path,
-        SpanAttributes.HTTP_URL: redact_query_parameters(remove_url_credentials(http_url)),
+        SpanAttributes.HTTP_URL: redact_url(http_url),
     }
 
     http_method = request.method

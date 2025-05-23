@@ -294,5 +294,10 @@ def redact_query_parameters(url: str) -> str:
             )
         )
     except ValueError:  # an unparsable url was passed
-        pass
+        return url
+
+def redact_url(url: str) -> str:
+    """Redact sensitive data from the URL, including credentials and query parameters."""
+    url = remove_url_credentials(url)
+    url = redact_query_parameters(url)
     return url
