@@ -41,9 +41,18 @@ from opentelemetry.instrumentation.aiohttp_client import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_HOST,
     HTTP_METHOD,
     HTTP_STATUS_CODE,
     HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
@@ -154,6 +163,7 @@ class TestAioHttpIntegration(TestBase):
                     HTTP_URL: url,
                     HTTP_STATUS_CODE: status_code,
                 }
+
                 spans = [("GET", (span_status, None), attributes)]
                 self._assert_spans(spans)
                 self.memory_exporter.clear()
@@ -164,6 +174,9 @@ class TestAioHttpIntegration(TestBase):
                     {
                         HTTP_STATUS_CODE: status_code,
                         HTTP_METHOD: "GET",
+                        HTTP_HOST: host,
+                        NET_PEER_NAME: host,
+                        NET_PEER_PORT: port,
                     },
                 )
                 self.assertEqual(
@@ -189,6 +202,8 @@ class TestAioHttpIntegration(TestBase):
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
                     HTTP_RESPONSE_STATUS_CODE: status_code,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
                 }
                 if status_code >= 400:
                     attributes[ERROR_TYPE] = str(status_code.value)
@@ -234,11 +249,16 @@ class TestAioHttpIntegration(TestBase):
                 attributes = {
                     HTTP_REQUEST_METHOD: "GET",
                     HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
                     URL_FULL: url,
                     HTTP_URL: url,
                     HTTP_RESPONSE_STATUS_CODE: status_code,
                     HTTP_STATUS_CODE: status_code,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                    NET_PEER_PORT: port,
                 }
+
                 if status_code >= 400:
                     attributes[ERROR_TYPE] = str(status_code.value)
 
@@ -279,26 +299,25 @@ class TestAioHttpIntegration(TestBase):
 
     def test_metrics(self):
         with self.subTest(status_code=200):
-            # Run multiple requests to test metrics
-            number_of_requests = 3
-            for _ in range(number_of_requests):
-                self._http_request(
-                    trace_config=aiohttp_client.create_trace_config(),
-                    url="/test-path?query=param#foobar",
-                    status_code=200,
-                )
-
+            host, port = self._http_request(
+                trace_config=aiohttp_client.create_trace_config(),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
             metrics = self._assert_metrics(1)
             self.assertEqual(len(metrics[0].data.data_points), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(
-                dict(duration_data_point.attributes),
+                dict(metrics[0].data.data_points[0].attributes),
                 {
                     HTTP_STATUS_CODE: 200,
                     HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    NET_PEER_NAME: host,
+                    NET_PEER_PORT: port,
                 },
             )
-            self.assertEqual(duration_data_point.count, number_of_requests)
+            self.assertEqual(duration_data_point.count, 1)
             self.assertTrue(duration_data_point.min > 0)
             self.assertTrue(duration_data_point.max > 0)
             self.assertTrue(duration_data_point.sum > 0)
@@ -502,6 +521,9 @@ class TestAioHttpIntegration(TestBase):
             dict(duration_data_point.attributes),
             {
                 HTTP_METHOD: "GET",
+                HTTP_HOST: host,
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
             },
         )
 
@@ -528,6 +550,8 @@ class TestAioHttpIntegration(TestBase):
                         HTTP_REQUEST_METHOD: "GET",
                         URL_FULL: f"http://{host}:{port}/test",
                         ERROR_TYPE: "ServerDisconnectedError",
+                        SERVER_ADDRESS: host,
+                        SERVER_PORT: port,
                     },
                 )
             ]
@@ -539,6 +563,8 @@ class TestAioHttpIntegration(TestBase):
             {
                 HTTP_REQUEST_METHOD: "GET",
                 ERROR_TYPE: "ServerDisconnectedError",
+                SERVER_ADDRESS: host,
+                SERVER_PORT: port,
             },
         )
 
@@ -567,6 +593,10 @@ class TestAioHttpIntegration(TestBase):
                         ERROR_TYPE: "ServerDisconnectedError",
                         HTTP_METHOD: "GET",
                         HTTP_URL: f"http://{host}:{port}/test",
+                        HTTP_HOST: host,
+                        SERVER_ADDRESS: host,
+                        SERVER_PORT: port,
+                        NET_PEER_PORT: port,
                     },
                 )
             ]
@@ -577,6 +607,9 @@ class TestAioHttpIntegration(TestBase):
             dict(duration_data_point.attributes),
             {
                 HTTP_METHOD: "GET",
+                HTTP_HOST: host,
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
             },
         )
         duration_data_point = metrics[1].data.data_points[0]
@@ -585,6 +618,8 @@ class TestAioHttpIntegration(TestBase):
             {
                 HTTP_REQUEST_METHOD: "GET",
                 ERROR_TYPE: "ServerDisconnectedError",
+                SERVER_ADDRESS: host,
+                SERVER_PORT: port,
             },
         )
 
@@ -719,6 +754,8 @@ class TestAioHttpIntegration(TestBase):
                         ),
                         HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
                         ERROR_TYPE: "405",
+                        SERVER_ADDRESS: "localhost",
+                        SERVER_PORT: 5000,
                     },
                 )
             ]
@@ -822,8 +859,11 @@ class TestAioHttpClientInstrumentor(TestBase):
         self.assertEqual(
             dict(duration_data_point.attributes),
             {
+                HTTP_HOST: host,
                 HTTP_STATUS_CODE: 200,
                 HTTP_METHOD: "GET",
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
             },
         )
 
@@ -852,6 +892,8 @@ class TestAioHttpClientInstrumentor(TestBase):
                 {
                     HTTP_RESPONSE_STATUS_CODE: 200,
                     HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
                 },
             )
 
@@ -865,17 +907,23 @@ class TestAioHttpClientInstrumentor(TestBase):
                 self.get_default_request(), self.URL, self.default_handler
             )
             url = f"http://{host}:{port}/test-path"
-            attributes = {
-                HTTP_REQUEST_METHOD: "GET",
-                HTTP_METHOD: "GET",
-                URL_FULL: url,
-                HTTP_URL: url,
-                HTTP_RESPONSE_STATUS_CODE: 200,
-                HTTP_STATUS_CODE: 200,
-            }
             span = self._assert_spans(1)
             self.assertEqual("GET", span.name)
-            self.assertEqual(span.attributes, attributes)
+            self.assertEqual(
+                dict(span.attributes),
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    URL_FULL: url,
+                    HTTP_URL: url,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                    NET_PEER_PORT: port,
+                },
+            )
             metrics = self._assert_metrics(2)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
@@ -884,6 +932,9 @@ class TestAioHttpClientInstrumentor(TestBase):
                 {
                     HTTP_STATUS_CODE: 200,
                     HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    NET_PEER_NAME: host,
+                    NET_PEER_PORT: port,
                 },
             )
             duration_data_point = metrics[1].data.data_points[0]
@@ -893,6 +944,8 @@ class TestAioHttpClientInstrumentor(TestBase):
                 {
                     HTTP_RESPONSE_STATUS_CODE: 200,
                     HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
                 },
             )
 

@@ -92,6 +92,7 @@ import types
 import typing
 from timeit import default_timer
 from typing import Collection
+from urllib.parse import urlparse
 
 import aiohttp
 import wrapt
@@ -110,7 +111,10 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
+    _set_http_host_client,
     _set_http_method,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
     _set_http_url,
     _set_status,
     _StabilityMode,
@@ -326,6 +330,36 @@ def create_trace_config(
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, request_url, sem_conv_opt_in_mode)
+
+        try:
+            parsed_url = urlparse(request_url)
+            if parsed_url.hostname:
+                _set_http_host_client(
+                    metric_attributes,
+                    parsed_url.hostname,
+                    sem_conv_opt_in_mode,
+                )
+                _set_http_net_peer_name_client(
+                    metric_attributes,
+                    parsed_url.hostname,
+                    sem_conv_opt_in_mode,
+                )
+                if _report_new(sem_conv_opt_in_mode):
+                    _set_http_host_client(
+                        span_attributes,
+                        parsed_url.hostname,
+                        sem_conv_opt_in_mode,
+                    )
+            if parsed_url.port:
+                _set_http_peer_port_client(
+                    metric_attributes, parsed_url.port, sem_conv_opt_in_mode
+                )
+                if _report_new(sem_conv_opt_in_mode):
+                    _set_http_peer_port_client(
+                        span_attributes, parsed_url.port, sem_conv_opt_in_mode
+                    )
+        except ValueError:
+            pass
 
         trace_config_ctx.span = trace_config_ctx.tracer.start_span(
             request_span_name, kind=SpanKind.CLIENT, attributes=span_attributes
