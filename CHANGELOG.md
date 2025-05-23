@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3524](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3524))
 - `opentelemetry-instrumentation-grpc`: support non-list interceptors
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
+- `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
+  ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
 
 ### Breaking changes
 
