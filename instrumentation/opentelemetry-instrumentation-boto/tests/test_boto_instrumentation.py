@@ -28,7 +28,10 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry.instrumentation.boto import BotoInstrumentor
-from opentelemetry.semconv._incubating.attributes.http_attributes import HTTP_METHOD,HTTP_STATUS_CODE
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+)
 from opentelemetry.test.test_base import TestBase
 
 
