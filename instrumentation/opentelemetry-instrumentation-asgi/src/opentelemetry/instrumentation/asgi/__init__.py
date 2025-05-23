@@ -202,6 +202,7 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -589,6 +590,7 @@ class OpenTelemetryMiddleware:
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         self.server_response_size_histogram = None
         if _report_old(sem_conv_opt_in_mode):
