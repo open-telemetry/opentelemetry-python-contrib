@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Fixed
-
 - `opentelemetry-instrumentation-system-metrics`: fix loading on Google Cloud Run
   ([#3533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3533))
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
@@ -37,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 - `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
   ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+- `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
 
 ### Breaking changes
 
