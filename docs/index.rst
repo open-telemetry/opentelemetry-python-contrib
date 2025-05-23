@@ -52,7 +52,7 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
     pip install -e ./instrumentation/opentelemetry-instrumentation-botocore
     pip install -e ./instrumentation-genai/opentelemetry-instrumentation-openai-v2
     pip install -e ./sdk-extension/opentelemetry-sdk-extension-aws
-    pip install -e ./resource/opentelemetry-resource-detector-container
+    pip install -e ./resource/opentelemetry-resource-detector-containerid
 
 
 .. toctree::
