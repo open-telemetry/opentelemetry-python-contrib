@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-django`: proper bucket boundaries in stable semconv http duration
+  ([#3524](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3524))
 - `opentelemetry-instrumentation-grpc`: support non-list interceptors
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 
