@@ -273,7 +273,6 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
