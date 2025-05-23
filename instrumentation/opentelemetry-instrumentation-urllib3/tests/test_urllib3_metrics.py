@@ -22,6 +22,7 @@ import urllib3.exceptions
 from urllib3 import encode_multipart_formdata
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -169,6 +170,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=duration_s,
                     min_data_point=duration_s,
                     attributes=attrs_new,
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
             ],
             est_value_delta=40 / 1000,
@@ -258,6 +260,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=duration_s,
                     min_data_point=duration_s,
                     attributes=attrs_new,
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
             ],
             est_value_delta=40 / 1000,
@@ -451,6 +454,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
                     max_data_point=duration_s,
                     min_data_point=duration_s,
                     attributes=attrs_new,
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
             ],
             est_value_delta=40 / 1000,

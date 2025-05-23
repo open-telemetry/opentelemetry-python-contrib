@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-lines
 
 import sys
 from collections import namedtuple
@@ -235,13 +235,27 @@ class TestSystemMetrics(TestBase):
                                 assertions += 1
         self.assertEqual(len(expected), assertions)
 
-    def _test_metrics(self, observer_name, expected):
+    @staticmethod
+    def _setup_instrumentor() -> InMemoryMetricReader:
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
 
         system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
+        return reader
+
+    def _test_metrics(self, observer_name, expected):
+        reader = self._setup_instrumentor()
         self._assert_metrics(observer_name, reader, expected)
+
+    def _assert_metrics_not_found(self, observer_name):
+        reader = self._setup_instrumentor()
+        seen_metrics = set()
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    seen_metrics.add(metric.name)
+        self.assertNotIn(observer_name, seen_metrics)
 
     # This patch is added here to stop psutil from raising an exception
     # because we're patching cpu_times
@@ -855,6 +869,14 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("process.context_switches", expected)
 
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found("process.context_switches")
+
     @mock.patch("psutil.Process.num_threads")
     def test_thread_count(self, mock_process_thread_num):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
@@ -945,6 +967,16 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics(
             f"process.runtime.{self.implementation}.context_switches", expected
+        )
+
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_runtime_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found(
+            f"process.runtime.{self.implementation}.context_switches",
         )
 
     @mock.patch("psutil.Process.num_threads")

@@ -23,6 +23,7 @@ import httpretty
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -76,10 +77,17 @@ class TestUrllibMetricsInstrumentation(TestBase):
         httpretty.disable()
 
     # Return Sequence with one histogram
-    def create_histogram_data_points(self, sum_data_point, attributes):
+    def create_histogram_data_points(
+        self, sum_data_point, attributes, explicit_bounds=None
+    ):
         return [
             self.create_histogram_data_point(
-                sum_data_point, 1, sum_data_point, sum_data_point, attributes
+                sum_data_point,
+                1,
+                sum_data_point,
+                sum_data_point,
+                attributes,
+                explicit_bounds=explicit_bounds,
             )
         ]
 
@@ -176,6 +184,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                     },
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
                 est_value_delta=40,
             )
@@ -295,6 +304,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                     },
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
                 est_value_delta=40,
             )

@@ -28,13 +28,16 @@ from moto import (  # pylint: disable=import-error
 )
 
 from opentelemetry.instrumentation.boto import BotoInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+)
 from opentelemetry.test.test_base import TestBase
 
 
 def assert_span_http_status_code(span, code):
     """Assert on the span's 'http.status_code' tag"""
-    tag = span.attributes[SpanAttributes.HTTP_STATUS_CODE]
+    tag = span.attributes[HTTP_STATUS_CODE]
     assert tag == code, f"{tag} != {code}"
 
 
@@ -60,7 +63,7 @@ class TestBotoInstrumentor(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes["aws.operation"], "DescribeInstances")
         assert_span_http_status_code(span, 200)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
+        self.assertEqual(span.attributes[HTTP_METHOD], "POST")
         self.assertEqual(span.attributes["aws.region"], "us-west-2")
 
         # Create an instance
@@ -73,7 +76,7 @@ class TestBotoInstrumentor(TestBase):
         assert_span_http_status_code(span, 200)
         self.assertEqual(span.attributes["endpoint"], "ec2")
         self.assertEqual(span.attributes["http_method"], "runinstances")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
+        self.assertEqual(span.attributes[HTTP_METHOD], "POST")
         self.assertEqual(span.attributes["aws.region"], "us-west-2")
         self.assertEqual(span.name, "ec2.command")
 
@@ -120,7 +123,7 @@ class TestBotoInstrumentor(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         assert_span_http_status_code(span, 200)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(span.attributes[HTTP_METHOD], "GET")
         self.assertEqual(span.attributes["aws.operation"], "get_all_buckets")
 
         # Create a bucket command
@@ -130,7 +133,7 @@ class TestBotoInstrumentor(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         assert_span_http_status_code(span, 200)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "PUT")
+        self.assertEqual(span.attributes[HTTP_METHOD], "PUT")
         self.assertEqual(span.attributes["path"], "/")
         self.assertEqual(span.attributes["aws.operation"], "create_bucket")
 
@@ -143,7 +146,7 @@ class TestBotoInstrumentor(TestBase):
         assert_span_http_status_code(span, 200)
         self.assertEqual(span.attributes["endpoint"], "s3")
         self.assertEqual(span.attributes["http_method"], "head")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "HEAD")
+        self.assertEqual(span.attributes[HTTP_METHOD], "HEAD")
         self.assertEqual(span.attributes["aws.operation"], "head_bucket")
         self.assertEqual(span.name, "s3.command")
 
@@ -240,7 +243,7 @@ class TestBotoInstrumentor(TestBase):
         assert_span_http_status_code(span, 200)
         self.assertEqual(span.attributes["endpoint"], "lambda")
         self.assertEqual(span.attributes["http_method"], "get")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(span.attributes[HTTP_METHOD], "GET")
         self.assertEqual(span.attributes["aws.region"], "us-east-2")
         self.assertEqual(span.attributes["aws.operation"], "list_functions")
 

@@ -25,10 +25,16 @@ from redis.exceptions import WatchError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.semconv.trace import (
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_REDIS_DATABASE_INDEX,
+    DB_SYSTEM,
     DbSystemValues,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+    NET_TRANSPORT,
     NetTransportValues,
-    SpanAttributes,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -257,18 +263,14 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM],
+            span.attributes[DB_SYSTEM],
             DbSystemValues.REDIS.value,
         )
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 0
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
+            span.attributes[NET_TRANSPORT],
             NetTransportValues.IP_TCP.value,
         )
 
@@ -283,18 +285,14 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM],
+            span.attributes[DB_SYSTEM],
             DbSystemValues.REDIS.value,
         )
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 1)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "1.1.1.1")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6380)
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 1
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6380)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
+            span.attributes[NET_TRANSPORT],
             NetTransportValues.IP_TCP.value,
         )
 
@@ -311,18 +309,16 @@ class TestRedis(TestBase):
 
         span = spans[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM],
+            span.attributes[DB_SYSTEM],
             DbSystemValues.REDIS.value,
         )
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 3)
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX], 3
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME],
+            span.attributes[NET_PEER_NAME],
             "/path/to/socket.sock",
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
+            span.attributes[NET_TRANSPORT],
             NetTransportValues.OTHER.value,
         )
 
