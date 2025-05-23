@@ -257,6 +257,7 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -583,6 +584,7 @@ class _InstrumentedFlask(flask.Flask):
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP server requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         active_requests_counter = meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -716,6 +718,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                     name=HTTP_SERVER_REQUEST_DURATION,
                     unit="s",
                     description="Duration of HTTP server requests.",
+                    explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
             active_requests_counter = meter.create_up_down_counter(
                 name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
