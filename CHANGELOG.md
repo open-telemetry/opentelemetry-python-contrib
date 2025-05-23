@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-system-metrics`: fix loading on Google Cloud Run
+  ([#3533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3533))
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 - `opentelemetry-instrumentation-urllib3`: proper bucket boundaries in stable semconv http duration metrics
