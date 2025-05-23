@@ -26,6 +26,8 @@ from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -814,6 +816,10 @@ class TestMiddleware(WsgiTestBase):
                                 expected_duration_attributes,
                                 dict(point.attributes),
                             )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                             self.assertEqual(point.value, 0)
@@ -886,6 +892,10 @@ class TestMiddleware(WsgiTestBase):
                                     expected_duration_attributes_new,
                                     dict(point.attributes),
                                 )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
                             elif metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
                                     duration, point.sum, delta=100
@@ -893,6 +903,10 @@ class TestMiddleware(WsgiTestBase):
                                 self.assertDictEqual(
                                     expected_duration_attributes_old,
                                     dict(point.attributes),
+                                )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
                                 )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
