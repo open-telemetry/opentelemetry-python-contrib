@@ -259,8 +259,8 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
     sanitize_method,
+    redact_url,
 )
 
 
@@ -356,7 +356,7 @@ def collect_request_attributes(
         if _report_old(sem_conv_opt_in_mode):
             _set_http_url(
                 result,
-                remove_url_credentials(http_url),
+                redact_url(http_url),
                 _StabilityMode.DEFAULT,
             )
     http_method = scope.get("method", "")
