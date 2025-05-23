@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-falcon`: proper bucket boundaries in stable semconv http duration
+  ([#3525](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3525))
 - `opentelemetry-instrumentation-wsgi`: add explicit http duration buckets for stable semconv
   ([#3527](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3527))
 - `opentelemetry-instrumentation-asgi`: add explicit http duration buckets for stable semconv
