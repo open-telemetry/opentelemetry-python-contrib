@@ -52,7 +52,7 @@ from opentelemetry.instrumentation.boto.package import _instruments
 from opentelemetry.instrumentation.boto.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import HTTP_METHOD, HTTP_STATUS_CODE
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -159,10 +159,10 @@ class BotoInstrumentor(BaseInstrumentor):
                     span.set_attribute(key, value)
 
                 span.set_attribute(
-                    SpanAttributes.HTTP_STATUS_CODE, getattr(result, "status")
+                    HTTP_STATUS_CODE, getattr(result, "status")
                 )
                 span.set_attribute(
-                    SpanAttributes.HTTP_METHOD, getattr(result, "_method")
+                    HTTP_METHOD, getattr(result, "_method")
                 )
 
             return result
