@@ -13,10 +13,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-system-metrics`: fix loading on Google Cloud Run
+  ([#3533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3533))
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 - `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
   ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
+- `opentelemetry-instrumentation-urllib3`: proper bucket boundaries in stable semconv http duration metrics
+  ([#3518](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3518))
+- `opentelemetry-instrumentation-urllib`: proper bucket boundaries in stable semconv http duration metrics
+  ([#3519](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3519))
+- `opentelemetry-instrumentation-falcon`: proper bucket boundaries in stable semconv http duration
+  ([#3525](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3525))
+- `opentelemetry-instrumentation-wsgi`: add explicit http duration buckets for stable semconv
+  ([#3527](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3527))
+- `opentelemetry-instrumentation-asgi`: add explicit http duration buckets for stable semconv
+  ([#3526](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3526))
+- `opentelemetry-instrumentation-flask`: proper bucket boundaries in stable semconv http duration
+  ([#3523](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3523))
+- `opentelemetry-instrumentation-django`: proper bucket boundaries in stable semconv http duration
+  ([#3524](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3524))
+- `opentelemetry-instrumentation-grpc`: support non-list interceptors
+  ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
+- `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
+  ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
 
 ### Breaking changes
 
