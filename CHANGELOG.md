@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
+  ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
 
 ### Breaking changes
 
@@ -49,9 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3447](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3447))
 - `opentelemetry-instrumentation-botocore` Capture server attributes for botocore API calls
   ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3448))
-- `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
-  ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
-
 
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
