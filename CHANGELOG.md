@@ -18,6 +18,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-system-metrics`: fix loading on Google Cloud Run
+  ([#3533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3533))
+- `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
+  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
+  ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
+- `opentelemetry-instrumentation-urllib3`: proper bucket boundaries in stable semconv http duration metrics
+  ([#3518](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3518))
+- `opentelemetry-instrumentation-urllib`: proper bucket boundaries in stable semconv http duration metrics
+  ([#3519](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3519))
+- `opentelemetry-instrumentation-falcon`: proper bucket boundaries in stable semconv http duration
+  ([#3525](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3525))
+- `opentelemetry-instrumentation-wsgi`: add explicit http duration buckets for stable semconv
+  ([#3527](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3527))
+- `opentelemetry-instrumentation-asgi`: add explicit http duration buckets for stable semconv
+  ([#3526](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3526))
+- `opentelemetry-instrumentation-flask`: proper bucket boundaries in stable semconv http duration
+  ([#3523](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3523))
+- `opentelemetry-instrumentation-django`: proper bucket boundaries in stable semconv http duration
+  ([#3524](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3524))
+- `opentelemetry-instrumentation-grpc`: support non-list interceptors
+  ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
+- `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
+  ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-botocore` Use `cloud.region` instead of `aws.region` span attribute as per semantic conventions.
+  ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
+- `opentelemetry-instrumentation-fastapi`: Drop support for FastAPI versions earlier than `0.92`
+  ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+
+## Version 1.33.0/0.54b0 (2025-05-09)
+
+### Added
+
+- `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
+  ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
+- `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
+  ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
+
+### Fixed
+
 - `opentelemetry-instrumentation` Catch `ModuleNotFoundError` when the library is not installed
   and log as debug instead of exception
   ([#3423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3423))

@@ -27,14 +27,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.54b0.dev",
-  "opentelemetry-instrumentation-asgi == 0.54b0.dev",
-  "opentelemetry-semantic-conventions == 0.54b0.dev",
-  "opentelemetry-util-http == 0.54b0.dev",
+  "opentelemetry-instrumentation == 0.55b0.dev",
+  "opentelemetry-instrumentation-asgi == 0.55b0.dev",
+  "opentelemetry-semantic-conventions == 0.55b0.dev",
+  "opentelemetry-util-http == 0.55b0.dev",
 ]
 
 [project.optional-dependencies]
-instruments = ["starlette >= 0.13, <0.15"]
+instruments = ["starlette >= 0.13"]
 
 [project.entry-points.opentelemetry_instrumentor]
 starlette = "opentelemetry.instrumentation.starlette:StarletteInstrumentor"
