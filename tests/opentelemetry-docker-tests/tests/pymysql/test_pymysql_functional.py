@@ -104,8 +104,9 @@ class TestFunctionalPyMysql(TestBase):
 
     def test_callproc(self):
         """Should create a child span for callproc"""
-        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
-            Exception
+        with (
+            self._tracer.start_as_current_span("rootSpan"),
+            self.assertRaises(Exception),
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
