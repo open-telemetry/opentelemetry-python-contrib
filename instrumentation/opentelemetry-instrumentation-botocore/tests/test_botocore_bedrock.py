@@ -1115,6 +1115,56 @@ def test_converse_stream_with_invalid_model(
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
+def test_converse_stream_close_before_consumption(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "amazon.titan-text-lite-v1"
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    response = bedrock_runtime_client.converse_stream(
+        messages=messages,
+        modelId=llm_model_value,
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+            "topP": top_p,
+            "stopSequences": stop_sequences,
+        },
+    )
+
+    # Close the stream without consuming it
+    response["stream"].close()
+
+    # Verify span is closed regardless of stream consumption
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens=None,
+        output_tokens=None,
+        finish_reason=None,
+        operation_name="chat",
+        request_top_p=top_p,
+        request_temperature=temperature,
+        request_max_tokens=max_tokens,
+        request_stop_sequences=stop_sequences,
+    )
+    assert span.status.status_code == StatusCode.UNSET
+    logs = log_exporter.get_finished_logs()
+
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
 def get_invoke_model_body(
     llm_model,
     max_tokens=None,
@@ -2612,6 +2662,65 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
         llm_model_config,
         expect_content=False,
     )
+
+
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+)
+@pytest.mark.vcr()
+def test_invoke_model_with_response_stream_close_before_consumption(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+    model_family,
+):
+    llm_model_value = get_model_name_from_family(model_family)
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    body = get_invoke_model_body(
+        llm_model_value, max_tokens, temperature, top_p, stop_sequences
+    )
+    response = bedrock_runtime_client.invoke_model_with_response_stream(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    # Close the stream without consuming it
+    response["body"].close()
+
+    # Verify span is closed regardless of stream consumption
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens=None,
+        output_tokens=None,
+        finish_reason=None,
+        operation_name="text_completion"
+        if model_family == "amazon.titan"
+        else "chat",
+        request_top_p=top_p,
+        request_temperature=temperature,
+        request_max_tokens=max_tokens,
+        request_stop_sequences=None
+        if model_family == "meta.llama"
+        else stop_sequences,
+    )
+    assert span.status.status_code == StatusCode.UNSET
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+
+    # Set appropriate user_content based on model family
+    if model_family == "anthropic.claude":
+        user_content = {
+            "content": [{"text": "Say this is a test", "type": "text"}]
+        }
+    else:
+        user_content = {"content": [{"text": "Say this is a test"}]}
+
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
 @pytest.mark.vcr()
