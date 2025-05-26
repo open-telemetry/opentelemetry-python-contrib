@@ -33,8 +33,25 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_FIRST_PART_LENGTH,
     TRACE_ID_VERSION,
 )
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_RESOURCE_ID,
+)
+from opentelemetry.semconv._incubating.attributes.faas_attributes import (
+    FAAS_INVOCATION_ID,
+    FAAS_TRIGGER,
+)
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+)
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -68,8 +85,8 @@ MOCK_LAMBDA_CONTEXT = MockLambdaContext(
 )
 
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    SpanAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-    SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
+    CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+    FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
     ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
         ":"
     )[4],
@@ -571,14 +588,14 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_ROUTE: "/{proxy+}",
-                SpanAttributes.HTTP_TARGET: "/{proxy+}?foo=bar",
-                SpanAttributes.NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "Custom User Agent String",
-                SpanAttributes.HTTP_SCHEME: "https",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "POST",
+                HTTP_ROUTE: "/{proxy+}",
+                HTTP_TARGET: "/{proxy+}?foo=bar",
+                NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
+                HTTP_USER_AGENT: "Custom User Agent String",
+                HTTP_SCHEME: "https",
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -599,12 +616,12 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_ROUTE: "/path/to/resource",
-                SpanAttributes.HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
-                SpanAttributes.NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "agent",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "POST",
+                HTTP_ROUTE: "/path/to/resource",
+                HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
+                NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
+                HTTP_USER_AGENT: "agent",
             },
         )
 
@@ -625,8 +642,8 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "GET",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "GET",
             },
         )
 
@@ -647,8 +664,8 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "GET",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "GET",
             },
         )
 
