@@ -87,6 +87,7 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_ACCOUNT_ID,
     CLOUD_RESOURCE_ID,
 )
 from opentelemetry.semconv._incubating.attributes.faas_attributes import (
@@ -104,7 +105,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
-from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import (
     Span,
     SpanKind,
@@ -348,7 +348,7 @@ def _instrument(
                         ":"
                     )[4]
                     span.set_attribute(
-                        ResourceAttributes.CLOUD_ACCOUNT_ID,
+                        CLOUD_ACCOUNT_ID,
                         account_id,
                     )
 
