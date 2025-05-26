@@ -148,7 +148,6 @@ members = [
 # TODO: remove after python 3.8 is dropped
 exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-google-genai",
-  "instrumentation/opentelemetry-instrumentation-starlette",
 ]
 
 [tool.ruff]
