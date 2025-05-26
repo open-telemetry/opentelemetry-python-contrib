@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 - `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
   ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+- `opentelemetry-python-contrib` Fix git pull failures in core contrib test
+  ([#3357](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3357))
 
 ### Breaking changes
 
