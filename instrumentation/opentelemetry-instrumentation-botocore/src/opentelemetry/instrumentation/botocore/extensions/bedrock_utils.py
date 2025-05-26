@@ -64,6 +64,7 @@ class ConverseStreamWrapper(ObjectProxy):
         self._response = {}
         self._message = None
         self._content_block = {}
+        self._tool_json_input_buf = ""
         self._record_message = False
         self._ended = False
 
@@ -89,28 +90,40 @@ class ConverseStreamWrapper(ObjectProxy):
             # {'contentBlockStart': {'start': {'toolUse': {'toolUseId': 'id', 'name': 'func_name'}}, 'contentBlockIndex': 1}}
             start = event["contentBlockStart"].get("start", {})
             if "toolUse" in start:
-                tool_use = _decode_tool_use(start["toolUse"])
-                self._content_block = {"toolUse": tool_use}
+                self._content_block = {"toolUse": start["toolUse"]}
             return
 
         if "contentBlockDelta" in event:
             # {'contentBlockDelta': {'delta': {'text': "Hello"}, 'contentBlockIndex': 0}}
             # {'contentBlockDelta': {'delta': {'toolUse': {'input': '{"location":"Seattle"}'}}, 'contentBlockIndex': 1}}
+            # {'contentBlockDelta': {'delta': {'toolUse': {'input': 'a", "Yok'}}, 'contentBlockIndex': 1}}
             if self._record_message:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
                     self._content_block.setdefault("text", "")
                     self._content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
-                    tool_use = _decode_tool_use(delta["toolUse"])
-                    self._content_block["toolUse"].update(tool_use)
+                    if (
+                        input_buf := delta["toolUse"].get("input")
+                    ) is not None:
+                        self._tool_json_input_buf += input_buf
             return
 
         if "contentBlockStop" in event:
             # {'contentBlockStop': {'contentBlockIndex': 0}}
             if self._record_message:
+                if self._tool_json_input_buf:
+                    try:
+                        self._content_block["toolUse"]["input"] = json.loads(
+                            self._tool_json_input_buf
+                        )
+                    except json.DecodeError:
+                        self._content_block["toolUse"]["input"] = (
+                            self._tool_json_input_buf
+                        )
                 self._message["content"].append(self._content_block)
                 self._content_block = {}
+                self._tool_json_input_buf = ""
             return
 
         if "messageStop" in event:
