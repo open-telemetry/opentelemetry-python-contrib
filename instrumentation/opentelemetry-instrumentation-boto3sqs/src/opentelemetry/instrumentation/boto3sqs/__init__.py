@@ -43,10 +43,18 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_CONVERSATION_ID,
+    MESSAGING_DESTINATION,
+    MESSAGING_DESTINATION_KIND,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+    MESSAGING_URL,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     MessagingOperationValues,
-    SpanAttributes,
 )
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
 
@@ -151,24 +159,20 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     ) -> None:
         if not span.is_recording():
             return
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
+        span.set_attribute(MESSAGING_SYSTEM, "aws.sqs")
+        span.set_attribute(MESSAGING_DESTINATION, queue_name)
         span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_KIND,
+            MESSAGING_DESTINATION_KIND,
             MessagingDestinationKindValues.QUEUE.value,
         )
-        span.set_attribute(SpanAttributes.MESSAGING_URL, queue_url)
+        span.set_attribute(MESSAGING_URL, queue_url)
 
         if operation:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_OPERATION, operation.value
-            )
+            span.set_attribute(MESSAGING_OPERATION, operation.value)
         if conversation_id:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id
-            )
+            span.set_attribute(MESSAGING_CONVERSATION_ID, conversation_id)
         if message_id:
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
+            span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:
@@ -239,9 +243,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 message_id = retval.get("MessageId")
                 if message_id:
                     if span.is_recording():
-                        span.set_attribute(
-                            SpanAttributes.MESSAGING_MESSAGE_ID, message_id
-                        )
+                        span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
                 return retval
 
         wrap_function_wrapper(sqs_class, "send_message", send_wrapper)
@@ -284,7 +286,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 if message_span:
                     if message_span.is_recording():
                         message_span.set_attribute(
-                            SpanAttributes.MESSAGING_MESSAGE_ID,
+                            MESSAGING_MESSAGE_ID,
                             successful_messages.get("MessageId"),
                         )
             for span in ids_to_spans.values():
