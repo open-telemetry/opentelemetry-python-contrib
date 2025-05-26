@@ -28,17 +28,15 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSSetter,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION,
-    MESSAGING_DESTINATION_KIND,
+    MESSAGING_DESTINATION_NAME,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
-    MESSAGING_URL,
 )
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    MessagingOperationValues,
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
 )
+from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
@@ -231,9 +229,8 @@ class TestBoto3SQSInstrumentation(TestBase):
     def _default_span_attrs(self):
         return {
             MESSAGING_SYSTEM: "aws.sqs",
-            MESSAGING_DESTINATION: self._queue_name,
-            MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            MESSAGING_URL: self._queue_url,
+            MESSAGING_DESTINATION_NAME: self._queue_name,
+            SERVER_ADDRESS: self._queue_url,
         }
 
     @staticmethod

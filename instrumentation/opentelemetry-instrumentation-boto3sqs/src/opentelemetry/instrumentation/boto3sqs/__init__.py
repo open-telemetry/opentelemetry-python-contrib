@@ -44,16 +44,16 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_CONVERSATION_ID,
-    MESSAGING_DESTINATION,
-    MESSAGING_DESTINATION_KIND,
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
-    MESSAGING_URL,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
 )
 from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
     MessagingOperationValues,
 )
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
@@ -160,17 +160,15 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         if not span.is_recording():
             return
         span.set_attribute(MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(MESSAGING_DESTINATION, queue_name)
-        span.set_attribute(
-            MESSAGING_DESTINATION_KIND,
-            MessagingDestinationKindValues.QUEUE.value,
-        )
-        span.set_attribute(MESSAGING_URL, queue_url)
+        span.set_attribute(MESSAGING_DESTINATION_NAME, queue_name)
+        span.set_attribute(SERVER_ADDRESS, queue_url)
 
         if operation:
             span.set_attribute(MESSAGING_OPERATION, operation.value)
         if conversation_id:
-            span.set_attribute(MESSAGING_CONVERSATION_ID, conversation_id)
+            span.set_attribute(
+                MESSAGING_MESSAGE_CONVERSATION_ID, conversation_id
+            )
         if message_id:
             span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
 
