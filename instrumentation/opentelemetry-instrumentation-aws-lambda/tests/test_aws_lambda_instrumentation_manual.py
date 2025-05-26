@@ -34,6 +34,7 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_VERSION,
 )
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_ACCOUNT_ID,
     CLOUD_RESOURCE_ID,
 )
 from opentelemetry.semconv._incubating.attributes.faas_attributes import (
@@ -51,7 +52,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
-from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -87,9 +87,7 @@ MOCK_LAMBDA_CONTEXT = MockLambdaContext(
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
     CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
     FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
-    ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
-        ":"
-    )[4],
+    CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
 }
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
