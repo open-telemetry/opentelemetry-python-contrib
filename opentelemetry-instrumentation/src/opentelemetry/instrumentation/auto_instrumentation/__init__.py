@@ -118,8 +118,12 @@ def run() -> None:
     execl(executable, executable, *args.command_args)
 
 
-def initialize():
-    """Setup auto-instrumentation, called by the sitecustomize module"""
+def initialize(*, swallow_exceptions=True):
+    """
+    Setup auto-instrumentation, called by the sitecustomize module
+
+    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
+    """
     # prevents auto-instrumentation of subprocesses if code execs another python process
     if "PYTHONPATH" in environ:
         environ["PYTHONPATH"] = _python_path_without_directory(
@@ -131,5 +135,7 @@ def initialize():
         distro.configure()
         _load_configurators()
         _load_instrumentors(distro)
-    except Exception:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
         _logger.exception("Failed to auto initialize OpenTelemetry")
+        if not swallow_exceptions:
+            raise ValueError("Failed to auto initialize OpenTelemetry") from e
