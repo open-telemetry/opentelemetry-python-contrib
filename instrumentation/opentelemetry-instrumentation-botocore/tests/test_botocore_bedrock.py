@@ -888,7 +888,7 @@ def test_converse_stream_tool_call_parsing_errors(
     bedrock_runtime_client,
     instrument_with_content,
 ):
-    # pylint:disable=too-many-locals,too-many-statements
+    # pylint:disable=too-many-locals
     messages = [
         {
             "role": "user",
