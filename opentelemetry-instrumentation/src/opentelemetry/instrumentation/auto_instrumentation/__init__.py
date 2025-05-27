@@ -135,7 +135,9 @@ def initialize(*, swallow_exceptions=True):
         distro.configure()
         _load_configurators()
         _load_instrumentors(distro)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as exc:  # pylint: disable=broad-except
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:
-            raise ValueError("Failed to auto initialize OpenTelemetry") from e
+            raise ValueError(
+                "Failed to auto initialize OpenTelemetry"
+            ) from exc
