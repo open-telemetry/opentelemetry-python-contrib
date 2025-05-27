@@ -45,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-fastapi`: Drop support for FastAPI versions earlier than `0.92`
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 
+### Added
+- `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
+  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
+
 ### Deprecated
 
 - Drop support for Python 3.8, bump baseline to Python 3.9.
