@@ -710,9 +710,10 @@ class TestOpenTelemetryServerInterceptorUnix(
 
     @contextlib.contextmanager
     def server(self, max_workers=1, interceptors=None):
-        with futures.ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as executor, tempfile.TemporaryDirectory() as tmp:
+        with (
+            futures.ThreadPoolExecutor(max_workers=max_workers) as executor,
+            tempfile.TemporaryDirectory() as tmp,
+        ):
             server = grpc.server(
                 executor,
                 options=(("grpc.so_reuseport", 0),),
