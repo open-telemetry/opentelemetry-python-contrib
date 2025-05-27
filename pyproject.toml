@@ -2,7 +2,7 @@
 [project]
 name = "opentelemetry-python-contrib"
 version = "0.0.0" # This is not used.
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
@@ -145,15 +145,10 @@ members = [
   "propagator/*",
   "util/opentelemetry-util-http",
 ]
-# TODO: remove after python 3.8 is dropped
-exclude = [
-  "instrumentation-genai/opentelemetry-instrumentation-google-genai",
-  "instrumentation/opentelemetry-instrumentation-starlette",
-]
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
-target-version = "py38"
+target-version = "py39"
 line-length = 79
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
@@ -189,12 +184,13 @@ known-third-party = [
   "opencensus",
 ]
 
+
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
 [tool.pyright]
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
-pythonVersion = "3.8"
+pythonVersion = "3.9"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [

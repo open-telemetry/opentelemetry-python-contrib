@@ -345,9 +345,12 @@ def _instrument(
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
-        with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
+            set_ip_on_next_http_connection(span),
+        ):
             if callable(request_hook):
                 request_hook(
                     span,
