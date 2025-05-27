@@ -991,7 +991,6 @@ def test_converse_stream_tool_call_parsing_errors(
             ],
         },
     }
-    print(logs[1].log_record.body)
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
 
 
