@@ -1459,14 +1459,19 @@ def test_invoke_model_with_content_assistant_content_as_string(
     user_content = {"content": "say this is a test"}
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
-    message = {
+    assistant_content = {"content": "{"}
+    assert_message_in_logs(
+        logs[1], "gen_ai.assistant.message", assistant_content, span
+    )
+
+    assistant_response_message = {
         "role": "assistant",
         "content": [{"type": "text", "text": "this is a test}"}],
     }
     choice_body = {
         "index": 0,
         "finish_reason": "end_turn",
-        "message": message,
+        "message": assistant_response_message,
     }
     assert_message_in_logs(logs[2], "gen_ai.choice", choice_body, span)
 
