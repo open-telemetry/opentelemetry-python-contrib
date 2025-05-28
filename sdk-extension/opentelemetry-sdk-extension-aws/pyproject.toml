@@ -30,6 +30,7 @@ dependencies = [
   "opentelemetry-sdk ~= 1.23",
   "opentelemetry-instrumentation ~= 0.44b0",
   "opentelemetry-semantic-conventions ~= 0.44b0",
+  "requests ~= 2.28",
 ]
 
 [project.entry-points.opentelemetry_id_generator]

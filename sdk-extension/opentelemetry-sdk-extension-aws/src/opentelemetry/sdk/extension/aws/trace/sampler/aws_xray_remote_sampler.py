@@ -46,6 +46,8 @@ _logger = getLogger(__name__)
 DEFAULT_RULES_POLLING_INTERVAL_SECONDS = 300
 
 
+# WORK IN PROGRESS
+#
 # Wrapper class to ensure that all XRay Sampler Functionality in _AwsXRayRemoteSampler
 # uses ParentBased logic to respect the parent span's sampling decision
 class AwsXRayRemoteSampler(Sampler):
@@ -65,7 +67,6 @@ class AwsXRayRemoteSampler(Sampler):
             )
         )
 
-    # pylint: disable=no-self-use
     @override
     def should_sample(
         self,
@@ -93,6 +94,8 @@ class AwsXRayRemoteSampler(Sampler):
         return f"AwsXRayRemoteSampler{{root:{self._root.get_description()}}}"
 
 
+# WORK IN PROGRESS
+#
 # _AwsXRayRemoteSampler contains all core XRay Sampler Functionality,
 # however it is NOT Parent-based (e.g. Sample logic runs for each span)
 # Not intended for external use, use Parent-based `AwsXRayRemoteSampler` instead.
@@ -195,24 +198,7 @@ class _AwsXRayRemoteSampler(Sampler):
         self._rules_timer.start()
 
     def __generate_client_id(self) -> str:
-        hex_chars = [
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "a",
-            "b",
-            "c",
-            "d",
-            "e",
-            "f",
-        ]
+        hex_chars = "0123456789abcdef"
         client_id_array: list[str] = []
         for _ in range(0, 24):
             client_id_array.append(random.choice(hex_chars))
