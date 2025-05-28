@@ -93,15 +93,20 @@ API
 ___
 """
 
+from __future__ import annotations
+
 from asyncio import iscoroutinefunction
-from typing import Collection
+from typing import TYPE_CHECKING, Collection
 
 import aiokafka
-from wrapt import wrap_function_wrapper
+from wrapt import (
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
+    _wrap_getmany,
     _wrap_getone,
     _wrap_send,
 )
@@ -109,6 +114,21 @@ from opentelemetry.instrumentation.aiokafka.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
+
+if TYPE_CHECKING:
+    from typing import TypedDict
+
+    from typing_extensions import Unpack
+
+    from .utils import ConsumeHookT, ProduceHookT
+
+    class InstrumentKwargs(TypedDict, total=False):
+        tracer_provider: trace.TracerProvider
+        async_produce_hook: ProduceHookT
+        async_consume_hook: ConsumeHookT
+
+    class UninstrumentKwargs(TypedDict, total=False):
+        pass
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
@@ -119,7 +139,7 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         """Instruments the kafka module
 
         Args:
@@ -155,7 +175,13 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
             "getone",
             _wrap_getone(tracer, async_consume_hook),
         )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaConsumer,
+            "getmany",
+            _wrap_getmany(tracer, async_consume_hook),
+        )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):
         unwrap(aiokafka.AIOKafkaProducer, "send")
         unwrap(aiokafka.AIOKafkaConsumer, "getone")
+        unwrap(aiokafka.AIOKafkaConsumer, "getmany")
