@@ -54,29 +54,44 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import extract
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls, remove_url_credentials
 
 _duration_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
-    SpanAttributes.HTTP_ROUTE,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+    HTTP_ROUTE,
 ]
 
 _active_requests_count_attrs = [
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
 ]
 
 tracer = trace.get_tracer(__name__)
@@ -140,29 +155,27 @@ def collect_request_attributes(request: web.Request) -> Dict:
         http_url += "?" + urllib.parse.unquote(query_string)
 
     result = {
-        SpanAttributes.HTTP_SCHEME: request.scheme,
-        SpanAttributes.HTTP_HOST: server_host,
-        SpanAttributes.NET_HOST_PORT: port,
-        SpanAttributes.HTTP_ROUTE: _get_view_func(request),
-        SpanAttributes.HTTP_FLAVOR: f"{request.version.major}.{request.version.minor}",
-        SpanAttributes.HTTP_TARGET: request.path,
-        SpanAttributes.HTTP_URL: remove_url_credentials(http_url),
+        HTTP_SCHEME: request.scheme,
+        HTTP_HOST: server_host,
+        NET_HOST_PORT: port,
+        HTTP_ROUTE: _get_view_func(request),
+        HTTP_FLAVOR: f"{request.version.major}.{request.version.minor}",
+        HTTP_TARGET: request.path,
+        HTTP_URL: remove_url_credentials(http_url),
     }
 
     http_method = request.method
     if http_method:
-        result[SpanAttributes.HTTP_METHOD] = http_method
+        result[HTTP_METHOD] = http_method
 
     http_host_value_list = (
         [request.host] if not isinstance(request.host, list) else request.host
     )
     if http_host_value_list:
-        result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-            http_host_value_list
-        )
+        result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
     http_user_agent = request.headers.get("user-agent")
     if http_user_agent:
-        result[SpanAttributes.HTTP_USER_AGENT] = http_user_agent
+        result[HTTP_USER_AGENT] = http_user_agent
 
     # remove None values
     result = {k: v for k, v in result.items() if v is not None}
@@ -183,7 +196,7 @@ def set_status_code(span, status_code: int) -> None:
             )
         )
     else:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        span.set_attribute(HTTP_STATUS_CODE, status_code)
         span.set_status(
             Status(http_status_to_status_code(status_code, server_span=True))
         )
