@@ -64,13 +64,11 @@ class TestInitialize(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
     def test_reraises_exceptions(self, load_distro_mock, logger_mock):
         # pylint:disable=no-self-use
-        load_distro_mock.side_effect = ValueError
+        load_distro_mock.side_effect = ValueError("inner exception")
         with self.assertRaises(ValueError) as em:
             auto_instrumentation.initialize(swallow_exceptions=False)
             logger_mock.exception.assert_called_once_with(
                 "Failed to auto initialize OpenTelemetry"
             )
 
-        self.assertEqual(
-            "Failed to auto initialize OpenTelemetry", str(em.exception)
-        )
+        self.assertEqual("inner exception", str(em.exception))

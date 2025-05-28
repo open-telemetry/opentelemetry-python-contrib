@@ -118,7 +118,7 @@ def run() -> None:
     execl(executable, executable, *args.command_args)
 
 
-def initialize(*, swallow_exceptions=True):
+def initialize(*, swallow_exceptions: bool = True):
     """
     Setup auto-instrumentation, called by the sitecustomize module
 
@@ -138,6 +138,4 @@ def initialize(*, swallow_exceptions=True):
     except Exception as exc:  # pylint: disable=broad-except
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:
-            raise ValueError(
-                "Failed to auto initialize OpenTelemetry"
-            ) from exc
+            raise exc
