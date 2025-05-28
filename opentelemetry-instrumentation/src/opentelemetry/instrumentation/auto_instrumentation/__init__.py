@@ -118,7 +118,7 @@ def run() -> None:
     execl(executable, executable, *args.command_args)
 
 
-def initialize(*, swallow_exceptions: bool = True):
+def initialize(*, swallow_exceptions: bool = True) -> None:
     """
     Setup auto-instrumentation, called by the sitecustomize module
 
