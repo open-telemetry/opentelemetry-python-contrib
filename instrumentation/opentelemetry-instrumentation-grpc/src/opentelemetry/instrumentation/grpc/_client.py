@@ -32,10 +32,10 @@ from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_SYSTEM,
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
     RPC_SERVICE,
+    RPC_SYSTEM,
 )
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -216,9 +216,7 @@ class OpenTelemetryClientInterceptor(
                 yield from invoker(request_or_iterator, metadata)
             except grpc.RpcError as err:
                 span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(
-                    RPC_GRPC_STATUS_CODE, err.code().value[0]
-                )
+                span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
                 raise err
 
     def intercept_stream(

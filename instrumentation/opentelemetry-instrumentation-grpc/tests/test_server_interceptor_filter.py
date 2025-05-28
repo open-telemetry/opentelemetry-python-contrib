@@ -31,10 +31,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
 )
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
     RPC_SERVICE,
     RPC_SYSTEM,
-    RPC_GRPC_STATUS_CODE,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -131,9 +131,7 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
                     RPC_METHOD: "handler",
                     RPC_SERVICE: "TestServicer",
                     RPC_SYSTEM: "grpc",
-                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -217,8 +215,6 @@ class TestOpenTelemetryServerInterceptorFilterMethodName(TestBase):
                 RPC_METHOD: "SimpleMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
