@@ -252,12 +252,16 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_HOST,
+    HTTP_SERVER_NAME,
+    HTTP_URL,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import TracerProvider
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
@@ -335,7 +339,7 @@ def collect_request_attributes(
     # old semconv v1.12.0
     server_name = environ.get("SERVER_NAME")
     if _report_old(sem_conv_opt_in_mode):
-        result[SpanAttributes.HTTP_SERVER_NAME] = server_name
+        result[HTTP_SERVER_NAME] = server_name
 
     _set_http_scheme(
         result,
@@ -349,7 +353,7 @@ def collect_request_attributes(
         _set_http_net_host(result, host, sem_conv_opt_in_mode)
         # old semconv v1.12.0
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_HOST] = host
+            result[HTTP_HOST] = host
     if host_port:
         _set_http_net_host_port(
             result,
@@ -366,7 +370,7 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_URL] = remove_url_credentials(
+            result[HTTP_URL] = remove_url_credentials(
                 wsgiref_util.request_uri(environ)
             )
 
