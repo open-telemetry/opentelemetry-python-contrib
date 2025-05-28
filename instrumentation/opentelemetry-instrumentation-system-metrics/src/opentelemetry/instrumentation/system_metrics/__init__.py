@@ -395,7 +395,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 self._meter, callbacks=[self._get_cpu_utilization]
             )
 
-        if "process.context_switches" in self._config:
+        if (
+            "process.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
             self._meter.create_observable_counter(
                 name="process.context_switches",
                 callbacks=[self._get_context_switches],
@@ -482,7 +485,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="1",
             )
 
-        if "process.runtime.context_switches" in self._config:
+        if (
+            "process.runtime.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
             self._meter.create_observable_counter(
                 name=f"process.runtime.{self._python_implementation}.context_switches",
                 callbacks=[self._get_runtime_context_switches],
@@ -492,6 +498,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs: Any):
         pass
+
+    def _can_read_context_switches(self) -> bool:
+        """On Google Cloud Run psutil is not able to read context switches, catch it before creating the observable instrument"""
+        try:
+            self._proc.num_ctx_switches()
+            return True
+        except NotImplementedError:
+            return False
 
     def _get_open_file_descriptors(
         self, options: CallbackOptions
