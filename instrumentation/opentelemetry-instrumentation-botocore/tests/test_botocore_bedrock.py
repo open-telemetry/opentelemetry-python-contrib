@@ -1537,6 +1537,61 @@ def test_invoke_model_with_content_user_content_as_string(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
 
 
+@pytest.mark.vcr()
+def test_invoke_model_with_content_assistant_content_as_string(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    llm_model_value = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    max_tokens = 10
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": "say this is a test"},
+                {"role": "assistant", "content": "{"},
+            ],
+            "max_tokens": max_tokens,
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+    )
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        response,
+        "chat",
+        request_max_tokens=max_tokens,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 3
+    user_content = {"content": "say this is a test"}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    assistant_content = {"content": "{"}
+    assert_message_in_logs(
+        logs[1], "gen_ai.assistant.message", assistant_content, span
+    )
+
+    assistant_response_message = {
+        "role": "assistant",
+        "content": [{"type": "text", "text": "this is a test}"}],
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": assistant_response_message,
+    }
+    assert_message_in_logs(logs[2], "gen_ai.choice", choice_body, span)
+
+
 @pytest.mark.parametrize(
     "model_family",
     ["amazon.nova", "anthropic.claude"],

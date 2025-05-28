@@ -422,7 +422,9 @@ def extract_tool_calls(
     tool_uses = [item["toolUse"] for item in content if "toolUse" in item]
     if not tool_uses:
         tool_uses = [
-            item for item in content if item.get("type") == "tool_use"
+            item
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "tool_use"
         ]
         tool_id_key = "id"
     else:
