@@ -40,37 +40,34 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_METHOD,
-    HTTP_SERVER_NAME,
-    HTTP_SCHEME,
-    HTTP_HOST,
-    HTTP_TARGET,
     HTTP_FLAVOR,
-    HTTP_STATUS_CODE,
+    HTTP_HOST,
+    HTTP_METHOD,
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
     HTTP_ROUTE,
-
-
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_HOST_PORT,
     NET_HOST_NAME,
-
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv._incubating.attributes.server_attributes import (
-    SERVER_PORT,
     SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.semconv._incubating.attributes.url_attributes import (
     URL_PATH,
     URL_SCHEME,
 )
-from opentelemetry.semconv._incubating.attributes.network_attributes import (
-    NETWORK_PROTOCOL_VERSION
-)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,

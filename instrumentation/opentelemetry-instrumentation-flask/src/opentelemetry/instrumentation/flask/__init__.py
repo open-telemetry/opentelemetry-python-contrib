@@ -273,13 +273,13 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
-)
-from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_TARGET,
-    HTTP_ROUTE
 )
 from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
@@ -406,9 +406,7 @@ def _rewrapped_app(
 
             if request_route:
                 # http.target to be included in old semantic conventions
-                duration_attrs_old[HTTP_TARGET] = str(
-                    request_route
-                )
+                duration_attrs_old[HTTP_TARGET] = str(request_route)
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
