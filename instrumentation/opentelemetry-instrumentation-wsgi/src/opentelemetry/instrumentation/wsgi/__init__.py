@@ -223,6 +223,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -592,6 +593,7 @@ class OpenTelemetryMiddleware:
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP server requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         # We don't need a separate active request counter for old/new semantic conventions
         # because the new attributes are a subset of the old attributes
