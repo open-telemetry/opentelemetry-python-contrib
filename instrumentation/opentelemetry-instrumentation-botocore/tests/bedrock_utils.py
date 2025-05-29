@@ -275,8 +275,6 @@ def remove_none_values(body):
             continue
         if isinstance(value, dict):
             result[key] = remove_none_values(value)
-        elif isinstance(value, list):
-            result[key] = [remove_none_values(i) for i in value]
         else:
             result[key] = value
     return result
