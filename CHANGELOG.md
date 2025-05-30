@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3544](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3544))
 - `opentelemetry-instrumentation-botocore` Add type check when extracting tool use from Bedrock request message content
   ([#3548](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3548))
+- `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
 
 ### Breaking changes
 
