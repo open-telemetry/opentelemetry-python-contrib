@@ -259,7 +259,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
+from opentelemetry.util.http import redact_url, sanitize_method
 
 _logger = logging.getLogger(__name__)
 
@@ -313,7 +313,7 @@ def _extract_parameters(
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = httpx.URL(remove_url_credentials(str(request.url)))
+        url = httpx.URL(redact_url(str(request.url)))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions

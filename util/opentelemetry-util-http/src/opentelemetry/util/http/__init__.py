@@ -58,6 +58,7 @@ _active_requests_count_attrs = {
     SpanAttributes.HTTP_SERVER_NAME,
 }
 
+PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
 
 class ExcludeList:
     """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
@@ -159,23 +160,23 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """Given a string url, remove the username and password only if it is a valid url"""
-
+    """ Given a string url, replace the username and password with the keyword "REDACTED "only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
-            parsed_url = urlparse(url)
-            _, _, netloc = parsed.netloc.rpartition("@")
-            return urlunparse(
-                (
-                    parsed_url.scheme,
-                    netloc,
-                    parsed_url.path,
-                    parsed_url.params,
-                    parsed_url.query,
-                    parsed_url.fragment,
+            if '@' in parsed.netloc:
+                _, _, host = parsed.netloc.rpartition("@")
+                new_netloc = "REDACTED:REDACTED@" + host
+                return urlunparse(
+                    (
+                        parsed.scheme,
+                        new_netloc,
+                        parsed.path,
+                        parsed.params,
+                        parsed.query,
+                        parsed.fragment,
+                    )
                 )
-            )
     except ValueError:  # an unparsable url was passed
         pass
     return url
@@ -255,3 +256,48 @@ def _parse_url_query(url: str):
     path = parsed_url.path
     query_params = parsed_url.query
     return path, query_params
+
+def redact_query_parameters(url: str) -> str:
+    """Given a string url, redact sensitive query parameter values"""
+    try:
+        parsed = urlparse(url)
+        if not parsed.query:  # No query parameters to redact
+            return url
+            
+        # Check if any of the sensitive parameters are in the query
+        has_sensitive_params = any(param + "=" in parsed.query for param in PARAMS_TO_REDACT)
+        if not has_sensitive_params:
+            return url
+            
+        # Process query parameters
+        query_parts: list[str] = []
+        for query_part in parsed.query.split("&"):
+            if "=" in query_part:
+                param_name, _ = query_part.split("=", 1) # Parameter name and value
+                if param_name in PARAMS_TO_REDACT:
+                    query_parts.append(f"{param_name}=REDACTED")
+                else:
+                    query_parts.append(query_part)
+            else:
+                query_parts.append(query_part)  # Handle params with no value
+                
+        # Reconstruct the URL with redacted query parameters
+        redacted_query = "&".join(query_parts)
+        return urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                redacted_query,
+                parsed.fragment,
+            )
+        )
+    except ValueError:  # an unparsable url was passed
+        return url
+
+def redact_url(url: str) -> str:
+    """Redact sensitive data from the URL, including credentials and query parameters."""
+    url = remove_url_credentials(url)
+    url = redact_query_parameters(url)
+    return url

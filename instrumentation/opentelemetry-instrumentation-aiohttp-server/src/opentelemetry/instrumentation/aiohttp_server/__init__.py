@@ -72,7 +72,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls, remove_url_credentials
+from opentelemetry.util.http import get_excluded_urls, redact_url
 
 _duration_attrs = [
     HTTP_METHOD,
@@ -148,6 +148,17 @@ def collect_request_attributes(request: web.Request) -> Dict:
         request.url.port,
         str(request.url),
     )
+
+    user_info = request.headers.get("Authorization")
+    if user_info and http_url and "@" not in http_url:
+        # If there are credentials in Authorization header but not in URL
+        # Add dummy credentials that will be redacted
+        parsed = urllib.parse.urlparse(http_url)
+        netloc_with_auth = f"username:password@{parsed.netloc}"
+        http_url = urllib.parse.urlunparse(
+            (parsed.scheme, netloc_with_auth, parsed.path, parsed.params, parsed.query, parsed.fragment)
+        )
+        
     query_string = request.query_string
     if query_string and http_url:
         if isinstance(query_string, bytes):
@@ -161,7 +172,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         HTTP_ROUTE: _get_view_func(request),
         HTTP_FLAVOR: f"{request.version.major}.{request.version.minor}",
         HTTP_TARGET: request.path,
-        HTTP_URL: remove_url_credentials(http_url),
+        HTTP_URL: redact_url(http_url),
     }
 
     http_method = request.method
