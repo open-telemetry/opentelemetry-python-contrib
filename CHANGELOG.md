@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
   ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
 - `opentelemetry-instrumentation-starlette` Fix memory leak and double middleware
-  ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3529))
+  ([#3529](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3529))
 - `opentelemetry-instrumentation-urllib3`: proper bucket boundaries in stable semconv http duration metrics
   ([#3518](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3518))
 - `opentelemetry-instrumentation-urllib`: proper bucket boundaries in stable semconv http duration metrics
