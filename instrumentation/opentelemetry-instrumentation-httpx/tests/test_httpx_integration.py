@@ -1127,12 +1127,12 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?sig=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED")
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
@@ -1196,12 +1196,12 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         )
         self.assert_span(num_spans=2)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?Signature=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED")
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):

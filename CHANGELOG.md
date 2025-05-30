@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
   ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
+- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
+  ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
 
 ### Deprecated
 
