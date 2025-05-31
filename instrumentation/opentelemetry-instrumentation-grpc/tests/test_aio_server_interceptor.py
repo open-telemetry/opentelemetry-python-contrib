@@ -24,7 +24,16 @@ from opentelemetry.instrumentation.grpc import (
     aio_server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -109,14 +118,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -170,14 +177,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -227,14 +232,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -275,14 +278,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -334,14 +335,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -424,14 +423,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -487,14 +484,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -549,14 +544,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
             },
         )
 
@@ -615,12 +608,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
                     0
                 ],
             },
@@ -669,14 +662,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 

@@ -29,7 +29,12 @@ from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -137,12 +142,10 @@ class TestClientProtoFilterMethodName(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -281,12 +284,10 @@ class TestClientProtoFilterMethodPrefix(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -464,12 +465,10 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -490,12 +489,10 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -516,12 +513,10 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ClientStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -544,12 +539,10 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 

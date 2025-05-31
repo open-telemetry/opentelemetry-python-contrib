@@ -24,7 +24,9 @@ from opentelemetry.instrumentation.grpc._client import (
 )
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ def _unary_done_callback(span, code, details, response_hook):
     def callback(call):
         try:
             span.set_attribute(
-                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                RPC_GRPC_STATUS_CODE,
                 code.value[0],
             )
             if code != grpc.StatusCode.OK:
@@ -75,7 +77,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     def add_error_details_to_span(span, exc):
         if isinstance(exc, grpc.RpcError):
             span.set_attribute(
-                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                RPC_GRPC_STATUS_CODE,
                 exc.code().value[0],
             )
         span.set_status(
