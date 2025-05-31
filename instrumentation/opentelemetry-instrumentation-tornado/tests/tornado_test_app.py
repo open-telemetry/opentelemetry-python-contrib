@@ -2,6 +2,7 @@
 import time
 
 import tornado.web
+import tornado.websocket
 from tornado import gen
 
 
@@ -110,6 +111,16 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
+    async def on_message(self, message):
+        with self.application.tracer.start_as_current_span("audit_message"):
+            self.write_message(f"hello {message}")
+
+    def on_close(self):
+        with self.application.tracer.start_as_current_span("audit_on_close"):
+            time.sleep(0.05)
+
+
 def make_app(tracer):
     app = tornado.web.Application(
         [
@@ -122,6 +133,7 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/echo_socket", EchoWebSocketHandler),
         ]
     )
     app.tracer = tracer
