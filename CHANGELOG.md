@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 - `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
   ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+- `opentelemetry-instrumentation-sqlalchemy` Respect suppress_instrumentation functionality
+  ([#3477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3477))
+- `opentelemetry-instrumentation-botocore`: fix handling of tool input in Bedrock ConverseStream
+  ([#3544](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3544))
+- `opentelemetry-instrumentation-botocore` Add type check when extracting tool use from Bedrock request message content
+  ([#3548](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3548))
+- `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
 
 ### Breaking changes
 
@@ -47,9 +54,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
+  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))  
 - `opentelemetry-instrumentation-httpx` Add support for HTTP metrics
   ([#3513](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3513))
 
+### Deprecated
+
+- Drop support for Python 3.8, bump baseline to Python 3.9.
+([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
@@ -102,7 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([[#3383](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3383)])
 - `opentelemetry-instrumentation-aiokafka` Fix send_and_wait method no headers kwargs error.
   ([[#3332](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3332)])
-
 
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
