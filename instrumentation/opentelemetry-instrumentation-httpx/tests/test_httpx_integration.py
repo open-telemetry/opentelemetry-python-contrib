@@ -436,7 +436,7 @@ class BaseTestCases:
             # Validate metrics
             metrics = self.get_sorted_metrics()
             self.assertEqual(len(metrics), 2)
-            # New convention
+            # Old convention
             self.assertEqual(
                 dict(metrics[0].data.data_points[0].attributes),
                 {
@@ -449,7 +449,8 @@ class BaseTestCases:
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                 },
             )
-            # Old convention
+            self.assertEqual(metrics[0].name, "http.client.duration")
+            # New convention
             self.assertEqual(
                 dict(metrics[1].data.data_points[0].attributes),
                 {
@@ -460,6 +461,7 @@ class BaseTestCases:
                     SERVER_PORT: 8080,
                 },
             )
+            self.assertEqual(metrics[1].name, "http.client.request.duration")
 
         def test_basic_multiple(self):
             self.perform_request(self.URL)
