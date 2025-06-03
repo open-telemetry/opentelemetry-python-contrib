@@ -114,7 +114,7 @@ class TestLambdaExtension(TestBase):
 
         self.client.create_function(
             FunctionName=function_name,
-            Runtime="python3.8",
+            Runtime="python3.9",
             Role=role_arn,
             Handler="lambda_function.lambda_handler",
             Code={

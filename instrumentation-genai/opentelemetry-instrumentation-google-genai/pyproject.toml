@@ -22,7 +22,7 @@ dynamic = ["version"]
 description = "OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -37,9 +37,9 @@ classifiers = [
   "Programming Language :: Python :: 3.12"
 ]
 dependencies = [
-  "opentelemetry-api >=1.30.0, <2",
-  "opentelemetry-instrumentation >=0.51b0, <2",
-  "opentelemetry-semantic-conventions >=0.51b0, <2"
+  "opentelemetry-api >=1.31.1, <2",
+  "opentelemetry-instrumentation >=0.52b1, <2",
+  "opentelemetry-semantic-conventions >=0.52b1, <2"
 ]
 
 [project.optional-dependencies]
