@@ -39,10 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 - `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
   ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+- `opentelemetry-instrumentation-sqlalchemy` Respect suppress_instrumentation functionality
+  ([#3477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3477))
 - `opentelemetry-instrumentation-botocore`: fix handling of tool input in Bedrock ConverseStream
   ([#3544](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3544))
 - `opentelemetry-instrumentation-botocore` Add type check when extracting tool use from Bedrock request message content
   ([#3548](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3548))
+- `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
 
 ### Breaking changes
 
