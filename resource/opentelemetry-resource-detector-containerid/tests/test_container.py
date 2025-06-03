@@ -69,7 +69,7 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v1",
+        "opentelemetry.resource.detector.containerid._get_container_id_v1",
         return_value=None,
     )
     @patch(
