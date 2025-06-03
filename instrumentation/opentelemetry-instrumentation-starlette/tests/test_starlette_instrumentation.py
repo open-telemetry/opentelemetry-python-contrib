@@ -413,6 +413,15 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_manual_instrument_is_noop(self):
+        app = self._create_starlette_app()
+        self._instrumentor.instrument_app(app)
+        self.assertEqual(len(app.user_middleware), 1)
+        client = TestClient(app)
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
     def test_sub_app_starlette_call(self):
         """
         !!! Attention: we need to override this testcase for the auto-instrumented variant

@@ -26,6 +26,8 @@ from wrapt import ObjectProxy
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -67,6 +69,7 @@ if typing.TYPE_CHECKING:
         ResponseHook,
         ResponseInfo,
     )
+    from opentelemetry.metrics import MeterProvider
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
     from opentelemetry.trace.span import Span
@@ -187,6 +190,11 @@ class BaseTestCases:
                 return span_list[0]
             return span_list
 
+        def assert_metrics(self, num_metrics: int = 1):
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), num_metrics)
+            return metrics
+
         @abc.abstractmethod
         def perform_request(
             self,
@@ -220,6 +228,29 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
 
+        def test_basic_metrics(self):
+            self.perform_request(self.URL)
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_SCHEME: "http",
+                },
+            )
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertTrue(duration_data_point.min >= 0)
+            self.assertTrue(duration_data_point.max >= 0)
+            self.assertTrue(duration_data_point.sum >= 0)
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
+
         def test_nonstandard_http_method(self):
             respx.route(method="NONSTANDARD").mock(
                 return_value=httpx.Response(405)
@@ -242,6 +273,19 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    SpanAttributes.HTTP_STATUS_CODE: 405,
+                    SpanAttributes.HTTP_METHOD: "_OTHER",
+                    SpanAttributes.HTTP_SCHEME: "http",
+                },
             )
 
         def test_nonstandard_http_method_new_semconv(self):
@@ -271,6 +315,25 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_REQUEST_METHOD: "_OTHER",
+                    SERVER_ADDRESS: "mock",
+                    HTTP_RESPONSE_STATUS_CODE: 405,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    ERROR_TYPE: "405",
+                },
+            )
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         def test_basic_new_semconv(self):
@@ -311,6 +374,22 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    SERVER_ADDRESS: "mock",
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
             )
 
         def test_basic_both_semconv(self):
@@ -354,6 +433,36 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
 
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 2)
+            # Old convention
+            self.assertEqual(
+                dict(metrics[0].data.data_points[0].attributes),
+                {
+                    SpanAttributes.HTTP_FLAVOR: "1.1",
+                    SpanAttributes.HTTP_HOST: "mock",
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_SCHEME: "http",
+                    SpanAttributes.NET_PEER_NAME: "mock",
+                    SpanAttributes.NET_PEER_PORT: 8080,
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                },
+            )
+            self.assertEqual(metrics[0].name, "http.client.duration")
+            # New convention
+            self.assertEqual(
+                dict(metrics[1].data.data_points[0].attributes),
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: "mock",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
+            )
+            self.assertEqual(metrics[1].name, "http.client.request.duration")
+
         def test_basic_multiple(self):
             self.perform_request(self.URL)
             self.perform_request(self.URL)
@@ -375,6 +484,16 @@ class BaseTestCases:
                 span.status.status_code,
                 trace.StatusCode.ERROR,
             )
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(
+                duration_data_point.attributes.get(
+                    SpanAttributes.HTTP_STATUS_CODE
+                ),
+                404,
+            )
 
         def test_not_foundbasic_new_semconv(self):
             url_404 = "http://mock/status/404"
@@ -394,6 +513,17 @@ class BaseTestCases:
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(
+                duration_data_point.attributes.get(HTTP_RESPONSE_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                duration_data_point.attributes.get(ERROR_TYPE), "404"
             )
 
         def test_not_foundbasic_both_semconv(self):
@@ -416,6 +546,30 @@ class BaseTestCases:
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics()
+            self.assertEqual(len(metrics), 2)
+            # Old convention
+            self.assertEqual(
+                metrics[0]
+                .data.data_points[0]
+                .attributes.get(SpanAttributes.HTTP_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                metrics[0].data.data_points[0].attributes.get(ERROR_TYPE), None
+            )
+            # New convention
+            self.assertEqual(
+                metrics[1]
+                .data.data_points[0]
+                .attributes.get(HTTP_RESPONSE_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                metrics[1].data.data_points[0].attributes.get(ERROR_TYPE),
+                "404",
             )
 
         def test_suppress_instrumentation(self):
@@ -584,6 +738,7 @@ class BaseTestCases:
         def create_transport(
             self,
             tracer_provider: typing.Optional["TracerProvider"] = None,
+            meter_provider: typing.Optional["MeterProvider"] = None,
             request_hook: typing.Optional["RequestHook"] = None,
             response_hook: typing.Optional["ResponseHook"] = None,
             **kwargs,
@@ -622,6 +777,18 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             span = self.assert_span(exporter=exporter)
             self.assertIs(span.resource, resource)
+
+        def test_custom_meter_provider(self):
+            meter_provider, memory_reader = self.create_meter_provider()
+            transport = self.create_transport(meter_provider=meter_provider)
+            client = self.create_client(transport)
+            self.perform_request(self.URL, client=client)
+            metrics = memory_reader.get_metrics_data().resource_metrics[0]
+            self.assertEqual(len(metrics.scope_metrics), 1)
+            data_point = (
+                metrics.scope_metrics[0].metrics[0].data.data_points[0]
+            )
+            self.assertEqual(data_point.count, 1)
 
         def test_response_hook(self):
             transport = self.create_transport(
@@ -1096,6 +1263,7 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
+        meter_provider: typing.Optional["MeterProvider"] = None,
         request_hook: typing.Optional["RequestHook"] = None,
         response_hook: typing.Optional["ResponseHook"] = None,
         **kwargs,
@@ -1104,6 +1272,7 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             request_hook=request_hook,
             response_hook=response_hook,
         )
@@ -1127,6 +1296,11 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
+    def test_basic(self):
+        self.perform_request(self.URL)
+        self.assert_span(num_spans=1)
+        self.assert_metrics(num_metrics=1)
+
     def test_credential_removal(self):
         new_url = "http://username:password@mock/status/200"
         self.perform_request(new_url)
@@ -1148,6 +1322,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
+        meter_provider: typing.Optional["MeterProvider"] = None,
         request_hook: typing.Optional["AsyncRequestHook"] = None,
         response_hook: typing.Optional["AsyncResponseHook"] = None,
         **kwargs,
@@ -1156,6 +1331,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             request_hook=request_hook,
             response_hook=response_hook,
         )
@@ -1195,6 +1371,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             self.URL, client=self.create_client(self.transport)
         )
         self.assert_span(num_spans=2)
+        self.assert_metrics(num_metrics=1)
 
     def test_credential_removal(self):
         new_url = "http://username:password@mock/status/200"
@@ -1291,6 +1468,7 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.perform_request(self.URL, client=self.client)
         self.perform_request(self.URL, client=self.client2)
         self.assert_span(num_spans=2)
+        self.assert_metrics(num_metrics=1)
 
     def test_async_response_hook_does_nothing_if_not_coroutine(self):
         HTTPXClientInstrumentor().instrument(

@@ -52,6 +52,7 @@ from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
+    is_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -561,6 +562,9 @@ class CursorTracer(Generic[CursorT]):
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
+        if not is_instrumentation_enabled():
+            return query_method(*args, **kwargs)
+
         name = self.get_operation_name(cursor, args)
         if not name:
             name = (

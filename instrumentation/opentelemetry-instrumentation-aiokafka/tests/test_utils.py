@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint: disable=unnecessary-dunder-call
+from __future__ import annotations
 
 from unittest import IsolatedAsyncioTestCase, mock
+
+import aiokafka
 
 from opentelemetry.instrumentation.aiokafka.utils import (
     AIOKafkaContextGetter,
@@ -23,6 +26,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _create_consumer_span,
     _extract_send_partition,
     _get_span_name,
+    _wrap_getmany,
     _wrap_getone,
     _wrap_send,
 )
@@ -42,7 +46,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         carrier_list = [("key1", b"val1")]
         context_setter.set(carrier_list, "key2", "val2")
-        self.assertTrue(("key2", "val2".encode()) in carrier_list)
+        self.assertTrue(("key2", b"val2") in carrier_list)
 
     def test_context_getter(self) -> None:
         context_setter = AIOKafkaContextSetter()
@@ -174,7 +178,7 @@ class TestUtils(IsolatedAsyncioTestCase):
     @mock.patch(
         "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
     )
-    async def test_wrap_next(
+    async def test_wrap_getone(
         self,
         extract_consumer_group: mock.MagicMock,
         extract_client_id: mock.MagicMock,
@@ -184,12 +188,12 @@ class TestUtils(IsolatedAsyncioTestCase):
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.AsyncMock()
-        original_next_callback = mock.AsyncMock()
+        original_getone_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
 
-        wrapped_next = _wrap_getone(tracer, consume_hook)
-        record = await wrapped_next(
-            original_next_callback, kafka_consumer, self.args, self.kwargs
+        wrapped_getone = _wrap_getone(tracer, consume_hook)
+        record = await wrapped_getone(
+            original_getone_callback, kafka_consumer, self.args, self.kwargs
         )
 
         extract_bootstrap_servers.assert_called_once_with(
@@ -203,10 +207,10 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_consumer_group.assert_called_once_with(kafka_consumer)
         consumer_group = extract_consumer_group.return_value
 
-        original_next_callback.assert_awaited_once_with(
+        original_getone_callback.assert_awaited_once_with(
             *self.args, **self.kwargs
         )
-        self.assertEqual(record, original_next_callback.return_value)
+        self.assertEqual(record, original_getone_callback.return_value)
 
         extract.assert_called_once_with(
             record.headers, getter=_aiokafka_getter
@@ -225,10 +229,90 @@ class TestUtils(IsolatedAsyncioTestCase):
             self.kwargs,
         )
 
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._create_consumer_span"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_topic_span"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_getmany_poll_span"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._extract_bootstrap_servers"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._extract_client_id"
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.aiokafka.utils._extract_consumer_group"
+    )
+    # pylint: disable=too-many-locals
+    async def test_wrap_getmany(
+        self,
+        extract_consumer_group: mock.MagicMock,
+        extract_client_id: mock.MagicMock,
+        extract_bootstrap_servers: mock.MagicMock,
+        _enrich_getmany_poll_span: mock.MagicMock,
+        _enrich_getmany_topic_span: mock.MagicMock,
+        _create_consumer_span: mock.MagicMock,
+        extract: mock.MagicMock,
+    ) -> None:
+        tracer = mock.MagicMock()
+        consume_hook = mock.AsyncMock()
+        record_mock = mock.MagicMock()
+        original_getmany_callback = mock.AsyncMock(
+            return_value={
+                aiokafka.TopicPartition(topic="topic_1", partition=0): [
+                    record_mock
+                ]
+            }
+        )
+        kafka_consumer = mock.MagicMock()
+
+        wrapped_getmany = _wrap_getmany(tracer, consume_hook)
+        records = await wrapped_getmany(
+            original_getmany_callback, kafka_consumer, self.args, self.kwargs
+        )
+
+        extract_bootstrap_servers.assert_called_once_with(
+            kafka_consumer._client
+        )
+        bootstrap_servers = extract_bootstrap_servers.return_value
+
+        extract_client_id.assert_called_once_with(kafka_consumer._client)
+        client_id = extract_client_id.return_value
+
+        extract_consumer_group.assert_called_once_with(kafka_consumer)
+        consumer_group = extract_consumer_group.return_value
+
+        original_getmany_callback.assert_awaited_once_with(
+            *self.args, **self.kwargs
+        )
+        self.assertEqual(records, original_getmany_callback.return_value)
+
+        extract.assert_called_once_with(
+            record_mock.headers, getter=_aiokafka_getter
+        )
+        context = extract.return_value
+
+        _create_consumer_span.assert_called_once_with(
+            tracer,
+            consume_hook,
+            record_mock,
+            context,
+            bootstrap_servers,
+            client_id,
+            consumer_group,
+            self.args,
+            self.kwargs,
+        )
+
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
     @mock.patch(
-        "opentelemetry.instrumentation.aiokafka.utils._enrich_anext_span"
+        "opentelemetry.instrumentation.aiokafka.utils._enrich_getone_span"
     )
     @mock.patch("opentelemetry.context.detach")
     async def test_create_consumer_span(
@@ -276,7 +360,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             consumer_group=consumer_group,
             topic=record.topic,
             partition=record.partition,
-            key=record.key,
+            key=str(record.key),
             offset=record.offset,
         )
         consume_hook.assert_awaited_once_with(
