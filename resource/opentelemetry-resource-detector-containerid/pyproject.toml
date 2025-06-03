@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.entry-points.opentelemetry_resource_detector]
-container = "opentelemetry.resource.detector.containerid:ContainerResourceDetector"
+containerid = "opentelemetry.resource.detector.containerid:ContainerResourceDetector"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-containerid"
