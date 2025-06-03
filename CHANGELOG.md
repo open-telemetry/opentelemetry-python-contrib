@@ -60,11 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3474))
 - `opentelemetry-instrumentation-fastapi`: Drop support for FastAPI versions earlier than `0.92`
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
+- `opentelemetry-resource-detector-container`: rename package name to `opentelemetry-resource-detector-containerid`
+  ([#3536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3536))
 
 ### Added
 
 - `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
-  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))  
+  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
 - `opentelemetry-instrumentation-httpx` Add support for HTTP metrics
   ([#3513](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3513))
 
