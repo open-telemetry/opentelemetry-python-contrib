@@ -636,25 +636,6 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-google-genai-latest -- -ra
 
-  py38-test-resource-detector-containerid_ubuntu-latest:
-    name: resource-detector-containerid 3.8 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py38-test-resource-detector-containerid -- -ra
-
   py39-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -751,7 +732,7 @@ jobs:
         run: tox -e py313-test-resource-detector-containerid -- -ra
 
   pypy3-test-resource-detector-containerid_ubuntu-latest:
-    name: resource-detector-containerid pypy-3.8 Ubuntu
+    name: resource-detector-containerid pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
