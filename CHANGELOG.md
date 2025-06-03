@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-botocore` Add type check when extracting tool use from Bedrock request message content
   ([#3548](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3548))
 - `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
+- `opentelemetry-resource-detector-container` Correctly parse container id when using systemd and cgroupsv1
+  ([#3429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3429))
 
 ### Breaking changes
 
