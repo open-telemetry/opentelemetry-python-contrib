@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
+  ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-system-metrics`: fix loading on Google Cloud Run
@@ -19,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 - `opentelemetry-instrumentation-starlette` Remove max version constraint on starlette
   ([#3456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3456))
+- `opentelemetry-instrumentation-starlette` Fix memory leak and double middleware
+  ([#3529](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3529))
 - `opentelemetry-instrumentation-urllib3`: proper bucket boundaries in stable semconv http duration metrics
   ([#3518](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3518))
 - `opentelemetry-instrumentation-urllib`: proper bucket boundaries in stable semconv http duration metrics
@@ -37,8 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3520](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3520))
 - `opentelemetry-instrumentation-botocore` Ensure spans end on early stream closure for Bedrock Streaming APIs
   ([#3481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3481))
+- `opentelemetry-instrumentation-sqlalchemy` Respect suppress_instrumentation functionality
+  ([#3477](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3477))
+- `opentelemetry-instrumentation-botocore`: fix handling of tool input in Bedrock ConverseStream
+  ([#3544](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3544))
 - `opentelemetry-instrumentation-botocore` Add type check when extracting tool use from Bedrock request message content
   ([#3548](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3548))
+- `opentelemetry-instrumentation-dbapi` Respect suppress_instrumentation functionality ([#3460](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3460))
+- `opentelemetry-resource-detector-container` Correctly parse container id when using systemd and cgroupsv1
+  ([#3429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3429))
 
 ### Breaking changes
 
@@ -48,8 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
 
 ### Added
+
 - `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
-  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
+  ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))  
+- `opentelemetry-instrumentation-httpx` Add support for HTTP metrics
+  ([#3513](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3513))
 - `opentelemetry-instrumentation` Allow re-raising exception when instrumentation fails
   ([#3545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3545))
 
