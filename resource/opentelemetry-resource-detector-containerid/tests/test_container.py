@@ -164,7 +164,7 @@ class ContainerResourceDetectorTest(TestBase):
 
     def test_container_id_entrypoint(self):
         (entrypoint,) = entry_points(
-            group="opentelemetry_resource_detector", name="container"
+            group="opentelemetry_resource_detector", name="containerid"
         )
         detector = entrypoint.load()()
         self.assertIsInstance(detector, ContainerResourceDetector)
