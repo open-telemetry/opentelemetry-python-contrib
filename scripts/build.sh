@@ -1,15 +1,21 @@
 #!/bin/sh
+
 # This script builds wheels for the API, SDK, and extension packages in the
 # dist/ dir, to be uploaded to PyPI.
+
 set -ev
+
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip build setuptools wheel
+
 BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
+
 (
   cd $BASEDIR
   mkdir -p $DISTDIR
   rm -rf ${DISTDIR:?}/*
+
  for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"
@@ -21,6 +27,7 @@ DISTDIR=dist
      fi
    )
  done
+
  (
    cd $DISTDIR
    for x in * ; do
