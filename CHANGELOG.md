@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
 - `opentelemetry-instrumentation-httpx` Add support for HTTP metrics
   ([#3513](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3513))
+- `opentelemetry-instrumentation` Allow re-raising exception when instrumentation fails
+  ([#3545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3545))
 
 ### Deprecated
 
