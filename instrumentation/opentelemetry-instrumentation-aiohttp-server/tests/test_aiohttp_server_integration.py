@@ -185,7 +185,7 @@ async def test_remove_sensitive_params(tracer, aiohttp_server):
     span = spans[0]
     assert span.attributes[HTTP_METHOD] == "GET"
     assert span.attributes[HTTP_STATUS_CODE] == 200
-    assert span.attributes[HTTP_URL] == f"http://REDACTED:REDACTED@{server.host}:{server.port}/status/200?Signature=REDACTED"
+    assert span.attributes[HTTP_URL] == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
     
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
