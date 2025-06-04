@@ -1,0 +1,10 @@
+langchain==0.3.21
+langchain_openai
+
+opentelemetry-sdk~=1.31.1
+opentelemetry-exporter-otlp-proto-grpc~=1.31.1
+
+python-dotenv[cli]
+
+# For local developmen: `pip install -e /path/to/opentelemetry-instrumentation-langchain`
+

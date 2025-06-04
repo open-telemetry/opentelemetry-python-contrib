@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.34.0/0.55b0 (2025-06-04)
+
 ### Added
 
 - `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
