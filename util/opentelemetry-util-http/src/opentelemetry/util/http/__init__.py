@@ -20,7 +20,7 @@ from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
 from typing import Callable, Iterable, overload
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -263,33 +263,19 @@ def redact_query_parameters(url: str) -> str:
         parsed = urlparse(url)
         if not parsed.query:  # No query parameters to redact
             return url
-            
-        # Check if any of the sensitive parameters are in the query
-        has_sensitive_params = any(param + "=" in parsed.query for param in PARAMS_TO_REDACT)
-        if not has_sensitive_params:
+        query_params = parse_qs(parsed.query)
+        if not any(param in query_params for param in PARAMS_TO_REDACT):
             return url
-            
-        # Process query parameters
-        query_parts: list[str] = []
-        for query_part in parsed.query.split("&"):
-            if "=" in query_part:
-                param_name, _ = query_part.split("=", 1) # Parameter name and value
-                if param_name in PARAMS_TO_REDACT:
-                    query_parts.append(f"{param_name}=REDACTED")
-                else:
-                    query_parts.append(query_part)
-            else:
-                query_parts.append(query_part)  # Handle params with no value
-                
-        # Reconstruct the URL with redacted query parameters
-        redacted_query = "&".join(query_parts)
+        for param in PARAMS_TO_REDACT:
+            if param in query_params:
+                query_params[param] = ["REDACTED"]
         return urlunparse(
             (
                 parsed.scheme,
                 parsed.netloc,
                 parsed.path,
                 parsed.params,
-                redacted_query,
+                urlencode(query_params, doseq=True),
                 parsed.fragment,
             )
         )
