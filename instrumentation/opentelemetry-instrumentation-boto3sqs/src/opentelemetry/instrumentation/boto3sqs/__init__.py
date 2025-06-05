@@ -49,12 +49,10 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
 )
-from opentelemetry.semconv._incubating.attributes.server_attributes import (
+from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
-)
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
 )
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
 
@@ -154,7 +152,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         queue_name: str,
         queue_url: str,
         conversation_id: Optional[str] = None,
-        operation: Optional[MessagingOperationValues] = None,
+        operation: Optional[MessagingOperationTypeValues] = None,
         message_id: Optional[str] = None,
     ) -> None:
         if not span.is_recording():
@@ -216,7 +214,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 queue_name,
                 queue_url,
                 message_id=message_id,
-                operation=MessagingOperationValues.PROCESS,
+                operation=MessagingOperationTypeValues.PROCESS,
             )
 
     def _wrap_send_message(self, sqs_class: type) -> None:
@@ -314,7 +312,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     span,
                     queue_name,
                     queue_url,
-                    operation=MessagingOperationValues.RECEIVE,
+                    operation=MessagingOperationTypeValues.RECEIVE,
                 )
                 retval = wrapped(
                     *args,

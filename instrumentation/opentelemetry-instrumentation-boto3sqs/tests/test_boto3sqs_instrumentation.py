@@ -32,11 +32,11 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
 )
-from opentelemetry.semconv._incubating.attributes.server_attributes import (
+from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
 )
-from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
@@ -325,7 +325,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(SpanKind.CONSUMER, span.kind)
         self.assertEqual(
             {
-                MESSAGING_OPERATION: MessagingOperationValues.RECEIVE.value,
+                MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
                 **self._default_span_attrs(),
             },
             span.attributes,
@@ -350,7 +350,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             self.assertEqual(
                 {
                     MESSAGING_MESSAGE_ID: msg_id,
-                    MESSAGING_OPERATION: MessagingOperationValues.PROCESS.value,
+                    MESSAGING_OPERATION: MessagingOperationTypeValues.PROCESS.value,
                     **self._default_span_attrs(),
                 },
                 span.attributes,
