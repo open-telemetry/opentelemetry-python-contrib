@@ -371,9 +371,7 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_URL] = redact_url(
-                wsgiref_util.request_uri(environ)
-            )
+            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:

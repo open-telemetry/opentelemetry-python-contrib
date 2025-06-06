@@ -20,7 +20,7 @@ from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
 from typing import Callable, Iterable, overload
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv.trace import SpanAttributes
 
@@ -59,6 +59,7 @@ _active_requests_count_attrs = {
 }
 
 PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
+
 
 class ExcludeList:
     """Class to exclude certain paths (given as a list of regexes) from tracing requests"""
@@ -160,11 +161,11 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """ Given a string url, replace the username and password with the keyword "REDACTED "only if it is a valid url"""
+    """Given a string url, replace the username and password with the keyword "REDACTED "only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
-            if '@' in parsed.netloc:
+            if "@" in parsed.netloc:
                 _, _, host = parsed.netloc.rpartition("@")
                 new_netloc = "REDACTED:REDACTED@" + host
                 return urlunparse(
@@ -257,6 +258,7 @@ def _parse_url_query(url: str):
     query_params = parsed_url.query
     return path, query_params
 
+
 def redact_query_parameters(url: str) -> str:
     """Given a string url, redact sensitive query parameter values"""
     try:
@@ -281,6 +283,7 @@ def redact_query_parameters(url: str) -> str:
         )
     except ValueError:  # an unparsable url was passed
         return url
+
 
 def redact_url(url: str) -> str:
     """Redact sensitive data from the URL, including credentials and query parameters."""
