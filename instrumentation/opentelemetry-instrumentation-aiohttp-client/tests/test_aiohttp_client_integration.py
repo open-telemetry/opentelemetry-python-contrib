@@ -793,7 +793,9 @@ class TestAioHttpIntegration(TestBase):
                     (StatusCode.UNSET, None),
                     {
                         HTTP_METHOD: "GET",
-                        HTTP_URL: ("http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"),
+                        HTTP_URL: (
+                            "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"
+                        ),
                         HTTP_STATUS_CODE: int(HTTPStatus.OK),
                     },
                 )

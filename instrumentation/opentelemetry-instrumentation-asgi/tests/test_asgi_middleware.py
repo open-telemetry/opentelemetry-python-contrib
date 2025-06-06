@@ -1815,7 +1815,8 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"X-Goog-Signature=1234567890"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED"
+            attrs[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
     def test_collect_target_attribute_missing(self):

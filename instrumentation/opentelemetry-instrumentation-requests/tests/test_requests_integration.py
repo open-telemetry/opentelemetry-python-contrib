@@ -687,11 +687,16 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         return session.get(url)
 
     def test_remove_sensitive_params(self):
-        new_url = "http://username:password@mock/status/200?AWSAccessKeyId=secret"
+        new_url = (
+            "http://username:password@mock/status/200?AWSAccessKeyId=secret"
+        )
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?AWSAccessKeyId=REDACTED")
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?AWSAccessKeyId=REDACTED",
+        )
 
     def test_if_headers_equals_none(self):
         result = requests.get(self.URL, headers=None, timeout=5)

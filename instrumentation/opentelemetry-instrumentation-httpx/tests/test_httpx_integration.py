@@ -1306,7 +1306,10 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED",
+        )
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
@@ -1378,7 +1381,10 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED",
+        )
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):

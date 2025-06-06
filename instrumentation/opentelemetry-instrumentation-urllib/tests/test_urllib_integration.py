@@ -519,7 +519,10 @@ class URLLibIntegrationTestBase(abc.ABC):
             self.perform_request(url)
 
         span = self.assert_span()
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], "http://REDACTED:REDACTED@mock/status/200")
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200",
+        )
 
     def test_hooks(self):
         def request_hook(span, request_obj):
