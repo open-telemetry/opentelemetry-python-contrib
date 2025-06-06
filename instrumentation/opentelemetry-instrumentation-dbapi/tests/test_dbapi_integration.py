@@ -23,6 +23,9 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.code_attributes import (
+    CODE_STACKTRACE,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -306,6 +309,67 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT],
             "Select 1;",
+        )
+
+    def test_enable_traceback(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            enable_traceback=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+            enable_attribute_commenter=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertIsInstance(
+            span.attributes[CODE_STACKTRACE],
+            str,
+        )
+
+    def test_disabled_traceback(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.__libpq_version__ = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            enable_traceback=False,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+            enable_attribute_commenter=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertIsNone(
+            span.attributes.get(CODE_STACKTRACE),
         )
 
     def test_executemany_comment_stmt_enabled(self):
