@@ -116,7 +116,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.embeddings",
             name="Embeddings.create",
             wrapper=embeddings_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer, instruments, is_content_enabled()
             ),
         )
 
@@ -124,7 +124,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.embeddings",
             name="AsyncEmbeddings.create",
             wrapper=async_embeddings_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer, instruments, is_content_enabled()
             ),
         )
 

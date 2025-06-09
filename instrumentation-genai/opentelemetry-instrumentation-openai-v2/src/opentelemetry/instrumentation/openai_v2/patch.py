@@ -158,7 +158,6 @@ def async_chat_completions_create(
 
 def embeddings_create(
     tracer: Tracer,
-    event_logger: EventLogger,
     instruments: Instruments,
     capture_content: bool,
 ):
@@ -197,7 +196,7 @@ def embeddings_create(
 
                 if span.is_recording():
                     _set_embeddings_response_attributes(
-                        span, result, event_logger, capture_content, input_text
+                        span, result, capture_content, input_text
                     )
 
                 return result
@@ -222,7 +221,6 @@ def embeddings_create(
 
 def async_embeddings_create(
     tracer: Tracer,
-    event_logger: EventLogger,
     instruments: Instruments,
     capture_content: bool,
 ):
@@ -261,7 +259,7 @@ def async_embeddings_create(
 
                 if span.is_recording():
                     _set_embeddings_response_attributes(
-                        span, result, event_logger, capture_content, input_text
+                        span, result, capture_content, input_text
                     )
 
                 return result
@@ -406,7 +404,6 @@ def _set_response_attributes(
 def _set_embeddings_response_attributes(
     span,
     result,
-    event_logger: EventLogger,
     capture_content: bool,
     input_text: str,
 ):

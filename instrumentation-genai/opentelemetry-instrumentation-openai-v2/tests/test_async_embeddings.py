@@ -24,9 +24,6 @@ from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    event_attributes as EventAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -295,23 +292,6 @@ def assert_log_parent(log, span):
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags
         )
-
-
-def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    assert (
-        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-        == GenAIAttributes.GenAiSystemValues.OPENAI.value
-    )
-
-    if not expected_content:
-        assert not log.log_record.body
-    else:
-        assert log.log_record.body
-        assert dict(log.log_record.body) == remove_none_values(
-            expected_content
-        )
-    assert_log_parent(log, parent_span)
 
 
 def remove_none_values(body):
