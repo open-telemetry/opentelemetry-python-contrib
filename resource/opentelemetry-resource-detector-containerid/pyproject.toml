@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-resource-detector-container"
+name = "opentelemetry-resource-detector-containerid"
 dynamic = ["version"]
 description = "Container Resource Detector for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,7 +18,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -30,14 +29,14 @@ dependencies = [
 ]
 
 [project.entry-points.opentelemetry_resource_detector]
-container = "opentelemetry.resource.detector.container:ContainerResourceDetector"
+containerid = "opentelemetry.resource.detector.containerid:ContainerResourceDetector"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-container"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-containerid"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/resource/detector/container/version.py"
+path = "src/opentelemetry/resource/detector/containerid/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

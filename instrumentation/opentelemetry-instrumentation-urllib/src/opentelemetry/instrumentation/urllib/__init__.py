@@ -95,6 +95,7 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 )
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -434,6 +435,7 @@ def _create_client_histograms(
             name=HTTP_CLIENT_REQUEST_DURATION,
             unit="s",
             description="Duration of HTTP client requests.",
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
         histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
             create_http_client_request_body_size(meter)

@@ -23,7 +23,10 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
-from opentelemetry.instrumentation.utils import _get_opentelemetry_values
+from opentelemetry.instrumentation.utils import (
+    _get_opentelemetry_values,
+    is_instrumentation_enabled,
+)
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -54,6 +57,9 @@ def _wrap_create_async_engine(
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -79,6 +85,9 @@ def _wrap_create_engine(
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -96,6 +105,9 @@ def _wrap_create_engine(
 def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT
         ) as span:
@@ -144,6 +156,9 @@ class EngineTracer:
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
     def _add_idle_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -153,6 +168,9 @@ class EngineTracer:
         )
 
     def _add_used_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -259,6 +277,9 @@ class EngineTracer:
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
+        if not is_instrumentation_enabled():
+            return statement, params
+
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
