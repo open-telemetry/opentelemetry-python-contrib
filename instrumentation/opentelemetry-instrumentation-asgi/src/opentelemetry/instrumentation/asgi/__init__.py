@@ -259,6 +259,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    parse_excluded_urls,
     remove_url_credentials,
     sanitize_method,
 )
@@ -619,6 +620,8 @@ class OpenTelemetryMiddleware:
         self.active_requests_counter = create_http_server_active_requests(
             self.meter
         )
+        if excluded_urls is not None:
+            excluded_urls = parse_excluded_urls(excluded_urls)
         self.excluded_urls = excluded_urls
         self.default_span_details = (
             default_span_details or get_default_span_details
