@@ -81,6 +81,24 @@ For example,
 
 .. code-block:: python
 
+    from opentelemetry.trace import Span
+    from typing import Any
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    async def application(scope: dict[str, Any], receive: Any, send: Any):
+        await send({
+            'type': 'http.response.start',
+            'status': 200,
+            'headers': [
+                [b'content-type', b'text/plain'],
+            ],
+        })
+
+        await send({
+            'type': 'http.response.body',
+            'body': b'Hello, world!',
+        })
+
     def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
@@ -93,7 +111,7 @@ For example,
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   OpenTelemetryMiddleware().(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+   OpenTelemetryMiddleware(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
