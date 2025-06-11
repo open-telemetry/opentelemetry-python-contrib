@@ -198,7 +198,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     def _trace_received(self, *args, **kwargs):
         """
-        On prerun signal, task is prefetched and prefetch timer starts
+        On receive signal, task is prefetched and prefetch timer starts
         """
 
         request = utils.retrieve_request(kwargs)
