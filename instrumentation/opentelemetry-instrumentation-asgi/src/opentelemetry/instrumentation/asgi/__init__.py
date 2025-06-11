@@ -83,9 +83,10 @@ For example,
 
     from opentelemetry.trace import Span
     from typing import Any
+    from asgiref.typing import Scope, ASGIReceiveEvent, ASGISendEvent
     from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 
-    async def application(scope: dict[str, Any], receive: Any, send: Any):
+    async def application(scope: Scope, receive: ASGIReceiveEvent, send: ASGISendEvent):
         await send({
             'type': 'http.response.start',
             'status': 200,
@@ -99,15 +100,15 @@ For example,
             'body': b'Hello, world!',
         })
 
-    def server_request_hook(span: Span, scope: dict[str, Any]):
+    def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_request_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_response_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
