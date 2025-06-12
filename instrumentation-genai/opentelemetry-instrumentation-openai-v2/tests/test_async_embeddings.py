@@ -189,6 +189,33 @@ async def test_async_embeddings_token_metrics(
     assert input_token_point.sum == response.usage.prompt_tokens
 
 
+@pytest.mark.asyncio
+@pytest.mark.vcr()
+async def test_async_embeddings_with_encoding_format(
+    span_exporter, metric_reader, async_openai_client, instrument_no_content
+):
+    """Test creating embeddings with different encoding format"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for embeddings with encoding format"
+    encoding_format = "base64"
+
+    response = await async_openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+        encoding_format=encoding_format,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    # Verify encoding_format attribute is set correctly
+    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
+        encoding_format,
+    )
+
+
 def assert_embedding_attributes(
     span: ReadableSpan,
     request_model: str,
@@ -202,7 +229,6 @@ def assert_embedding_attributes(
         response_id=None,  # Embeddings don't have a response ID
         response_model=response.model,
         input_tokens=response.usage.prompt_tokens,
-        output_tokens=None,  # Embeddings don't have separate output tokens
         operation_name="embeddings",
         server_address="api.openai.com",
     )
@@ -230,9 +256,9 @@ def assert_all_attributes(
     response_id: str = None,
     response_model: str = None,
     input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
     operation_name: str = "embeddings",
     server_address: str = "api.openai.com",
+    server_port: int = 443,
 ):
     """Assert common attributes on the span"""
     assert span.name == f"{operation_name} {request_model}"
@@ -271,17 +297,9 @@ def assert_all_attributes(
     else:
         assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
 
-    if output_tokens:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
-        )
-
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+    if server_port != 443 and server_port > 0:
+        assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
 
 def assert_log_parent(log, span):

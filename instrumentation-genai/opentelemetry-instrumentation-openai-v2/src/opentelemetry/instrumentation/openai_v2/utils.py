@@ -248,8 +248,8 @@ def get_llm_request_attributes(
 
         # Add encoding format if specified
         if "encoding_format" in kwargs:
-            attributes["gen_ai.request.encoding_formats"] = kwargs[
-                "encoding_format"
+            attributes["gen_ai.request.encoding_formats"] = [
+                kwargs["encoding_format"]
             ]
 
     set_server_address_and_port(client_instance, attributes)

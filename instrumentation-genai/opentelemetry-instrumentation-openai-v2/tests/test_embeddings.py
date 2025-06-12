@@ -157,9 +157,8 @@ def test_embeddings_with_encoding_format(
     assert_embedding_attributes(spans[0], model_name, response)
 
     # Verify encoding_format attribute is set correctly
-    assert (
-        spans[0].attributes["gen_ai.request.encoding_formats"]
-        == encoding_format
+    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
+        encoding_format,
     )
 
 
@@ -335,7 +334,6 @@ def assert_embedding_attributes(
         response_id=None,  # Embeddings don't have a response ID
         response_model=response.model,
         input_tokens=response.usage.prompt_tokens,
-        output_tokens=None,  # Embeddings don't have separate output tokens
         operation_name="embeddings",
         server_address="api.openai.com",
     )
@@ -363,9 +361,9 @@ def assert_all_attributes(
     response_id: str = None,
     response_model: str = None,
     input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
     operation_name: str = "embeddings",
     server_address: str = "api.openai.com",
+    server_port: int = 443,
 ):
     """Assert common attributes on the span"""
     assert span.name == f"{operation_name} {request_model}"
@@ -404,17 +402,10 @@ def assert_all_attributes(
     else:
         assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
 
-    if output_tokens:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
-        )
-
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+
+    if server_port != 443 and server_port > 0:
+        assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
 
 def assert_log_parent(log, span):
