@@ -182,8 +182,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.metrics._internal.instrument import Histogram
 from opentelemetry.propagators import textmap
-from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import (
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_CLIENT_IP,
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -191,8 +190,11 @@ from opentelemetry.semconv.trace import (
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
 )
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,

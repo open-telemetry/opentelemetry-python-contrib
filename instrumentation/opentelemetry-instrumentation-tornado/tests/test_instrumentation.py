@@ -30,7 +30,7 @@ from opentelemetry.instrumentation.tornado import (
     patch_handler_class,
     unpatch_handler_class,
 )
-from opentelemetry.semconv.trace import (
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_CLIENT_IP,
     HTTP_HOST,
     HTTP_METHOD,
@@ -38,6 +38,8 @@ from opentelemetry.semconv.trace import (
     HTTP_STATUS_CODE,
     HTTP_TARGET,
     HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
 )
 from opentelemetry.test.test_base import TestBase

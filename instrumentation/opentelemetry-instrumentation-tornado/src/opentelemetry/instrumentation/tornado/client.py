@@ -20,7 +20,7 @@ from tornado.httpclient import HTTPError, HTTPRequest
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import (
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_METHOD,
     HTTP_STATUS_CODE,
     HTTP_URL,
