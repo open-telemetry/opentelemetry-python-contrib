@@ -183,7 +183,16 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.metrics._internal.instrument import Histogram
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import (
+    HTTP_CLIENT_IP,
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    NET_PEER_IP,
+)
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -442,23 +451,21 @@ def _collect_custom_response_headers_attributes(response_headers):
 
 def _get_attributes_from_request(request):
     attrs = {
-        SpanAttributes.HTTP_METHOD: request.method,
-        SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_HOST: request.host,
-        SpanAttributes.HTTP_TARGET: request.path,
+        HTTP_METHOD: request.method,
+        HTTP_SCHEME: request.protocol,
+        HTTP_HOST: request.host,
+        HTTP_TARGET: request.path,
     }
 
     if request.remote_ip:
         # NET_PEER_IP is the address of the network peer
         # HTTP_CLIENT_IP is the address of the client, which might be different
         # if Tornado is set to trust X-Forwarded-For headers (xheaders=True)
-        attrs[SpanAttributes.HTTP_CLIENT_IP] = request.remote_ip
+        attrs[HTTP_CLIENT_IP] = request.remote_ip
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
         ):
-            attrs[SpanAttributes.NET_PEER_IP] = (
-                request.connection.context._orig_remote_ip
-            )
+            attrs[NET_PEER_IP] = request.connection.context._orig_remote_ip
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs
@@ -550,7 +557,7 @@ def _finish_span(tracer, handler, error=None):
         return
 
     if ctx.span.is_recording():
-        ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        ctx.span.set_attribute(HTTP_STATUS_CODE, status_code)
         otel_status_code = http_status_to_status_code(
             status_code, server_span=True
         )
@@ -601,7 +608,7 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
     metric_attributes = _create_metric_attributes(handler)
 
     if isinstance(error, tornado.web.HTTPError):
-        metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = error.status_code
+        metric_attributes[HTTP_STATUS_CODE] = error.status_code
 
     server_histograms[MetricInstruments.HTTP_SERVER_RESPONSE_SIZE].record(
         response_size, attributes=metric_attributes
@@ -621,11 +628,11 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
 
 def _create_active_requests_attributes(request):
     metric_attributes = {
-        SpanAttributes.HTTP_METHOD: request.method,
-        SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_FLAVOR: request.version,
-        SpanAttributes.HTTP_HOST: request.host,
-        SpanAttributes.HTTP_TARGET: request.path,
+        HTTP_METHOD: request.method,
+        HTTP_SCHEME: request.protocol,
+        HTTP_FLAVOR: request.version,
+        HTTP_HOST: request.host,
+        HTTP_TARGET: request.path,
     }
 
     return metric_attributes
@@ -633,6 +640,6 @@ def _create_active_requests_attributes(request):
 
 def _create_metric_attributes(handler):
     metric_attributes = _create_active_requests_attributes(handler.request)
-    metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = handler.get_status()
+    metric_attributes[HTTP_STATUS_CODE] = handler.get_status()
 
     return metric_attributes

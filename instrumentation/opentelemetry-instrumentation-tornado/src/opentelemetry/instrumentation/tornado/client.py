@@ -20,7 +20,11 @@ from tornado.httpclient import HTTPError, HTTPRequest
 from opentelemetry import trace
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import remove_url_credentials
 
@@ -75,8 +79,8 @@ def fetch_async(
 
     if span.is_recording():
         attributes = {
-            SpanAttributes.HTTP_URL: remove_url_credentials(request.url),
-            SpanAttributes.HTTP_METHOD: request.method,
+            HTTP_URL: remove_url_credentials(request.url),
+            HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():
             span.set_attribute(key, value)
@@ -135,7 +139,7 @@ def _finish_tracing_callback(
         )
 
     if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        span.set_attribute(HTTP_STATUS_CODE, status_code)
     span.set_status(status)
 
     if response is not None:
@@ -160,9 +164,9 @@ def _finish_tracing_callback(
 
 def _create_metric_attributes(response):
     metric_attributes = {
-        SpanAttributes.HTTP_STATUS_CODE: response.code,
-        SpanAttributes.HTTP_URL: remove_url_credentials(response.request.url),
-        SpanAttributes.HTTP_METHOD: response.request.method,
+        HTTP_STATUS_CODE: response.code,
+        HTTP_URL: remove_url_credentials(response.request.url),
+        HTTP_METHOD: response.request.method,
     }
 
     return metric_attributes
