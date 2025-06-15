@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
   ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
+- `opentelemetry-instrumentation-bullmq` Add instrumentation for `bullmq`
+  ([#3574](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3574))
 
 ### Fixed
 
