@@ -41,7 +41,7 @@ def _get_container_id_v1():
                     break
 
     except FileNotFoundError as exception:
-        logger.warning("Failed to get container id. Exception: %s", exception)
+        logger.debug("Failed to get container id. Exception: %s", exception)
     return container_id
 
 
@@ -66,7 +66,7 @@ def _get_container_id_v2():
                         break
 
     except FileNotFoundError as exception:
-        logger.warning("Failed to get container id. Exception: %s", exception)
+        logger.debug("Failed to get container id. Exception: %s", exception)
     return container_id
 
 
