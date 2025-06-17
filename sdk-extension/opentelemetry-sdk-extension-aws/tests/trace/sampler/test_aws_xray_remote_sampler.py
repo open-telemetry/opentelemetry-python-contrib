@@ -20,10 +20,11 @@ import json
 import os
 from logging import DEBUG
 from unittest import TestCase
+from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
 from opentelemetry.sdk.extension.aws.trace.sampler.aws_xray_remote_sampler import (
-    AwsXRayRemoteSampler,
+    _AwsXRayRemoteSampler,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import Decision
@@ -84,24 +85,38 @@ class TestAwsXRayRemoteSampler(TestCase):
         if self.rs is not None:
             self.rs._root._root._rules_timer.cancel()
 
-    def test_create_remote_sampler_with_empty_resource(self):
-        self.rs = AwsXRayRemoteSampler(resource=Resource.get_empty())
+    @patch(
+        "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
+        return_value=None,
+    )
+    def test_create_remote_sampler_with_empty_resource(
+        self, mocked_get_sampling_rules
+    ):
+        self.rs = _AwsXRayRemoteSampler(resource=Resource.get_empty())
         self.assertIsNotNone(self.rs._root._root._rules_timer)
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300
+            self.rs._root._root._InternalAwsXRayRemoteSampler__polling_interval,
+            300,
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+            self.rs._root._root._InternalAwsXRayRemoteSampler__xray_client
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__resource
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource
         )
         self.assertTrue(
-            len(self.rs._root._root._AwsXRayRemoteSampler__client_id), 24
+            len(self.rs._root._root._InternalAwsXRayRemoteSampler__client_id),
+            24,
         )
 
-    def test_create_remote_sampler_with_populated_resource(self):
-        self.rs = AwsXRayRemoteSampler(
+    @patch(
+        "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
+        return_value=None,
+    )
+    def test_create_remote_sampler_with_populated_resource(
+        self, mocked_get_sampling_rules
+    ):
+        self.rs = _AwsXRayRemoteSampler(
             resource=Resource.create(
                 {
                     "service.name": "test-service-name",
@@ -111,29 +126,36 @@ class TestAwsXRayRemoteSampler(TestCase):
         )
         self.assertIsNotNone(self.rs._root._root._rules_timer)
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 300
+            self.rs._root._root._InternalAwsXRayRemoteSampler__polling_interval,
+            300,
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+            self.rs._root._root._InternalAwsXRayRemoteSampler__xray_client
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__resource
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource.attributes[
                 "service.name"
             ],
             "test-service-name",
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource.attributes[
                 "cloud.platform"
             ],
             "test-cloud-platform",
         )
 
-    def test_create_remote_sampler_with_all_fields_populated(self):
-        self.rs = AwsXRayRemoteSampler(
+    @patch(
+        "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
+        return_value=None,
+    )
+    def test_create_remote_sampler_with_all_fields_populated(
+        self, mocked_get_sampling_rules
+    ):
+        self.rs = _AwsXRayRemoteSampler(
             resource=Resource.create(
                 {
                     "service.name": "test-service-name",
@@ -146,36 +168,41 @@ class TestAwsXRayRemoteSampler(TestCase):
         )
         self.assertIsNotNone(self.rs._root._root._rules_timer)
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__polling_interval, 120
+            self.rs._root._root._InternalAwsXRayRemoteSampler__polling_interval,
+            120,
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__xray_client
+            self.rs._root._root._InternalAwsXRayRemoteSampler__xray_client
         )
         self.assertIsNotNone(
-            self.rs._root._root._AwsXRayRemoteSampler__resource
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__xray_client._AwsXRaySamplingClient__get_sampling_rules_endpoint,
+            self.rs._root._root._InternalAwsXRayRemoteSampler__xray_client._AwsXRaySamplingClient__get_sampling_rules_endpoint,
             "http://abc.com/GetSamplingRules",
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource.attributes[
                 "service.name"
             ],
             "test-service-name",
         )
         self.assertEqual(
-            self.rs._root._root._AwsXRayRemoteSampler__resource.attributes[
+            self.rs._root._root._InternalAwsXRayRemoteSampler__resource.attributes[
                 "cloud.platform"
             ],
             "test-cloud-platform",
         )
 
-    def test_get_description(self) -> str:
-        self.rs: AwsXRayRemoteSampler = AwsXRayRemoteSampler(
+    @patch(
+        "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
+        return_value=None,
+    )
+    def test_get_description(self, sdf) -> str:
+        self.rs: _AwsXRayRemoteSampler = _AwsXRayRemoteSampler(
             resource=Resource.create({"service.name": "dummy_name"})
         )
         self.assertEqual(
             self.rs.get_description(),
-            "AwsXRayRemoteSampler{root:ParentBased{root:_AwsXRayRemoteSampler{remote sampling with AWS X-Ray},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}}",  # noqa: E501
+            "AwsXRayRemoteSampler{root:ParentBased{root:_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}}",  # noqa: E501
         )

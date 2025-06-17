@@ -75,8 +75,8 @@ Refer to each detectors' docstring to determine any possible requirements for th
 detector.
 
 
-Usage (AWS X-Ray Remote Sampler)
---------------------------------
+[WORK IN PROGRESS] Usage (AWS X-Ray Remote Sampler)
+---------------------------------------------------
 
 
 Use the provided AWS X-Ray Remote Sampler by setting this sampler in your instrumented application:

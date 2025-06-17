@@ -47,10 +47,11 @@ DEFAULT_RULES_POLLING_INTERVAL_SECONDS = 300
 
 
 # WORK IN PROGRESS
+# TODO: Rename to AwsXRayRemoteSampler when the implementation is complete and is ready to use
 #
-# Wrapper class to ensure that all XRay Sampler Functionality in _AwsXRayRemoteSampler
+# Wrapper class to ensure that all XRay Sampler Functionality in _InternalAwsXRayRemoteSampler
 # uses ParentBased logic to respect the parent span's sampling decision
-class AwsXRayRemoteSampler(Sampler):
+class _AwsXRayRemoteSampler(Sampler):
     def __init__(
         self,
         resource: Resource,
@@ -59,7 +60,7 @@ class AwsXRayRemoteSampler(Sampler):
         log_level: Optional[str] = None,
     ):
         self._root = ParentBased(
-            _AwsXRayRemoteSampler(
+            _InternalAwsXRayRemoteSampler(
                 resource=resource,
                 endpoint=endpoint,
                 polling_interval=polling_interval,
@@ -96,10 +97,10 @@ class AwsXRayRemoteSampler(Sampler):
 
 # WORK IN PROGRESS
 #
-# _AwsXRayRemoteSampler contains all core XRay Sampler Functionality,
+# _InternalAwsXRayRemoteSampler contains all core XRay Sampler Functionality,
 # however it is NOT Parent-based (e.g. Sample logic runs for each span)
 # Not intended for external use, use Parent-based `AwsXRayRemoteSampler` instead.
-class _AwsXRayRemoteSampler(Sampler):
+class _InternalAwsXRayRemoteSampler(Sampler):
     """
     Remote Sampler for OpenTelemetry that gets sampling configurations from AWS X-Ray
 
@@ -180,7 +181,9 @@ class _AwsXRayRemoteSampler(Sampler):
     # pylint: disable=no-self-use
     @override
     def get_description(self) -> str:
-        description = "_AwsXRayRemoteSampler{remote sampling with AWS X-Ray}"
+        description = (
+            "_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray}"
+        )
         return description
 
     def __get_and_update_sampling_rules(self) -> None:
