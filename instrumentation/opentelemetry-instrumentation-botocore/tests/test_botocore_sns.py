@@ -21,9 +21,9 @@ from botocore.awsrequest import AWSResponse
 from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    SpanAttributes,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_SYSTEM,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -80,9 +80,7 @@ class TestSnsExtension(TestBase):
 
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(name, span.name)
-        self.assertEqual(
-            "aws.sns", span.attributes[SpanAttributes.MESSAGING_SYSTEM]
-        )
+        self.assertEqual("aws.sns", span.attributes[MESSAGING_SYSTEM])
 
         return span
 
@@ -114,16 +112,12 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span(f"{self.topic_name} send")
         self.assertEqual(
-            MessagingDestinationKindValues.TOPIC.value,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
-        )
-        self.assertEqual(
             self.topic_arn,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[MESSAGING_DESTINATION_NAME],
         )
         self.assertEqual(
             target_arn,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
+            span.attributes[MESSAGING_DESTINATION_NAME],
         )
 
     @mock_aws
@@ -137,7 +131,7 @@ class TestSnsExtension(TestBase):
         span = self.assert_span("phone_number send")
         self.assertEqual(
             "phone_number:**",
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
+            span.attributes[MESSAGING_DESTINATION_NAME],
         )
 
     @mock_aws
@@ -185,16 +179,12 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span(f"{self.topic_name} send")
         self.assertEqual(
-            MessagingDestinationKindValues.TOPIC.value,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
+            topic_arn,
+            span.attributes[MESSAGING_DESTINATION_NAME],
         )
         self.assertEqual(
             topic_arn,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
-        )
-        self.assertEqual(
-            topic_arn,
-            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
+            span.attributes[MESSAGING_DESTINATION_NAME],
         )
 
         self.assert_injected_span(message1_attrs, span)
