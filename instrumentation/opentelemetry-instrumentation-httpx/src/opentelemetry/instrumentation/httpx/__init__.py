@@ -313,7 +313,7 @@ def _extract_parameters(
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = httpx.URL(redact_url(str(request.url)))
+        url = httpx.URL(str(request.url))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
@@ -382,7 +382,7 @@ def _apply_request_client_attributes_to_span(
     )
 
     # http semconv transition: http.url -> url.full
-    _set_http_url(span_attributes, str(url), semconv)
+    _set_http_url(span_attributes, redact_url(str(url)), semconv)
 
     # Set HTTP method in metric labels
     _set_http_method(
