@@ -152,3 +152,46 @@ async def test_suppress_instrumentation(
     await client.get("/test-path")
 
     assert len(memory_exporter.get_finished_spans()) == 0
+
+
+@pytest.mark.asyncio
+async def test_remove_sensitive_params(tracer, aiohttp_server):
+    """Test that sensitive information in URLs is properly redacted."""
+    _, memory_exporter = tracer
+
+    # Set up instrumentation
+    AioHttpServerInstrumentor().instrument()
+
+    # Create app with test route
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    # Start the server
+    server = await aiohttp_server(app)
+
+    # Make request with sensitive data in URL
+    url = f"http://username:password@{server.host}:{server.port}/status/200?Signature=secret"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    # Verify redaction in span attributes
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[HTTP_METHOD] == "GET"
+    assert span.attributes[HTTP_STATUS_CODE] == 200
+    assert (
+        span.attributes[HTTP_URL]
+        == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
+    )
+
+    # Clean up
+    AioHttpServerInstrumentor().uninstrument()
+    memory_exporter.clear()
