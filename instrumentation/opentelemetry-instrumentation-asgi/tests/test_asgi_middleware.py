@@ -1633,6 +1633,29 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
+    async def test_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    async def test_no_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        self.scope["path"] = "/test_no_excluded_urls"
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertGreater(len(spans), 0)
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
