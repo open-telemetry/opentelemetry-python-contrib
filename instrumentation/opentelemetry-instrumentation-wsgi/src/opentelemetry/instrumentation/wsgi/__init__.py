@@ -97,6 +97,7 @@ For example,
 
 .. code-block:: python
 
+    from opentelemetry.trace import Span
     from wsgiref.types import WSGIEnvironment, StartResponse
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 

@@ -149,7 +149,7 @@ Usage Aio Client
     grpc_client_instrumentor.instrument()
 
     async def run():
-        with grpc.aio.insecure_channel("localhost:50051") as channel:
+        async with grpc.aio.insecure_channel("localhost:50051") as channel:
 
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
@@ -168,7 +168,7 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import aio_client_interceptors
 
-    channel = grpc.aio.insecure_channel("localhost:12345", interceptors=aio_client_interceptors())
+    async with grpc.aio.insecure_channel("localhost:50051", interceptors=aio_client_interceptors()) as channel:
 
 
 Usage Aio Server
@@ -252,6 +252,11 @@ You can write a global server instrumentor as follows:
 You can also use the filters directly on the provided interceptors:
 
 .. code-block::
+
+    import grpc
+    from concurrent import futures
+    from opentelemetry.instrumentation.grpc import filters
+    from opentelemetry.instrumentation.grpc import server_interceptor
 
     my_interceptor = server_interceptor(
         filter_ = filters.negate(filters.method_name("TestMethod"))

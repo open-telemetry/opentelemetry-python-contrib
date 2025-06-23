@@ -110,6 +110,48 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
+        "opentelemetry.resource.detector.containerid._get_container_id_v1",
+        return_value=None,
+    )
+    @patch(
+        "builtins.open",
+        side_effect=FileNotFoundError,
+    )
+    def test_cannot_read_mountinfo_file(
+        self, mock_get_container_id_v1, mock_mountinfo_file
+    ):
+        with self.assertLogs(
+            "opentelemetry.resource.detector.containerid", level="DEBUG"
+        ) as cm:
+            actual = ContainerResourceDetector().detect()
+        self.assertFalse(actual.attributes.copy())
+        self.assertIn(
+            "DEBUG:opentelemetry.resource.detector.containerid:Failed to get container id. Exception: ",
+            cm.output,
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.containerid._get_container_id_v2",
+        return_value=None,
+    )
+    @patch(
+        "builtins.open",
+        side_effect=FileNotFoundError,
+    )
+    def test_cannot_read_cgroup_file(
+        self, mock_get_container_id_v2, mock_cgroup_file
+    ):
+        with self.assertLogs(
+            "opentelemetry.resource.detector.containerid", level="DEBUG"
+        ) as cm:
+            actual = ContainerResourceDetector().detect()
+        self.assertFalse(actual.attributes.copy())
+        self.assertIn(
+            "DEBUG:opentelemetry.resource.detector.containerid:Failed to get container id. Exception: ",
+            cm.output,
+        )
+
+    @patch(
         "opentelemetry.resource.detector.containerid._get_container_id",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
