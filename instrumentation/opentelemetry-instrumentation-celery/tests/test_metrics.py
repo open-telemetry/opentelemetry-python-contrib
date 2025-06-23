@@ -56,10 +56,11 @@ class TestCeleryMetrics(TestBase):
         self._worker.stop()
         self._thread.join()
 
-    def wait_for_tasks_to_finish(self):
+    def wait_for_tasks_to_finish(self, timeout=30):
         """Blocks until all tasks in Celery worker are finished"""
 
         inspect = app.control.inspect()
+        start_time = time.time()
         while True:
             counter = 0
             for state in (
@@ -74,6 +75,10 @@ class TestCeleryMetrics(TestBase):
                 break
 
             time.sleep(0.5)
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    "Timeout while waiting for tasks to finish."
+                )
 
     def wait_for_metrics_until_finished(self, task_fn, *args):
         """
@@ -83,11 +88,11 @@ class TestCeleryMetrics(TestBase):
         """
 
         result = task_fn.delay(*args)
-
-        timeout = time.time() + 60 * 1
+        give_up_time = time.time() + 30
         while not result.ready():
-            if time.time() > timeout:
-                break
+            if time.time() > give_up_time:
+                raise TimeoutError("Timeout while waiting for task to finish.")
+
             time.sleep(0.05)
         return self.get_sorted_metrics()
 
