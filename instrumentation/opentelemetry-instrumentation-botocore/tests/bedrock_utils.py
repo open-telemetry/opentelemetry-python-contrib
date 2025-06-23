@@ -292,7 +292,7 @@ def assert_log_parent(log, span):
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert (
         log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    ), log.log_record.attributes[EventAttributes.EVENT_NAME]
+    )
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
