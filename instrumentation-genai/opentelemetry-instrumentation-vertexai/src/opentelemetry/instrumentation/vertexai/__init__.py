@@ -47,7 +47,7 @@ from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry._events import get_event_logger
+from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.vertexai.package import _instruments
@@ -111,16 +111,16 @@ class VertexAIInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
+        logger_provider = kwargs.get("logger_provider")
+        logger = get_logger(
             __name__,
             "",
             schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_logger_provider,
+            logger_provider=logger_provider,
         )
 
         method_wrappers = MethodWrappers(
-            tracer, event_logger, is_content_enabled()
+            tracer, logger, is_content_enabled()
         )
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
