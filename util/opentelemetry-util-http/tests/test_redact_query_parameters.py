@@ -70,16 +70,16 @@ class TestRedactSensitiveInfo(unittest.TestCase):
         )
 
     def test_url_with_at_symbol_in_path_and_query(self):
-        url = "https://github.com/p@th?foo=b@r"
+        url = "https://example.com/p@th?foo=b@r"
         self.assertEqual(
-            redact_query_parameters(url), "https://github.com/p@th?foo=b@r"
+            redact_query_parameters(url), "https://example.com/p@th?foo=b@r"
         )
 
     def test_aws_access_key_with_real_format(self):
-        url = "https://microsoft.com?AWSAccessKeyId=AKIAIOSFODNN7"
+        url = "https://mock.com?AWSAccessKeyId=AKIAIOSFODNN7"
         self.assertEqual(
             redact_query_parameters(url),
-            "https://microsoft.com?AWSAccessKeyId=REDACTED",
+            "https://mock.com?AWSAccessKeyId=REDACTED",
         )
 
     def test_signature_parameter(self):

@@ -19,16 +19,16 @@ from opentelemetry.util.http import remove_url_credentials
 
 class TestRemoveUrlCredentials(unittest.TestCase):
     def test_remove_no_credentials(self):
-        url = "http://opentelemetry.io:8080/test/path?query=value"
+        url = "http://mock/status/200/test/path?query=value"
         cleaned_url = remove_url_credentials(url)
         self.assertEqual(cleaned_url, url)
 
     def test_remove_credentials(self):
-        url = "http://someuser:somepass@opentelemetry.io:8080/test/path?sig=value"
+        url = "http://someuser:somepass@mock/status/200/test/path?sig=value"
         cleaned_url = remove_url_credentials(url)
         self.assertEqual(
             cleaned_url,
-            "http://REDACTED:REDACTED@opentelemetry.io:8080/test/path?sig=value",
+            "http://REDACTED:REDACTED@mock/status/200/test/path?sig=value",
         )
 
     def test_remove_credentials_ipv4_literal(self):

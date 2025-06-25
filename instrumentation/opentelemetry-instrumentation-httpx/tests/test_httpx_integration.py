@@ -1316,8 +1316,11 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             )
         else:
             # If credentials are removed completely, the query string should still be redacted
-            self.assertIn("http://mock/status/200?sig=REDACTED", actual_url,
-                        f"Basic URL structure is incorrect: {actual_url}")
+            self.assertIn(
+                "http://mock/status/200?sig=REDACTED",
+                actual_url,
+                f"Basic URL structure is incorrect: {actual_url}",
+            )
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
@@ -1393,12 +1396,15 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
 
         if "@" in actual_url:
             self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
-            "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED",
+                span.attributes[SpanAttributes.HTTP_URL],
+                "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED",
             )
         else:
-            self.assertIn("http://mock/status/200?Signature=REDACTED", actual_url,
-                     f"If credentials are removed, the query string still should be redacted {actual_url}")
+            self.assertIn(
+                "http://mock/status/200?Signature=REDACTED",
+                actual_url,
+                f"If credentials are removed, the query string still should be redacted {actual_url}",
+            )
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
