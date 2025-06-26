@@ -5,30 +5,23 @@ import os
 
 import pytest
 import yaml
-from openai import AsyncOpenAI, OpenAI
+from cohere import ClientV2
 
+from opentelemetry.instrumentation.cohere_v2 import CohereInstrumentor
 from opentelemetry.instrumentation.genai_utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
-from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
     SimpleLogRecordProcessor,
 )
-from opentelemetry.sdk.metrics import (
-    MeterProvider,
-)
-from opentelemetry.sdk.metrics.export import (
-    InMemoryMetricReader,
-)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 
 
 @pytest.fixture(scope="function", name="span_exporter")
@@ -40,12 +33,6 @@ def fixture_span_exporter():
 @pytest.fixture(scope="function", name="log_exporter")
 def fixture_log_exporter():
     exporter = InMemoryLogExporter()
-    yield exporter
-
-
-@pytest.fixture(scope="function", name="metric_reader")
-def fixture_metric_reader():
-    exporter = InMemoryMetricReader()
     yield exporter
 
 
@@ -65,29 +52,15 @@ def fixture_event_logger_provider(log_exporter):
     return event_logger_provider
 
 
-@pytest.fixture(scope="function", name="meter_provider")
-def fixture_meter_provider(metric_reader):
-    meter_provider = MeterProvider(
-        metric_readers=[metric_reader],
-    )
-
-    return meter_provider
-
-
 @pytest.fixture(autouse=True)
 def environment():
-    if not os.getenv("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
+    if not os.getenv("CO_API_KEY"):
+        os.environ["CO_API_KEY"] = "test_cohere_api_key"
 
 
 @pytest.fixture
-def openai_client():
-    return OpenAI()
-
-
-@pytest.fixture
-def async_openai_client():
-    return AsyncOpenAI()
+def cohere_client():
+    return ClientV2()
 
 
 @pytest.fixture(scope="module")
@@ -95,9 +68,7 @@ def vcr_config():
     return {
         "filter_headers": [
             ("cookie", "test_cookie"),
-            ("authorization", "Bearer test_openai_api_key"),
-            ("openai-organization", "test_openai_org_id"),
-            ("openai-project", "test_openai_project_id"),
+            ("authorization", "Bearer test_cohere_api_key"),
         ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
@@ -105,60 +76,26 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(
-    tracer_provider, event_logger_provider, meter_provider
-):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
-    )
-
-    instrumentor = OpenAIInstrumentor()
+def instrument_no_content(tracer_provider, event_logger_provider):
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
-        meter_provider=meter_provider,
     )
 
     yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     instrumentor.uninstrument()
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(
-    tracer_provider, event_logger_provider, meter_provider
-):
+def instrument_with_content(tracer_provider, event_logger_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
-    instrumentor = OpenAIInstrumentor()
+    instrumentor = CohereInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         event_logger_provider=event_logger_provider,
-        meter_provider=meter_provider,
-    )
-
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    instrumentor.uninstrument()
-
-
-@pytest.fixture(scope="function")
-def instrument_with_content_unsampled(
-    span_exporter, event_logger_provider, meter_provider
-):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
-    )
-
-    tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
-    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-
-    instrumentor = OpenAIInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        event_logger_provider=event_logger_provider,
-        meter_provider=meter_provider,
     )
 
     yield instrumentor
@@ -237,6 +174,5 @@ def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!
     """
-    response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response
