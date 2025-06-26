@@ -274,7 +274,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
+    redact_url,
     sanitize_method,
 )
 
@@ -371,9 +371,7 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_URL] = remove_url_credentials(
-                wsgiref_util.request_uri(environ)
-            )
+            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
