@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Version 1.34.0/0.55b0 (2025-06-04)
-
 ### Fixed
 
 - `opentelemetry-resource-detector-containerid`: make it more quiet on platforms without cgroups
@@ -20,10 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
-  ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
 - `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
   ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
+  
+## Version 1.34.0/0.55b0 (2025-06-04)
 
 ### Fixed
 
@@ -80,7 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3513](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3513))
 - `opentelemetry-instrumentation` Allow re-raising exception when instrumentation fails
   ([#3545](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3545))
-
+- `opentelemetry-instrumentation-aiokafka` Add instrumentation of `consumer.getmany` (batch)
+  ([#3257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3257))
+  
 ### Deprecated
 
 - Drop support for Python 3.8, bump baseline to Python 3.9.
