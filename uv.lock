@@ -41,6 +41,7 @@ members = [
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-jinja2",
     "opentelemetry-instrumentation-kafka-python",
+    "opentelemetry-instrumentation-langchain",
     "opentelemetry-instrumentation-logging",
     "opentelemetry-instrumentation-mysql",
     "opentelemetry-instrumentation-mysqlclient",
@@ -2888,6 +2889,22 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-instrumentation-langchain"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-logging"
 source = { editable = "instrumentation/opentelemetry-instrumentation-logging" }
 dependencies = [
@@ -3549,6 +3566,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-jinja2", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-langchain" },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-mysqlclient", extra = ["instruments"] },
@@ -3613,6 +3631,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-jinja2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-jinja2" },
     { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
+    { name = "opentelemetry-instrumentation-langchain", extras = ["instruments"], editable = "instrumentation-genai/opentelemetry-instrumentation-langchain" },
     { name = "opentelemetry-instrumentation-logging", editable = "instrumentation/opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysql" },
     { name = "opentelemetry-instrumentation-mysqlclient", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysqlclient" },

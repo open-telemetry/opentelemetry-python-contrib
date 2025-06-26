@@ -31,6 +31,11 @@ dependencies = [
   "opentelemetry-semantic-conventions ~= 0.51b0"
 ]
 
+[project.optional-dependencies]
+instruments = [
+  "langchain >= 0.3.21",
+]
+
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-langchain"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
