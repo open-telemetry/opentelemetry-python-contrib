@@ -31,7 +31,9 @@ import wrapt
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+)
 from opentelemetry.trace.span import Span
 
 _STATE_KEY = "httpbase_instrumentation_state"
@@ -111,7 +113,7 @@ def trysetip(
         )
     else:
         for span in spanlist:
-            span.set_attribute(SpanAttributes.NET_PEER_IP, ip)
+            span.set_attribute(NET_PEER_IP, ip)
     return True
 
 
