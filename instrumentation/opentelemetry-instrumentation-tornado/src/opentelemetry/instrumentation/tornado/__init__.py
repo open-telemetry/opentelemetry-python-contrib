@@ -162,6 +162,7 @@ from timeit import default_timer
 from typing import Collection, Dict
 
 import tornado.web
+import tornado.websocket
 import wrapt
 from wrapt import wrap_function_wrapper
 
@@ -362,12 +363,20 @@ def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
         "prepare",
         partial(_prepare, tracer, server_histograms, request_hook),
     )
-    _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     _wrap(
         cls,
         "log_exception",
         partial(_log_exception, tracer, server_histograms),
     )
+
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        _wrap(
+            cls,
+            "on_close",
+            partial(_websockethandler_on_close, tracer, server_histograms),
+        )
+    else:
+        _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     return True
 
 
@@ -376,8 +385,11 @@ def unpatch_handler_class(cls):
         return
 
     unwrap(cls, "prepare")
-    unwrap(cls, "on_finish")
     unwrap(cls, "log_exception")
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        unwrap(cls, "on_close")
+    else:
+        unwrap(cls, "on_finish")
     delattr(cls, _OTEL_PATCHED_KEY)
 
 
@@ -405,13 +417,21 @@ def _prepare(
 
 
 def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
-    response = func(*args, **kwargs)
+    try:
+        return func(*args, **kwargs)
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
-    _record_on_finish_metrics(server_histograms, handler)
 
-    _finish_span(tracer, handler)
-
-    return response
+def _websockethandler_on_close(
+    tracer, server_histograms, func, handler, args, kwargs
+):
+    try:
+        func()
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
 
 def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
