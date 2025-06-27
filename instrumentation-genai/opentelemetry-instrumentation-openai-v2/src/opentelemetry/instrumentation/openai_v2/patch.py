@@ -13,12 +13,14 @@
 # limitations under the License.
 
 
+import json
 from timeit import default_timer
 from typing import Optional
 
 from openai import Stream
 
 from opentelemetry._events import Event, EventLogger
+from opentelemetry._logs import SeverityNumber
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -29,11 +31,11 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 
 from .instruments import Instruments
 from .utils import (
-    choice_to_event,
+    completion_to_object,
     get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
-    message_to_event,
+    prompt_to_object,
     set_span_attribute,
 )
 
@@ -42,7 +44,9 @@ def chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    prompt_hook,
+    completion_hook,
+    capture_verbose_attributes: bool,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
@@ -56,25 +60,30 @@ def chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
 
             start = default_timer()
+
+            if prompt_hook:
+                prompt_hook(span, prompt_to_object(kwargs.get("messages", [])))
+
+            _maybe_capture_verbose_attributes(capture_verbose_attributes, span, kwargs)
+
             result = None
             error_type = None
             try:
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        result, span, event_logger, capture_content
+                        result, span
                     )
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, event_logger, capture_content
+                        span, result
                     )
-                for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
+
+                if completion_hook:
+                    completion_hook(span, completion_to_object(getattr(result, "choices", [])))
 
                 span.end()
                 return result
@@ -100,7 +109,9 @@ def async_chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    prompt_hook,
+    completion_hook,
+    capture_verbose_attributes: bool,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
@@ -114,25 +125,29 @@ def async_chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
-
             start = default_timer()
+
+            if prompt_hook:
+                prompt_hook(span, prompt_to_object(kwargs.get("messages", [])))
+
+            _maybe_capture_verbose_attributes(capture_verbose_attributes, span, kwargs)
+
             result = None
             error_type = None
             try:
                 result = await wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        result, span, event_logger, capture_content
+                        result, span, event_logger, completion_hook
                     )
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, event_logger, capture_content
+                        span, result
                     )
-                for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
+
+                if completion_hook:
+                    completion_hook(span, completion_to_object(getattr(result, "choices", [])))
 
                 span.end()
                 return result
@@ -153,6 +168,32 @@ def async_chat_completions_create(
 
     return traced_method
 
+def _maybe_capture_verbose_attributes(
+    capture_verbose_attributes: bool,
+    span: Span,
+    kwargs: dict):
+
+    if capture_verbose_attributes and span.is_recording():
+
+        response_format = kwargs.get("response_format")
+        if response_format:
+            response_type = response_format.get("type")
+            if response_type == "json_schema":
+                json_schema = response_format.get("json_schema")
+                if json_schema:
+                    set_span_attribute(
+                        span,
+                        "openai.response_format.json_schema",
+                        json.dumps(json_schema, ensure_ascii=False),
+                    )
+
+        tools = kwargs.get("tools")
+        if tools:
+            set_span_attribute(
+                span,
+                "gen_ai.tools.definitions",
+                json.dumps(tools, ensure_ascii=False),
+            )
 
 def _record_metrics(
     instruments: Instruments,
@@ -220,9 +261,7 @@ def _record_metrics(
         )
 
 
-def _set_response_attributes(
-    span, result, event_logger: EventLogger, capture_content: bool
-):
+def _set_response_attributes(span, result):
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
     )
@@ -312,13 +351,13 @@ class StreamWrapper:
         stream: Stream,
         span: Span,
         event_logger: EventLogger,
-        capture_content: bool,
+        completion_hook,
     ):
         self.stream = stream
         self.span = span
         self.choice_buffers = []
         self._span_started = False
-        self.capture_content = capture_content
+        self.completion_hook = completion_hook
 
         self.event_logger = event_logger
         self.setup()
@@ -392,13 +431,13 @@ class StreamWrapper:
                     "finish_reason": choice.finish_reason or "error",
                     "message": message,
                 }
-
                 event_attributes = {
                     GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
                 }
 
                 # this span is not current, so we need to manually set the context on event
                 span_ctx = self.span.get_span_context()
+
                 self.event_logger.emit(
                     Event(
                         name="gen_ai.choice",
