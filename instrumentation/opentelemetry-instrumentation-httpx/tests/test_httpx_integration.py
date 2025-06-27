@@ -59,6 +59,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.util.http import get_excluded_urls
 
 if typing.TYPE_CHECKING:
     from opentelemetry.instrumentation.httpx import (
@@ -156,6 +157,7 @@ class BaseTestCases:
             self.env_patch = mock.patch.dict(
                 "os.environ",
                 {
+                    "OTEL_PYTHON_HTTPX_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
                     OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
                 },
             )
@@ -1121,6 +1123,27 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assertEqual(result_no_client.text, "Hello!")
             self.assert_span(num_spans=0)
+
+        def test_excluded_urls_explicit(self):
+            url_404 = "http://mock/status/404"
+            respx.get(url_404).mock(httpx.Response(404))
+
+            HTTPXClientInstrumentor().instrument(excluded_urls=".*/404")
+            client = self.create_client()
+            self.perform_request(self.URL, client=client)
+            self.perform_request(url_404, client=client)
+
+            self.assert_span(num_spans=1)
+
+        def test_excluded_urls_from_env(self):
+            url = "http://localhost/env_excluded_arg/123"
+            respx.get(url=url).mock(httpx.Response(200))
+            HTTPXClientInstrumentor().instrument()
+            client = self.create_client()
+            self.perform_request(self.URL, client=client)
+            self.perform_request(url, client=client)
+
+            self.assert_span(num_spans=1)
 
         def test_uninstrument_client(self):
             HTTPXClientInstrumentor().uninstrument_client(self.client)
