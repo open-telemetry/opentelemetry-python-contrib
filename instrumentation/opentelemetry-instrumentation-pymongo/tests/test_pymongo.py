@@ -194,6 +194,77 @@ class TestPymongo(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    def test_capture_statement_getmore(self):
+        command_attrs = {
+            "command_name": "getMore",
+            "collection": "test_collection",
+        }
+        command_tracer = CommandTracer(
+            self.tracer, capture_statement=True
+        )
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], 
+            "getMore test_collection"
+        )
+
+    def test_capture_statement_aggregate(self):
+        pipeline = [{"$match": {"status": "active"}}, {"$group": {"_id": "$category", "count": {"$sum": 1}}}]
+        command_attrs = {
+            "command_name": "aggregate",
+            "pipeline": pipeline,
+        }
+        command_tracer = CommandTracer(
+            self.tracer, capture_statement=True
+        )
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        expected_statement = f"aggregate {pipeline}"
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], 
+            expected_statement
+        )
+
+    def test_capture_statement_disabled_getmore(self):
+        command_attrs = {
+            "command_name": "getMore",
+            "collection": "test_collection",
+        }
+        command_tracer = CommandTracer(
+            self.tracer, capture_statement=False
+        )
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], 
+            "getMore"
+        )
+
+    def test_capture_statement_disabled_aggregate(self):
+        pipeline = [{"$match": {"status": "active"}}]
+        command_attrs = {
+            "command_name": "aggregate",
+            "pipeline": pipeline,
+        }
+        command_tracer = CommandTracer(
+            self.tracer, capture_statement=False
+        )
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], 
+            "aggregate"
+        )
+
 
 class MockCommand:
     def __init__(self, command_attrs):
