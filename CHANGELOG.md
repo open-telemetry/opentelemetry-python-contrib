@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-containerid`: make it more quiet on platforms without cgroups
   ([#3579](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3579))
 
+### Added
+
+- `opentelemetry-instrumentation-tornado` Add support for `WebSocketHandler` instrumentation
+  ([#3498](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3498))
+
 ## Version 1.34.0/0.55b0 (2025-06-04)
 
 ### Fixed
@@ -89,8 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
 - `opentelemetry-instrumentation-redis` Add support for redis client-specific instrumentation.
   ([#3143](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3143))
-- `opentelemetry-instrumentation-tornado` Add support for `WebSocketHandler` instrumentation
-  ([#3448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2761))
 
 ### Fixed
 
