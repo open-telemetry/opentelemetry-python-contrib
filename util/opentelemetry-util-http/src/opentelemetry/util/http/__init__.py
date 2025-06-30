@@ -172,7 +172,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """Given a string url, replace the username and password with the keyword "REDACTED "only if it is a valid url"""
+    """Given a string url, replace the username and password with the keyword `REDACTED` only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
