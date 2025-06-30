@@ -26,7 +26,7 @@ from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogRecordExporter,
+    InMemoryLogExporter as InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.metrics import MeterProvider
