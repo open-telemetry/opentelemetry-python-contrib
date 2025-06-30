@@ -30,7 +30,16 @@ from opentelemetry.instrumentation.grpc import (
     server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -82,8 +91,8 @@ class Servicer(GRPCTestServerServicer):
 
 class TestOpenTelemetryServerInterceptor(TestBase):
     net_peer_span_attributes = {
-        SpanAttributes.NET_PEER_IP: "[::1]",
-        SpanAttributes.NET_PEER_NAME: "localhost",
+        NET_PEER_IP: "[::1]",
+        NET_PEER_NAME: "localhost",
     }
 
     @contextlib.contextmanager
@@ -137,12 +146,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "handler",
-                SpanAttributes.RPC_SERVICE: "TestServicer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -203,12 +210,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -267,12 +272,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             parent_span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -322,12 +325,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -386,12 +387,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             parent_span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -474,12 +473,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 span,
                 {
                     **self.net_peer_span_attributes,
-                    SpanAttributes.RPC_METHOD: "handler",
-                    SpanAttributes.RPC_SERVICE: "TestServicer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    RPC_METHOD: "handler",
+                    RPC_SERVICE: "TestServicer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -540,12 +537,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 span,
                 {
                     **self.net_peer_span_attributes,
-                    SpanAttributes.RPC_METHOD: "handler",
-                    SpanAttributes.RPC_SERVICE: "TestServicer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    RPC_METHOD: "handler",
+                    RPC_SERVICE: "TestServicer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -616,12 +611,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "error_status_handler",
-                SpanAttributes.RPC_SERVICE: "TestServicer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[
-                    0
-                ],
+                RPC_METHOD: "error_status_handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
             },
         )
 
@@ -644,10 +637,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "unset_status_handler",
-                SpanAttributes.RPC_SERVICE: "TestServicer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                RPC_METHOD: "unset_status_handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
                     0
                 ],
             },
@@ -693,12 +686,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 

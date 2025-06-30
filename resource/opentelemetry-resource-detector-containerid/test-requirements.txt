@@ -9,4 +9,4 @@ tomli==2.0.1
 typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
--e resource/opentelemetry-resource-detector-container
+-e resource/opentelemetry-resource-detector-containerid
