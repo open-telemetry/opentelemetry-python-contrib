@@ -57,13 +57,13 @@ class TestPymongo(TestBase):
         # pylint: disable=protected-access
         span = command_tracer._pop_span(mock_event)
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(span.name, "database_name.command_name")
+        self.assertEqual(span.name, "database_name.find")
         self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "command_name"
+            span.attributes[SpanAttributes.DB_STATEMENT], "find"
         )
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
@@ -181,7 +181,7 @@ class TestPymongo(TestBase):
 
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "database_name.command_name")
+        self.assertEqual(span.name, "database_name.123")
 
     def test_no_op_tracer(self):
         mock_event = MockEvent({})
@@ -199,10 +199,11 @@ class TestPymongo(TestBase):
             "command_name": "getMore",
             "collection": "test_collection",
         }
+        mock_event = MockEvent(command_attrs)
+
         command_tracer = CommandTracer(
             self.tracer, capture_statement=True
         )
-        mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
 
@@ -297,6 +298,7 @@ class MockCommand:
 class MockEvent:
     def __init__(self, command_attrs, connection_id=None, request_id=""):
         self.command = MockCommand(command_attrs)
+        self.command_name = self.command.get("command_name")
         self.connection_id = connection_id
         self.request_id = request_id
 
