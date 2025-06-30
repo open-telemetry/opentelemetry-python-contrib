@@ -22,7 +22,18 @@ from re import search
 from typing import Callable, Iterable, overload
 from urllib.parse import urlparse, urlunparse
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -40,22 +51,22 @@ OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
 
 # List of recommended metrics attributes
 _duration_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+    NET_HOST_NAME,
+    NET_HOST_PORT,
 }
 
 _active_requests_count_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
 }
 
 
