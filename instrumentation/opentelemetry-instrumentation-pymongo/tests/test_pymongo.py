@@ -62,9 +62,7 @@ class TestPymongo(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "find"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
@@ -201,9 +199,7 @@ class TestPymongo(TestBase):
         }
         mock_event = MockEvent(command_attrs)
 
-        command_tracer = CommandTracer(
-            self.tracer, capture_statement=True
-        )
+        command_tracer = CommandTracer(self.tracer, capture_statement=True)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
 
@@ -214,18 +210,19 @@ class TestPymongo(TestBase):
 
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT],
-            "getMore test_collection"
+            "getMore test_collection",
         )
 
     def test_capture_statement_aggregate(self):
-        pipeline = [{"$match": {"status": "active"}}, {"$group": {"_id": "$category", "count": {"$sum": 1}}}]
+        pipeline = [
+            {"$match": {"status": "active"}},
+            {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        ]
         command_attrs = {
             "command_name": "aggregate",
             "pipeline": pipeline,
         }
-        command_tracer = CommandTracer(
-            self.tracer, capture_statement=True
-        )
+        command_tracer = CommandTracer(self.tracer, capture_statement=True)
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
@@ -237,8 +234,7 @@ class TestPymongo(TestBase):
 
         expected_statement = f"aggregate {pipeline}"
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
-            expected_statement
+            span.attributes[SpanAttributes.DB_STATEMENT], expected_statement
         )
 
     def test_capture_statement_disabled_getmore(self):
@@ -246,9 +242,7 @@ class TestPymongo(TestBase):
             "command_name": "getMore",
             "collection": "test_collection",
         }
-        command_tracer = CommandTracer(
-            self.tracer, capture_statement=False
-        )
+        command_tracer = CommandTracer(self.tracer, capture_statement=False)
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
@@ -259,8 +253,7 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
-            "getMore"
+            span.attributes[SpanAttributes.DB_STATEMENT], "getMore"
         )
 
     def test_capture_statement_disabled_aggregate(self):
@@ -269,9 +262,7 @@ class TestPymongo(TestBase):
             "command_name": "aggregate",
             "pipeline": pipeline,
         }
-        command_tracer = CommandTracer(
-            self.tracer, capture_statement=False
-        )
+        command_tracer = CommandTracer(self.tracer, capture_statement=False)
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
         command_tracer.succeeded(event=mock_event)
@@ -282,8 +273,7 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
-            "aggregate"
+            span.attributes[SpanAttributes.DB_STATEMENT], "aggregate"
         )
 
 
