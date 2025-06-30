@@ -204,10 +204,15 @@ class TestPymongo(TestBase):
         )
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
-        # pylint: disable=protected-access
-        span = command_tracer._pop_span(mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], 
+            span.attributes[SpanAttributes.DB_STATEMENT],
             "getMore test_collection"
         )
 
@@ -222,11 +227,16 @@ class TestPymongo(TestBase):
         )
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
-        # pylint: disable=protected-access
-        span = command_tracer._pop_span(mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
         expected_statement = f"aggregate {pipeline}"
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], 
+            span.attributes[SpanAttributes.DB_STATEMENT],
             expected_statement
         )
 
@@ -240,10 +250,15 @@ class TestPymongo(TestBase):
         )
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
-        # pylint: disable=protected-access
-        span = command_tracer._pop_span(mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], 
+            span.attributes[SpanAttributes.DB_STATEMENT],
             "getMore"
         )
 
@@ -258,10 +273,15 @@ class TestPymongo(TestBase):
         )
         mock_event = MockEvent(command_attrs)
         command_tracer.started(event=mock_event)
-        # pylint: disable=protected-access
-        span = command_tracer._pop_span(mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], 
+            span.attributes[SpanAttributes.DB_STATEMENT],
             "aggregate"
         )
 
