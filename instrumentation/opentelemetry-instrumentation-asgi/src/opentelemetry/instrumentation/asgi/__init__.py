@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-lines
 
 """
 The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
@@ -81,19 +81,38 @@ For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict[str, Any]):
+    from opentelemetry.trace import Span
+    from typing import Any
+    from asgiref.typing import Scope, ASGIReceiveEvent, ASGISendEvent
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    async def application(scope: Scope, receive: ASGIReceiveEvent, send: ASGISendEvent):
+        await send({
+            'type': 'http.response.start',
+            'status': 200,
+            'headers': [
+                [b'content-type', b'text/plain'],
+            ],
+        })
+
+        await send({
+            'type': 'http.response.body',
+            'body': b'Hello, world!',
+        })
+
+    def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_request_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_response_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   OpenTelemetryMiddleware().(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    OpenTelemetryMiddleware(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
