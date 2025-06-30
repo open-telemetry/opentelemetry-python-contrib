@@ -175,16 +175,15 @@ def remove_url_credentials(url: str) -> str:
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
-            parsed_url = urlparse(url)
             _, _, netloc = parsed.netloc.rpartition("@")
             return urlunparse(
                 (
-                    parsed_url.scheme,
+                    parsed.scheme,
                     netloc,
-                    parsed_url.path,
-                    parsed_url.params,
-                    parsed_url.query,
-                    parsed_url.fragment,
+                    parsed.path,
+                    parsed.params,
+                    parsed.query,
+                    parsed.fragment,
                 )
             )
     except ValueError:  # an unparsable url was passed
