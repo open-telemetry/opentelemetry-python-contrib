@@ -151,11 +151,11 @@ jobs:
                        --base $RELEASE_BRANCH_NAME
 
   create-pull-request-against-main:
+    runs-on: ubuntu-latest
     needs: prereqs
     permissions:
       contents: write # required for pushing branches
       pull-requests: write # required for creating pull requests
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
