@@ -16,9 +16,11 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import json
 from logging import getLogger
-from typing import List, Optional
+from typing import List
 
 import requests
 
@@ -39,7 +41,7 @@ class _AwsXRaySamplingClient:
     def __init__(
         self,
         endpoint: str = DEFAULT_SAMPLING_PROXY_ENDPOINT,
-        log_level: Optional[str] = None,
+        log_level: str | None = None,
     ):
         # Override default log level
         if log_level is not None:

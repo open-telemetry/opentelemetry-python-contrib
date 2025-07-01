@@ -16,8 +16,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from logging import getLogger
-from typing import List, Optional
+from typing import List
 
 _logger = getLogger(__name__)
 
@@ -27,11 +29,11 @@ _logger = getLogger(__name__)
 class _SamplingTarget:
     def __init__(
         self,
-        FixedRate: Optional[float] = None,
-        Interval: Optional[int] = None,
-        ReservoirQuota: Optional[int] = None,
-        ReservoirQuotaTTL: Optional[float] = None,
-        RuleName: Optional[str] = None,
+        FixedRate: float | None = None,
+        Interval: int | None = None,
+        ReservoirQuota: int | None = None,
+        ReservoirQuotaTTL: float | None = None,
+        RuleName: str | None = None,
     ):
         self.FixedRate = FixedRate if FixedRate is not None else 0.0
         self.Interval = Interval  # can be None
@@ -43,9 +45,9 @@ class _SamplingTarget:
 class _UnprocessedStatistics:
     def __init__(
         self,
-        ErrorCode: Optional[str] = None,
-        Message: Optional[str] = None,
-        RuleName: Optional[str] = None,
+        ErrorCode: str | None = None,
+        Message: str | None = None,
+        RuleName: str | None = None,
     ):
         self.ErrorCode = ErrorCode if ErrorCode is not None else ""
         self.Message = Message if ErrorCode is not None else ""
@@ -55,9 +57,9 @@ class _UnprocessedStatistics:
 class _SamplingTargetResponse:
     def __init__(
         self,
-        LastRuleModification: Optional[float],
-        SamplingTargetDocuments: Optional[List[_SamplingTarget]] = None,
-        UnprocessedStatistics: Optional[List[_UnprocessedStatistics]] = None,
+        LastRuleModification: float | None,
+        SamplingTargetDocuments: List[_SamplingTarget] | None = None,
+        UnprocessedStatistics: List[_UnprocessedStatistics] | None = None,
     ):
         self.LastRuleModification: float = (
             LastRuleModification if LastRuleModification is not None else 0.0

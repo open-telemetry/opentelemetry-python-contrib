@@ -16,27 +16,26 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
+from __future__ import annotations
 
 # Disable snake_case naming style so this class can match the sampling rules response from X-Ray
 # pylint: disable=invalid-name
 class _SamplingRule:
     def __init__(
         self,
-        Attributes: Optional["dict[str, str]"] = None,
-        FixedRate: Optional[float] = None,
-        HTTPMethod: Optional[str] = None,
-        Host: Optional[str] = None,
-        Priority: Optional[int] = None,
-        ReservoirSize: Optional[int] = None,
-        ResourceARN: Optional[str] = None,
-        RuleARN: Optional[str] = None,
-        RuleName: Optional[str] = None,
-        ServiceName: Optional[str] = None,
-        ServiceType: Optional[str] = None,
-        URLPath: Optional[str] = None,
-        Version: Optional[int] = None,
+        Attributes: dict[str, str] | None = None,
+        FixedRate: float | None = None,
+        HTTPMethod: str | None = None,
+        Host: str | None = None,
+        Priority: int | None = None,
+        ReservoirSize: int | None = None,
+        ResourceARN: str | None = None,
+        RuleARN: str | None = None,
+        RuleName: str | None = None,
+        ServiceName: str | None = None,
+        ServiceType: str | None = None,
+        URLPath: str | None = None,
+        Version: int | None = None,
     ):
         self.Attributes = Attributes if Attributes is not None else {}
         self.FixedRate = FixedRate if FixedRate is not None else 0.0

@@ -16,10 +16,12 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import random
 from logging import getLogger
 from threading import Timer
-from typing import Optional, Sequence
+from typing import Sequence
 
 from typing_extensions import override
 
@@ -55,9 +57,9 @@ class _AwsXRayRemoteSampler(Sampler):
     def __init__(
         self,
         resource: Resource,
-        endpoint: Optional[str] = None,
-        polling_interval: Optional[int] = None,
-        log_level: Optional[str] = None,
+        endpoint: str | None = None,
+        polling_interval: int | None = None,
+        log_level: str | None = None,
     ):
         self._root = ParentBased(
             _InternalAwsXRayRemoteSampler(
@@ -71,13 +73,13 @@ class _AwsXRayRemoteSampler(Sampler):
     @override
     def should_sample(
         self,
-        parent_context: Optional["Context"],
+        parent_context: Context | None,
         trace_id: int,
         name: str,
-        kind: Optional[SpanKind] = None,
-        attributes: Optional[Attributes] = None,
-        links: Optional[Sequence["Link"]] = None,
-        trace_state: Optional["TraceState"] = None,
+        kind: SpanKind | None = None,
+        attributes: Attributes | None = None,
+        links: Sequence["Link"] | None = None,
+        trace_state: TraceState | None = None,
     ) -> "SamplingResult":
         return self._root.should_sample(
             parent_context,
@@ -114,9 +116,9 @@ class _InternalAwsXRayRemoteSampler(Sampler):
     def __init__(
         self,
         resource: Resource,
-        endpoint: Optional[str] = None,
-        polling_interval: Optional[int] = None,
-        log_level: Optional[str] = None,
+        endpoint: str | None = None,
+        polling_interval: int | None = None,
+        log_level: str | None = None,
     ):
         # Override default log level
         if log_level is not None:
@@ -164,13 +166,13 @@ class _InternalAwsXRayRemoteSampler(Sampler):
     @override
     def should_sample(
         self,
-        parent_context: Optional["Context"],
+        parent_context: Context | None,
         trace_id: int,
         name: str,
-        kind: Optional[SpanKind] = None,
-        attributes: Optional[Attributes] = None,
-        links: Optional[Sequence["Link"]] = None,
-        trace_state: Optional["TraceState"] = None,
+        kind: SpanKind | None = None,
+        attributes: Attributes | None = None,
+        links: Sequence["Link"] | None = None,
+        trace_state: TraceState | None = None,
     ) -> "SamplingResult":
         return SamplingResult(
             decision=Decision.DROP,

@@ -16,7 +16,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
+from __future__ import annotations
 
 # pylint: disable=no-name-in-module
 from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
@@ -37,8 +37,8 @@ class _SamplingRuleApplier:
         sampling_rule: _SamplingRule,
         client_id: str,
         clock: _Clock,
-        statistics: Optional[_SamplingStatisticsDocument] = None,
-        target: Optional[_SamplingTarget] = None,
+        statistics: _SamplingStatisticsDocument | None = None,
+        target: _SamplingTarget | None = None,
     ):
         self.__client_id = client_id  # pylint: disable=W0238
         self._clock = clock
