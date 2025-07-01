@@ -13,9 +13,14 @@ on:
         - opentelemetry-instrumentation-google-genai
         description: 'Package to be released'
         required: true
+permissions:
+  contents: read
 run-name: "[Package][${{ inputs.package }}] Release"
 jobs:
   release:
+    permissions:
+      contents: write # required for creating releases
+      pull-requests: write # required for creating pull requests
     runs-on: ubuntu-latest
     steps:
       - run: |

@@ -14,6 +14,9 @@ on:
         description: 'Package to be released'
         required: true
 
+permissions:
+  contents: read
+
 run-name: "[Package][${{ inputs.package }}] Prepare release"
 jobs:
   prereqs:
@@ -90,8 +93,11 @@ jobs:
           echo "next_version=$next_version" >> $GITHUB_OUTPUT
 
   create-pull-request-against-release-branch:
-    runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -145,8 +151,11 @@ jobs:
                        --base $RELEASE_BRANCH_NAME
 
   create-pull-request-against-main:
-    runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
