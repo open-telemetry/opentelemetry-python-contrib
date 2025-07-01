@@ -1633,6 +1633,29 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
+    async def test_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    async def test_no_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        self.scope["path"] = "/test_no_excluded_urls"
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertGreater(len(spans), 0)
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
@@ -1809,12 +1832,14 @@ class TestAsgiAttributes(unittest.TestCase):
         otel_asgi.set_status_code(self.span, "Invalid Status Code")
         self.assertEqual(self.span.set_status.call_count, 1)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
+        self.scope["query_string"] = b"X-Goog-Signature=1234567890"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
+            attrs[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
     def test_collect_target_attribute_missing(self):
