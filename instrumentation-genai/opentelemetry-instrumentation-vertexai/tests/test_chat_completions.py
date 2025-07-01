@@ -29,7 +29,7 @@ from vertexai.preview.generative_models import (
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogExporter as InMemoryLogRecordExporter,
+    InMemoryLogRecordExporter,
 )
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (

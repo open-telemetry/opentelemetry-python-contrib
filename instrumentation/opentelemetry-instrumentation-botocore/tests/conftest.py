@@ -14,7 +14,7 @@ from opentelemetry.instrumentation.botocore.environment_variables import (
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter as InMemoryLogRecordExporter,
+    InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.metrics import (
