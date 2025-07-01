@@ -512,14 +512,17 @@ class URLLibIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         url = "http://username:password@mock/status/200"
 
         with self.assertRaises(Exception):
             self.perform_request(url)
 
         span = self.assert_span()
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(
+            span.attributes[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200",
+        )
 
     def test_hooks(self):
         def request_hook(span, request_obj):
