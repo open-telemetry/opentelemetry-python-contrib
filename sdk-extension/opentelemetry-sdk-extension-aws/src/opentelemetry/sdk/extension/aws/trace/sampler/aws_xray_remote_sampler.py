@@ -31,7 +31,6 @@ from opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client imp
     DEFAULT_SAMPLING_PROXY_ENDPOINT,
     _AwsXRaySamplingClient,
 )
-from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import (
     Decision,
@@ -137,8 +136,6 @@ class _InternalAwsXRayRemoteSampler(Sampler):
             )
             polling_interval = DEFAULT_RULES_POLLING_INTERVAL_SECONDS
 
-        self.__client_id = self.__generate_client_id()  # pylint: disable=W0238
-        self._clock = _Clock()
         self.__xray_client = _AwsXRaySamplingClient(
             endpoint, log_level=log_level
         )
@@ -201,10 +198,3 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         )
         self._rules_timer.daemon = True
         self._rules_timer.start()
-
-    def __generate_client_id(self) -> str:
-        hex_chars = "0123456789abcdef"
-        client_id_array: list[str] = []
-        for _ in range(0, 24):
-            client_id_array.append(random.choice(hex_chars))
-        return "".join(client_id_array)

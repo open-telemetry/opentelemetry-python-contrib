@@ -104,10 +104,6 @@ class TestAwsXRayRemoteSampler(TestCase):
         self.assertIsNotNone(
             self.rs._root._root._InternalAwsXRayRemoteSampler__resource
         )
-        self.assertTrue(
-            len(self.rs._root._root._InternalAwsXRayRemoteSampler__client_id),
-            24,
-        )
 
     @patch(
         "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
@@ -198,7 +194,7 @@ class TestAwsXRayRemoteSampler(TestCase):
         "opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client._AwsXRaySamplingClient.get_sampling_rules",
         return_value=None,
     )
-    def test_get_description(self, sdf) -> str:
+    def test_get_description(self, mocked_get_sampling_rules) -> str:
         self.rs: _AwsXRayRemoteSampler = _AwsXRayRemoteSampler(
             resource=Resource.create({"service.name": "dummy_name"})
         )
