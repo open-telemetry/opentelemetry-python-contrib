@@ -1,0 +1,127 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "My name is OpenTelemetry"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Hello OpenTelemetry!"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Address me by name and say this is a test"
+              }
+            ]
+          }
+        ],
+        "systemInstruction": {
+          "role": "user",
+          "parts": [
+            {
+              "text": "You are a clever language model"
+            }
+          ]
+        }
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '548'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:streamGenerateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        [
+          {
+            "candidates": [
+              {
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Open"
+                    }
+                  ]
+                }
+              }
+            ],
+            "usageMetadata": {},
+            "modelVersion": "gemini-1.5-flash-002",
+            "createTime": "2025-03-05T04:55:54.806747Z",
+            "responseId": "WtnHZ9ueMeefmecP7Leq8Qw"
+          },
+          {
+            "candidates": [
+              {
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Telemetry, this is a test.\n"
+                    }
+                  ]
+                },
+                "finishReason": 1
+              }
+            ],
+            "usageMetadata": {
+              "promptTokenCount": 25,
+              "candidatesTokenCount": 9,
+              "totalTokenCount": 34,
+              "promptTokensDetails": [
+                {
+                  "modality": 1,
+                  "tokenCount": 25
+                }
+              ],
+              "candidatesTokensDetails": [
+                {
+                  "modality": 1,
+                  "tokenCount": 9
+                }
+              ]
+            },
+            "modelVersion": "gemini-1.5-flash-002",
+            "createTime": "2025-03-05T04:55:54.806747Z",
+            "responseId": "WtnHZ9ueMeefmecP7Leq8Qw"
+          }
+        ]
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '995'
+    status:
+      code: 200
+      message: OK
+version: 1
