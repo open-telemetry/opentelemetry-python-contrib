@@ -136,8 +136,7 @@ class CommandTracer(monitoring.CommandListener):
         if not self.is_enabled or not is_instrumentation_enabled():
             return
         command_name = event.command_name
-        span_name = f"{event.database_name}.{command_name}"
-        statement = self._get_statement_by_command_name(command_name, event)
+        span_name = _get_span_name(event)
         collection = event.command.get(event.command_name)
 
         try:
@@ -147,7 +146,12 @@ class CommandTracer(monitoring.CommandListener):
                     SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
                 )
                 span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                span.set_attribute(SpanAttributes.DB_OPERATION, command_name)
+                if self.capture_statement:
+                    span.set_attribute(
+                        SpanAttributes.DB_STATEMENT,
+                        _get_statement(event),
+                    )
                 if collection:
                     span.set_attribute(
                         SpanAttributes.DB_MONGODB_COLLECTION, collection
@@ -210,16 +214,21 @@ class CommandTracer(monitoring.CommandListener):
     def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(
-        self, command_name: str, event: CommandEvent
-    ) -> str:
-        statement = command_name
-        command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
-        command = event.command.get(command_attribute)
-        if command and self.capture_statement:
-            statement += " " + str(command)
-        return statement
 
+def _get_span_name(event: CommandEvent) -> str:
+    """Get the span name for a given pymongo event."""
+    command_name = event.command_name
+    collection = event.command.get(command_name)
+    if collection:
+        return f"{event.database_name}.{collection}.{command_name}"
+    return f"{event.database_name}.{command_name}"
+
+def _get_statement(event: CommandEvent) -> str:
+    """Get the statement for a given pymongo event."""
+    command_name = event.command_name
+    command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
+    command = event.command.get(command_attribute)
+    return f"{command}"
 
 def _get_span_dict_key(
     event: CommandEvent,
