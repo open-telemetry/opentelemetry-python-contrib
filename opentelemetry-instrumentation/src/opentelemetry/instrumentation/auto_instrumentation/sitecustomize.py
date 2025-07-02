@@ -15,3 +15,4 @@
 from opentelemetry.instrumentation.auto_instrumentation import initialize
 
 initialize()
+print("OpenTelemetry auto-instrumentation initialized.")
