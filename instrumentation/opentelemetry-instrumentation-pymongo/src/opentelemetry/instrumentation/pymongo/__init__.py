@@ -223,12 +223,14 @@ def _get_span_name(event: CommandEvent) -> str:
         return f"{event.database_name}.{collection}.{command_name}"
     return f"{event.database_name}.{command_name}"
 
+
 def _get_statement(event: CommandEvent) -> str:
     """Get the statement for a given pymongo event."""
     command_name = event.command_name
     command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
     command = event.command.get(command_attribute)
     return f"{command}"
+
 
 def _get_span_dict_key(
     event: CommandEvent,
