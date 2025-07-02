@@ -273,11 +273,13 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    ExcludeList,
     SanitizeValue,
     _parse_url_query,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    parse_excluded_urls,
     redact_url,
     sanitize_method,
 )
@@ -556,7 +558,7 @@ class OpenTelemetryMiddleware:
     def __init__(
         self,
         app,
-        excluded_urls=None,
+        excluded_urls: ExcludeList | str | None = None,
         default_span_details=None,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
@@ -638,6 +640,8 @@ class OpenTelemetryMiddleware:
         self.active_requests_counter = create_http_server_active_requests(
             self.meter
         )
+        if isinstance(excluded_urls, str):
+            excluded_urls = parse_excluded_urls(excluded_urls)
         self.excluded_urls = excluded_urls
         self.default_span_details = (
             default_span_details or get_default_span_details
