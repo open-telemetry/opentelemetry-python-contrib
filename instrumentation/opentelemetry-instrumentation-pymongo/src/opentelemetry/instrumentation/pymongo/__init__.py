@@ -148,10 +148,12 @@ class CommandTracer(monitoring.CommandListener):
                 span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
                 span.set_attribute(SpanAttributes.DB_OPERATION, command_name)
                 if self.capture_statement:
-                    span.set_attribute(
-                        SpanAttributes.DB_STATEMENT,
-                        _get_statement(event),
-                    )
+                    db_statement = _get_statement(event)
+                    if db_statement is not None:
+                        span.set_attribute(
+                            SpanAttributes.DB_STATEMENT,
+                            _get_statement(event),
+                        )
                 if collection and isinstance(collection, str):
                     span.set_attribute(
                         SpanAttributes.DB_MONGODB_COLLECTION, collection
@@ -224,12 +226,14 @@ def _get_span_name(event: CommandEvent) -> str:
     return f"{event.database_name}.{command_name}"
 
 
-def _get_statement(event: CommandEvent) -> str:
+def _get_statement(event: CommandEvent) -> str | None:
     """Get the statement for a given pymongo event."""
     command_name = event.command_name
     command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
     command = event.command.get(command_attribute)
-    return f"{command}"
+    if command is not None:
+        return f"{command}"
+    return None
 
 
 def _get_span_dict_key(
