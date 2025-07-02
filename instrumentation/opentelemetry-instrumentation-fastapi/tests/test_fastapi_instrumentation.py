@@ -40,7 +40,6 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
 )
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
-    DependencyConflictError,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -1116,7 +1115,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         #     dependency_conflict
         # )
         # TODO: return conflict instead of raising
-        mock_dep.return_value = DependencyConflictError(dependency_conflict)
+        mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
         self.assertEqual(
@@ -1151,7 +1150,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         # mock_distro.load_instrumentor.side_effect = DependencyConflictError(
         #     dependency_conflict
         # )
-        mock_dep.return_value = DependencyConflictError(dependency_conflict)
+        mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
         self.assertEqual(

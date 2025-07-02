@@ -104,7 +104,7 @@ def _load_instrumentors(distro):
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                print("conflict found %s: %s" % (entry_point.name, conflict))
+                # print("conflict found %s: %s" % (entry_point.name, conflict))
                 _logger.debug(
                     "Skipping instrumentation %s: %s",
                     entry_point.name,
@@ -115,7 +115,7 @@ def _load_instrumentors(distro):
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
-            print("Instrumented %s" % entry_point.name)
+            # print("Instrumented %s" % entry_point.name)
         # except DependencyConflictError as exc:
         #     print(
         #         "Skipping instrumentation %s: %s" % (
@@ -147,15 +147,15 @@ def _load_instrumentors(distro):
             # environment regarding python version, libc, etc... In this case it's better
             # to skip the single instrumentation rather than failing to load everything
             # so treat differently ImportError than the rest of exceptions
-            print(
-                "Skipping instrumentation %s: ImportError" % entry_point.name
-            )
+            # print(
+            #     "Skipping instrumentation %s: ImportError" % entry_point.name
+            # )
             _logger.exception(
                 "Importing of %s failed, skipping it", entry_point.name
             )
             continue
         except Exception as exc:  # pylint: disable=broad-except
-            print("Skipping instrumentation %s: %s" % (entry_point.name, exc))
+            # print("Skipping instrumentation %s: %s" % (entry_point.name, exc))
             _logger.exception("Instrumenting of %s failed", entry_point.name)
             raise exc
 
