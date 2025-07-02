@@ -62,7 +62,8 @@ class TestPymongo(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
-        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
+        self.assertEqual(span.attributes[SpanAttributes.DB_OPERATION], "find")
+        self.assertNotIn(SpanAttributes.DB_STATEMENT, span.attributes)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
@@ -210,7 +211,10 @@ class TestPymongo(TestBase):
 
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT],
-            "getMore test_collection",
+            "test_collection",
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_OPERATION], "getMore"
         )
 
     def test_capture_statement_aggregate(self):
@@ -232,9 +236,12 @@ class TestPymongo(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        expected_statement = f"aggregate {pipeline}"
+        expected_statement = f"{pipeline}"
         self.assertEqual(
             span.attributes[SpanAttributes.DB_STATEMENT], expected_statement
+        )
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_OPERATION], "aggregate"
         )
 
     def test_capture_statement_disabled_getmore(self):
@@ -253,8 +260,10 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "getMore"
+            span.attributes[SpanAttributes.DB_OPERATION], "getMore"
         )
+
+        self.assertNotIn(SpanAttributes.DB_STATEMENT, span.attributes)
 
     def test_capture_statement_disabled_aggregate(self):
         pipeline = [{"$match": {"status": "active"}}]
@@ -273,8 +282,37 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "aggregate"
+            span.attributes[SpanAttributes.DB_OPERATION], "aggregate"
         )
+
+        self.assertNotIn(SpanAttributes.DB_STATEMENT, span.attributes)
+
+    def test_endsessions_command_with_dict_list_collection(self):
+        # Test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1918
+        # endSessions command has a list of dictionaries as collection value
+        command_attrs = {
+            "command_name": "endSessions",
+            "endSessions": [
+                {"id": {"id": "session1"}},
+                {"id": {"id": "session2"}},
+            ],
+        }
+        command_tracer = CommandTracer(self.tracer)
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Should not have DB_MONGODB_COLLECTION attribute since collection is not a string
+        self.assertNotIn(SpanAttributes.DB_MONGODB_COLLECTION, span.attributes)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_OPERATION], "endSessions"
+        )
+        # Span name should not include collection name
+        self.assertEqual(span.name, "database_name.endSessions")
 
 
 class MockCommand:
