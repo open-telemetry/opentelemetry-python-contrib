@@ -126,7 +126,7 @@ def get_dist_dependency_conflicts(
 def get_dependency_conflicts(
     deps: Collection[
         str | Requirement
-    ],  # Depedencies all of which are required
+    ],  # Dependenciesall of which are required
     deps_either: Collection[
         str | Requirement
     ] = [],  # Dependencies any of which are required
@@ -192,7 +192,7 @@ def get_dependency_conflicts(
 
             if req.specifier.contains(dist_version):
                 is_dependency_conflict = False
-                # Since only one of the instrumentation_either dependencies is required, there is no depdendency conflict.
+                # Since only one of the instrumentation_either dependencies is required, there is no dependency conflict.
                 break
             else:
                 required_either.append(str(dep))

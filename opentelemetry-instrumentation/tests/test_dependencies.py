@@ -132,8 +132,7 @@ class TestDependencyConflicts(TestBase):
                 raise PackageNotFoundError("foo not found")
             elif package_name == "bar":
                 return "1.0.0"
-            else:
-                raise PackageNotFoundError(f"{package_name} not found")
+            raise PackageNotFoundError(f"{package_name} not found")
 
         version_mock.side_effect = version_side_effect
         conflict = get_dist_dependency_conflicts(dist)
@@ -195,8 +194,7 @@ class TestDependencyConflicts(TestBase):
                 raise PackageNotFoundError("bar not found")
             elif package_name == "baz":
                 return "3.7.0"
-            else:
-                raise PackageNotFoundError(f"{package_name} not found")
+            raise PackageNotFoundError(f"{package_name} not found")
 
         version_mock.side_effect = version_side_effect
         conflict = get_dist_dependency_conflicts(dist)
@@ -232,8 +230,7 @@ class TestDependencyConflicts(TestBase):
                 raise PackageNotFoundError("bar not found")
             elif package_name == "baz":
                 return "3.7.0"
-            else:
-                raise PackageNotFoundError(f"{package_name} not found")
+            raise PackageNotFoundError(f"{package_name} not found")
 
         version_mock.side_effect = version_side_effect
         conflict = get_dist_dependency_conflicts(dist)
@@ -274,8 +271,7 @@ class TestDependencyConflicts(TestBase):
                 raise PackageNotFoundError("bar not found")
             elif package_name == "baz":
                 raise PackageNotFoundError("baz not found")
-            else:
-                raise PackageNotFoundError(f"{package_name} not found")
+            raise PackageNotFoundError(f"{package_name} not found")
 
         version_mock.side_effect = version_side_effect
         conflict = get_dist_dependency_conflicts(dist)
