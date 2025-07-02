@@ -13,10 +13,15 @@ on:
         - opentelemetry-instrumentation-google-genai
         description: 'Package to be released'
         required: true
+permissions:
+  contents: read
 run-name: "[Package][${{ inputs.package }}] Prepare patch release"
 
 jobs:
   prepare-patch-release:
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
