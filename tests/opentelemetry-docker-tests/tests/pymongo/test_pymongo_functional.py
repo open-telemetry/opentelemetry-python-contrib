@@ -45,7 +45,9 @@ class TestFunctionalPymongo(TestBase):
         self.instrumentor.uninstrument()
         super().tearDown()
 
-    def validate_spans(self, expected_db_statement):
+    def validate_spans(
+        self, expected_db_operation, expected_db_statement=None
+    ):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         for span in spans:
@@ -74,7 +76,11 @@ class TestFunctionalPymongo(TestBase):
             MONGODB_COLLECTION_NAME,
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
+            pymongo_span.attributes[SpanAttributes.DB_OPERATION],
+            expected_db_operation,
+        )
+        self.assertEqual(
+            pymongo_span.attributes.get(SpanAttributes.DB_STATEMENT, None),
             expected_db_statement,
         )
 
@@ -86,11 +92,12 @@ class TestFunctionalPymongo(TestBase):
             )
             insert_result_id = insert_result.inserted_id
 
+        expected_db_operation = "insert"
         expected_db_statement = (
-            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': "
+            f"[{{'name': 'testName', 'value': 'testValue', '_id': "
             f"ObjectId('{insert_result_id}')}}]"
         )
-        self.validate_spans(expected_db_statement)
+        self.validate_spans(expected_db_operation, expected_db_statement)
 
     def test_update(self):
         """Should create a child span for update"""
@@ -99,29 +106,32 @@ class TestFunctionalPymongo(TestBase):
                 {"name": "testName"}, {"$set": {"value": "someOtherValue"}}
             )
 
+        expected_db_operation = "update"
         expected_db_statement = (
-            "update [SON([('q', {'name': 'testName'}), ('u', "
+            "[SON([('q', {'name': 'testName'}), ('u', "
             "{'$set': {'value': 'someOtherValue'}}), ('multi', False), ('upsert', False)])]"
         )
-        self.validate_spans(expected_db_statement)
+        self.validate_spans(expected_db_operation, expected_db_statement)
 
     def test_find(self):
         """Should create a child span for find"""
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.find_one({"name": "testName"})
 
-        expected_db_statement = "find {'name': 'testName'}"
-        self.validate_spans(expected_db_statement)
+        expected_db_operation = "find"
+        expected_db_statement = "{'name': 'testName'}"
+        self.validate_spans(expected_db_operation, expected_db_statement)
 
     def test_delete(self):
         """Should create a child span for delete"""
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.delete_one({"name": "testName"})
 
+        expected_db_operation = "delete"
         expected_db_statement = (
-            "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
+            "[SON([('q', {'name': 'testName'}), ('limit', 1)])]"
         )
-        self.validate_spans(expected_db_statement)
+        self.validate_spans(expected_db_operation, expected_db_statement)
 
     def test_find_without_capture_statement(self):
         """Should create a child span for find"""
@@ -130,8 +140,9 @@ class TestFunctionalPymongo(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.find_one({"name": "testName"})
 
-        expected_db_statement = "find"
-        self.validate_spans(expected_db_statement)
+        expected_db_operation = "find"
+        expected_db_statement = None
+        self.validate_spans(expected_db_operation, expected_db_statement)
 
     def test_uninstrument(self):
         # check that integration is working
