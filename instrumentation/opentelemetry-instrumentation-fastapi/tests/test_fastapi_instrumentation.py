@@ -1095,10 +1095,6 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_distro = Mock()
         mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
-        print(
-            "mock_distro.load_instrumentor.call_args_list: %s"
-            % mock_distro.load_instrumentor.call_args_list
-        )
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         (ep,) = mock_distro.load_instrumentor.call_args.args
         self.assertEqual(ep.name, "fastapi")
@@ -1131,7 +1127,6 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
                 dependency_conflict,
             ),
         )
-        # print("mock_distro.load_instrumentor.call_args_list: %s" % mock_distro.load_instrumentor.call_args_list)
         # self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         # (ep,) = mock_distro.load_instrumentor.call_args.args
         # self.assertEqual(ep.name, "fastapi")
@@ -1167,7 +1162,6 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
                 dependency_conflict,
             ),
         )
-        # print("mock_distro.load_instrumentor.call_args_list: %s" % mock_distro.load_instrumentor.call_args_list)
         # self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         # (ep,) = mock_distro.load_instrumentor.call_args.args
         # self.assertEqual(ep.name, "fastapi")

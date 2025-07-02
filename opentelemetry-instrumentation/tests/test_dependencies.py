@@ -130,7 +130,7 @@ class TestDependencyConflicts(TestBase):
         def version_side_effect(package_name):
             if package_name == "foo":
                 raise PackageNotFoundError("foo not found")
-            elif package_name == "bar":
+            if package_name == "bar":
                 return "1.0.0"
             raise PackageNotFoundError(f"{package_name} not found")
 
@@ -190,9 +190,9 @@ class TestDependencyConflicts(TestBase):
         def version_side_effect(package_name):
             if package_name == "foo":
                 return "1.2.0"
-            elif package_name == "bar":
+            if package_name == "bar":
                 raise PackageNotFoundError("bar not found")
-            elif package_name == "baz":
+            if package_name == "baz":
                 return "3.7.0"
             raise PackageNotFoundError(f"{package_name} not found")
 
@@ -226,9 +226,9 @@ class TestDependencyConflicts(TestBase):
         def version_side_effect(package_name):
             if package_name == "foo":
                 raise PackageNotFoundError("foo not found")
-            elif package_name == "bar":
+            if package_name == "bar":
                 raise PackageNotFoundError("bar not found")
-            elif package_name == "baz":
+            if package_name == "baz":
                 return "3.7.0"
             raise PackageNotFoundError(f"{package_name} not found")
 
@@ -267,9 +267,9 @@ class TestDependencyConflicts(TestBase):
         def version_side_effect(package_name):
             if package_name == "foo":
                 return "1.7.0"
-            elif package_name == "bar":
+            if package_name == "bar":
                 raise PackageNotFoundError("bar not found")
-            elif package_name == "baz":
+            if package_name == "baz":
                 raise PackageNotFoundError("baz not found")
             raise PackageNotFoundError(f"{package_name} not found")
 
