@@ -287,6 +287,33 @@ class TestPymongo(TestBase):
 
         self.assertNotIn(SpanAttributes.DB_STATEMENT, span.attributes)
 
+    def test_endsessions_command_with_dict_list_collection(self):
+        # Test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1918
+        # endSessions command has a list of dictionaries as collection value
+        command_attrs = {
+            "command_name": "endSessions",
+            "endSessions": [
+                {"id": {"id": "session1"}},
+                {"id": {"id": "session2"}},
+            ],
+        }
+        command_tracer = CommandTracer(self.tracer)
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Should not have DB_MONGODB_COLLECTION attribute since collection is not a string
+        self.assertNotIn(SpanAttributes.DB_MONGODB_COLLECTION, span.attributes)
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_OPERATION], "endSessions"
+        )
+        # Span name should not include collection name
+        self.assertEqual(span.name, "database_name.endSessions")
+
 
 class MockCommand:
     def __init__(self, command_attrs):

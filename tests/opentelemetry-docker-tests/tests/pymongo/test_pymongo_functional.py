@@ -163,3 +163,44 @@ class TestFunctionalPymongo(TestBase):
         self._collection.find_one()
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
+
+    def test_session_end_no_error(self):
+        """Test that endSessions doesn't cause instrumentation errors (issue #1918)"""
+        client = MongoClient(
+            MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
+        )
+
+        with self._tracer.start_as_current_span("rootSpan"):
+            session = client.start_session()
+            db = client[MONGODB_DB_NAME]
+            collection = db[MONGODB_COLLECTION_NAME]
+            # Do a simple operation within the session
+            collection.find_one({"test": "123"})
+            # End the session - this should not cause an error
+            session.end_session()
+
+        # Verify spans were created without errors
+        spans = self.memory_exporter.get_finished_spans()
+        # Should have at least the find and endSessions operations
+        self.assertGreaterEqual(len(spans), 2)
+
+        session_end_spans = [
+            s
+            for s in spans
+            if s.attributes.get(SpanAttributes.DB_OPERATION) == "endSessions"
+        ]
+        if session_end_spans:
+            span = session_end_spans[0]
+            # Should not have DB_MONGODB_COLLECTION attribute since endSessions collection is not a string
+            self.assertNotIn(
+                SpanAttributes.DB_MONGODB_COLLECTION, span.attributes
+            )
+            # Should have other expected attributes
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_OPERATION], "endSessions"
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_NAME], MONGODB_DB_NAME
+            )
+
+        client.close()

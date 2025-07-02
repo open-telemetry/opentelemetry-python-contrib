@@ -152,7 +152,7 @@ class CommandTracer(monitoring.CommandListener):
                         SpanAttributes.DB_STATEMENT,
                         _get_statement(event),
                     )
-                if collection:
+                if collection and isinstance(collection, str):
                     span.set_attribute(
                         SpanAttributes.DB_MONGODB_COLLECTION, collection
                     )
@@ -219,7 +219,7 @@ def _get_span_name(event: CommandEvent) -> str:
     """Get the span name for a given pymongo event."""
     command_name = event.command_name
     collection = event.command.get(command_name)
-    if collection:
+    if collection and isinstance(collection, str):
         return f"{event.database_name}.{collection}.{command_name}"
     return f"{event.database_name}.{command_name}"
 
