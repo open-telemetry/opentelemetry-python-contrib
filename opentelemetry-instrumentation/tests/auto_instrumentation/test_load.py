@@ -203,6 +203,12 @@ class TestLoad(TestCase):
         # Confirm method raises exception if it fails to load a distro.
         self.assertRaises(Exception, _load._load_distro)
 
+    @staticmethod
+    def _instrumentation_failed_to_load_call(entry_point, dependency_conflict):
+        return call(
+            "Skipping instrumentation %s: %s", entry_point, dependency_conflict
+        )
+
     @patch.dict(
         "os.environ",
         {OTEL_PYTHON_DISABLED_INSTRUMENTATIONS: " instr1 , instr3 "},
@@ -328,8 +334,7 @@ class TestLoad(TestCase):
                     "Instrumentation skipped for library %s",
                     ep_mock3.name,
                 ),
-                call(
-                    "Skipping instrumentation %s: %s",
+                self._instrumentation_failed_to_load_call(
                     ep_mock4.name,
                     dependency_conflict,
                 ),
