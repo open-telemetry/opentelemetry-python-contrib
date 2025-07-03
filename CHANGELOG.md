@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3567))
 - `opentelemetry-resource-detector-containerid`: make it more quiet on platforms without cgroups
   ([#3579](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3579))
+- `opentelemetry-instrumentation`: Fix dependency conflict detection when instrumented packages are not installed by moving check back to before instrumentors are loaded. Add "instruments_either" feature for instrumentations that target multiple packages.
+  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 
 ### Added
 
