@@ -134,6 +134,13 @@ def get_dependency_conflicts(
         # TODO: dangerous
     ] = None,  # Dependencies any of which are required
 ) -> DependencyConflict | None:
+    # instruments_conflict = get_dependency_conflicts()
+    # if instruments_conflict:
+    #     return instruments_conflict
+
+    # instruments_either_conflict = get_dependency_conflicts_either()
+    # return instruments_either_conflict
+
     for dep in deps:
         # TODO: what is this?
         if isinstance(dep, Requirement):
@@ -162,53 +169,62 @@ def get_dependency_conflicts(
             return DependencyConflict(dep, f"{req.name} {dist_version}")
 
     # TODO: add eval of deps_either
+    # If all the dependencies in "instruments" are present, check "instruments_either" for conflicts.
     if deps_either:
-        # TODO: change to using DependencyConflict
-        is_dependency_conflict = True
-        required_either: Collection[str] = []
-        found_either: Collection[str] = []
-        for dep in deps_either:
-            # TODO: what is this?
-            if isinstance(dep, Requirement):
-                print("REQUIREMENT")
-                req = dep
-            else:
-                try:
-                    print("NOT REQUIREMENT")
-                    req = Requirement(dep)
-                except InvalidRequirement as exc:
-                    logger.warning(
-                        'error parsing dependency, reporting as a conflict: "%s" - %s',
-                        dep,
-                        exc,
-                    )
-                    return DependencyConflict(dep)
+        return _get_dependency_conflicts_either(deps_either)
+    return None
 
-            try:
-                dist_version = version(req.name)
-            except PackageNotFoundError:
-                # print(f"PackageNotFoundError EITHER: {req.name}")
-                # TODO: anything here?
-                # return DependencyConflict(dep)
-                required_either.append(str(dep))
-                continue
 
-            if req.specifier.contains(dist_version):
-                # Since only one of the instrumentation_either dependencies is required, there is no dependency conflict.
-                is_dependency_conflict = False
-                break
-            # If the version does not match, add it to the list of unfulfilled requirement options.
-            required_either.append(str(dep))
-            found_either.append(f"{req.name} {dist_version}")
-
-        if is_dependency_conflict:
-            # return DependencyConflict(dep, f"{req.name} {dist_version}")
-            # print (f"required_either: {required_either}")
-            # print (f"found_either: {found_either}")
-            return DependencyConflict(
-                required_either=required_either,
-                found_either=found_either,
-            )
+# This is a helper functions designed to ease reading and meet linting requirements.
+def _get_dependency_conflicts_either(
+    deps_either: Collection[str | Requirement],
+) -> DependencyConflict | None:
+    if not deps_either:
         return None
+    # TODO: change to using DependencyConflict
+    is_dependency_conflict = True
+    required_either: Collection[str] = []
+    found_either: Collection[str] = []
+    for dep in deps_either:
+        # TODO: what is this?
+        if isinstance(dep, Requirement):
+            print("REQUIREMENT")
+            req = dep
+        else:
+            try:
+                print("NOT REQUIREMENT")
+                req = Requirement(dep)
+            except InvalidRequirement as exc:
+                logger.warning(
+                    'error parsing dependency, reporting as a conflict: "%s" - %s',
+                    dep,
+                    exc,
+                )
+                return DependencyConflict(dep)
 
+        try:
+            dist_version = version(req.name)
+        except PackageNotFoundError:
+            # print(f"PackageNotFoundError EITHER: {req.name}")
+            # TODO: anything here?
+            # return DependencyConflict(dep)
+            required_either.append(str(dep))
+            continue
+
+        if req.specifier.contains(dist_version):
+            # Since only one of the instrumentation_either dependencies is required, there is no dependency conflict.
+            is_dependency_conflict = False
+            break
+        # If the version does not match, add it to the list of unfulfilled requirement options.
+        required_either.append(str(dep))
+        found_either.append(f"{req.name} {dist_version}")
+
+    if is_dependency_conflict:
+        # return DependencyConflict(dep, f"{req.name} {dist_version}")
+        # print (f"required_either: {required_either}")
+        # print (f"found_either: {found_either}")
+        return DependencyConflict(
+            required_either=required_either,
+            found_either=found_either,
+        )
     return None
