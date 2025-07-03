@@ -42,8 +42,10 @@ class DependencyConflict:
         self,
         required: str | None = None,
         found: str | None = None,
-        required_either: Collection[str] = [],
-        found_either: Collection[str] = [],
+        # TODO: dangerous
+        # TODO: dangerous
+        required_either: Collection[str] = None,
+        found_either: Collection[str] = None,
     ):
         self.required = required
         self.found = found
@@ -129,7 +131,8 @@ def get_dependency_conflicts(
     ],  # Dependenciesall of which are required
     deps_either: Collection[
         str | Requirement
-    ] = [],  # Dependencies any of which are required
+        # TODO: dangerous
+    ] = None,  # Dependencies any of which are required
 ) -> DependencyConflict | None:
     for dep in deps:
         # TODO: what is this?
@@ -191,12 +194,12 @@ def get_dependency_conflicts(
                 continue
 
             if req.specifier.contains(dist_version):
-                is_dependency_conflict = False
                 # Since only one of the instrumentation_either dependencies is required, there is no dependency conflict.
+                is_dependency_conflict = False
                 break
-            else:
-                required_either.append(str(dep))
-                found_either.append(f"{req.name} {dist_version}")
+            # If the version does not match, add it to the list of unfulfilled requirement options.
+            required_either.append(str(dep))
+            found_either.append(f"{req.name} {dist_version}")
 
         if is_dependency_conflict:
             # return DependencyConflict(dep, f"{req.name} {dist_version}")
