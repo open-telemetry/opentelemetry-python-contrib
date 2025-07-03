@@ -17,6 +17,7 @@ from logging import getLogger
 from os import environ
 
 from opentelemetry.instrumentation.dependencies import (
+    DependencyConflictError,
     get_dist_dependency_conflicts,
 )
 from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
@@ -93,7 +94,6 @@ def _load_instrumentors(distro):
         entry_point.load()()
 
     for entry_point in entry_points(group="opentelemetry_instrumentor"):
-        print(entry_point.name)
         if entry_point.name in package_to_exclude:
             _logger.debug(
                 "Instrumentation skipped for library %s", entry_point.name
@@ -104,7 +104,6 @@ def _load_instrumentors(distro):
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                # print("conflict found %s: %s" % (entry_point.name, conflict))
                 _logger.debug(
                     "Skipping instrumentation %s: %s",
                     entry_point.name,
@@ -115,31 +114,22 @@ def _load_instrumentors(distro):
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
-            # print("Instrumented %s" % entry_point.name)
-        # except DependencyConflictError as exc:
-        #     print(
-        #         "Skipping instrumentation %s: %s" % (
-        #             entry_point.name,
-        #             exc.conflict,
-        #         )
-        #     )
-        #     _logger.debug(
-        #         "Skipping instrumentation %s: %s",
-        #         entry_point.name,
-        #         exc.conflict,
-        #     )
-        #     continue
-        # except ModuleNotFoundError as exc:
-        #     # ModuleNotFoundError is raised when the library is not installed
-        #     # and the instrumentation is not required to be loaded.
-        #     # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
-        #     print(
-        #         "Skipping instrumentation %s: %s" % (entry_point.name, exc.msg)
-        #     )
-        #     _logger.debug(
-        #         "Skipping instrumentation %s: %s", entry_point.name, exc.msg
-        #     )
-        #     continue
+        except DependencyConflictError as exc:
+            # DependencyConflicts will generally arise without exception from the get_dist_dependency_conflicts call before instrumentation is attempted. Keeping this exception in case of custom distro and instrumentor behavior. See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details.
+            _logger.debug(
+                "Skipping instrumentation %s: %s",
+                entry_point.name,
+                exc.conflict,
+            )
+            continue
+        except ModuleNotFoundError as exc:
+            # ModuleNotFoundError is raised when the library is not installed
+            # and the instrumentation is not required to be loaded.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
+            _logger.debug(
+                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
+            )
+            continue
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
             # instrumentors (usually requiring binary extensions) may fail to load
@@ -147,9 +137,6 @@ def _load_instrumentors(distro):
             # environment regarding python version, libc, etc... In this case it's better
             # to skip the single instrumentation rather than failing to load everything
             # so treat differently ImportError than the rest of exceptions
-            # print(
-            #     "Skipping instrumentation %s: ImportError" % entry_point.name
-            # )
             _logger.exception(
                 "Importing of %s failed, skipping it", entry_point.name
             )
