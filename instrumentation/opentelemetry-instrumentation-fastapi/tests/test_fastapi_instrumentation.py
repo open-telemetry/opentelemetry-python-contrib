@@ -1113,7 +1113,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.assert_has_calls(
+        mock_logger.debug.assert_has_calls(
             [self._instrumentation_failed_to_load_call(dependency_conflict)]
         )
 
@@ -1129,7 +1129,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
         mock_distro.load_instrumentor.assert_not_called()
-        mock_logger.assert_has_calls(
+        mock_logger.debug.assert_has_calls(
             [self._instrumentation_failed_to_load_call(dependency_conflict)]
         )
 
