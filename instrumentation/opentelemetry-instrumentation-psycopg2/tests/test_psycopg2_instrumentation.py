@@ -146,7 +146,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
             return call("Instrumented %s", "psycopg2")
 
         mock_distro = Mock()
-        # TODO: This test previously did nothing. By mocking the distro, it blocks any possibility of a dependency conflict. Mocking no dependency conflict for no. But, in the future, update this package toml with the instruemnts_either field.
+        # TODO: This test previously did nothing. By mocking the distro, it blocked any possibility of a dependency conflict. Mocking no dependency conflict for no. But, in the future, update this package toml with the instruemnts_either field. See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
         mock_dep.return_value = None
         mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
