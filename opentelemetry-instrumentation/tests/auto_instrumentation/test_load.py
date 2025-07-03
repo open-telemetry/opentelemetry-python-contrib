@@ -309,12 +309,14 @@ class TestLoad(TestCase):
         ep_mock4 = Mock()
         ep_mock4.name = "instr4"  # dependency conflict
 
+        dependency_conflict = DependencyConflict("1.2.3", None)
+
         distro_mock = Mock()
 
         iter_mock.return_value = (ep_mock1, ep_mock2, ep_mock3, ep_mock4)
         print((ep_mock1, ep_mock2, ep_mock3, ep_mock4))
         # If a dependency conflict is raised, that instrumentation should not be loaded, but others still should.
-        dependency_conflict = DependencyConflict("1.2.3", None)
+        # In this case, ep_mock4 will not be loaded and ep_mock2 will succeed. (ep_mock1 and ep_mock3 are disabled)
         mock_dep.side_effect = [None, dependency_conflict]
         _load._load_instrumentors(distro_mock)
         distro_mock.load_instrumentor.assert_has_calls(
