@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-resource-detector-containerid`: make it more quiet on platforms without cgroups
   ([#3579](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3579))
 
+### Added
+
+- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
+  ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
+- `opentelemetry-instrumentation-pymongo` `aggregate` and `getMore` capture statements support
+  ([#3601](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3601))
+- `opentelemetry-instrumentation-fastapi` Utilize instruments_either functionality. TODO MOVE TO NEW VERSION WHEN OUT
+  ([#3612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3612))
+- `opentelemetry-instrumentation-psycopg2` Utilize instruments_either functionality.
+  ([#3612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3612))
+- `opentelemetry-instrumentation-kafka-python` Utilize instruments_either functionality.
+  ([#3612](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3612))
+
 ## Version 1.34.0/0.55b0 (2025-06-04)
 
 ### Fixed
