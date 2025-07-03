@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
   ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
+- `opentelemetry-instrumentation-pymongo` `aggregate` and `getMore` capture statements support
+  ([#3601](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3601))
 - `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 
