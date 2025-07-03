@@ -33,12 +33,11 @@ components:
     - dorkolog
 
   propagator/opentelemetry-propagator-aws-xray:
-    - NathanielRN
+    - jj22ee
 
   sdk-extension/opentelemetry-sdk-extension-aws:
-    - NathanielRN
-    - Kausik-A
     - srprash
+    - jj22ee
 
   instrumentation/opentelemetry-instrumentation-tortoiseorm:
     - tonybaloney
