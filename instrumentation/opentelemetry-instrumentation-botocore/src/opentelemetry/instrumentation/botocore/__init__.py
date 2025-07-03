@@ -262,26 +262,17 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
         return wrapped(*args, **kwargs)
 
+    # pylint: disable=too-many-locals
     # pylint: disable=too-many-branches
     def _patched_api_call(self, original_func, instance, args, kwargs):
         if not is_instrumentation_enabled():
             return original_func(*args, **kwargs)
 
-        call_context = _determine_call_context(instance, args)
-        if call_context is None:
+        span_data = self._prepare_span_data(instance, args)
+        if span_data is None:
             return original_func(*args, **kwargs)
 
-        extension = _find_extension(call_context)
-        if not extension.should_trace_service_call():
-            return original_func(*args, **kwargs)
-
-        attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
-            CLOUD_REGION: call_context.region,
-            **get_server_attributes(call_context.endpoint_url),
-        }
+        call_context, extension, attributes = span_data
 
         _safe_invoke(extension.extract_attributes, attributes)
         end_span_on_exit = extension.should_end_span_on_exit()
@@ -346,6 +337,25 @@ class BotocoreInstrumentor(BaseInstrumentor):
             span, call_context.service, call_context.operation, result
         )
 
+    @staticmethod
+    def _prepare_span_data(instance, args):
+        call_context = _determine_call_context(instance, args)
+        if call_context is None:
+            return None
+
+        extension = _find_extension(call_context)
+        if not extension.should_trace_service_call():
+            return None
+
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: "aws-api",
+            SpanAttributes.RPC_SERVICE: call_context.service_id,
+            SpanAttributes.RPC_METHOD: call_context.operation,
+            CLOUD_REGION: call_context.region,
+            **get_server_attributes(call_context.endpoint_url),
+        }
+
+        return call_context, extension, attributes
 
 def _apply_response_attributes(span: Span, result):
     if result is None or not span.is_recording():
