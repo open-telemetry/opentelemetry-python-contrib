@@ -386,13 +386,10 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
-    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_raises_exception(
-        self, iter_mock, mock_logger, mock_dep
-    ):
+    def test_load_instrumentors_raises_exception(self, iter_mock, mock_dep):
         ep_mock1 = Mock(name="instr1")
         ep_mock2 = Mock(name="instr2")
 

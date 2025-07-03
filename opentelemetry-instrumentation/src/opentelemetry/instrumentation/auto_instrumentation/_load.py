@@ -115,7 +115,10 @@ def _load_instrumentors(distro):
             distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
         except DependencyConflictError as exc:
-            # DependencyConflicts will generally arise without exception from the get_dist_dependency_conflicts call before instrumentation is attempted. Keeping this exception in case of custom distro and instrumentor behavior. See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details.
+            # Dependency conflicts are generally caught from get_dist_dependency_conflicts
+            # returning a DependencyConflict. Keeping this error handling in case custom
+            # distro and instrumentor behavior raises a DependencyConflictError later.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
             _logger.debug(
                 "Skipping instrumentation %s: %s",
                 entry_point.name,
@@ -142,7 +145,6 @@ def _load_instrumentors(distro):
             )
             continue
         except Exception as exc:  # pylint: disable=broad-except
-            # print("Skipping instrumentation %s: %s" % (entry_point.name, exc))
             _logger.exception("Instrumenting of %s failed", entry_point.name)
             raise exc
 

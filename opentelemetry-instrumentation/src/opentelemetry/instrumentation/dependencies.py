@@ -29,11 +29,27 @@ logger = getLogger(__name__)
 
 
 class DependencyConflict:
+    """Represents a dependency conflict in OpenTelemetry instrumentation.
+
+    This class is used to track conflicts between required dependencies and the
+    actual installed packages. It supports two scenarios:
+
+    1. Standard conflicts where all dependencies are required
+    2. Either/or conflicts where only one of a set of dependencies is required
+
+    Attributes:
+        required: The required dependency specification that conflicts with what's installed.
+        found: The actual dependency that was found installed (if any).
+        required_either: Collection of dependency specifications where any one would satisfy
+            the requirement (for either/or scenarios).
+        found_either: Collection of actual dependencies found for either/or scenarios.
+    """
+
     required: str | None = None
     found: str | None = None
     # The following fields are used when an instrumentation requires any of a set of dependencies rather than all.
-    required_either: Collection[str] = []
-    found_either: Collection[str] = []
+    required_either: Collection[str] = None
+    found_either: Collection[str] = None
 
     def __init__(
         self,
