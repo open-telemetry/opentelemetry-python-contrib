@@ -13,7 +13,7 @@ http_server_mock==1.7
 idna==3.7
 iniconfig==2.0.0
 itsdangerous==2.1.2
-Jinja2==3.1.4
+Jinja2==3.1.6
 MarkupSafe==2.1.5
 multidict==6.0.5
 packaging==24.0
@@ -24,7 +24,7 @@ requests==2.32.3
 tomli==2.0.1
 typing_extensions==4.12.2
 urllib3==2.2.2
-Werkzeug==3.0.3
+Werkzeug==3.0.6
 wrapt==1.16.0
 yarl==1.18.3
 zipp==3.19.2

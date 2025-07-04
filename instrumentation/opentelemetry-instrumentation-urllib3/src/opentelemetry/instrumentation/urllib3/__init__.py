@@ -47,22 +47,31 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from typing import Any
+
+    from urllib3.connectionpool import HTTPConnectionPool
+    from urllib3.response import HTTPResponse
+
+    from opentelemetry.instrumentation.urllib3 import RequestInfo, URLLib3Instrumentor
+    from opentelemetry.trace import Span
+
     def request_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
+        pool: HTTPConnectionPool,
         request_info: RequestInfo,
     ) -> Any:
-        ...
+        pass
 
     def response_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
-        response: urllib3.response.HTTPResponse,
+        pool: HTTPConnectionPool,
+        response: HTTPResponse,
     ) -> Any:
-        ...
+        pass
 
     URLLib3Instrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook
+        request_hook=request_hook,
+        response_hook=response_hook,
     )
 
 Exclude lists
@@ -94,11 +103,11 @@ import urllib3.connectionpool
 import wrapt
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -111,6 +120,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_scheme,
     _set_http_url,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib3.package import _instruments
@@ -258,6 +268,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
             # http.client.request.body.size histogram
             request_size_histogram_new = create_http_client_request_body_size(
@@ -309,7 +320,7 @@ def _instrument(
     response_hook: _ResponseHookT = None,
     url_filter: _UrlFilterT = None,
     excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
@@ -334,9 +345,12 @@ def _instrument(
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
-        with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
+            set_ip_on_next_http_connection(span),
+        ):
             if callable(request_hook):
                 request_hook(
                     span,
@@ -461,7 +475,7 @@ def _set_status_code_attribute(
     span: Span,
     status_code: int,
     metric_attributes: dict = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     status_code_str = str(status_code)
     try:
@@ -487,7 +501,7 @@ def _set_metric_attributes(
     instance: urllib3.connectionpool.HTTPConnectionPool,
     response: urllib3.response.HTTPResponse,
     method: str,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     _set_http_host_client(
         metric_attributes, instance.host, sem_conv_opt_in_mode
@@ -516,7 +530,7 @@ def _set_metric_attributes(
 
 def _filter_attributes_semconv(
     metric_attributes,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     duration_attrs_old = None
     duration_attrs_new = None
@@ -525,14 +539,14 @@ def _filter_attributes_semconv(
             metric_attributes,
             _client_duration_attrs_old,
             _client_duration_attrs_new,
-            _HTTPStabilityMode.DEFAULT,
+            _StabilityMode.DEFAULT,
         )
     if _report_new(sem_conv_opt_in_mode):
         duration_attrs_new = _filter_semconv_duration_attrs(
             metric_attributes,
             _client_duration_attrs_old,
             _client_duration_attrs_new,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
 
     return (duration_attrs_old, duration_attrs_new)
@@ -549,7 +563,7 @@ def _record_metrics(
     duration_s: float,
     request_size: typing.Optional[int],
     response_size: int,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     attrs_old, attrs_new = _filter_attributes_semconv(
         metric_attributes, sem_conv_opt_in_mode

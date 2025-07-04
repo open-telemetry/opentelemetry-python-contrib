@@ -14,7 +14,8 @@
 
 """
 SQLite instrumentation supporting `sqlite3`_, it can be enabled by
-using ``SQLite3Instrumentor``.
+using ``SQLite3Instrumentor``. At this time, cursor objects must
+be explicitly initialized as shown below to support tracing.
 
 .. _sqlite3: https://docs.python.org/3/library/sqlite3.html
 
@@ -26,14 +27,30 @@ Usage
     import sqlite3
     from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     SQLite3Instrumentor().instrument()
 
-    cnx = sqlite3.connect('example.db')
+    cnx = sqlite3.connect(':memory:')
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code:: python
+
+    import sqlite3
+    from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    conn = sqlite3.connect(":memory:")
+    instrumented_connection = SQLite3Instrumentor().instrument_connection(conn)
+    cursor = instrumented_connection.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.execute("SELECT * FROM test")
+    cursor.close()
+    instrumented_connection.close()
 
 API
 ---
@@ -102,9 +119,10 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 the current globally configured one is used.
 
         Returns:
-            An instrumented connection.
-        """
+            An instrumented SQLite connection that supports
+            telemetry for tracing database operations.
 
+        """
         return dbapi.instrument_connection(
             __name__,
             connection,

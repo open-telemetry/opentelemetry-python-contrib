@@ -9,9 +9,12 @@ on:
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
+        - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-google-genai
         description: 'Package to be released'
         required: true
 
+run-name: "[Package][${{ inputs.package }}] Prepare release"
 jobs:
   prereqs:
     runs-on: ubuntu-latest

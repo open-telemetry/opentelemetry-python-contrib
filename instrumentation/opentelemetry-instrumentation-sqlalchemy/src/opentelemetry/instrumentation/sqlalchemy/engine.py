@@ -23,7 +23,10 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
-from opentelemetry.instrumentation.utils import _get_opentelemetry_values
+from opentelemetry.instrumentation.utils import (
+    _get_opentelemetry_values,
+    is_instrumentation_enabled,
+)
 from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -43,13 +46,20 @@ def _normalize_vendor(vendor):
 
 
 def _wrap_create_async_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer,
+    connections_usage,
+    enable_commenter=False,
+    commenter_options=None,
+    enable_attribute_commenter=False,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -57,6 +67,7 @@ def _wrap_create_async_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            enable_attribute_commenter,
         )
         return engine
 
@@ -64,12 +75,19 @@ def _wrap_create_async_engine(
 
 
 def _wrap_create_engine(
-    tracer, connections_usage, enable_commenter=False, commenter_options=None
+    tracer,
+    connections_usage,
+    enable_commenter=False,
+    commenter_options=None,
+    enable_attribute_commenter=False,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -77,6 +95,7 @@ def _wrap_create_engine(
             connections_usage,
             enable_commenter,
             commenter_options,
+            enable_attribute_commenter,
         )
         return engine
 
@@ -86,6 +105,9 @@ def _wrap_create_engine(
 def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT
         ) as span:
@@ -110,12 +132,14 @@ class EngineTracer:
         connections_usage,
         enable_commenter=False,
         commenter_options=None,
+        enable_attribute_commenter=False,
     ):
         self.tracer = tracer
         self.connections_usage = connections_usage
         self.vendor = _normalize_vendor(engine.name)
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
+        self.enable_attribute_commenter = enable_attribute_commenter
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -132,6 +156,9 @@ class EngineTracer:
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
     def _add_idle_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -141,6 +168,9 @@ class EngineTracer:
         )
 
     def _add_used_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -218,9 +248,38 @@ class EngineTracer:
             return self.vendor
         return " ".join(parts)
 
+    def _get_commenter_data(self, conn) -> dict:
+        """Calculate sqlcomment contents from conn and configured options"""
+        commenter_data = {
+            "db_driver": conn.engine.driver,
+            # Driver/framework centric information.
+            "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+        }
+
+        if self.commenter_options.get("opentelemetry_values", True):
+            commenter_data.update(**_get_opentelemetry_values())
+
+        # Filter down to just the requested attributes.
+        commenter_data = {
+            k: v
+            for k, v in commenter_data.items()
+            if self.commenter_options.get(k, True)
+        }
+        return commenter_data
+
+    def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
+        """Uses statement and attrs to set attributes of provided Otel span"""
+        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+        for key, value in attrs.items():
+            span.set_attribute(key, value)
+
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
+        if not is_instrumentation_enabled():
+            return statement, params
+
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
@@ -233,30 +292,33 @@ class EngineTracer:
         with trace.use_span(span, end_on_exit=False):
             if span.is_recording():
                 if self.enable_commenter:
-                    commenter_data = {
-                        "db_driver": conn.engine.driver,
-                        # Driver/framework centric information.
-                        "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
-                    }
+                    commenter_data = self._get_commenter_data(conn)
 
-                    if self.commenter_options.get(
-                        "opentelemetry_values", True
-                    ):
-                        commenter_data.update(**_get_opentelemetry_values())
+                    if self.enable_attribute_commenter:
+                        # just to handle type safety
+                        statement = str(statement)
 
-                    # Filter down to just the requested attributes.
-                    commenter_data = {
-                        k: v
-                        for k, v in commenter_data.items()
-                        if self.commenter_options.get(k, True)
-                    }
+                        # sqlcomment is added to executed query and db.statement span attribute
+                        statement = _add_sql_comment(
+                            statement, **commenter_data
+                        )
+                        self._set_db_client_span_attributes(
+                            span, statement, attrs
+                        )
 
-                    statement = _add_sql_comment(statement, **commenter_data)
+                    else:
+                        # sqlcomment is only added to executed query
+                        # so db.statement is set before add_sql_comment
+                        self._set_db_client_span_attributes(
+                            span, statement, attrs
+                        )
+                        statement = _add_sql_comment(
+                            statement, **commenter_data
+                        )
 
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-                span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
-                for key, value in attrs.items():
-                    span.set_attribute(key, value)
+                else:
+                    # no sqlcomment anywhere
+                    self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
 

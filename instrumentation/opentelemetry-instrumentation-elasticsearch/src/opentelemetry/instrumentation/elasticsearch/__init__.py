@@ -32,15 +32,15 @@ Usage
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
-
+    from datetime import datetime
 
     # instrument elasticsearch
     ElasticsearchInstrumentor().instrument()
 
     # Using elasticsearch as normal now will automatically generate spans
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 Elasticsearch instrumentation prefixes operation names with the string "Elasticsearch". This
 can be changed to a different string by either setting the OTEL_PYTHON_ELASTICSEARCH_NAME_PREFIX
@@ -48,6 +48,8 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 
 .. code-block:: python
+
+    from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
 
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
 
@@ -67,6 +69,7 @@ for example:
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
+    from datetime import datetime
 
     def request_hook(span, method, url, kwargs):
         if span and span.is_recording():
@@ -82,8 +85,8 @@ for example:
     # Using elasticsearch as normal now will automatically generate spans,
     # including user custom attributes added from the hooks
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 API
 ---
@@ -103,7 +106,10 @@ from opentelemetry.instrumentation.elasticsearch.package import _instruments
 from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
 from opentelemetry.trace import SpanKind, Status, StatusCode, get_tracer
 
 from .utils import sanitize_body
@@ -285,7 +291,7 @@ def _wrap_perform_request(
 
             if span.is_recording():
                 attributes = {
-                    SpanAttributes.DB_SYSTEM: "elasticsearch",
+                    DB_SYSTEM: "elasticsearch",
                 }
                 if url:
                     attributes["elasticsearch.url"] = url
@@ -294,9 +300,7 @@ def _wrap_perform_request(
                 if body:
                     # Don't set db.statement for bulk requests, as it can be very large
                     if isinstance(body, dict):
-                        attributes[SpanAttributes.DB_STATEMENT] = (
-                            sanitize_body(body)
-                        )
+                        attributes[DB_STATEMENT] = sanitize_body(body)
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:

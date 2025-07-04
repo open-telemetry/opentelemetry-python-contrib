@@ -41,9 +41,7 @@ class AwsEcsResourceDetector(ResourceDetector):
             if not os.environ.get(
                 "ECS_CONTAINER_METADATA_URI"
             ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
-                raise RuntimeError(
-                    "Missing ECS_CONTAINER_METADATA_URI therefore process is not on ECS."
-                )
+                return Resource.get_empty()
 
             container_id = ""
             try:

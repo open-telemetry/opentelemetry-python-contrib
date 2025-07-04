@@ -24,8 +24,8 @@ import urllib3.exceptions
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.urllib3 import (
     RequestInfo,
@@ -106,7 +106,7 @@ class TestURLLib3Instrumentor(TestBase):
         self,
         response: urllib3.response.HTTPResponse,
         url: str,
-        sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         self.assertEqual(b"Hello!", response.data)
 
@@ -129,9 +129,9 @@ class TestURLLib3Instrumentor(TestBase):
         }
 
         attributes = {
-            _HTTPStabilityMode.DEFAULT: expected_attr_old,
-            _HTTPStabilityMode.HTTP: expected_attr_new,
-            _HTTPStabilityMode.HTTP_DUP: {
+            _StabilityMode.DEFAULT: expected_attr_old,
+            _StabilityMode.HTTP: expected_attr_new,
+            _StabilityMode.HTTP_DUP: {
                 **expected_attr_new,
                 **expected_attr_old,
             },
@@ -143,7 +143,7 @@ class TestURLLib3Instrumentor(TestBase):
     def assert_exception_span(
         self,
         url: str,
-        sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         span = self.assert_span()
 
@@ -159,9 +159,9 @@ class TestURLLib3Instrumentor(TestBase):
         }
 
         attributes = {
-            _HTTPStabilityMode.DEFAULT: expected_attr_old,
-            _HTTPStabilityMode.HTTP: expected_attr_new,
-            _HTTPStabilityMode.HTTP_DUP: {
+            _StabilityMode.DEFAULT: expected_attr_old,
+            _StabilityMode.HTTP: expected_attr_new,
+            _StabilityMode.HTTP_DUP: {
                 **expected_attr_new,
                 **expected_attr_old,
             },
@@ -192,7 +192,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(
             response,
             self.HTTP_URL,
-            sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
         )
 
     def test_basic_http_success_new_semconv(self):
@@ -200,7 +200,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(
             response,
             self.HTTP_URL,
-            sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP,
         )
 
     def test_basic_http_success_both_semconv(self):
@@ -208,7 +208,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(
             response,
             self.HTTP_URL,
-            sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
         )
 
     def test_basic_http_success_using_connection_pool(self):
@@ -471,7 +471,7 @@ class TestURLLib3Instrumentor(TestBase):
             )
 
         self.assert_exception_span(
-            self.HTTP_URL, sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP
+            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP
         )
 
     @mock.patch(
@@ -485,7 +485,7 @@ class TestURLLib3Instrumentor(TestBase):
             )
 
         self.assert_exception_span(
-            self.HTTP_URL, sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP_DUP
+            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
         )
 
     @mock.patch(

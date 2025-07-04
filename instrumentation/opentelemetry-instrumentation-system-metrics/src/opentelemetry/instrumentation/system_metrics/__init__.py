@@ -34,13 +34,19 @@ following metrics are configured:
         "system.network.io": ["transmit", "receive"],
         "system.network.connections": ["family", "type"],
         "system.thread_count": None
+        "process.context_switches": ["involuntary", "voluntary"],
+        "process.cpu.time": ["user", "system"],
+        "process.cpu.utilization": None,
+        "process.memory.usage": None,
+        "process.memory.virtual": None,
+        "process.open_file_descriptor.count": None,
+        "process.thread.count": None,
         "process.runtime.memory": ["rss", "vms"],
         "process.runtime.cpu.time": ["user", "system"],
         "process.runtime.gc_count": None,
         "process.runtime.thread_count": None,
         "process.runtime.cpu.utilization": None,
         "process.runtime.context_switches": ["involuntary", "voluntary"],
-        "process.open_file_descriptor.count": None,
     }
 
 Usage
@@ -66,15 +72,22 @@ Usage
         "system.memory.usage": ["used", "free", "cached"],
         "system.cpu.time": ["idle", "user", "system", "irq"],
         "system.network.io": ["transmit", "receive"],
-        "process.runtime.memory": ["rss", "vms"],
-        "process.runtime.cpu.time": ["user", "system"],
-        "process.runtime.context_switches": ["involuntary", "voluntary"],
+        "process.memory.usage": None,
+        "process.memory.virtual": None,
+        "process.cpu.time": ["user", "system"],
+        "process.context_switches": ["involuntary", "voluntary"],
     }
     SystemMetricsInstrumentor(config=configuration).instrument()
+
+
+Out-of-spec `process.runtime` prefixed metrics are deprecated and will be removed in future versions, users are encouraged to move
+to the `process` metrics.
 
 API
 ---
 """
+
+from __future__ import annotations
 
 import gc
 import logging
@@ -82,21 +95,22 @@ import os
 import sys
 import threading
 from platform import python_implementation
-from typing import Collection, Dict, Iterable, List, Optional
+from typing import Any, Collection, Iterable
 
 import psutil
 
-# FIXME Remove this pylint disabling line when Github issue is cleared
-# pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
+from opentelemetry.semconv._incubating.metrics.process_metrics import (
+    create_process_cpu_utilization,
+)
 
 _logger = logging.getLogger(__name__)
 
 
-_DEFAULT_CONFIG = {
+_DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "system.cpu.time": ["idle", "user", "system", "irq"],
     "system.cpu.utilization": ["idle", "user", "system", "irq"],
     "system.memory.usage": ["used", "free", "cached"],
@@ -112,13 +126,19 @@ _DEFAULT_CONFIG = {
     "system.network.io": ["transmit", "receive"],
     "system.network.connections": ["family", "type"],
     "system.thread_count": None,
+    "process.context_switches": ["involuntary", "voluntary"],
+    "process.cpu.time": ["user", "system"],
+    "process.cpu.utilization": ["user", "system"],
+    "process.memory.usage": None,
+    "process.memory.virtual": None,
+    "process.open_file_descriptor.count": None,
+    "process.thread.count": None,
     "process.runtime.memory": ["rss", "vms"],
     "process.runtime.cpu.time": ["user", "system"],
     "process.runtime.gc_count": None,
     "process.runtime.thread_count": None,
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
-    "process.open_file_descriptor.count": None,
 }
 
 if sys.platform == "darwin":
@@ -129,8 +149,8 @@ if sys.platform == "darwin":
 class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
-        labels: Optional[Dict[str, str]] = None,
-        config: Optional[Dict[str, List[str]]] = None,
+        labels: dict[str, str] | None = None,
+        config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
         if config is None:
@@ -165,19 +185,26 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
         self._system_thread_count_labels = self._labels.copy()
 
+        self._context_switches_labels = self._labels.copy()
+        self._cpu_time_labels = self._labels.copy()
+        self._cpu_utilization_labels = self._labels.copy()
+        self._memory_usage_labels = self._labels.copy()
+        self._memory_virtual_labels = self._labels.copy()
+        self._open_file_descriptor_count_labels = self._labels.copy()
+        self._thread_count_labels = self._labels.copy()
+
         self._runtime_memory_labels = self._labels.copy()
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
         self._runtime_thread_count_labels = self._labels.copy()
         self._runtime_cpu_utilization_labels = self._labels.copy()
         self._runtime_context_switches_labels = self._labels.copy()
-        self._open_file_descriptor_count_labels = self._labels.copy()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
-        # pylint: disable=too-many-branches
+    def _instrument(self, **kwargs: Any):
+        # pylint: disable=too-many-branches,too-many-statements
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
             __name__,
@@ -185,6 +212,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
+
+        # system metrics
 
         if "system.cpu.time" in self._config:
             self._meter.create_observable_counter(
@@ -194,6 +223,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="s",
             )
 
+        # FIXME: double check this is divided by cpu core
         if "system.cpu.utilization" in self._config:
             self._meter.create_observable_gauge(
                 name="system.cpu.utilization",
@@ -218,6 +248,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="1",
             )
 
+        # FIXME: system.swap is gone in favour of system.paging
         if "system.swap.usage" in self._config:
             self._meter.create_observable_gauge(
                 name="system.swap.usage",
@@ -269,6 +300,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="operations",
             )
 
+        # FIXME: this has been replaced by system.disk.operation.time
         if "system.disk.time" in self._config:
             self._meter.create_observable_counter(
                 name="system.disk.time",
@@ -299,6 +331,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         # TODO Filesystem information can be obtained with os.statvfs in Unix-like
         # OSs, how to do the same in Windows?
 
+        # FIXME: this is now just system.network.dropped
         if "system.network.dropped.packets" in self._config:
             self._meter.create_observable_counter(
                 name="system.network.dropped_packets",
@@ -339,12 +372,74 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="connections",
             )
 
+        # FIXME: this is gone
         if "system.thread_count" in self._config:
             self._meter.create_observable_gauge(
                 name="system.thread_count",
                 callbacks=[self._get_system_thread_count],
                 description="System active threads count",
             )
+
+        # process metrics
+
+        if "process.cpu.time" in self._config:
+            self._meter.create_observable_counter(
+                name="process.cpu.time",
+                callbacks=[self._get_cpu_time],
+                description="Total CPU seconds broken down by different states.",
+                unit="s",
+            )
+
+        if "process.cpu.utilization" in self._config:
+            create_process_cpu_utilization(
+                self._meter, callbacks=[self._get_cpu_utilization]
+            )
+
+        if (
+            "process.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
+            self._meter.create_observable_counter(
+                name="process.context_switches",
+                callbacks=[self._get_context_switches],
+                description="Number of times the process has been context switched.",
+            )
+
+        if "process.memory.usage" in self._config:
+            self._meter.create_observable_up_down_counter(
+                name="process.memory.usage",
+                callbacks=[self._get_memory_usage],
+                description="The amount of physical memory in use.",
+                unit="By",
+            )
+
+        if "process.memory.virtual" in self._config:
+            self._meter.create_observable_up_down_counter(
+                name="process.memory.virtual",
+                callbacks=[self._get_memory_virtual],
+                description="The amount of committed virtual memory.",
+                unit="By",
+            )
+
+        if (
+            sys.platform != "win32"
+            and "process.open_file_descriptor.count" in self._config
+        ):
+            self._meter.create_observable_up_down_counter(
+                name="process.open_file_descriptor.count",
+                callbacks=[self._get_open_file_descriptors],
+                description="Number of file descriptors in use by the process.",
+            )
+
+        if "process.thread.count" in self._config:
+            self._meter.create_observable_up_down_counter(
+                name="process.thread.count",
+                callbacks=[self._get_thread_count],
+                description="Process threads count.",
+            )
+
+        # FIXME: process.runtime keys are deprecated and will be removed in subsequent releases.
+        # When removing them, remember to clean also the callbacks and labels
 
         if "process.runtime.memory" in self._config:
             self._meter.create_observable_up_down_counter(
@@ -390,7 +485,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="1",
             )
 
-        if "process.runtime.context_switches" in self._config:
+        if (
+            "process.runtime.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
             self._meter.create_observable_counter(
                 name=f"process.runtime.{self._python_implementation}.context_switches",
                 callbacks=[self._get_runtime_context_switches],
@@ -398,18 +496,16 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="switches",
             )
 
-        if (
-            sys.platform != "win32"
-            and "process.open_file_descriptor.count" in self._config
-        ):
-            self._meter.create_observable_up_down_counter(
-                name="process.open_file_descriptor.count",
-                callbacks=[self._get_open_file_descriptors],
-                description="Number of file descriptors in use by the process.",
-            )
-
-    def _uninstrument(self, **__):
+    def _uninstrument(self, **kwargs: Any):
         pass
+
+    def _can_read_context_switches(self) -> bool:
+        """On Google Cloud Run psutil is not able to read context switches, catch it before creating the observable instrument"""
+        try:
+            self._proc.num_ctx_switches()
+            return True
+        except NotImplementedError:
+            return False
 
     def _get_open_file_descriptors(
         self, options: CallbackOptions
@@ -684,6 +780,76 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         yield Observation(
             threading.active_count(), self._system_thread_count_labels
         )
+
+    # process callbacks
+
+    def _get_context_switches(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for context switches"""
+        ctx_switches = self._proc.num_ctx_switches()
+        for metric in self._config["process.context_switches"]:
+            if hasattr(ctx_switches, metric):
+                self._context_switches_labels["type"] = metric
+                yield Observation(
+                    getattr(ctx_switches, metric),
+                    self._context_switches_labels.copy(),
+                )
+
+    def _get_cpu_time(self, options: CallbackOptions) -> Iterable[Observation]:
+        """Observer callback for CPU time"""
+        proc_cpu = self._proc.cpu_times()
+        for metric in self._config["process.cpu.time"]:
+            if hasattr(proc_cpu, metric):
+                self._cpu_time_labels["type"] = metric
+                yield Observation(
+                    getattr(proc_cpu, metric),
+                    self._cpu_time_labels.copy(),
+                )
+
+    def _get_cpu_utilization(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for CPU utilization"""
+        proc_cpu_percent = self._proc.cpu_percent()
+        # may return None so add a default of 1 in case
+        num_cpus = psutil.cpu_count() or 1
+        yield Observation(
+            proc_cpu_percent / 100 / num_cpus,
+            self._cpu_utilization_labels.copy(),
+        )
+
+    def _get_memory_usage(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for memory usage"""
+        proc_memory = self._proc.memory_info()
+        if hasattr(proc_memory, "rss"):
+            yield Observation(
+                getattr(proc_memory, "rss"),
+                self._memory_usage_labels.copy(),
+            )
+
+    def _get_memory_virtual(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for memory virtual"""
+        proc_memory = self._proc.memory_info()
+        if hasattr(proc_memory, "vms"):
+            yield Observation(
+                getattr(proc_memory, "vms"),
+                self._memory_virtual_labels.copy(),
+            )
+
+    def _get_thread_count(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for active thread count"""
+        yield Observation(
+            self._proc.num_threads(), self._thread_count_labels.copy()
+        )
+
+    # runtime callbacks
 
     def _get_runtime_memory(
         self, options: CallbackOptions

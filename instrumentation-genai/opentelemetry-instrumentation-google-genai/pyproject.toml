@@ -1,0 +1,79 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-instrumentation-google-genai"
+dynamic = ["version"]
+description = "OpenTelemetry"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+  { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+  "opentelemetry-api >=1.31.1, <2",
+  "opentelemetry-instrumentation >=0.52b1, <2",
+  "opentelemetry-semantic-conventions >=0.52b1, <2"
+]
+
+[project.optional-dependencies]
+instruments = [
+    "google-genai >= 1.0.0"
+]
+
+[project.entry-points.opentelemetry_instrumentor]
+google-genai = "opentelemetry.instrumentation.google_genai:GoogleGenAiSdkInstrumentor"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-google-genai"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
+
+[tool.hatch.version]
+path = "src/opentelemetry/instrumentation/google_genai/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]
+
+[tool.pyright]
+include = [
+  "src",
+]
+exclude = [
+  "**/__pycache__",
+]
+stubPath = "types"
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+pythonVersion = "3.9"

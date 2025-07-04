@@ -41,19 +41,37 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    import requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
     # `request_obj` is an instance of requests.PreparedRequest
     def request_hook(span, request_obj):
         pass
 
     # `request_obj` is an instance of requests.PreparedRequest
     # `response` is an instance of requests.Response
-    def response_hook(span, request_obj, response)
+    def response_hook(span, request_obj, response):
         pass
 
     RequestsInstrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook)
+        request_hook=request_hook, response_hook=response_hook
     )
 
+Custom Duration Histogram Boundaries
+************************************
+To customize the duration histogram bucket boundaries used for HTTP client request duration metrics,
+you can provide a list of values when instrumenting:
+
+.. code:: python
+
+    import requests
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+    custom_boundaries = [0.0, 5.0, 10.0, 25.0, 50.0, 100.0]
+
+    RequestsInstrumentor().instrument(
+        duration_histogram_boundaries=custom_boundaries
+    )
 
 Exclude lists
 *************
@@ -72,10 +90,12 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import types
 from timeit import default_timer
-from typing import Callable, Collection, Optional
+from typing import Any, Callable, Collection, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -83,11 +103,12 @@ from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -98,14 +119,14 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
     _set_http_scheme,
-    _set_http_status_code,
     _set_http_url,
+    _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
-    http_status_to_status_code,
     is_http_instrumentation_enabled,
     suppress_http_instrumentation,
 )
@@ -122,12 +143,11 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
-from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
-    remove_url_credentials,
+    redact_url,
     sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
@@ -138,6 +158,32 @@ _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
 
 
+def _set_http_status_code_attribute(
+    span,
+    status_code,
+    metric_attributes=None,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+):
+    status_code_str = str(status_code)
+    try:
+        status_code = int(status_code)
+    except ValueError:
+        status_code = -1
+    if metric_attributes is None:
+        metric_attributes = {}
+    # When we have durations we should set metrics only once
+    # Also the decision to include status code on a histogram should
+    # not be dependent on tracing decisions.
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        status_code_str,
+        server_span=False,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
+
+
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(
@@ -146,8 +192,8 @@ def _instrument(
     duration_histogram_new: Histogram,
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    excluded_urls: ExcludeList | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -164,7 +210,9 @@ def _instrument(
 
     # pylint: disable-msg=too-many-locals,too-many-branches
     @functools.wraps(wrapped_send)
-    def instrumented_send(self, request, **kwargs):
+    def instrumented_send(
+        self: Session, request: PreparedRequest, **kwargs: Any
+    ):
         if excluded_urls and excluded_urls.url_disabled(request.url):
             return wrapped_send(self, request, **kwargs)
 
@@ -184,7 +232,7 @@ def _instrument(
         method = request.method
         span_name = get_default_span_name(method)
 
-        url = remove_url_credentials(request.url)
+        url = redact_url(request.url)
 
         span_attributes = {}
         _set_http_method(
@@ -239,9 +287,12 @@ def _instrument(
         except ValueError:
             pass
 
-        with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
+            set_ip_on_next_http_connection(span),
+        ):
             exception = None
             if callable(request_hook):
                 request_hook(span, request)
@@ -263,25 +314,12 @@ def _instrument(
 
             if isinstance(result, Response):
                 span_attributes = {}
-                if span.is_recording():
-                    _set_http_status_code(
-                        span_attributes,
-                        result.status_code,
-                        sem_conv_opt_in_mode,
-                    )
-                    _set_http_status_code(
-                        metric_labels, result.status_code, sem_conv_opt_in_mode
-                    )
-                    status_code = http_status_to_status_code(
-                        result.status_code
-                    )
-                    span.set_status(status_code)
-                    if (
-                        _report_new(sem_conv_opt_in_mode)
-                        and status_code is StatusCode.ERROR
-                    ):
-                        span_attributes[ERROR_TYPE] = str(result.status_code)
-                        metric_labels[ERROR_TYPE] = str(result.status_code)
+                _set_http_status_code_attribute(
+                    span,
+                    result.status_code,
+                    metric_labels,
+                    sem_conv_opt_in_mode,
+                )
 
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
@@ -312,7 +350,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.DEFAULT,
+                    _StabilityMode.DEFAULT,
                 )
                 duration_histogram_old.record(
                     max(round(elapsed_time * 1000), 0),
@@ -323,7 +361,7 @@ def _instrument(
                     metric_labels,
                     _client_duration_attrs_old,
                     _client_duration_attrs_new,
-                    _HTTPStabilityMode.HTTP,
+                    _StabilityMode.HTTP,
                 )
                 duration_histogram_new.record(
                     elapsed_time, attributes=duration_attrs_new
@@ -345,7 +383,7 @@ def _uninstrument():
     _uninstrument_from(Session)
 
 
-def _uninstrument_from(instr_root, restore_as_bound_func=False):
+def _uninstrument_from(instr_root, restore_as_bound_func: bool = False):
     for instr_func_name in ("request", "send"):
         instr_func = getattr(instr_root, instr_func_name)
         if not getattr(
@@ -361,7 +399,7 @@ def _uninstrument_from(instr_root, restore_as_bound_func=False):
         setattr(instr_root, instr_func_name, original)
 
 
-def get_default_span_name(method):
+def get_default_span_name(method: str) -> str:
     """
     Default implementation for name_callback, returns HTTP {method_name}.
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
@@ -385,7 +423,7 @@ class RequestsInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instruments requests module
 
         Args:
@@ -393,8 +431,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 ``tracer_provider``: a TracerProvider, defaults to global
                 ``request_hook``: An optional callback that is invoked right after a span is created.
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
-                ``excluded_urls``: A string containing a comma-delimited
-                    list of regexes used to exclude URLs from tracking
+                ``excluded_urls``: A string containing a comma-delimited list of regexes used to exclude URLs from tracking
+                ``duration_histogram_boundaries``: A list of float values representing the explicit bucket boundaries for the duration histogram.
         """
         semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
@@ -409,6 +447,9 @@ class RequestsInstrumentor(BaseInstrumentor):
         )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
+        duration_histogram_boundaries = kwargs.get(
+            "duration_histogram_boundaries"
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -421,6 +462,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 name=MetricInstruments.HTTP_CLIENT_DURATION,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=duration_histogram_boundaries
+                or HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
         duration_histogram_new = None
         if _report_new(semconv_opt_in_mode):
@@ -428,6 +471,8 @@ class RequestsInstrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=duration_histogram_boundaries
+                or HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         _instrument(
             tracer,
@@ -443,10 +488,10 @@ class RequestsInstrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode=semconv_opt_in_mode,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         _uninstrument()
 
     @staticmethod
-    def uninstrument_session(session):
+    def uninstrument_session(session: Session):
         """Disables instrumentation on the session object."""
         _uninstrument_from(session, restore_as_bound_func=True)

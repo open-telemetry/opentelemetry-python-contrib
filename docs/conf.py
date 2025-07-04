@@ -122,6 +122,7 @@ intersphinx_mapping = {
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
+    "redis": ("https://redis.readthedocs.io/en/latest/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky

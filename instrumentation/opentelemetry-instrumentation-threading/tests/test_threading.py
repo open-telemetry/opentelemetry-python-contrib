@@ -15,12 +15,14 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
+from unittest.mock import MagicMock, patch
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 
+# pylint: disable=too-many-public-methods
 class TestThreading(TestBase):
     def setUp(self):
         super().setUp()
@@ -224,3 +226,69 @@ class TestThreading(TestBase):
         self.assertEqual(len(spans), 1)
 
         ThreadingInstrumentor().instrument()
+
+    @patch(
+        "opentelemetry.context.attach",
+        new=MagicMock(return_value=None),
+    )
+    @patch(
+        "opentelemetry.context.detach",
+        autospec=True,
+    )
+    def test_threading_with_none_context_token(self, mock_detach: MagicMock):
+        with self.get_root_span():
+            thread = threading.Thread(target=self.fake_func)
+            thread.start()
+            thread.join()
+            mock_detach.assert_not_called()
+
+    @patch(
+        "opentelemetry.context._RUNTIME_CONTEXT.attach",
+        new=MagicMock(return_value=MagicMock()),
+    )
+    @patch(
+        "opentelemetry.context._RUNTIME_CONTEXT.detach",
+        new=MagicMock(return_value=None),
+    )
+    @patch("opentelemetry.context.detach", autospec=True)
+    def test_threading_with_valid_context_token(self, mock_detach: MagicMock):
+        with self.get_root_span():
+            thread = threading.Thread(target=self.fake_func)
+            thread.start()
+            thread.join()
+            mock_detach.assert_called_once()
+
+    @patch(
+        "opentelemetry.context.attach",
+        new=MagicMock(return_value=None),
+    )
+    @patch(
+        "opentelemetry.context.detach",
+        autospec=True,
+    )
+    def test_thread_pool_with_none_context_token(self, mock_detach: MagicMock):
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
+            future = executor.submit(self.get_current_span_context_for_test)
+            future.result()
+            mock_detach.assert_not_called()
+
+    @patch(
+        "opentelemetry.context._RUNTIME_CONTEXT.attach",
+        new=MagicMock(return_value=MagicMock()),
+    )
+    @patch(
+        "opentelemetry.context._RUNTIME_CONTEXT.detach",
+        new=MagicMock(return_value=None),
+    )
+    @patch("opentelemetry.context.detach", autospec=True)
+    def test_threadpool_with_valid_context_token(self, mock_detach: MagicMock):
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
+            future = executor.submit(self.get_current_span_context_for_test)
+            future.result()
+            mock_detach.assert_called_once()

@@ -1,7 +1,12 @@
 asgiref==3.8.1
+blinker==1.7.0
 click==8.1.7
 Deprecated==1.2.14
+Flask==3.0.2
 iniconfig==2.0.0
+itsdangerous==2.1.2
+Jinja2==3.1.6
+MarkupSafe==2.1.2
 packaging==24.0
 pluggy==1.5.0
 py-cpuinfo==9.0.0
@@ -9,7 +14,11 @@ pytest==7.4.4
 pytest-asyncio==0.23.5
 tomli==2.0.1
 typing_extensions==4.12.2
+Werkzeug==3.0.6
 wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-click
+-e instrumentation/opentelemetry-instrumentation-flask
+-e instrumentation/opentelemetry-instrumentation-wsgi
+-e util/opentelemetry-util-http

@@ -1,0 +1,58 @@
+interactions:
+- request:
+    body: |-
+      {
+        "prompt": "Say this is a test",
+        "max_gen_len": 10,
+        "temperature": 0.8,
+        "top_p": 1
+      }
+    headers:
+      Content-Length:
+      - '83'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.3.0 md/arch#arm64 lang/python#3.10.16
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250410T192408Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-db2cb3ce-1a9a7362f6f0e5eb7dc0ce56;Parent=a301dca505171c7f;Sampled=1
+      amz-sdk-invocation-id:
+      - 87acada6-b95b-4280-b002-50ef98edf99d
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/meta.llama3-1-70b-instruct-v1%3A0/invoke
+  response:
+    body:
+      string: |-
+        {
+          "generation": " and you are a test subject. You are not",
+          "prompt_token_count": 5,
+          "generation_token_count": 10,
+          "stop_reason": "length"
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 10 Apr 2025 19:24:09 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '617'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 51b421ef-fd84-4c69-b933-8c928b735d17
+    status:
+      code: 200
+      message: OK
+version: 1

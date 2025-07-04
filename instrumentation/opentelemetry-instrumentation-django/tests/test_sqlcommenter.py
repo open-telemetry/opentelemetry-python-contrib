@@ -132,6 +132,38 @@ class TestMiddleware(WsgiTestBase):
         )
 
     @patch(
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
+    )
+    def test_query_wrapper_non_string_queries(self, trace_capture):
+        """Test that non-string queries and psycopg2 composable objects are handled correctly."""
+        requests_mock = MagicMock()
+        requests_mock.resolver_match.view_name = "view"
+        requests_mock.resolver_match.route = "route"
+        requests_mock.resolver_match.app_name = "app"
+
+        trace_capture.return_value = {
+            "traceparent": "*traceparent='00-000000000000000000000000deadbeef-000000000000beef-00"
+        }
+        qw_instance = _QueryWrapper(requests_mock)
+        execute_mock_obj = MagicMock()
+
+        input_query = MagicMock(as_string=lambda conn: "SELECT 2")
+        expected_query_start = "SELECT 2"
+
+        qw_instance(
+            execute_mock_obj,
+            input_query,
+            MagicMock("test"),
+            MagicMock("test1"),
+            MagicMock(),
+        )
+        output_sql = execute_mock_obj.call_args[0][0]
+        self.assertTrue(
+            str(output_sql).startswith(str(expected_query_start)),
+            f"Query should start with {expected_query_start!r}, got {output_sql!r}",
+        )
+
+    @patch(
         "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper"
     )
     def test_multiple_connection_support(self, query_wrapper):
@@ -146,3 +178,31 @@ class TestMiddleware(WsgiTestBase):
 
         # check if query_wrapper is added to the context for 2 databases
         self.assertEqual(query_wrapper.call_count, 2)
+
+    @patch(
+        "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._get_opentelemetry_values"
+    )
+    def test_empty_sql(self, trace_capture):
+        requests_mock = MagicMock()
+        requests_mock.resolver_match.view_name = "view"
+        requests_mock.resolver_match.route = "route"
+        requests_mock.resolver_match.app_name = "app"
+
+        trace_capture.return_value = {
+            "traceparent": "*traceparent='00-000000000000000000000000deadbeef-000000000000beef-00"
+        }
+        qw_instance = _QueryWrapper(requests_mock)
+        execute_mock_obj = MagicMock()
+        qw_instance(
+            execute_mock_obj,
+            "",
+            MagicMock("test"),
+            MagicMock("test1"),
+            MagicMock(),
+        )
+        output_sql = execute_mock_obj.call_args[0][0]
+        self.assertEqual(
+            output_sql,
+            " /*app_name='app',controller='view',route='route',traceparent='%%2Atraceparent%%3D%%2700-0000000"
+            "00000000000000000deadbeef-000000000000beef-00'*/",
+        )

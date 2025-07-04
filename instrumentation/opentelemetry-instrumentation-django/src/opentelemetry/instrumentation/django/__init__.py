@@ -129,6 +129,8 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+
     def request_hook(span, request):
         pass
 
@@ -244,6 +246,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -376,6 +379,7 @@ class DjangoInstrumentor(BaseInstrumentor):
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         _DjangoMiddleware._active_request_counter = (
             create_http_server_active_requests(meter)

@@ -31,7 +31,12 @@ from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -87,10 +92,10 @@ class OpenTelemetryClientInterceptor(
     def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "grpc",
-            SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
-            SpanAttributes.RPC_METHOD: meth,
-            SpanAttributes.RPC_SERVICE: service,
+            RPC_SYSTEM: "grpc",
+            RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            RPC_METHOD: meth,
+            RPC_SERVICE: service,
         }
 
         return self._tracer.start_as_current_span(
@@ -153,7 +158,7 @@ class OpenTelemetryClientInterceptor(
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
                     span.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE,
+                        RPC_GRPC_STATUS_CODE,
                         exc.code().value[0],
                     )
                 span.set_status(
@@ -165,7 +170,7 @@ class OpenTelemetryClientInterceptor(
                 span.record_exception(exc)
                 raise exc
             finally:
-                if not result:
+                if result is None:
                     span.end()
         return self._trace_result(span, rpc_info, result)
 
@@ -211,9 +216,7 @@ class OpenTelemetryClientInterceptor(
                 yield from invoker(request_or_iterator, metadata)
             except grpc.RpcError as err:
                 span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(
-                    SpanAttributes.RPC_GRPC_STATUS_CODE, err.code().value[0]
-                )
+                span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
                 raise err
 
     def intercept_stream(

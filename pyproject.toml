@@ -1,11 +1,156 @@
+# Used for local development, not to be published.
+[project]
+name = "opentelemetry-python-contrib"
+version = "0.0.0" # This is not used.
+requires-python = ">=3.9"
+dependencies = [
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "opentelemetry-semantic-conventions",
+  "opentelemetry-test-utils",
+  "opentelemetry-exporter-prometheus-remote-write",
+  "opentelemetry-exporter-richconsole",
+  "opentelemetry-instrumentation",
+  "opentelemetry-instrumentation-aio-pika[instruments]",
+  "opentelemetry-instrumentation-aiohttp-client[instruments]",
+  "opentelemetry-instrumentation-aiohttp-server[instruments]",
+  "opentelemetry-instrumentation-aiokafka[instruments]",
+  "opentelemetry-instrumentation-aiopg[instruments]",
+  "opentelemetry-instrumentation-asgi[instruments]",
+  "opentelemetry-instrumentation-asyncio",
+  "opentelemetry-instrumentation-asyncpg[instruments]",
+  "opentelemetry-instrumentation-aws-lambda[instruments]",
+  "opentelemetry-instrumentation-boto[instruments]",
+  "opentelemetry-instrumentation-boto3sqs[instruments]",
+  "opentelemetry-instrumentation-botocore[instruments]",
+  "opentelemetry-instrumentation-cassandra[instruments]",
+  "opentelemetry-instrumentation-celery[instruments]",
+  "opentelemetry-instrumentation-click[instruments]",
+  "opentelemetry-instrumentation-confluent-kafka[instruments]",
+  "opentelemetry-instrumentation-dbapi",
+  "opentelemetry-instrumentation-django[instruments]",
+  "opentelemetry-instrumentation-elasticsearch[instruments]",
+  "opentelemetry-instrumentation-falcon[instruments]",
+  "opentelemetry-instrumentation-fastapi[instruments]",
+  "opentelemetry-instrumentation-flask[instruments]",
+  "opentelemetry-instrumentation-grpc[instruments]",
+  "opentelemetry-instrumentation-httpx[instruments]",
+  "opentelemetry-instrumentation-jinja2[instruments]",
+  "opentelemetry-instrumentation-kafka-python[instruments]",
+  "opentelemetry-instrumentation-logging",
+  "opentelemetry-instrumentation-mysql[instruments]",
+  "opentelemetry-instrumentation-mysqlclient[instruments]",
+  "opentelemetry-instrumentation-pika[instruments]",
+  "opentelemetry-instrumentation-psycopg[instruments]",
+  "opentelemetry-instrumentation-psycopg2[instruments]",
+  "opentelemetry-instrumentation-pymemcache[instruments]",
+  "opentelemetry-instrumentation-pymongo[instruments]",
+  "opentelemetry-instrumentation-pymysql[instruments]",
+  "opentelemetry-instrumentation-pyramid[instruments]",
+  "opentelemetry-instrumentation-redis[instruments]",
+  "opentelemetry-instrumentation-remoulade[instruments]",
+  "opentelemetry-instrumentation-requests[instruments]",
+  "opentelemetry-instrumentation-sqlalchemy[instruments]",
+  "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-system-metrics",
+  "opentelemetry-instrumentation-threading",
+  "opentelemetry-instrumentation-tornado",
+  "opentelemetry-instrumentation-tortoiseorm",
+  "opentelemetry-instrumentation-urllib",
+  "opentelemetry-instrumentation-urllib3[instruments]",
+  "opentelemetry-instrumentation-wsgi",
+  "opentelemetry-propagator-ot-trace",
+  "opentelemetry-propagator-aws-xray",
+  "opentelemetry-util-http",
+  "opentelemetry-instrumentation-vertexai[instruments]",
+  "opentelemetry-instrumentation-openai-v2[instruments]",
+]
+
+
+# https://docs.astral.sh/uv/reference/settings/
+[tool.uv]
+package = false # https://docs.astral.sh/uv/reference/settings/#package
+required-version = ">=0.6.0"
+
+# https://docs.astral.sh/uv/reference/settings/#sources
+[tool.uv.sources]
+opentelemetry-api = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-api" }
+opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-sdk" }
+opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
+opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
+opentelemetry-exporter-prometheus-remote-write = { workspace = true }
+opentelemetry-exporter-richconsole = { workspace = true }
+opentelemetry-instrumentation = { workspace = true }
+opentelemetry-instrumentation-aio-pika = { workspace = true }
+opentelemetry-instrumentation-aiohttp-client = { workspace = true }
+opentelemetry-instrumentation-aiohttp-server = { workspace = true }
+opentelemetry-instrumentation-aiokafka = { workspace = true }
+opentelemetry-instrumentation-aiopg = { workspace = true }
+opentelemetry-instrumentation-asgi = { workspace = true }
+opentelemetry-instrumentation-asyncio = { workspace = true }
+opentelemetry-instrumentation-asyncpg = { workspace = true }
+opentelemetry-instrumentation-aws-lambda = { workspace = true }
+opentelemetry-instrumentation-boto = { workspace = true }
+opentelemetry-instrumentation-boto3sqs = { workspace = true }
+opentelemetry-instrumentation-botocore = { workspace = true }
+opentelemetry-instrumentation-cassandra = { workspace = true }
+opentelemetry-instrumentation-celery = { workspace = true }
+opentelemetry-instrumentation-click = { workspace = true }
+opentelemetry-instrumentation-confluent-kafka = { workspace = true }
+opentelemetry-instrumentation-dbapi = { workspace = true }
+opentelemetry-instrumentation-django = { workspace = true }
+opentelemetry-instrumentation-elasticsearch = { workspace = true }
+opentelemetry-instrumentation-falcon = { workspace = true }
+opentelemetry-instrumentation-fastapi = { workspace = true }
+opentelemetry-instrumentation-flask = { workspace = true }
+opentelemetry-instrumentation-grpc = { workspace = true }
+opentelemetry-instrumentation-httpx = { workspace = true }
+opentelemetry-instrumentation-jinja2 = { workspace = true }
+opentelemetry-instrumentation-kafka-python = { workspace = true }
+opentelemetry-instrumentation-logging = { workspace = true }
+opentelemetry-instrumentation-mysql = { workspace = true }
+opentelemetry-instrumentation-mysqlclient = { workspace = true }
+opentelemetry-instrumentation-pika = { workspace = true }
+opentelemetry-instrumentation-psycopg = { workspace = true }
+opentelemetry-instrumentation-psycopg2 = { workspace = true }
+opentelemetry-instrumentation-pymemcache = { workspace = true }
+opentelemetry-instrumentation-pymongo = { workspace = true }
+opentelemetry-instrumentation-pymysql = { workspace = true }
+opentelemetry-instrumentation-pyramid = { workspace = true }
+opentelemetry-instrumentation-redis = { workspace = true }
+opentelemetry-instrumentation-remoulade = { workspace = true }
+opentelemetry-instrumentation-requests = { workspace = true }
+opentelemetry-instrumentation-sqlalchemy = { workspace = true }
+opentelemetry-instrumentation-sqlite3 = { workspace = true }
+opentelemetry-instrumentation-system-metrics = { workspace = true }
+opentelemetry-instrumentation-threading = { workspace = true }
+opentelemetry-instrumentation-tornado = { workspace = true }
+opentelemetry-instrumentation-tortoiseorm = { workspace = true }
+opentelemetry-instrumentation-urllib = { workspace = true }
+opentelemetry-instrumentation-urllib3 = { workspace = true }
+opentelemetry-instrumentation-wsgi = { workspace = true }
+opentelemetry-propagator-ot-trace = { workspace = true }
+opentelemetry-propagator-aws-xray = { workspace = true }
+opentelemetry-util-http = { workspace = true }
+opentelemetry-instrumentation-vertexai = { workspace = true }
+opentelemetry-instrumentation-openai-v2 = { workspace = true }
+
+# https://docs.astral.sh/uv/reference/settings/#workspace
+[tool.uv.workspace]
+members = [
+  "instrumentation/*",
+  "instrumentation-genai/*",
+  "exporter/*",
+  "opentelemetry-instrumentation",
+  "propagator/*",
+  "util/opentelemetry-util-http",
+]
+
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
-target-version = "py38"
+target-version = "py39"
 line-length = 79
-extend-exclude = [
-  "_template",
-  "*_pb2*.py*",
-]
+extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
 
 [tool.ruff.lint]
@@ -39,3 +184,27 @@ known-third-party = [
   "opencensus",
 ]
 
+
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
+[tool.pyright]
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = true
+reportMissingTypeStubs = false
+pythonVersion = "3.9"
+reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
+# Add progressively instrumentation packages here.
+include = [
+  "instrumentation/opentelemetry-instrumentation-aiokafka",
+  "instrumentation/opentelemetry-instrumentation-asyncclick",
+  "instrumentation/opentelemetry-instrumentation-threading",
+  "instrumentation-genai/opentelemetry-instrumentation-vertexai",
+]
+# We should also add type hints to the test suite - It helps on finding bugs.
+# We are excluding for now because it's easier, and more important to add to the instrumentation packages.
+exclude = [
+  "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-threading/tests/**",
+  "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
+]

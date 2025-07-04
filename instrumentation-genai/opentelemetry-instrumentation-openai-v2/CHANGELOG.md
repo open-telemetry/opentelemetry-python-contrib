@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Record prompt and completion events regardless of span sampling decision.
+  ([#3226](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3226))
+
+## Version 2.1b0 (2025-01-18)
+
 - Coerce openai response_format to semconv format
   ([#3073](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3073))
 - Add example to `opentelemetry-instrumentation-openai-v2`
   ([#3006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3006))
 - Support for `AsyncOpenAI/AsyncCompletions` ([#2984](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2984))
+- Add metrics ([#3180](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3180))
 
 ## Version 2.0b0 (2024-11-08)
 
