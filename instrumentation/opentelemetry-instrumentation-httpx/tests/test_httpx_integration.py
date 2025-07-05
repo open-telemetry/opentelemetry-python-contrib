@@ -790,6 +790,60 @@ class BaseTestCases:
             )
             self.assertEqual(data_point.count, 1)
 
+        def _run_disabled_tracing_metrics_attributes_test(
+            self,
+            url: str,
+            expected_attributes: dict,
+        ) -> None:
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                client = self.create_client(
+                    self.create_transport(
+                        tracer_provider=trace.NoOpTracerProvider()
+                    )
+                )
+                mock_span.is_recording.return_value = False
+                self.perform_request(url, client=client)
+
+                self.assertFalse(mock_span.is_recording())
+                self.assertTrue(mock_span.is_recording.called)
+
+                metrics = self.assert_metrics(num_metrics=1)
+                duration_data_point = metrics[0].data.data_points[0]
+
+                self.assertEqual(duration_data_point.count, 1)
+                self.assertEqual(
+                    dict(duration_data_point.attributes),
+                    expected_attributes,
+                )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url=self.URL,
+                expected_attributes={
+                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    SpanAttributes.HTTP_METHOD: "GET",
+                    SpanAttributes.HTTP_SCHEME: "http",
+                },
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_new_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled with new semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    SERVER_ADDRESS: "mock",
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
+            )
+
         def test_response_hook(self):
             transport = self.create_transport(
                 tracer_provider=self.tracer_provider,
