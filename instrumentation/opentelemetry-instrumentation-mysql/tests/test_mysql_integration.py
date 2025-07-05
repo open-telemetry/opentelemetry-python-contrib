@@ -20,7 +20,9 @@ import opentelemetry.instrumentation.mysql
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
-from opentelemetry.semconv._incubating.attributes.db_attributes import DB_STATEMENT
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
