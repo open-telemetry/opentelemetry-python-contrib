@@ -58,11 +58,15 @@ def main(base_instrumentation_path):
         with open(version_filename, encoding="utf-8") as fh:
             exec(fh.read(), pkg_info)
 
-        instruments = pkg_info["_instruments"]
+        instruments_and = pkg_info.get("_instruments", ())
+        instruments_either = pkg_info.get("_instruments_either", ())
         supports_metrics = pkg_info.get("_supports_metrics")
         semconv_status = pkg_info.get("_semconv_status")
-        if not instruments:
-            instruments = (name,)
+        instruments_all = ()
+        if not instruments_and and not instruments_either:
+            instruments_all = (name,)
+        else:
+            instruments_all = tuple(instruments_and + instruments_either)
 
         if not semconv_status:
             semconv_status = "development"
@@ -70,7 +74,7 @@ def main(base_instrumentation_path):
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column} | {semconv_status}"
+            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments_all)} | {metric_column} | {semconv_status}"
         )
 
     with open(
