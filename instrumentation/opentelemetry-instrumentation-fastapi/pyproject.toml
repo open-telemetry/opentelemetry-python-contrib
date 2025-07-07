@@ -33,6 +33,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+instruments = []
 instruments_either = [
     "fastapi ~= 0.92",
     "fastapi-slim ~= 0.92",

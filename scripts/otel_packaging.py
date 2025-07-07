@@ -60,12 +60,18 @@ def get_instrumentation_packages(
         with open(pyproject_toml_path, "rb") as file:
             pyproject_toml = tomli.load(file)
 
+        optional_dependencies = pyproject_toml["project"][
+            "optional-dependencies"
+        ]
+        instruments = optional_dependencies.get("instruments", [])
+        instruments_either = optional_dependencies.get(
+            "instruments_either", []
+        )
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
-            "instruments": pyproject_toml["project"]["optional-dependencies"][
-                "instruments"
-            ],
+            "instruments": instruments,
+            "instruments_either": instruments_either,
         }
         if instrumentation["name"] in independent_packages:
             specifier = independent_packages[instrumentation["name"]]
