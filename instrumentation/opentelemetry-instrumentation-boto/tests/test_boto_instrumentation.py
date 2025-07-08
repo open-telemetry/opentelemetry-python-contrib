@@ -282,10 +282,12 @@ class TestBotoInstrumentor(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes["endpoint"], "elasticcache")
         self.assertEqual(span.attributes["aws.region"], "us-west-2")
+
     @mock_s3_deprecated
     def test_boto_with_noop_tracer_provider(self):
         # Set the NoOpTracerProvider explicitly
         from opentelemetry.trace import set_tracer_provider
+
         BotoInstrumentor().uninstrument()
         set_tracer_provider(self.noop_tracer_provider)
 
