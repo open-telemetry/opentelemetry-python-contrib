@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
+### Added
+
+- `opentelemetry-instrumentation-pika` Added instrumentation for All `SelectConnection` adapters
+  ([#3584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3584))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-httpx`: fix missing metric response attributes when tracing is disabled
