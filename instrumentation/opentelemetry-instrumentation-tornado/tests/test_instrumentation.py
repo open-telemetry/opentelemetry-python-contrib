@@ -500,8 +500,8 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_credential_removal(self):
-        app = HttpServerMock("test_credential_removal")
+    def test_remove_sensitive_params(self):
+        app = HttpServerMock("test_remove_sensitive_params")
 
         @app.route("/status/200")
         def index():
@@ -509,7 +509,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         with app.run("localhost", 5000):
             response = self.fetch(
-                "http://username:password@localhost:5000/status/200"
+                "http://username:password@localhost:5000/status/200?Signature=secret"
             )
         self.assertEqual(response.code, 200)
 
@@ -522,7 +522,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                HTTP_URL: "http://localhost:5000/status/200",
+                HTTP_URL: "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED",
                 HTTP_METHOD: "GET",
                 HTTP_STATUS_CODE: 200,
             },
