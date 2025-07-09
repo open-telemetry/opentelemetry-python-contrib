@@ -199,8 +199,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
         """This is a multiplexer in order to have a logger per extension"""
 
         instrumentation_name = self._get_instrumentation_name(extension)
-        if self._loggers.get(instrumentation_name):
-            return self._loggers.get(instrumentation_name)
+        instrumentation_logger = self._loggers.get(instrumentation_name)
+        if instrumentation_logger:
+            return instrumentation_logger
 
         schema_version = extension.event_logger_schema_version()
         self._loggers[instrumentation_name] = get_logger(

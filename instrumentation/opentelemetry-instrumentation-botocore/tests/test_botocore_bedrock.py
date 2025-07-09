@@ -2943,7 +2943,6 @@ def test_invoke_model_with_response_stream_handles_stream_error(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
     user_content = {"content": [{"text": "Say this is a test"}]}
-    print(logs[0].log_record)
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
 
