@@ -686,12 +686,17 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             return requests.get(url, timeout=5)
         return session.get(url)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = (
+            "http://username:password@mock/status/200?AWSAccessKeyId=secret"
+        )
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[HTTP_URL], self.URL)
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?AWSAccessKeyId=REDACTED",
+        )
 
     def test_if_headers_equals_none(self):
         result = requests.get(self.URL, headers=None, timeout=5)
