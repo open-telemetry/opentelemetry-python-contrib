@@ -15,7 +15,7 @@
 
 # TODO: update this
 _instruments = ()
-_instruments_either = ("fastapi ~= 0.92", "fastapi-slim ~= 0.92")
+_instruments_any = ("fastapi ~= 0.92", "fastapi-slim ~= 0.92")
 
 _supports_metrics = True
 

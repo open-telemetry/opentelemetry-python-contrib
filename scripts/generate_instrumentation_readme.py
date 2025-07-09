@@ -59,14 +59,14 @@ def main(base_instrumentation_path):
             exec(fh.read(), pkg_info)
 
         instruments_and = pkg_info.get("_instruments", ())
-        instruments_either = pkg_info.get("_instruments_either", ())
+        instruments_any = pkg_info.get("_instruments_any", ())
         supports_metrics = pkg_info.get("_supports_metrics")
         semconv_status = pkg_info.get("_semconv_status")
         instruments_all = ()
-        if not instruments_and and not instruments_either:
+        if not instruments_and and not instruments_any:
             instruments_all = (name,)
         else:
-            instruments_all = tuple(instruments_and + instruments_either)
+            instruments_all = tuple(instruments_and + instruments_any)
 
         if not semconv_status:
             semconv_status = "development"

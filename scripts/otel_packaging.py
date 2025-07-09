@@ -64,14 +64,12 @@ def get_instrumentation_packages(
             "optional-dependencies"
         ]
         instruments = optional_dependencies.get("instruments", [])
-        instruments_either = optional_dependencies.get(
-            "instruments_either", []
-        )
+        instruments_any = optional_dependencies.get("instruments-any", [])
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
             "instruments": instruments,
-            "instruments_either": instruments_either,
+            "instruments-any": instruments_any,
         }
         if instrumentation["name"] in independent_packages:
             specifier = independent_packages[instrumentation["name"]]

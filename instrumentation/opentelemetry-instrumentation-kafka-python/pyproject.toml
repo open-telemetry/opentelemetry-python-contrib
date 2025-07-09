@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = []
-instruments_either = [
+instruments-any = [
   "kafka-python >= 2.0, < 3.0",
   "kafka-python-ng >= 2.0, < 3.0"
 ]

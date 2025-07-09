@@ -84,7 +84,7 @@ def main():
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
-        if not pkg["instruments"] and not pkg["instruments_either"]:
+        if not pkg["instruments"] and not pkg["instruments-any"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
             libraries.elts.append(
@@ -93,7 +93,7 @@ def main():
                     values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
                 )
             )
-        for target_pkg in pkg["instruments_either"]:
+        for target_pkg in pkg["instruments-any"]:
             libraries.elts.append(
                 ast.Dict(
                     keys=[ast.Str("library"), ast.Str("instrumentation")],
