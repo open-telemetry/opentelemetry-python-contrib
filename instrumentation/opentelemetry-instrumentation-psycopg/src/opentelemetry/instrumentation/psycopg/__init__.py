@@ -140,7 +140,7 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, Awaitable, Callable, Collection, TypeVar
 
 import psycopg  # pylint: disable=import-self
 from psycopg.sql import Composed  # pylint: disable=no-name-in-module
@@ -385,7 +385,7 @@ class AsyncCursorTracer(CursorTracer):
     async def traced_execution(
         self,
         cursor: dbapi.CursorT,
-        query_method: Callable[..., Any],
+        query_method: Callable[..., Awaitable[Any]],
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
