@@ -762,16 +762,16 @@ class TestAioHttpIntegration(TestBase):
         )
         self.memory_exporter.clear()
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
-        app = HttpServerMock("test_credential_removal")
+        app = HttpServerMock("test_remove_sensitive_params")
 
         @app.route("/status/200")
         def index():
             return "hello"
 
-        url = "http://username:password@localhost:5000/status/200"
+        url = "http://username:password@localhost:5000/status/200?Signature=secret"
 
         with app.run("localhost", 5000):
             with self.subTest(url=url):
@@ -793,7 +793,9 @@ class TestAioHttpIntegration(TestBase):
                     (StatusCode.UNSET, None),
                     {
                         HTTP_METHOD: "GET",
-                        HTTP_URL: ("http://localhost:5000/status/200"),
+                        HTTP_URL: (
+                            "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"
+                        ),
                         HTTP_STATUS_CODE: int(HTTPStatus.OK),
                     },
                 )

@@ -26,7 +26,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_URL,
 )
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import remove_url_credentials
+from opentelemetry.util.http import redact_url
 
 
 def _normalize_request(args, kwargs):
@@ -79,7 +79,7 @@ def fetch_async(
 
     if span.is_recording():
         attributes = {
-            HTTP_URL: remove_url_credentials(request.url),
+            HTTP_URL: redact_url(request.url),
             HTTP_METHOD: request.method,
         }
         for key, value in attributes.items():
@@ -165,7 +165,7 @@ def _finish_tracing_callback(
 def _create_metric_attributes(response):
     metric_attributes = {
         HTTP_STATUS_CODE: response.code,
-        HTTP_URL: remove_url_credentials(response.request.url),
+        HTTP_URL: redact_url(response.request.url),
         HTTP_METHOD: response.request.method,
     }
 
