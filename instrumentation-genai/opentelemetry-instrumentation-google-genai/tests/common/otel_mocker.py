@@ -20,7 +20,6 @@ from opentelemetry._logs import (
     get_logger_provider,
     set_logger_provider,
 )
-from opentelemetry._logs import get_logger_provider, set_logger_provider
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
@@ -76,6 +75,10 @@ class _LogWrapper:
     @property
     def body(self):
         return self._log_data.log_record.body
+
+    @property
+    def event_name(self):
+        return self._log_data.log_record.event_name
 
     def __str__(self):
         return self._log_data.log_record.to_json()
@@ -170,23 +173,21 @@ class OTelMocker:
         assert span is None, f"Found unexpected span named {name}"
 
     def get_event_named(self, event_name):
-        for event in self.get_finished_logs():
-            event_name_attr = event.attributes.get("event.name")
-            if event_name_attr is None:
-                continue
-            if event_name_attr == event_name:
-                return event
-        return None
+        return next(
+            (
+                event
+                for event in self.get_finished_logs()
+                if event.event_name == event_name
+            ),
+            None,
+        )
 
     def get_events_named(self, event_name):
-        result = []
-        for event in self.get_finished_logs():
-            event_name_attr = event.attributes.get("event.name")
-            if event_name_attr is None:
-                continue
-            if event_name_attr == event_name:
-                result.append(event)
-        return result
+        return [
+            event
+            for event in self.get_finished_logs()
+            if event.event_name == event_name
+        ]
 
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)

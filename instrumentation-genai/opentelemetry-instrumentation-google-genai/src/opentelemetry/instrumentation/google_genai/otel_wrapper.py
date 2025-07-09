@@ -88,5 +88,7 @@ class OTelWrapper:
         self._log_event(event_name, attributes, body)
 
     def _log_event(self, event_name, attributes, body):
-        event = LogRecord(event_name=event_name, body=body, attributes=attributes)
+        event = LogRecord(
+            event_name=event_name, body=body, attributes=attributes
+        )
         self._logger_provider.emit(event)
