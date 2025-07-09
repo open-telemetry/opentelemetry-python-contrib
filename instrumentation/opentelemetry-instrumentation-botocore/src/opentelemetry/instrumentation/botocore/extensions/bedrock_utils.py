@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, Iterator, Sequence, Union
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
 
-from opentelemetry._logs import LogRecord
+from opentelemetry.sdk._logs import LogRecord
 from opentelemetry.instrumentation.botocore.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
