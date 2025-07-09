@@ -480,13 +480,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             req_span,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/echo_socket",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 101,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: f"127.0.0.1:{self.get_http_port()}",
+                HTTP_TARGET: "/echo_socket",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 101,
                 "tornado.handler": "tests.tornado_test_app.EchoWebSocketHandler",
             },
         )
