@@ -18,7 +18,7 @@ from typing import Optional
 
 from openai import Stream
 
-from opentelemetry._logs import LogRecord, Logger
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -65,9 +65,7 @@ def chat_completions_create(
             try:
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
-                    return StreamWrapper(
-                        result, span, logger, capture_content
-                    )
+                    return StreamWrapper(result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(
@@ -123,9 +121,7 @@ def async_chat_completions_create(
             try:
                 result = await wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
-                    return StreamWrapper(
-                        result, span, logger, capture_content
-                    )
+                    return StreamWrapper(result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(
