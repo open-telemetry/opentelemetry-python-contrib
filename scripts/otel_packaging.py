@@ -64,6 +64,7 @@ def get_instrumentation_packages(
             "optional-dependencies"
         ]
         instruments = optional_dependencies.get("instruments", [])
+        # instruments-any is an optional field that can be used instead of or in addition to instruments. While instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
         instruments_any = optional_dependencies.get("instruments-any", [])
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
