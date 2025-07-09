@@ -119,9 +119,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
             logger_provider=logger_provider,
         )
 
-        method_wrappers = MethodWrappers(
-            tracer, logger, is_content_enabled()
-        )
+        method_wrappers = MethodWrappers(tracer, logger, is_content_enabled())
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):
