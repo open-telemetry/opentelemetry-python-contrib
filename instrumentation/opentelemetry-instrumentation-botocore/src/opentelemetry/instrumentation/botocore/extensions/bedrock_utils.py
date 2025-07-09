@@ -21,9 +21,9 @@ from typing import Any, Callable, Dict, Iterator, Sequence, Union
 
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
-from opentelemetry.context import get_current
-from opentelemetry._logs import LogRecord
 
+from opentelemetry._logs import LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.instrumentation.botocore.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
@@ -512,14 +512,14 @@ def message_to_event(
                 event_name="gen_ai.tool.message",
                 attributes=attributes,
                 body=tool_body,
-                context = get_current(),
+                context=get_current(),
             )
 
     yield LogRecord(
         event_name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
-        context = get_current(),
+        context=get_current(),
     )
 
 
@@ -627,5 +627,5 @@ class _Choice:
             attributes=attributes,
             body=self._to_body_dict(),
             **event_kwargs,
-            context = get_current(),
+            context=get_current(),
         )

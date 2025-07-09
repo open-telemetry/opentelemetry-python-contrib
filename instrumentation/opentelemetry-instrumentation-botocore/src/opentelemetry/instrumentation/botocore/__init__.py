@@ -199,9 +199,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
         """This is a multiplexer in order to have a logger per extension"""
 
         instrumentation_name = self._get_instrumentation_name(extension)
-        logger = self._loggers.get(instrumentation_name)
-        if logger:
-            return logger
+        if self._loggers.get(instrumentation_name):
+            return self._loggers.get(instrumentation_name)
 
         schema_version = extension.event_logger_schema_version()
         self._loggers[instrumentation_name] = get_logger(
@@ -287,11 +286,10 @@ class BotocoreInstrumentor(BaseInstrumentor):
         end_span_on_exit = extension.should_end_span_on_exit()
 
         tracer = self._get_tracer(extension)
-        logger = self._get_logger(extension)
         meter = self._get_meter(extension)
         metrics = self._get_metrics(extension, meter)
         instrumentor_ctx = _BotocoreInstrumentorContext(
-            logger=logger,
+            logger=self._get_logger(extension),
             metrics=metrics,
         )
         with tracer.start_as_current_span(

@@ -99,9 +99,7 @@ def vcr_config():
 
 
 @pytest.fixture(scope="function")
-def instrument_no_content(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_no_content(tracer_provider, logger_provider, meter_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
     )
@@ -119,9 +117,7 @@ def instrument_no_content(
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_with_content(tracer_provider, logger_provider, meter_provider):
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )

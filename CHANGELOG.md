@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3567](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3567))
 - `opentelemetry-resource-detector-containerid`: make it more quiet on platforms without cgroups
   ([#3579](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3579))
+- `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
+  ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 
 ### Added
 
