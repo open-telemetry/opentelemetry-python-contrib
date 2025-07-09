@@ -58,7 +58,6 @@ def fixture_tracer_provider(span_exporter):
 def fixture_logger_provider(log_exporter):
     provider = LoggerProvider()
     provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
-
     return provider
 
 

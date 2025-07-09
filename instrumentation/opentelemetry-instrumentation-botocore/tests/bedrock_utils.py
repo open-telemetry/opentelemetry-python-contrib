@@ -282,7 +282,7 @@ def remove_none_values(body):
 
 def assert_log_parent(log, span):
     if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.trace_id == span.get_span_context().trace_id, "{} does not equal {}".format(span.get_span_context().trace_id, log.log_record.trace_id)
         assert log.log_record.span_id == span.get_span_context().span_id
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags
@@ -290,9 +290,7 @@ def assert_log_parent(log, span):
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert (
-        log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    )
+    assert log.log_record.event_name == event_name, log.log_record.event_name
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
