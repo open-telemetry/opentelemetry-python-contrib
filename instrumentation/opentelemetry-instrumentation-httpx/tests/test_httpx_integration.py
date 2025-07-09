@@ -798,6 +798,7 @@ class BaseTestCases:
             self,
             url: str,
             expected_attributes: dict,
+            expected_number_of_metrics: int = 1,
         ) -> None:
             with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
                 client = self.create_client(
@@ -811,7 +812,9 @@ class BaseTestCases:
                 self.assertFalse(mock_span.is_recording())
                 self.assertTrue(mock_span.is_recording.called)
 
-                metrics = self.assert_metrics(num_metrics=1)
+                metrics = self.assert_metrics(
+                    num_metrics=expected_number_of_metrics
+                )
                 duration_data_point = metrics[0].data.data_points[0]
 
                 self.assertEqual(duration_data_point.count, 1)
@@ -823,14 +826,35 @@ class BaseTestCases:
         def test_metrics_have_response_attributes_with_disabled_tracing(
             self,
         ) -> None:
-            """Test that metrics have response attributes when tracing is disabled."""
+            """Test that metrics have response attributes when tracing is disabled for old
+            semantic conventions."""
             self._run_disabled_tracing_metrics_attributes_test(
-                url=self.URL,
+                url="http://mock:8080/status/200",
                 expected_attributes={
                     HTTP_STATUS_CODE: 200,
                     HTTP_METHOD: "GET",
                     HTTP_SCHEME: "http",
                 },
+                expected_number_of_metrics=1,
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_both_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled for both
+            semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
+                },
+                expected_number_of_metrics=2,
             )
 
         def test_metrics_have_response_attributes_with_disabled_tracing_new_semconv(
@@ -846,6 +870,7 @@ class BaseTestCases:
                     NETWORK_PROTOCOL_VERSION: "1.1",
                     SERVER_PORT: 8080,
                 },
+                expected_number_of_metrics=1,
             )
 
         def test_response_hook(self):
