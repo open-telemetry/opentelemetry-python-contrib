@@ -67,6 +67,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -87,7 +88,7 @@ if typing.TYPE_CHECKING:
 
 
 HTTP_RESPONSE_BODY = "http.response.body"
-SCHEMA_URL = "https://opentelemetry.io/schemas/1.21.0"
+SCHEMA_URL = Schemas.V1_21_0
 
 
 def _is_url_tuple(request: "RequestInfo"):
