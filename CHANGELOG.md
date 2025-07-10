@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-pika` Added instrumentation for All `SelectConnection` adapters
   ([#3584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3584))
+- `opentelemetry-instrumentation-tornado` Add support for `WebSocketHandler` instrumentation
+  ([#3498](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3498))
 
 ### Fixed
 
