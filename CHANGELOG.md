@@ -11,11 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.35.0/0.56b0 (2025-07-11)
 
 ### Added
 
 - `opentelemetry-instrumentation-pika` Added instrumentation for All `SelectConnection` adapters
   ([#3584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3584))
+- `opentelemetry-instrumentation-tornado` Add support for `WebSocketHandler` instrumentation
+  ([#3498](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3498))
+- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
+  ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
+- `opentelemetry-instrumentation-pymongo` `aggregate` and `getMore` capture statements support
+  ([#3601](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3601))
 
 ### Fixed
 
@@ -25,13 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3579](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3579))
 - `opentelemetry-instrumentation-openai-v2`: migrate off the deprecated events API to use the logs API
   ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3628))
-
-### Added
-
-- `opentelemetry-util-http` Added support for redacting specific url query string values and url credentials in instrumentations
-  ([#3508](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3508))
-- `opentelemetry-instrumentation-pymongo` `aggregate` and `getMore` capture statements support
-  ([#3601](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3601))
 
 ## Version 1.34.0/0.55b0 (2025-06-04)
 
