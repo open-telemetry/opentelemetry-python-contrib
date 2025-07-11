@@ -36,9 +36,9 @@ _SCOPE_ATTRIBUTES = {
 
 
 class OTelWrapper:
-    def __init__(self, tracer, logger_provider, meter):
+    def __init__(self, tracer, logger, meter):
         self._tracer = tracer
-        self._logger_provider = logger_provider
+        self._logger = logger
         self._meter = meter
         self._operation_duration_metric = (
             gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
@@ -91,4 +91,4 @@ class OTelWrapper:
         event = LogRecord(
             event_name=event_name, body=body, attributes=attributes
         )
-        self._logger_provider.emit(event)
+        self._logger.emit(event)
