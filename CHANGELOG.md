@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.35.0/0.56b0 (2025-07-11)
+
 ### Added
 
 - `opentelemetry-instrumentation-pika` Added instrumentation for All `SelectConnection` adapters
