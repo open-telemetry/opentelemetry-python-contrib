@@ -1,0 +1,134 @@
+interactions:
+- request:
+    body: !!binary |
+      ChABl89ktxVxE7d60nbzJJzzGj0KFQoMc2VydmljZS5uYW1lEgUKA2ZvbwokChtkZXBsb3ltZW50
+      LmVudmlyb25tZW50Lm5hbWUSBQoDZm9vIINg
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '84'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OpAMP-Python/0.0.1
+    method: POST
+    uri: http://localhost:4320/v1/opamp
+  response:
+    body:
+      string: !!binary |
+        ChABl89ktxVxE7d60nbzJJzzGmYKOgo4CgdlbGFzdGljEi0KGXsibG9nZ2luZ19sZXZlbCI6ImRl
+        YnVnIn0SEGFwcGxpY2F0aW9uL2pzb24SKGY3MzA5M2VjZDEyNjkzZGMxNDUxYWQ2MjdlZDA2MWJl
+        ZWM5ZjU1OWM4AlIA
+    headers:
+      Content-Length:
+      - '126'
+      Content-Type:
+      - application/x-protobuf
+      Date:
+      - Thu, 03 Jul 2025 08:26:13 GMT
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      ChABl89ktxVxE7d60nbzJJzzEAEgg2A6LAooZjczMDkzZWNkMTI2OTNkYzE0NTFhZDYyN2VkMDYx
+      YmVlYzlmNTU5YxAB
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '69'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OpAMP-Python/0.0.1
+    method: POST
+    uri: http://localhost:4320/v1/opamp
+  response:
+    body:
+      string: !!binary |
+        ChABl89ktxVxE7d60nbzJJzzOAJSAA==
+    headers:
+      Content-Length:
+      - '22'
+      Content-Type:
+      - application/x-protobuf
+      Date:
+      - Thu, 03 Jul 2025 08:26:13 GMT
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      ChABl89ktxVxE7d60nbzJJzzEAIgg2A=
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '23'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OpAMP-Python/0.0.1
+    method: POST
+    uri: http://localhost:4320/v1/opamp
+  response:
+    body:
+      string: !!binary |
+        ChABl89ktxVxE7d60nbzJJzzOAJSAA==
+    headers:
+      Content-Length:
+      - '22'
+      Content-Type:
+      - application/x-protobuf
+      Date:
+      - Thu, 03 Jul 2025 08:26:14 GMT
+    status:
+      code: 200
+      message: OK
+- request:
+    body: !!binary |
+      ChABl89ktxVxE7d60nbzJJzzEAMgg2BKAA==
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '25'
+      Content-Type:
+      - application/x-protobuf
+      User-Agent:
+      - OTel-OpAMP-Python/0.0.1
+    method: POST
+    uri: http://localhost:4320/v1/opamp
+  response:
+    body:
+      string: !!binary |
+        ChABl89ktxVxE7d60nbzJJzzOAJSAA==
+    headers:
+      Content-Length:
+      - '22'
+      Content-Type:
+      - application/x-protobuf
+      Date:
+      - Thu, 03 Jul 2025 08:26:15 GMT
+    status:
+      code: 200
+      message: OK
+version: 1
