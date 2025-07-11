@@ -88,7 +88,7 @@ if typing.TYPE_CHECKING:
 
 
 HTTP_RESPONSE_BODY = "http.response.body"
-SCHEMA_URL = Schemas.V1_21_0
+SCHEMA_URL = Schemas.V1_21_0.value
 
 
 def _is_url_tuple(request: "RequestInfo"):
