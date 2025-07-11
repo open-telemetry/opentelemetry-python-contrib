@@ -818,11 +818,12 @@ class TestWsgiAttributes(unittest.TestCase):
         self.assertEqual(mock_span.is_recording.call_count, 2)
         self.assertEqual(attrs[HTTP_STATUS_CODE], 404)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         self.environ["HTTP_HOST"] = "username:password@mock"
         self.environ["PATH_INFO"] = "/status/200"
+        self.environ["QUERY_STRING"] = "sig=secret"
         expected = {
-            HTTP_URL: "http://mock/status/200",
+            HTTP_URL: "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED",
             NET_HOST_PORT: 80,
         }
         self.assertGreaterEqual(
