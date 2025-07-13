@@ -113,7 +113,6 @@ class TestSystemMetrics(TestBase):
             "system.network.packets",
             "system.network.errors",
             "system.network.io",
-            "system.network.connections",
             "system.thread_count",
             "process.context_switches",
             "process.cpu.time",
@@ -127,6 +126,9 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.context_switches",
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
+
+        if sys.platform != "darwin":
+            observer_names.append("system.network.connections")
 
         # platform dependent metrics
         if sys.platform != "win32":
@@ -767,6 +769,7 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("system.network.io", expected)
 
+    @skipIf(sys.platform == "darwin", "No network connections on macOS")
     @mock.patch("psutil.net_connections")
     def test_system_network_connections(self, mock_net_connections):
         NetConnection = namedtuple(
