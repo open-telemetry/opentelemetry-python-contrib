@@ -1,6 +1,7 @@
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 
+# TODO: should this be in sdk or passed to the telemetry client?
 _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS = [
     0.01,
     0.02,
@@ -18,6 +19,7 @@ _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS = [
     81.92,
 ]
 
+# TODO: should this be in sdk or passed to the telemetry client?
 _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
     1,
     4,

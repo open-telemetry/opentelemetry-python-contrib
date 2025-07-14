@@ -51,19 +51,15 @@ from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.trace.propagation.tracecontext import (
-    TraceContextTextMapPropagator,
-)
-from opentelemetry.trace import set_span_in_context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.metrics import get_meter
-from opentelemetry.trace import get_tracer
-from opentelemetry._events import get_event_logger
-from opentelemetry.semconv.schemas import Schemas
 
-from .instruments import Instruments
 
+from opentelemetry.genai.sdk.api import get_telemetry_client
+from opentelemetry.genai.sdk.api import TelemetryClient
+from .utils import (
+    should_emit_events,
+)
 
 class LangChainInstrumentor(BaseInstrumentor):
     """
@@ -84,40 +80,19 @@ class LangChainInstrumentor(BaseInstrumentor):
         self._disable_trace_injection = disable_trace_injection
         Config.exception_logger = exception_logger
 
+        self._telemetry: TelemetryClient | None = None
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
-        tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
+        exporter_type_full = should_emit_events()
 
-        meter_provider = kwargs.get("meter_provider")
-        meter = get_meter(
-            __name__,
-            __version__,
-            meter_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
-
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
-            __name__,
-            __version__,
-            event_logger_provider=event_logger_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
-
-        instruments = Instruments(meter)
+        # Instantiate a singleton TelemetryClient bound to our tracer & meter
+        self._telemetry = get_telemetry_client(exporter_type_full, **kwargs)
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
-            tracer=tracer,
-            instruments=instruments,
-            event_logger = event_logger,
+            telemetry_client=self._telemetry,
         )
 
         wrap_function_wrapper(
@@ -125,19 +100,6 @@ class LangChainInstrumentor(BaseInstrumentor):
             name="BaseCallbackManager.__init__",
             wrapper=_BaseCallbackManagerInitWrapper(otel_callback_handler),
         )
-
-        # Optionally wrap LangChain's "BaseChatOpenAI" methods to inject trace context
-        if not self._disable_trace_injection:
-            wrap_function_wrapper(
-                module="langchain_openai.chat_models.base",
-                name="BaseChatOpenAI._generate",
-                wrapper=_OpenAITraceInjectionWrapper(otel_callback_handler),
-            )
-            wrap_function_wrapper(
-                module="langchain_openai.chat_models.base",
-                name="BaseChatOpenAI._agenerate",
-                wrapper=_OpenAITraceInjectionWrapper(otel_callback_handler),
-            )
 
     def _uninstrument(self, **kwargs):
         """
@@ -166,31 +128,3 @@ class _BaseCallbackManagerInitWrapper:
                 break
         else:
             instance.add_handler(self._otel_handler, inherit=True)
-
-
-class _OpenAITraceInjectionWrapper:
-    """
-    A wrapper that intercepts calls to the underlying LLM code in LangChain
-    to inject W3C trace headers into upstream requests (if possible).
-    """
-
-    def __init__(self, callback_manager):
-        self._otel_handler = callback_manager
-
-    def __call__(self, wrapped, instance, args, kwargs):
-        """
-        Look up the run_id in the `kwargs["run_manager"]` to find
-        the active span from the callback handler. Then inject
-        that span context into the 'extra_headers' for the openai call.
-        """
-        run_manager = kwargs.get("run_manager")
-        if run_manager is not None:
-            run_id = run_manager.run_id
-            span_holder = self._otel_handler.spans.get(run_id)
-            if span_holder and span_holder.span.is_recording():
-                extra_headers = kwargs.get("extra_headers", {})
-                ctx = set_span_in_context(span_holder.span)
-                TraceContextTextMapPropagator().inject(extra_headers, context=ctx)
-                kwargs["extra_headers"] = extra_headers
-
-        return wrapped(*args, **kwargs)
