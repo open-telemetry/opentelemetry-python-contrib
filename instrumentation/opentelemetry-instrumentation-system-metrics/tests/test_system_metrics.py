@@ -127,9 +127,6 @@ class TestSystemMetrics(TestBase):
             f"process.runtime.{self.implementation}.cpu.utilization",
         ]
 
-        if sys.platform != "darwin":
-            observer_names.append("system.network.connections")
-
         # platform dependent metrics
         if sys.platform != "win32":
             observer_names.append(
@@ -139,6 +136,8 @@ class TestSystemMetrics(TestBase):
             observer_names.append(
                 f"process.runtime.{self.implementation}.gc_count",
             )
+        if sys.platform != "darwin":
+            observer_names.append("system.network.connections")
 
         self.assertEqual(sorted(metric_names), sorted(observer_names))
 
