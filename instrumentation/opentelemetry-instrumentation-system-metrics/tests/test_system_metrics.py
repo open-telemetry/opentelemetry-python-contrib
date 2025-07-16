@@ -113,7 +113,6 @@ class TestSystemMetrics(TestBase):
             "system.network.packets",
             "system.network.errors",
             "system.network.io",
-            "system.network.connections",
             "system.thread_count",
             "process.context_switches",
             "process.cpu.time",
@@ -137,6 +136,8 @@ class TestSystemMetrics(TestBase):
             observer_names.append(
                 f"process.runtime.{self.implementation}.gc_count",
             )
+        if sys.platform != "darwin":
+            observer_names.append("system.network.connections")
 
         self.assertEqual(sorted(metric_names), sorted(observer_names))
 
@@ -767,6 +768,7 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("system.network.io", expected)
 
+    @skipIf(sys.platform == "darwin", "No network connections on macOS")
     @mock.patch("psutil.net_connections")
     def test_system_network_connections(self, mock_net_connections):
         NetConnection = namedtuple(
