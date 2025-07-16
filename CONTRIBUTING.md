@@ -329,7 +329,18 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - Update `_instruments` or `_instruments_any` variable in instrumentation **`package.py`** file with the new version constraint
 - At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
 
-Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected.
+Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected. For example, the following entry requires both `util` and `common` plus either `foo` or `bar` to be present for the instrumentation to occur:
+```
+[project.optional-dependencies]
+instruments = [
+  "util ~= 1.0"
+  "common ~= 2.0"
+]
+instruments-any = [
+  "foo ~= 3.0"
+  "bar ~= 4.0"
+]
+```
 
 <!-- See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details on instruments-any -->
 
