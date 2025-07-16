@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from google.protobuf import json_format
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation.vertexai.events import (
     ChoiceMessage,
     ChoiceToolCall,
@@ -204,7 +204,7 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
 
 def request_to_events(
     *, params: GenerateContentParams, capture_content: bool
-) -> Iterable[Event]:
+) -> Iterable[LogRecord]:
     # System message
     if params.system_instruction:
         request_content = _parts_to_any_value(
@@ -261,7 +261,7 @@ def response_to_events(
     response: prediction_service.GenerateContentResponse
     | prediction_service_v1beta1.GenerateContentResponse,
     capture_content: bool,
-) -> Iterable[Event]:
+) -> Iterable[LogRecord]:
     for candidate in response.candidates:
         tool_calls = _extract_tool_calls(
             candidate=candidate, capture_content=capture_content

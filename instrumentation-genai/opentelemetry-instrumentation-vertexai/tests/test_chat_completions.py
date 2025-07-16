@@ -78,10 +78,8 @@ def test_generate_content(
     assert user_log.trace_id == span_context.trace_id
     assert user_log.span_id == span_context.span_id
     assert user_log.trace_flags == span_context.trace_flags
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
         "content": [{"text": "Say this is a test"}],
         "role": "user",
@@ -90,10 +88,8 @@ def test_generate_content(
     assert choice_log.trace_id == span_context.trace_id
     assert choice_log.span_id == span_context.span_id
     assert choice_log.trace_flags == span_context.trace_flags
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
@@ -143,16 +139,12 @@ def test_generate_content_without_events(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     user_log, choice_log = [log_data.log_record for log_data in logs]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {"role": "user"}
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
@@ -285,10 +277,8 @@ def test_generate_content_invalid_role(
     # Emits the faulty content which caused the request to fail
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
-    assert logs[0].log_record.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert logs[0].log_record.attributes == {"gen_ai.system": "vertex_ai"}
+    assert logs[0].log_record.event_name == "gen_ai.user.message"
     assert logs[0].log_record.body == {
         "content": [{"text": "Say this is a test"}],
         "role": "invalid_role",
@@ -418,47 +408,37 @@ def generate_content_all_input_events(
         log_data.log_record for log_data in logs
     ]
 
-    assert system_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.system.message",
-    }
+    assert system_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert system_log.event_name == "gen_ai.system.message"
     assert system_log.body == {
         "content": [{"text": "You are a clever language model"}],
         # The API only allows user and model, so system instruction is considered a user role
         "role": "user",
     }
 
-    assert user_log1.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log1.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log1.event_name == "gen_ai.user.message"
     assert user_log1.body == {
         "content": [{"text": "My name is OpenTelemetry"}],
         "role": "user",
     }
 
-    assert assistant_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.assistant.message",
-    }
+    assert assistant_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert assistant_log.event_name == "gen_ai.assistant.message"
     assert assistant_log.body == {
         "content": [{"text": "Hello OpenTelemetry!"}],
         "role": "model",
     }
 
-    assert user_log2.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log2.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log2.event_name == "gen_ai.user.message"
     assert user_log2.body == {
         "content": [{"text": "Address me by name and say this is a test"}],
         "role": "user",
     }
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
