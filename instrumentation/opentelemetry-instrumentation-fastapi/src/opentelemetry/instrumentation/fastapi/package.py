@@ -13,7 +13,9 @@
 # limitations under the License.
 
 
-_instruments = ("fastapi ~= 0.92",)
+# TODO: update this
+_instruments = ()
+_instruments_any = ("fastapi ~= 0.92", "fastapi-slim ~= 0.92")
 
 _supports_metrics = True
 

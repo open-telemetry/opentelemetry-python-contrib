@@ -33,8 +33,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
     "fastapi ~= 0.92",
+    "fastapi-slim ~= 0.92",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
