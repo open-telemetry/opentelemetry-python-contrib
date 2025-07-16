@@ -137,12 +137,16 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
     # Note there is only one test here but it is run twice in tox
     # once with the psycopg2 package installed and once with
     # psycopg2-binary installed.
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_with_psycopg2_installed(self, mock_logger):
+    def test_instruments_with_psycopg2_installed(self, mock_logger, mock_dep):
         def _instrumentation_loaded_successfully_call():
             return call("Instrumented %s", "psycopg2")
 
         mock_distro = Mock()
+        mock_dep.return_value = None
         mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)

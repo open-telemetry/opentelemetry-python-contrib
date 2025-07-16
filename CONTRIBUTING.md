@@ -325,9 +325,13 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 ### Update supported instrumentation package versions
 
 - Navigate to the **instrumentation package directory:**
-  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
-  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+  - Update **`pyproject.toml`** file by modifying `instruments` or `instruments-any` entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` or `_instruments_any` variable in instrumentation **`package.py`** file with the new version constraint
 - At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected.
+
+<!-- See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details on instruments-any -->
 
 If you're adding support for a new version of the instrumentation package, follow these additional steps:
 

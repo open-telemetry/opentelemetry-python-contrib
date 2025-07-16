@@ -2872,20 +2872,20 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-instruments = [
+instruments-any = [
     { name = "kafka-python" },
     { name = "kafka-python-ng" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "kafka-python", marker = "extra == 'instruments'", specifier = ">=2.0,<3.0" },
-    { name = "kafka-python-ng", marker = "extra == 'instruments'", specifier = ">=2.0,<3.0" },
+    { name = "kafka-python", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
+    { name = "kafka-python-ng", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
-provides-extras = ["instruments"]
+provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-logging"
@@ -3029,7 +3029,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-instruments = [
+instruments-any = [
     { name = "psycopg2" },
     { name = "psycopg2-binary" },
 ]
@@ -3039,10 +3039,10 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
-    { name = "psycopg2", marker = "extra == 'instruments'", specifier = ">=2.7.3.1" },
-    { name = "psycopg2-binary", marker = "extra == 'instruments'", specifier = ">=2.7.3.1" },
+    { name = "psycopg2", marker = "extra == 'instruments-any'", specifier = ">=2.7.3.1" },
+    { name = "psycopg2-binary", marker = "extra == 'instruments-any'", specifier = ">=2.7.3.1" },
 ]
-provides-extras = ["instruments"]
+provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-pymemcache"
@@ -3548,14 +3548,14 @@ dependencies = [
     { name = "opentelemetry-instrumentation-grpc", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-jinja2", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-mysqlclient", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-openai-v2", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-pika", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-psycopg", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-psycopg2", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-psycopg2", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-pymemcache", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-pymongo", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-pymysql", extra = ["instruments"] },
@@ -3613,6 +3613,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-jinja2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-jinja2" },
     { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
+    { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
     { name = "opentelemetry-instrumentation-logging", editable = "instrumentation/opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysql" },
     { name = "opentelemetry-instrumentation-mysqlclient", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysqlclient" },
@@ -3620,6 +3621,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-pika", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-pika" },
     { name = "opentelemetry-instrumentation-psycopg", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-psycopg" },
     { name = "opentelemetry-instrumentation-psycopg2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-psycopg2" },
+    { name = "opentelemetry-instrumentation-psycopg2", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-psycopg2" },
     { name = "opentelemetry-instrumentation-pymemcache", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-pymemcache" },
     { name = "opentelemetry-instrumentation-pymongo", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-pymongo" },
     { name = "opentelemetry-instrumentation-pymysql", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-pymysql" },
