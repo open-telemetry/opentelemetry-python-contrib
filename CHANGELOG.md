@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-psycopg2` Utilize instruments-any functionality.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3612))
 - `opentelemetry-instrumentation-kafka-python` Utilize instruments-any functionality.
-  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3612))
+  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 
 ## Version 1.35.0/0.56b0 (2025-07-11)
 
