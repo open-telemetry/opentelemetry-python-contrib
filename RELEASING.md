@@ -24,6 +24,7 @@
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
+> - opentelemetry-instrumentation-langchain
 >
 > These libraries are also excluded from the general release.
 
