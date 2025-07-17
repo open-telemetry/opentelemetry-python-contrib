@@ -20,7 +20,6 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
 )
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
-    _instruments,
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
@@ -130,7 +129,13 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
                 call("psycopg2-binary"),
             ],
         )
-        self.assertEqual(package_to_instrument, _instruments)
+        self.assertEqual(
+            package_to_instrument,
+            (
+                _instruments_psycopg2,
+                _instruments_psycopg2_binary,
+            ),
+        )
 
     # This test is to verify that the auto instrumentation path
     # will auto instrument psycopg2 or psycopg2-binary is installed.
