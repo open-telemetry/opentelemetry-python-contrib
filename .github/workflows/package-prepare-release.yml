@@ -92,6 +92,8 @@ jobs:
   create-pull-request-against-release-branch:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing changes
     steps:
       - uses: actions/checkout@v4
 
@@ -147,6 +149,8 @@ jobs:
   create-pull-request-against-main:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing changes
     steps:
       - uses: actions/checkout@v4
 
