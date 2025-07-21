@@ -25,6 +25,7 @@
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
+> - opentelemetry-instrumentation-weaviate
 >
 > These libraries are also excluded from the general release.
 
