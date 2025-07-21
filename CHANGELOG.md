@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation`: Fix dependency conflict detection when instrumented packages are not installed by moving check back to before instrumentors are loaded. Add "instruments-any" feature for instrumentations that target multiple packages.
+  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
+
+### Added
+
+- `opentelemetry-instrumentation-psycopg2` Utilize instruments-any functionality.
+  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
+- `opentelemetry-instrumentation-kafka-python` Utilize instruments-any functionality.
+  ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
+
 ## Version 1.35.0/0.56b0 (2025-07-11)
 
 ### Added
