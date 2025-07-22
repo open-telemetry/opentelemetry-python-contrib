@@ -219,6 +219,7 @@ from __future__ import annotations
 
 import functools
 import wsgiref.util as wsgiref_util
+from urllib.parse import quote
 from timeit import default_timer
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
@@ -371,7 +372,20 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
+            try:
+                result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
+            except UnicodeEncodeError:
+                # The underlying wsgiref library seems to hardcode latin1 into this call
+                # This can cause issues for some characters and you can hit decode errors
+                path_info = quote(environ.get("PATH_INFO", ""), safe="/;=,", encoding="utf-8", errors="replace")
+                scheme = environ.get("wsgi.url_scheme", "http")
+                host = environ.get("HTTP_HOST", environ.get("SERVER_NAME", "localhost"))
+                url = f"{scheme}://{host}{path_info}"
+
+                if environ.get("QUERY_STRING"):
+                    url += f"?{environ['QUERY_STRING']}"
+
+                result[HTTP_URL] = redact_url(url)
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
