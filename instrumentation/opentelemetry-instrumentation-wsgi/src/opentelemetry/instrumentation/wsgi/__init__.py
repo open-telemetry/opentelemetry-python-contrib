@@ -372,29 +372,28 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
+            path_info = environ.get("PATH_INFO", "")
+            print("Path info", path_info)
             try:
                 result[HTTP_URL] = redact_url(
                     wsgiref_util.request_uri(environ)
                 )
-            except UnicodeEncodeError:
-                # The underlying wsgiref library seems to hardcode latin1 into this call
-                # This can cause issues for some characters and you can hit decode errors
-                path_info = quote(
-                    environ.get("PATH_INFO", ""),
-                    safe="/;=,",
-                    encoding="utf-8",
-                    errors="replace",
+            except UnicodeEncodeError as e:
+                url = wsgiref_util.application_uri(environ)
+                path = environ.get("PATH_INFO", "")
+                # Taken from repercent_broken_unicode function in django/utils/encoding
+                repercent = quote(
+                    path[e.start : e.end], safe=b"/#%[]=:;$&()+,!?*@'~"
                 )
-                scheme = environ.get("wsgi.url_scheme", "http")
-                host = environ.get(
-                    "HTTP_HOST", environ.get("SERVER_NAME", "localhost")
-                )
-                url = f"{scheme}://{host}{path_info}"
-
+                path = path[: e.start] + repercent.encode().decode()
+                # Most of this taken directly from original wsgiref library https://github.com/python/cpython/blob/bbe589f93ccaf32eb95fd9d1f8f3dc9a536e8db1/Lib/wsgiref/util.py#L61
+                if not environ.get("SCRIPT_NAME"):
+                    url += path[1:]
+                else:
+                    url += path
                 if environ.get("QUERY_STRING"):
-                    url += f"?{environ['QUERY_STRING']}"
-
-                result[HTTP_URL] = redact_url(url)
+                    url += "?" + environ["QUERY_STRING"]
+                result[HTTP_URL] = url
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
