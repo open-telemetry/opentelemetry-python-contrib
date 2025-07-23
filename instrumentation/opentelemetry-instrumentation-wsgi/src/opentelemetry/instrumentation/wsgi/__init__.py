@@ -373,7 +373,6 @@ def collect_request_attributes(
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
             path_info = environ.get("PATH_INFO", "")
-            print("Path info", path_info)
             try:
                 result[HTTP_URL] = redact_url(
                     wsgiref_util.request_uri(environ)
