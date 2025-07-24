@@ -13,6 +13,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 env:
   CORE_REPO_SHA: ${{ inputs.CORE_REPO_SHA }}
   CONTRIB_REPO_SHA: ${{ inputs.CONTRIB_REPO_SHA }}
