@@ -25,10 +25,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0",
     },
     {
-        "library": "weaviate-client >= 3.0",
-        "instrumentation": "opentelemetry-instrumentation-weaviate==0.0.1",
-    },
-    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.57b0.dev",
     },
