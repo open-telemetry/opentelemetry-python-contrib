@@ -64,6 +64,10 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-google-genai",
+    # Weaviate instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-weaviate",
 ]
 
 # Static version specifiers for instrumentations that are released independently
