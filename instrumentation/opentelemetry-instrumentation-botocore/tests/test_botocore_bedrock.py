@@ -882,6 +882,122 @@ def test_converse_stream_with_content_tool_call(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
 )
 @pytest.mark.vcr()
+def test_converse_stream_tool_call_parsing_errors(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    # pylint:disable=too-many-locals
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "text": "Use the get_cities_list tool to provide exactly 10 popular tourist cities in Japan. Call the tool with a cities array containing: Tokyo, Osaka, Kyoto, Hiroshima, Nara, Yokohama, Sapporo, Fukuoka, Sendai, and Nagoya"
+                }
+            ],
+        }
+    ]
+
+    tool_config = {
+        "tools": [
+            {
+                "toolSpec": {
+                    "name": "get_cities_list",
+                    "description": "Get a list of cities",
+                    "inputSchema": {
+                        "json": {
+                            "type": "object",
+                            "properties": {
+                                "cities": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                }
+                            },
+                        }
+                    },
+                }
+            }
+        ]
+    }
+
+    llm_model_value = "anthropic.claude-3-sonnet-20240229-v1:0"
+    response_0 = bedrock_runtime_client.converse_stream(
+        messages=messages, modelId=llm_model_value, toolConfig=tool_config
+    )
+
+    res = ""
+    tool_use_id = None
+    for chunk in response_0["stream"]:
+        if "contentBlockStart" in chunk:
+            start = chunk["contentBlockStart"]["start"]
+            tool_use_id = start["toolUse"]["toolUseId"]
+        elif "contentBlockDelta" in chunk:
+            delta = chunk["contentBlockDelta"]["delta"]
+            if "toolUse" in delta:
+                res += delta["toolUse"].get("input")
+
+    tool_use_input = json.loads(res)
+    expected_tool_use_input = {
+        "cities": [
+            "Tokyo",
+            "Osaka",
+            "Kyoto",
+            "Hiroshima",
+            "Nara",
+            "Yokohama",
+            "Sapporo",
+            "Fukuoka",
+            "Sendai",
+            "Nagoya",
+        ]
+    }
+    assert tool_use_input == expected_tool_use_input
+
+    (span_0,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span_0,
+        llm_model_value,
+        input_tokens=mock.ANY,
+        output_tokens=mock.ANY,
+        finish_reason=("tool_use",),
+        operation_name="chat",
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(
+        logs[0], "gen_ai.user.message", user_content, span_0
+    )
+
+    function_call_0 = {
+        "name": "get_cities_list",
+        "arguments": expected_tool_use_input,
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "tool_use",
+        "message": {
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": tool_use_id,
+                    "type": "function",
+                    "function": function_call_0,
+                },
+            ],
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
 def test_converse_stream_no_content(
     span_exporter,
     log_exporter,
@@ -1419,6 +1535,61 @@ def test_invoke_model_with_content_user_content_as_string(
         "message": message,
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
+
+
+@pytest.mark.vcr()
+def test_invoke_model_with_content_assistant_content_as_string(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    llm_model_value = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    max_tokens = 10
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": "say this is a test"},
+                {"role": "assistant", "content": "{"},
+            ],
+            "max_tokens": max_tokens,
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+    )
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        response,
+        "chat",
+        request_max_tokens=max_tokens,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 3
+    user_content = {"content": "say this is a test"}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    assistant_content = {"content": "{"}
+    assert_message_in_logs(
+        logs[1], "gen_ai.assistant.message", assistant_content, span
+    )
+
+    assistant_response_message = {
+        "role": "assistant",
+        "content": [{"type": "text", "text": "this is a test}"}],
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": assistant_response_message,
+    }
+    assert_message_in_logs(logs[2], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(

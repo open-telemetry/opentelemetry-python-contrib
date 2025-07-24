@@ -15,10 +15,13 @@
 from unittest.mock import mock_open, patch
 
 from opentelemetry import trace as trace_api
-from opentelemetry.resource.detector.container import ContainerResourceDetector
+from opentelemetry.resource.detector.containerid import (
+    ContainerResourceDetector,
+)
 from opentelemetry.sdk.resources import get_aggregated_resources
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.util._importlib_metadata import entry_points
 
 MockContainerResourceAttributes = {
     ResourceAttributes.CONTAINER_ID: "7be92808767a667f35c8505cbf40d14e931ef6db5b0210329cf193b15ba9d605",
@@ -52,7 +55,21 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v1",
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=f"""0::/system.slice/docker-{MockContainerResourceAttributes[ResourceAttributes.CONTAINER_ID]}.scope
+        """,
+    )
+    def test_container_id_detect_from_cgroup_file_with_suffix(
+        self, mock_cgroup_file
+    ):
+        actual = ContainerResourceDetector().detect()
+        self.assertDictEqual(
+            actual.attributes.copy(), MockContainerResourceAttributes
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.containerid._get_container_id_v1",
         return_value=None,
     )
     @patch(
@@ -93,7 +110,49 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id",
+        "opentelemetry.resource.detector.containerid._get_container_id_v1",
+        return_value=None,
+    )
+    @patch(
+        "builtins.open",
+        side_effect=FileNotFoundError,
+    )
+    def test_cannot_read_mountinfo_file(
+        self, mock_get_container_id_v1, mock_mountinfo_file
+    ):
+        with self.assertLogs(
+            "opentelemetry.resource.detector.containerid", level="DEBUG"
+        ) as cm:
+            actual = ContainerResourceDetector().detect()
+        self.assertFalse(actual.attributes.copy())
+        self.assertIn(
+            "DEBUG:opentelemetry.resource.detector.containerid:Failed to get container id. Exception: ",
+            cm.output,
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.containerid._get_container_id_v2",
+        return_value=None,
+    )
+    @patch(
+        "builtins.open",
+        side_effect=FileNotFoundError,
+    )
+    def test_cannot_read_cgroup_file(
+        self, mock_get_container_id_v2, mock_cgroup_file
+    ):
+        with self.assertLogs(
+            "opentelemetry.resource.detector.containerid", level="DEBUG"
+        ) as cm:
+            actual = ContainerResourceDetector().detect()
+        self.assertFalse(actual.attributes.copy())
+        self.assertIn(
+            "DEBUG:opentelemetry.resource.detector.containerid:Failed to get container id. Exception: ",
+            cm.output,
+        )
+
+    @patch(
+        "opentelemetry.resource.detector.containerid._get_container_id",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -116,7 +175,7 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id",
+        "opentelemetry.resource.detector.containerid._get_container_id",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -128,11 +187,11 @@ class ContainerResourceDetectorTest(TestBase):
         )
 
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v1",
+        "opentelemetry.resource.detector.containerid._get_container_id_v1",
         return_value=None,
     )
     @patch(
-        "opentelemetry.resource.detector.container._get_container_id_v2",
+        "opentelemetry.resource.detector.containerid._get_container_id_v2",
         return_value=MockContainerResourceAttributes[
             ResourceAttributes.CONTAINER_ID
         ],
@@ -144,3 +203,10 @@ class ContainerResourceDetectorTest(TestBase):
         self.assertDictEqual(
             actual.attributes.copy(), MockContainerResourceAttributes
         )
+
+    def test_container_id_entrypoint(self):
+        (entrypoint,) = entry_points(
+            group="opentelemetry_resource_detector", name="containerid"
+        )
+        detector = entrypoint.load()()
+        self.assertIsInstance(detector, ContainerResourceDetector)

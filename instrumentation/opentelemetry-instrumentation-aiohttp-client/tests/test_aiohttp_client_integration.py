@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import asyncio
 import contextlib
 import typing
@@ -28,6 +30,8 @@ from http_server_mock import HttpServerMock
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import aiohttp_client
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _StabilityMode,
@@ -37,9 +41,18 @@ from opentelemetry.instrumentation.aiohttp_client import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_HOST,
     HTTP_METHOD,
     HTTP_STATUS_CODE,
     HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
@@ -88,7 +101,7 @@ class TestAioHttpIntegration(TestBase):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
 
-    def assert_spans(self, spans, num_spans=1):
+    def _assert_spans(self, spans, num_spans=1):
         finished_spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(num_spans, len(finished_spans))
         self.assertEqual(
@@ -102,6 +115,11 @@ class TestAioHttpIntegration(TestBase):
             ],
             spans,
         )
+
+    def _assert_metrics(self, num_metrics: int = 1):
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), num_metrics)
+        return metrics
 
     @staticmethod
     def _http_request(
@@ -130,6 +148,7 @@ class TestAioHttpIntegration(TestBase):
         return run_with_test_server(client_request, url, handler)
 
     def test_status_codes(self):
+        index = 0
         for status_code, span_status in self._test_status_codes:
             with self.subTest(status_code=status_code):
                 path = "test-path?query=param#foobar"
@@ -144,11 +163,30 @@ class TestAioHttpIntegration(TestBase):
                     HTTP_URL: url,
                     HTTP_STATUS_CODE: status_code,
                 }
+
                 spans = [("GET", (span_status, None), attributes)]
-                self.assert_spans(spans)
+                self._assert_spans(spans)
                 self.memory_exporter.clear()
+                metrics = self._assert_metrics(1)
+                duration_data_point = metrics[0].data.data_points[index]
+                self.assertEqual(
+                    dict(duration_data_point.attributes),
+                    {
+                        HTTP_STATUS_CODE: status_code,
+                        HTTP_METHOD: "GET",
+                        HTTP_HOST: host,
+                        NET_PEER_NAME: host,
+                        NET_PEER_PORT: port,
+                    },
+                )
+                self.assertEqual(
+                    duration_data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                )
+                index += 1
 
     def test_status_codes_new_semconv(self):
+        index = 0
         for status_code, span_status in self._test_status_codes:
             with self.subTest(status_code=status_code):
                 path = "test-path?query=param#foobar"
@@ -164,14 +202,39 @@ class TestAioHttpIntegration(TestBase):
                     HTTP_REQUEST_METHOD: "GET",
                     URL_FULL: url,
                     HTTP_RESPONSE_STATUS_CODE: status_code,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
                 }
                 if status_code >= 400:
                     attributes[ERROR_TYPE] = str(status_code.value)
                 spans = [("GET", (span_status, None), attributes)]
-                self.assert_spans(spans)
+                self._assert_spans(spans)
                 self.memory_exporter.clear()
+                metrics = self._assert_metrics(1)
+                duration_data_point = metrics[0].data.data_points[index]
+                self.assertEqual(
+                    duration_data_point.attributes.get(
+                        HTTP_RESPONSE_STATUS_CODE
+                    ),
+                    status_code,
+                )
+                self.assertEqual(
+                    duration_data_point.attributes.get(HTTP_REQUEST_METHOD),
+                    "GET",
+                )
+                if status_code >= 400:
+                    self.assertEqual(
+                        duration_data_point.attributes.get(ERROR_TYPE),
+                        str(status_code.value),
+                    )
+                self.assertEqual(
+                    duration_data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                )
+                index += 1
 
     def test_status_codes_both_semconv(self):
+        index = 0
         for status_code, span_status in self._test_status_codes:
             with self.subTest(status_code=status_code):
                 path = "test-path?query=param#foobar"
@@ -186,17 +249,78 @@ class TestAioHttpIntegration(TestBase):
                 attributes = {
                     HTTP_REQUEST_METHOD: "GET",
                     HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
                     URL_FULL: url,
                     HTTP_URL: url,
                     HTTP_RESPONSE_STATUS_CODE: status_code,
                     HTTP_STATUS_CODE: status_code,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                    NET_PEER_PORT: port,
                 }
+
                 if status_code >= 400:
                     attributes[ERROR_TYPE] = str(status_code.value)
 
                 spans = [("GET", (span_status, None), attributes)]
-                self.assert_spans(spans, 1)
+                self._assert_spans(spans, 1)
                 self.memory_exporter.clear()
+                metrics = self._assert_metrics(2)
+                duration_data_point = metrics[0].data.data_points[index]
+                self.assertEqual(
+                    duration_data_point.attributes.get(HTTP_STATUS_CODE),
+                    status_code,
+                )
+                self.assertEqual(
+                    duration_data_point.attributes.get(HTTP_METHOD),
+                    "GET",
+                )
+                self.assertEqual(
+                    duration_data_point.attributes.get(ERROR_TYPE),
+                    None,
+                )
+                duration_data_point = metrics[1].data.data_points[index]
+                self.assertEqual(
+                    duration_data_point.attributes.get(
+                        HTTP_RESPONSE_STATUS_CODE
+                    ),
+                    status_code,
+                )
+                self.assertEqual(
+                    duration_data_point.attributes.get(HTTP_REQUEST_METHOD),
+                    "GET",
+                )
+                if status_code >= 400:
+                    self.assertEqual(
+                        duration_data_point.attributes.get(ERROR_TYPE),
+                        str(status_code.value),
+                    )
+                index += 1
+
+    def test_metrics(self):
+        with self.subTest(status_code=200):
+            host, port = self._http_request(
+                trace_config=aiohttp_client.create_trace_config(),
+                url="/test-path?query=param#foobar",
+                status_code=200,
+            )
+            metrics = self._assert_metrics(1)
+            self.assertEqual(len(metrics[0].data.data_points), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(
+                dict(metrics[0].data.data_points[0].attributes),
+                {
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    NET_PEER_NAME: host,
+                    NET_PEER_PORT: port,
+                },
+            )
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertTrue(duration_data_point.min > 0)
+            self.assertTrue(duration_data_point.max > 0)
+            self.assertTrue(duration_data_point.sum > 0)
 
     def test_schema_url(self):
         with self.subTest(status_code=200):
@@ -319,7 +443,7 @@ class TestAioHttpIntegration(TestBase):
             status_code=HTTPStatus.OK,
         )
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -353,7 +477,7 @@ class TestAioHttpIntegration(TestBase):
                 with self.assertRaises(aiohttp.ClientConnectorError):
                     loop.run_until_complete(do_request(url))
 
-            self.assert_spans(
+            self._assert_spans(
                 [
                     (
                         "GET",
@@ -379,7 +503,7 @@ class TestAioHttpIntegration(TestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -390,6 +514,17 @@ class TestAioHttpIntegration(TestBase):
                     },
                 )
             ]
+        )
+        metrics = self._assert_metrics(1)
+        duration_data_point = metrics[0].data.data_points[0]
+        self.assertEqual(
+            dict(duration_data_point.attributes),
+            {
+                HTTP_METHOD: "GET",
+                HTTP_HOST: host,
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
+            },
         )
 
     def test_basic_exception_new_semconv(self):
@@ -406,7 +541,7 @@ class TestAioHttpIntegration(TestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -415,9 +550,22 @@ class TestAioHttpIntegration(TestBase):
                         HTTP_REQUEST_METHOD: "GET",
                         URL_FULL: f"http://{host}:{port}/test",
                         ERROR_TYPE: "ServerDisconnectedError",
+                        SERVER_ADDRESS: host,
+                        SERVER_PORT: port,
                     },
                 )
             ]
+        )
+        metrics = self._assert_metrics(1)
+        duration_data_point = metrics[0].data.data_points[0]
+        self.assertEqual(
+            dict(duration_data_point.attributes),
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                ERROR_TYPE: "ServerDisconnectedError",
+                SERVER_ADDRESS: host,
+                SERVER_PORT: port,
+            },
         )
 
     def test_basic_exception_both_semconv(self):
@@ -434,7 +582,7 @@ class TestAioHttpIntegration(TestBase):
         span = self.memory_exporter.get_finished_spans()[0]
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -445,9 +593,34 @@ class TestAioHttpIntegration(TestBase):
                         ERROR_TYPE: "ServerDisconnectedError",
                         HTTP_METHOD: "GET",
                         HTTP_URL: f"http://{host}:{port}/test",
+                        HTTP_HOST: host,
+                        SERVER_ADDRESS: host,
+                        SERVER_PORT: port,
+                        NET_PEER_PORT: port,
                     },
                 )
             ]
+        )
+        metrics = self._assert_metrics(2)
+        duration_data_point = metrics[0].data.data_points[0]
+        self.assertEqual(
+            dict(duration_data_point.attributes),
+            {
+                HTTP_METHOD: "GET",
+                HTTP_HOST: host,
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
+            },
+        )
+        duration_data_point = metrics[1].data.data_points[0]
+        self.assertEqual(
+            dict(duration_data_point.attributes),
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                ERROR_TYPE: "ServerDisconnectedError",
+                SERVER_ADDRESS: host,
+                SERVER_PORT: port,
+            },
         )
 
     def test_timeout(self):
@@ -463,7 +636,7 @@ class TestAioHttpIntegration(TestBase):
             timeout=aiohttp.ClientTimeout(sock_read=0.01),
         )
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -490,7 +663,7 @@ class TestAioHttpIntegration(TestBase):
             max_redirects=2,
         )
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
@@ -526,7 +699,7 @@ class TestAioHttpIntegration(TestBase):
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(do_request(url))
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "HTTP",
@@ -568,7 +741,7 @@ class TestAioHttpIntegration(TestBase):
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(do_request(url))
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "HTTP",
@@ -581,22 +754,24 @@ class TestAioHttpIntegration(TestBase):
                         ),
                         HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
                         ERROR_TYPE: "405",
+                        SERVER_ADDRESS: "localhost",
+                        SERVER_PORT: 5000,
                     },
                 )
             ]
         )
         self.memory_exporter.clear()
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         trace_configs = [aiohttp_client.create_trace_config()]
 
-        app = HttpServerMock("test_credential_removal")
+        app = HttpServerMock("test_remove_sensitive_params")
 
         @app.route("/status/200")
         def index():
             return "hello"
 
-        url = "http://username:password@localhost:5000/status/200"
+        url = "http://username:password@localhost:5000/status/200?Signature=secret"
 
         with app.run("localhost", 5000):
             with self.subTest(url=url):
@@ -611,14 +786,16 @@ class TestAioHttpIntegration(TestBase):
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(do_request(url))
 
-        self.assert_spans(
+        self._assert_spans(
             [
                 (
                     "GET",
                     (StatusCode.UNSET, None),
                     {
                         HTTP_METHOD: "GET",
-                        HTTP_URL: ("http://localhost:5000/status/200"),
+                        HTTP_URL: (
+                            "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED"
+                        ),
                         HTTP_STATUS_CODE: int(HTTPStatus.OK),
                     },
                 )
@@ -652,7 +829,7 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         return default_request
 
-    def assert_spans(self, num_spans: int):
+    def _assert_spans(self, num_spans: int):
         finished_spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(num_spans, len(finished_spans))
         if num_spans == 0:
@@ -661,11 +838,16 @@ class TestAioHttpClientInstrumentor(TestBase):
             return finished_spans[0]
         return finished_spans
 
+    def _assert_metrics(self, num_metrics: int = 1):
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), num_metrics)
+        return metrics
+
     def test_instrument(self):
         host, port = run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
         )
-        span = self.assert_spans(1)
+        span = self._assert_spans(1)
         self.assertEqual("GET", span.name)
         self.assertEqual("GET", span.attributes[HTTP_METHOD])
         self.assertEqual(
@@ -673,6 +855,19 @@ class TestAioHttpClientInstrumentor(TestBase):
             span.attributes[HTTP_URL],
         )
         self.assertEqual(200, span.attributes[HTTP_STATUS_CODE])
+        metrics = self._assert_metrics(1)
+        duration_data_point = metrics[0].data.data_points[0]
+        self.assertEqual(duration_data_point.count, 1)
+        self.assertEqual(
+            dict(duration_data_point.attributes),
+            {
+                HTTP_HOST: host,
+                HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                NET_PEER_NAME: host,
+                NET_PEER_PORT: port,
+            },
+        )
 
     def test_instrument_new_semconv(self):
         AioHttpClientInstrumentor().uninstrument()
@@ -683,7 +878,7 @@ class TestAioHttpClientInstrumentor(TestBase):
             host, port = run_with_test_server(
                 self.get_default_request(), self.URL, self.default_handler
             )
-            span = self.assert_spans(1)
+            span = self._assert_spans(1)
             self.assertEqual("GET", span.name)
             self.assertEqual("GET", span.attributes[HTTP_REQUEST_METHOD])
             self.assertEqual(
@@ -691,6 +886,18 @@ class TestAioHttpClientInstrumentor(TestBase):
                 span.attributes[URL_FULL],
             )
             self.assertEqual(200, span.attributes[HTTP_RESPONSE_STATUS_CODE])
+            metrics = self._assert_metrics(1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                },
+            )
 
     def test_instrument_both_semconv(self):
         AioHttpClientInstrumentor().uninstrument()
@@ -702,17 +909,47 @@ class TestAioHttpClientInstrumentor(TestBase):
                 self.get_default_request(), self.URL, self.default_handler
             )
             url = f"http://{host}:{port}/test-path"
-            attributes = {
-                HTTP_REQUEST_METHOD: "GET",
-                HTTP_METHOD: "GET",
-                URL_FULL: url,
-                HTTP_URL: url,
-                HTTP_RESPONSE_STATUS_CODE: 200,
-                HTTP_STATUS_CODE: 200,
-            }
-            span = self.assert_spans(1)
+            span = self._assert_spans(1)
             self.assertEqual("GET", span.name)
-            self.assertEqual(span.attributes, attributes)
+            self.assertEqual(
+                dict(span.attributes),
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    URL_FULL: url,
+                    HTTP_URL: url,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                    NET_PEER_PORT: port,
+                },
+            )
+            metrics = self._assert_metrics(2)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: host,
+                    NET_PEER_NAME: host,
+                    NET_PEER_PORT: port,
+                },
+            )
+            duration_data_point = metrics[1].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: host,
+                    SERVER_PORT: port,
+                },
+            )
 
     def test_instrument_with_custom_trace_config(self):
         trace_config = aiohttp.TraceConfig()
@@ -729,7 +966,7 @@ class TestAioHttpClientInstrumentor(TestBase):
                     await session.get(TestAioHttpClientInstrumentor.URL)
 
         run_with_test_server(make_request, self.URL, self.default_handler)
-        self.assert_spans(1)
+        self._assert_spans(1)
 
     def test_every_request_by_new_session_creates_one_span(self):
         async def make_request(server: aiohttp.test_utils.TestServer):
@@ -743,7 +980,7 @@ class TestAioHttpClientInstrumentor(TestBase):
                 run_with_test_server(
                     make_request, self.URL, self.default_handler
                 )
-                self.assert_spans(1)
+                self._assert_spans(1)
 
     def test_instrument_with_existing_trace_config(self):
         trace_config = aiohttp.TraceConfig()
@@ -760,7 +997,7 @@ class TestAioHttpClientInstrumentor(TestBase):
                     await session.get(TestAioHttpClientInstrumentor.URL)
 
         run_with_test_server(create_session, self.URL, self.default_handler)
-        self.assert_spans(1)
+        self._assert_spans(1)
 
     def test_no_op_tracer_provider(self):
         AioHttpClientInstrumentor().uninstrument()
@@ -780,13 +1017,13 @@ class TestAioHttpClientInstrumentor(TestBase):
             self.get_default_request(), self.URL, self.default_handler
         )
 
-        self.assert_spans(0)
+        self._assert_spans(0)
 
         AioHttpClientInstrumentor().instrument()
         run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
         )
-        self.assert_spans(1)
+        self._assert_spans(1)
 
     def test_uninstrument_session(self):
         async def uninstrument_request(server: aiohttp.test_utils.TestServer):
@@ -798,19 +1035,19 @@ class TestAioHttpClientInstrumentor(TestBase):
         run_with_test_server(
             uninstrument_request, self.URL, self.default_handler
         )
-        self.assert_spans(0)
+        self._assert_spans(0)
 
         run_with_test_server(
             self.get_default_request(), self.URL, self.default_handler
         )
-        self.assert_spans(1)
+        self._assert_spans(1)
 
     def test_suppress_instrumentation(self):
         with suppress_instrumentation():
             run_with_test_server(
                 self.get_default_request(), self.URL, self.default_handler
             )
-        self.assert_spans(0)
+        self._assert_spans(0)
 
     @staticmethod
     async def suppressed_request(server: aiohttp.test_utils.TestServer):
@@ -822,7 +1059,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         run_with_test_server(
             self.suppressed_request, self.URL, self.default_handler
         )
-        self.assert_spans(0)
+        self._assert_spans(0)
 
     def test_suppress_instrumentation_with_server_exception(self):
         # pylint:disable=unused-argument
@@ -832,7 +1069,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         run_with_test_server(
             self.suppressed_request, self.URL, raising_handler
         )
-        self.assert_spans(0)
+        self._assert_spans(0)
 
     def test_url_filter(self):
         def strip_query_params(url: yarl.URL) -> str:
@@ -845,7 +1082,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         host, port = run_with_test_server(
             self.get_default_request(url), url, self.default_handler
         )
-        span = self.assert_spans(1)
+        span = self._assert_spans(1)
         self.assertEqual(
             f"http://{host}:{port}/test-path",
             span.attributes[HTTP_URL],
@@ -873,7 +1110,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         run_with_test_server(
             self.get_default_request(url), url, self.default_handler
         )
-        span = self.assert_spans(1)
+        span = self._assert_spans(1)
         self.assertEqual("GET - /test-path", span.name)
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
