@@ -151,7 +151,7 @@ from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
-    _instruments,
+    _instruments_any,
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
@@ -187,7 +187,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         except PackageNotFoundError:
             pass
 
-        return _instruments
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         """Integrate with PostgreSQL Psycopg library.

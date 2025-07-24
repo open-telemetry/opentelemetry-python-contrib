@@ -91,7 +91,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import (
-    _instruments,
+    _instruments_any,
     _instruments_kafka_python,
     _instruments_kafka_python_ng,
 )
@@ -123,7 +123,7 @@ class KafkaInstrumentor(BaseInstrumentor):
         except PackageNotFoundError:
             pass
 
-        return _instruments
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         """Instruments the kafka module
