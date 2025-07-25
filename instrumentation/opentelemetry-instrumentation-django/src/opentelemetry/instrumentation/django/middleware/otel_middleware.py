@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import types
+from contextvars import Token
 from logging import getLogger
 from time import time
 from timeit import default_timer
-from typing import Callable
+from typing import Callable, ContextManager, Union
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
+from opentelemetry.context.context import Context
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
@@ -207,26 +209,17 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         if is_asgi_request:
             carrier = request.scope
-            carrier_getter = asgi_getter
             collect_request_attributes = asgi_collect_request_attributes
         else:
             carrier = request_meta
-            carrier_getter = wsgi_getter
             collect_request_attributes = wsgi_collect_request_attributes
 
         attributes = collect_request_attributes(
             carrier,
             self._sem_conv_opt_in_mode,
         )
-        span, token = _start_internal_or_server_span(
-            tracer=self._tracer,
-            span_name=self._get_span_name(request),
-            start_time=request_meta.get(
-                "opentelemetry-instrumentor-django.starttime_key"
-            ),
-            context_carrier=carrier,
-            context_getter=carrier_getter,
-            attributes=attributes,
+        span, token, activation = self._get_span(
+            request, attributes, is_asgi_request
         )
 
         active_requests_count_attrs = _parse_active_request_count_attrs(
@@ -282,8 +275,6 @@ class _DjangoMiddleware(MiddlewareMixin):
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
@@ -300,6 +291,37 @@ class _DjangoMiddleware(MiddlewareMixin):
                 # Raising an exception here would leak the request span since process_response
                 # would not be called. Log the exception instead.
                 _logger.exception("Exception raised by request_hook")
+
+    def _get_span(
+        self,
+        request: Union[HttpRequest, ASGIRequest],
+        attributes: dict,
+        is_asgi_request: bool,
+    ) -> tuple[Span, Token[Context], ContextManager]:
+        request_meta = request.META
+
+        if is_asgi_request:
+            carrier = request.scope
+            carrier_getter = asgi_getter
+        else:
+            carrier = request_meta
+            carrier_getter = wsgi_getter
+
+        span, token = _start_internal_or_server_span(
+            tracer=self._tracer,
+            span_name=self._get_span_name(request),
+            start_time=request_meta.get(
+                "opentelemetry-instrumentor-django.starttime_key"
+            ),
+            context_carrier=carrier,
+            context_getter=carrier_getter,
+            attributes=attributes,
+        )
+
+        activation = use_span(span, end_on_exit=True)
+        activation.__enter__()  # pylint: disable=E1101
+
+        return span, token, activation
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
