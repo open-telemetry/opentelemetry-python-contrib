@@ -457,7 +457,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         """
         Avoid `request.get_host` to bypass Django's ALLOWED_HOST check
         """
-        url = "{}://{}{}?".format(
+        url = "{}://{}{}".format(
             request.scheme, request._get_raw_host(), request.path
         )
         return self._excluded_urls.url_disabled(url)
