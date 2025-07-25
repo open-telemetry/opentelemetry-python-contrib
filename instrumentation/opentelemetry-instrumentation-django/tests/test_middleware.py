@@ -116,6 +116,10 @@ class TestMiddleware(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
+        conf.settings.ALLOWED_HOSTS = [
+            # Django adds "testserver" within "setup_test_environment" so this check doesn't break during tests.
+            "unknown"
+        ]
         test_name = ""
         if hasattr(self, "_testMethodName"):
             test_name = self._testMethodName
