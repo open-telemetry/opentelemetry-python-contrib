@@ -244,6 +244,7 @@ from typing import Collection
 from django import VERSION as django_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -425,25 +426,52 @@ class DjangoInstrumentor(BaseInstrumentor):
                 middleware_position, self._sql_commenter_middleware
             )
 
-        settings_middleware.insert(
-            middleware_position, self._opentelemetry_middleware
+        otel_middleware = getattr(
+            settings, "OTEL_DJANGO_MIDDLEWARE", self._opentelemetry_middleware
         )
+        if not self._middleware_is_valid(otel_middleware):
+            _logger.debug(
+                'Middleware specified at settings.OTEL_DJANGO_MIDDLEWARE is not an instance of "%s". Switching to "%s".',
+                self._opentelemetry_middleware,
+                self._opentelemetry_middleware,
+            )
+            otel_middleware = self._opentelemetry_middleware
+
+        settings_middleware.insert(middleware_position, otel_middleware)
 
         setattr(settings, _middleware_setting, settings_middleware)
+
+    def _middleware_is_valid(self, middleware_path: str) -> bool:
+        if middleware_path == self._opentelemetry_middleware:
+            return True
+        try:
+            middleware_cls = import_string(middleware_path)
+        except ModuleNotFoundError:
+            return False
+
+        # Require the custom middleware to inherit from `_DjangoMiddleware` because we do some
+        # patching to that class that the custom one needs to inherit.
+        return isinstance(middleware_cls, type) and issubclass(
+            middleware_cls, _DjangoMiddleware
+        )
 
     def _uninstrument(self, **kwargs):
         _middleware_setting = _get_django_middleware_setting()
         settings_middleware = getattr(settings, _middleware_setting, None)
+        otel_middleware = getattr(
+            settings, "OTEL_DJANGO_MIDDLEWARE", self._opentelemetry_middleware
+        )
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
         # BaseInstrumentor and another one implemented in _instrument. Both
         # stop _instrument from running and thus, settings_middleware not being
         # set.
-        if settings_middleware is None or (
-            self._opentelemetry_middleware not in settings_middleware
+        if (
+            settings_middleware is None
+            or otel_middleware not in settings_middleware
         ):
             return
 
-        settings_middleware.remove(self._opentelemetry_middleware)
+        settings_middleware.remove(otel_middleware)
         setattr(settings, _middleware_setting, settings_middleware)

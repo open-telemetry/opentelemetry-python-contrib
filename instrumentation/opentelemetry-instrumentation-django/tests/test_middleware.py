@@ -22,7 +22,11 @@ from unittest.mock import Mock, patch
 from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
-from django.test.utils import setup_test_environment, teardown_test_environment
+from django.test.utils import (
+    override_settings,
+    setup_test_environment,
+    teardown_test_environment,
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -100,6 +104,18 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
+class CustomMiddleware(_DjangoMiddleware):
+    pass
+
+
+class RandomMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+
 # pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
     @classmethod
@@ -166,14 +182,90 @@ class TestMiddleware(WsgiTestBase):
         else:
             middleware = conf.settings.MIDDLEWARE_CLASSES
         # adding two dummy middlewares
-        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
-        middleware.append(temprory_middelware)
-        middleware.append(temprory_middelware)
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
+        middleware.append(temporary_middleware)
 
         middleware_position = 1
         _django_instrumentor.instrument(
             middleware_position=middleware_position
         )
+        self.assertEqual(
+            middleware[middleware_position],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+        )
+
+    def test_custom_middleware_added_at_position(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding two dummy middlewares
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
+        middleware.append(temporary_middleware)
+        custom_middleware = (
+            CustomMiddleware.__module__ + "." + CustomMiddleware.__qualname__
+        )
+        middleware_position = 1
+
+        with override_settings(OTEL_DJANGO_MIDDLEWARE=custom_middleware):
+            _django_instrumentor.instrument(
+                middleware_position=middleware_position
+            )
+
+            self.assertEqual(
+                middleware[middleware_position], custom_middleware
+            )
+
+            _django_instrumentor.uninstrument()  # Uninstrument with the settings overridden
+
+    def test_random_middleware_refused_in_favor_of_django_middleware(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding two dummy middlewares
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
+        middleware.append(temporary_middleware)
+        random_middleware = (
+            RandomMiddleware.__module__ + "." + RandomMiddleware.__qualname__
+        )
+        middleware_position = 1
+
+        with override_settings(OTEL_DJANGO_MIDDLEWARE=random_middleware):
+            _django_instrumentor.instrument(
+                middleware_position=middleware_position
+            )
+
+        self.assertEqual(
+            middleware[middleware_position],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+        )
+
+    def test_custom_middleware_does_not_exist_default_to_django_middleware(
+        self,
+    ):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding two dummy middlewares
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
+        middleware.append(temporary_middleware)
+        non_existing_middleware = "path.to.a.non.existing.Middleware"
+        middleware_position = 1
+
+        with override_settings(OTEL_DJANGO_MIDDLEWARE=non_existing_middleware):
+            _django_instrumentor.instrument(
+                middleware_position=middleware_position
+            )
+
         self.assertEqual(
             middleware[middleware_position],
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
@@ -186,8 +278,8 @@ class TestMiddleware(WsgiTestBase):
         else:
             middleware = conf.settings.MIDDLEWARE_CLASSES
         # adding middleware
-        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
-        middleware.append(temprory_middelware)
+        temporary_middleware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temporary_middleware)
         middleware_position = (
             756  # wrong position out of bound of middleware length
         )
