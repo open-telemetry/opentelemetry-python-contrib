@@ -22,6 +22,8 @@ jobs:
       contents: write # required for creating releases
       pull-requests: write # required for creating pull requests
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # required for pushing changes
     steps:
       - run: |
           if [[ $GITHUB_REF_NAME != package-release/${{ inputs.package }}* ]]; then

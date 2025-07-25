@@ -11,6 +11,8 @@ jobs:
       contents: write # required for pushing branches
       pull-requests: write # required for creating and editing pull requests
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # required for pushing changes
     steps:
       - uses: actions/checkout@v4
 
