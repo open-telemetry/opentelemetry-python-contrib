@@ -234,6 +234,20 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
 
+    def test_when_middleware_triggers_host_check_then_raises_exception(self):
+        def return_host(request):
+            # "HttpRequest.get_host" checks for allowed hosts and raises
+            # `django.core.DisallowedHost` if it isn't allowed.
+            return request.get_host()
+
+        with patch.object(
+            _DjangoMiddleware, "process_request", side_effect=return_host
+        ) as process_mock:
+            response = Client().get("/route/2020/template/")
+
+        assert response.status_code == 400
+        process_mock.assert_called_once()
+
     def test_traced_get(self):
         Client().get("/traced/")
 
