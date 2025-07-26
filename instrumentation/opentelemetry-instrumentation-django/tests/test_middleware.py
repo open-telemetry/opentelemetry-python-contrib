@@ -234,7 +234,7 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
 
-    def test_when_middleware_triggers_host_check_then_raises_exception(self):
+    def test_when_middleware_triggers_host_check_then_returns_bad_request(self):
         def return_host(request):
             # "HttpRequest.get_host" checks for allowed hosts and raises
             # `django.core.DisallowedHost` if it isn't allowed.
