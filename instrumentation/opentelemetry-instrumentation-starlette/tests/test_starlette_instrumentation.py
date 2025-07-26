@@ -28,7 +28,12 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_ROUTE,
+    HTTP_TARGET,
+    HTTP_URL,
+)
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
@@ -122,22 +127,17 @@ class TestStarletteManualInstrumentation(TestBase):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # expect only one span to have the attributes
         self.assertEqual(1, len(spans_with_http_attributes))
 
         for span in spans_with_http_attributes:
-            self.assertEqual(
-                "/sub/home", span.attributes[SpanAttributes.HTTP_TARGET]
-            )
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
             self.assertEqual(
                 "http://testserver/sub/home",
-                span.attributes[SpanAttributes.HTTP_URL],
+                span.attributes[HTTP_URL],
             )
 
     def test_starlette_route_attribute_added(self):
@@ -147,14 +147,10 @@ class TestStarletteManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /user/{username}", span.name)
-        self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_ROUTE], "/user/{username}")
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
-        self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_FLAVOR], "1.1")
 
     def test_starlette_excluded_urls(self):
         """Ensure that given starlette routes are excluded."""
@@ -456,10 +452,7 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -480,12 +473,10 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         self.assertIsNotNone(server_span)
         # As soon as the bug is fixed for starlette, we can iterate over spans_with_http_attributes here
         # to verify the correctness of the attributes for the internal span as well
-        self.assertEqual(
-            "/sub/home", server_span.attributes[SpanAttributes.HTTP_TARGET]
-        )
+        self.assertEqual("/sub/home", server_span.attributes[HTTP_TARGET])
         self.assertEqual(
             "http://testserver/sub/home",
-            server_span.attributes[SpanAttributes.HTTP_URL],
+            server_span.attributes[HTTP_URL],
         )
 
 
@@ -542,10 +533,7 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
         spans_with_http_attributes = [
             span
             for span in spans
-            if (
-                SpanAttributes.HTTP_URL in span.attributes
-                or SpanAttributes.HTTP_TARGET in span.attributes
-            )
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
         ]
 
         # We now expect spans with attributes from both the app and its sub app
@@ -566,12 +554,10 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
         self.assertIsNotNone(server_span)
         # As soon as the bug is fixed for starlette, we can iterate over spans_with_http_attributes here
         # to verify the correctness of the attributes for the internal span as well
-        self.assertEqual(
-            "/sub/home", server_span.attributes[SpanAttributes.HTTP_TARGET]
-        )
+        self.assertEqual("/sub/home", server_span.attributes[HTTP_TARGET])
         self.assertEqual(
             "http://testserver/sub/home",
-            server_span.attributes[SpanAttributes.HTTP_URL],
+            server_span.attributes[HTTP_URL],
         )
 
 
