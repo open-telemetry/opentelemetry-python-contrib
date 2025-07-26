@@ -116,6 +116,10 @@ class TestMiddleware(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
+        conf.settings.ALLOWED_HOSTS = [
+            # Django adds "testserver" within "setup_test_environment" so this check doesn't break during tests.
+            "unknown"
+        ]
         test_name = ""
         if hasattr(self, "_testMethodName"):
             test_name = self._testMethodName
@@ -229,6 +233,20 @@ class TestMiddleware(WsgiTestBase):
             )
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
+
+    def test_when_middleware_triggers_host_check_then_returns_bad_request(self):
+        def return_host(request):
+            # "HttpRequest.get_host" checks for allowed hosts and raises
+            # `django.core.DisallowedHost` if it isn't allowed.
+            return request.get_host()
+
+        with patch.object(
+            _DjangoMiddleware, "process_request", side_effect=return_host
+        ) as process_mock:
+            response = Client().get("/route/2020/template/")
+
+        assert response.status_code == 400
+        process_mock.assert_called_once()
 
     def test_traced_get(self):
         Client().get("/traced/")
