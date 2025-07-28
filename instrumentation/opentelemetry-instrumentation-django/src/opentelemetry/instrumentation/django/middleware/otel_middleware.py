@@ -455,7 +455,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     def _url_is_disabled(self, request):
         """
-        Avoid `request.get_host` to bypass Django's ALLOWED_HOST check
+        Avoid `request.get_host` to bypass Django's `ALLOWED_HOSTS` check
         """
         url = "{}://{}{}".format(
             request.scheme, request._get_raw_host(), request.path
