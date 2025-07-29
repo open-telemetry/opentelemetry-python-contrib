@@ -322,6 +322,21 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(span.name, "name set from hook")
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
+    def test_post_injection_hook(self):
+        def post_injection_hook(headers, request):
+            headers.pop("traceparent", None)
+
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument(
+            post_injection_hook=post_injection_hook
+        )
+
+        self.perform_request(self.URL)
+
+        span = self.assert_span()
+        self.assertEqual(span.name, "GET")
+        self.assertNotIn("traceparent", httpretty.last_request().headers)
+
     def test_excluded_urls_explicit(self):
         url_404 = "http://mock/status/404"
         httpretty.register_uri(
