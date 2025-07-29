@@ -23,13 +23,14 @@ from unittest import mock
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -52,7 +53,10 @@ from opentelemetry.semconv.attributes.http_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
-from opentelemetry.semconv.attributes.server_attributes import SERVER_PORT
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_PATH,
     URL_QUERY,
@@ -401,6 +405,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
                     SERVER_PORT: 80,
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
@@ -436,6 +441,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     HTTP_REQUEST_METHOD: "GET",
                     URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
                     SERVER_PORT: 80,
                     NETWORK_PROTOCOL_VERSION: "1.0",
                     URL_PATH: "/",
@@ -706,7 +712,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    CLIENT_ADDRESS: "0.0.0.0",
+                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
@@ -733,7 +739,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: "0.0.0.0",
                     SpanAttributes.NET_HOST_PORT: 80,
                     SpanAttributes.HTTP_URL: "http://0.0.0.0/",
-                    CLIENT_ADDRESS: "0.0.0.0",
+                    SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
             )
@@ -948,7 +954,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: self.scope["server"][0],
                     SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
                     SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
+                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
                     SpanAttributes.NET_PEER_IP: self.scope["client"][0],
                     SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
@@ -1018,6 +1024,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
                     URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
                     SERVER_PORT: self.scope["server"][1],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
@@ -1096,12 +1103,13 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     SpanAttributes.HTTP_HOST: self.scope["server"][0],
                     SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
                     SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
+                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
                     SpanAttributes.NET_PEER_IP: self.scope["client"][0],
                     SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
                     SpanAttributes.HTTP_STATUS_CODE: 200,
                     SpanAttributes.HTTP_METHOD: self.scope["method"],
                     URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
                     SERVER_PORT: self.scope["server"][1],
                     NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
                     URL_PATH: self.scope["path"],
@@ -1238,6 +1246,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_new_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
@@ -1267,6 +1276,11 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -1277,6 +1291,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_both_semconv(self):
+        # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         await self.send_default_request()
@@ -1306,6 +1321,11 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -1613,6 +1633,29 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
 
+    async def test_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    async def test_no_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        self.scope["path"] = "/test_no_excluded_urls"
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertGreater(len(spans), 0)
+
 
 class TestAsgiAttributes(unittest.TestCase):
     def setUp(self):
@@ -1652,7 +1695,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
 
         self.assertDictEqual(
@@ -1661,6 +1704,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1677,7 +1721,7 @@ class TestAsgiAttributes(unittest.TestCase):
 
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
 
         self.assertDictEqual(
@@ -1696,6 +1740,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
                 SERVER_PORT: 80,
                 URL_SCHEME: "http",
                 NETWORK_PROTOCOL_VERSION: "1.0",
@@ -1715,7 +1760,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
         self.assertEqual(attrs[URL_SCHEME], "http")
         self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
@@ -1726,7 +1771,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(
             self.scope,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
         self.assertEqual(
             attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
@@ -1762,7 +1807,7 @@ class TestAsgiAttributes(unittest.TestCase):
             self.span,
             404,
             None,
-            _HTTPStabilityMode.HTTP,
+            _StabilityMode.HTTP,
         )
         expected = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, 1)
@@ -1774,7 +1819,7 @@ class TestAsgiAttributes(unittest.TestCase):
             self.span,
             404,
             None,
-            _HTTPStabilityMode.HTTP_DUP,
+            _StabilityMode.HTTP_DUP,
         )
         expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
         expected2 = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
@@ -1787,12 +1832,14 @@ class TestAsgiAttributes(unittest.TestCase):
         otel_asgi.set_status_code(self.span, "Invalid Status Code")
         self.assertEqual(self.span.set_status.call_count, 1)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
+        self.scope["query_string"] = b"X-Goog-Signature=1234567890"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
+            attrs[SpanAttributes.HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
     def test_collect_target_attribute_missing(self):

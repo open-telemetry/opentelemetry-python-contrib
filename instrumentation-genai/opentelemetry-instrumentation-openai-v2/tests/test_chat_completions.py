@@ -32,6 +32,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 
 
 @pytest.mark.vcr()
@@ -94,7 +95,9 @@ def test_chat_completion_no_content(
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
 
 
-def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
+def test_chat_completion_bad_endpoint(
+    span_exporter, metric_reader, instrument_no_content
+):
     llm_model_value = "gpt-4o-mini"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
@@ -116,10 +119,31 @@ def test_chat_completion_bad_endpoint(span_exporter, instrument_no_content):
         "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
     )
 
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+    duration_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
+        ),
+        None,
+    )
+    assert duration_metric is not None
+    assert duration_metric.data.data_points[0].sum > 0
+    assert (
+        duration_metric.data.data_points[0].attributes[
+            ErrorAttributes.ERROR_TYPE
+        ]
+        == "APIConnectionError"
+    )
+
 
 @pytest.mark.vcr()
 def test_chat_completion_404(
-    span_exporter, openai_client, instrument_no_content
+    span_exporter, openai_client, metric_reader, instrument_no_content
 ):
     llm_model_value = "this-model-does-not-exist"
     messages_value = [{"role": "user", "content": "Say this is a test"}]
@@ -134,6 +158,27 @@ def test_chat_completion_404(
 
     assert_all_attributes(spans[0], llm_model_value)
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+    metrics = metric_reader.get_metrics_data().resource_metrics
+    assert len(metrics) == 1
+
+    metric_data = metrics[0].scope_metrics[0].metrics
+    duration_metric = next(
+        (
+            m
+            for m in metric_data
+            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
+        ),
+        None,
+    )
+    assert duration_metric is not None
+    assert duration_metric.data.data_points[0].sum > 0
+    assert (
+        duration_metric.data.data_points[0].attributes[
+            ErrorAttributes.ERROR_TYPE
+        ]
+        == "NotFoundError"
+    )
 
 
 @pytest.mark.vcr()
@@ -151,6 +196,7 @@ def test_chat_completion_extra_params(
         max_tokens=50,
         stream=False,
         extra_body={"service_tier": "default"},
+        response_format={"type": "text"},
     )
 
     spans = span_exporter.get_finished_spans()
@@ -165,6 +211,12 @@ def test_chat_completion_extra_params(
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER]
         == "default"
+    )
+    assert (
+        spans[0].attributes[
+            GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        ]
+        == "text"
     )
 
 
@@ -607,6 +659,48 @@ def test_chat_completion_multiple_tools_streaming_no_content(
     )
 
 
+@pytest.mark.vcr()
+def test_chat_completion_with_content_span_unsampled(
+    span_exporter,
+    log_exporter,
+    openai_client,
+    instrument_with_content_unsampled,
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = openai_client.chat.completions.create(
+        messages=messages_value, model=llm_model_value, stream=False
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 0
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_message = {"content": messages_value[0]["content"]}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, None)
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "role": "assistant",
+            "content": response.choices[0].message.content,
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, None)
+
+    assert logs[0].log_record.trace_id is not None
+    assert logs[0].log_record.span_id is not None
+    assert logs[0].log_record.trace_flags == 0
+
+    assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
+    assert logs[0].log_record.span_id == logs[1].log_record.span_id
+    assert logs[0].log_record.trace_flags == logs[1].log_record.trace_flags
+
+
 def chat_completion_multiple_tools_streaming(
     span_exporter, log_exporter, openai_client, expect_content
 ):
@@ -826,9 +920,12 @@ def assert_all_attributes(
 
 
 def assert_log_parent(log, span):
-    assert log.log_record.trace_id == span.get_span_context().trace_id
-    assert log.log_record.span_id == span.get_span_context().span_id
-    assert log.log_record.trace_flags == span.get_span_context().trace_flags
+    if span:
+        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.span_id == span.get_span_context().span_id
+        assert (
+            log.log_record.trace_flags == span.get_span_context().trace_flags
+        )
 
 
 def get_current_weather_tool_definition():

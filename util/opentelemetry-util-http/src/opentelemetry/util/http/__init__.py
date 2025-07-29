@@ -19,10 +19,21 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional
-from urllib.parse import urlparse, urlunparse
+from typing import Callable, Iterable, overload
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -40,23 +51,25 @@ OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
 
 # List of recommended metrics attributes
 _duration_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+    NET_HOST_NAME,
+    NET_HOST_PORT,
 }
 
 _active_requests_count_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
 }
+
+PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
 
 
 class ExcludeList:
@@ -121,18 +134,16 @@ class SanitizeValue:
 _root = r"OTEL_PYTHON_{}"
 
 
-def get_traced_request_attrs(instrumentation):
+def get_traced_request_attrs(instrumentation: str) -> list[str]:
     traced_request_attrs = environ.get(
-        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS"), []
+        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS")
     )
-
     if traced_request_attrs:
-        traced_request_attrs = [
+        return [
             traced_request_attr.strip()
             for traced_request_attr in traced_request_attrs.split(",")
         ]
-
-    return traced_request_attrs
+    return []
 
 
 def get_excluded_urls(instrumentation: str) -> ExcludeList:
@@ -161,23 +172,23 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """Given a string url, remove the username and password only if it is a valid url"""
-
+    """Given a string url, replace the username and password with the keyword `REDACTED` only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
-            parsed_url = urlparse(url)
-            _, _, netloc = parsed.netloc.rpartition("@")
-            return urlunparse(
-                (
-                    parsed_url.scheme,
-                    netloc,
-                    parsed_url.path,
-                    parsed_url.params,
-                    parsed_url.query,
-                    parsed_url.fragment,
+            if "@" in parsed.netloc:
+                _, _, host = parsed.netloc.rpartition("@")
+                new_netloc = "REDACTED:REDACTED@" + host
+                return urlunparse(
+                    (
+                        parsed.scheme,
+                        new_netloc,
+                        parsed.path,
+                        parsed.params,
+                        parsed.query,
+                        parsed.fragment,
+                    )
                 )
-            )
     except ValueError:  # an unparsable url was passed
         pass
     return url
@@ -193,7 +204,15 @@ def normalise_response_header_name(header: str) -> str:
     return f"http.response.header.{key}"
 
 
-def sanitize_method(method: Optional[str]) -> Optional[str]:
+@overload
+def sanitize_method(method: str) -> str: ...
+
+
+@overload
+def sanitize_method(method: None) -> None: ...
+
+
+def sanitize_method(method: str | None) -> str | None:
     if method is None:
         return None
     method = method.upper()
@@ -249,3 +268,36 @@ def _parse_url_query(url: str):
     path = parsed_url.path
     query_params = parsed_url.query
     return path, query_params
+
+
+def redact_query_parameters(url: str) -> str:
+    """Given a string url, redact sensitive query parameter values"""
+    try:
+        parsed = urlparse(url)
+        if not parsed.query:  # No query parameters to redact
+            return url
+        query_params = parse_qs(parsed.query)
+        if not any(param in query_params for param in PARAMS_TO_REDACT):
+            return url
+        for param in PARAMS_TO_REDACT:
+            if param in query_params:
+                query_params[param] = ["REDACTED"]
+        return urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                urlencode(query_params, doseq=True),
+                parsed.fragment,
+            )
+        )
+    except ValueError:  # an unparsable url was passed
+        return url
+
+
+def redact_url(url: str) -> str:
+    """Redact sensitive data from the URL, including credentials and query parameters."""
+    url = remove_url_credentials(url)
+    url = redact_query_parameters(url)
+    return url

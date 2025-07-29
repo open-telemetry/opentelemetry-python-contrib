@@ -80,6 +80,26 @@ For example,
 ::
 Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can optionally configure psycopg2 instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    Psycopg2Instrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+
+For example,
+::
+
+    Invoking cursor.execute("select * from auth_users") will lead to postgresql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
+    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
+
 Usage
 -----
 
@@ -88,14 +108,30 @@ Usage
     import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
     cnx = psycopg2.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
 
 API
 ---
@@ -103,6 +139,7 @@ API
 
 import logging
 import typing
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import psycopg2
@@ -113,7 +150,11 @@ from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.psycopg2.package import _instruments
+from opentelemetry.instrumentation.psycopg2.package import (
+    _instruments_any,
+    _instruments_psycopg2,
+    _instruments_psycopg2_binary,
+)
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
@@ -131,7 +172,22 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     _DATABASE_SYSTEM = "postgresql"
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        # Determine which package of psycopg2 is installed
+        # Right now there are two packages, psycopg2 and psycopg2-binary
+        # The latter is a binary wheel package that does not require a compiler
+        try:
+            distribution("psycopg2")
+            return (_instruments_psycopg2,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("psycopg2-binary")
+            return (_instruments_psycopg2_binary,)
+        except PackageNotFoundError:
+            pass
+
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         """Integrate with PostgreSQL Psycopg library.
@@ -140,6 +196,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -151,6 +210,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             db_api_integration_factory=DatabaseApiIntegration,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     def _uninstrument(self, **kwargs):
@@ -160,6 +220,19 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(connection, tracer_provider=None):
+        """Enable instrumentation in a psycopg2 connection.
+
+        Args:
+            connection: psycopg2.extensions.connection
+                The psycopg2 connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not specified,
+                the global TracerProvider will be used.
+
+        Returns:
+            An instrumented psycopg2 connection object.
+        """
+
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 

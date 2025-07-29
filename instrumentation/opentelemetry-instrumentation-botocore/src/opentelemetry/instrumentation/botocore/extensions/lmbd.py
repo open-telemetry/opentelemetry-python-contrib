@@ -22,6 +22,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.trace import SpanAttributes
@@ -119,7 +120,9 @@ class _LambdaExtension(_AwsSdkExtension):
 
         self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._op is None:
             return
 

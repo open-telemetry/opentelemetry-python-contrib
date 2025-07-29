@@ -16,6 +16,7 @@ import logging
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
     _BotoResultT,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -44,7 +45,12 @@ class _SqsExtension(_AwsSdkExtension):
                     queue_url,
                 )
 
-    def on_success(self, span: Span, result: _BotoResultT):
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         operation = self._call_context.operation
         if operation in _SUPPORTED_OPERATIONS:
             try:

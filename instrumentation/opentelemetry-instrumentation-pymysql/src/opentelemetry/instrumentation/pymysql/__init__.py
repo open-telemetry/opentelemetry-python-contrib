@@ -26,14 +26,38 @@ Usage
     import pymysql
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
+    # Call instrument() to wrap all database connections
     PyMySQLInstrumentor().instrument()
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
+
+.. code:: python
+
+    import pymysql
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = pymysql.connect(database="MySQL_Database")
+    instrumented_cnx = PyMySQLInstrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+        commenter_options={
+            "db_driver": True,
+            "mysql_client_version": True
+        }
+    )
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    instrumented_cnx.commit()
+    cursor.close()
+    instrumented_cnx.close()
 
 SQLCOMMENTER
 *****************************************
@@ -52,11 +76,11 @@ Usage
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
-
 
 For example,
 ::
@@ -105,6 +129,26 @@ For example,
 ::
 Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
 
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can optionally configure PyMySQL instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
+
+    PyMySQLInstrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+
+For example,
+::
+
+    Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
+    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
+
 API
 ---
 """
@@ -138,6 +182,9 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
 
         dbapi.wrap_connect(
             __name__,
@@ -149,6 +196,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -161,14 +209,25 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         tracer_provider=None,
         enable_commenter=None,
         commenter_options=None,
+        enable_attribute_commenter=None,
     ):
         """Enable instrumentation in a PyMySQL connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: The optional tracer provider to use. If omitted
-                the current globally configured one is used.
-
+            connection:
+                The existing PyMySQL connection instance that needs to be instrumented.
+                This connection was typically created using `pymysql.connect()` and is wrapped with OpenTelemetry tracing.
+            tracer_provider:
+                An optional `TracerProvider` instance that specifies which tracer provider should be used.
+                If not provided, the globally configured OpenTelemetry tracer provider is automatically applied.
+            enable_commenter:
+                A flag to enable the SQL Commenter feature. If `True`, query logs will be enriched with additional
+                contextual metadata (e.g., database version, traceparent IDs, driver information).
+            commenter_options:
+                A dictionary containing configuration options for the SQL Commenter feature.
+                You can specify various options, such as enabling driver information, database version logging,
+                traceparent propagation, and other customizable metadata enhancements.
+                See *SQLCommenter Configurations* above for more information.
         Returns:
             An instrumented connection.
         """
@@ -183,6 +242,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=pymysql,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     @staticmethod

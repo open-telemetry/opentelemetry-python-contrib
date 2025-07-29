@@ -1,0 +1,63 @@
+interactions:
+- request:
+    body: |-
+      {
+        "inputText": "Say this is a test",
+        "textGenerationConfig": {
+          "maxTokenCount": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '137'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250206T051241Z
+      X-Amzn-Trace-Id:
+      - Root=1-b3576961-f62f047f38ec36c95b93b58a;Parent=7bb925e3ca7c7e24;Sampled=1
+      amz-sdk-invocation-id:
+      - 10400543-271b-4721-907d-8042dcdc7e7e
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/invoke-with-response-stream
+  response:
+    body:
+      string: !!binary |
+        AAACGwAAAEve1EDpCzpldmVudC10eXBlBwAFY2h1bmsNOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0
+        aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJieXRlcyI6ImV5SnZkWFJ3ZFhSVVpYaDBJ
+        am9pWEc1SVpXeHNieUVnU1NCaGJTQmhJR052YlhCMWRHVnlJSEJ5YjJkeVlXMGdaR1Z6YVdkdVpX
+        UWdkRzhpTENKcGJtUmxlQ0k2TUN3aWRHOTBZV3hQZFhSd2RYUlVaWGgwVkc5clpXNURiM1Z1ZENJ
+        Nk1UQXNJbU52YlhCc1pYUnBiMjVTWldGemIyNGlPaUpNUlU1SFZFZ2lMQ0pwYm5CMWRGUmxlSFJV
+        YjJ0bGJrTnZkVzUwSWpvMUxDSmhiV0Y2YjI0dFltVmtjbTlqYXkxcGJuWnZZMkYwYVc5dVRXVjBj
+        bWxqY3lJNmV5SnBibkIxZEZSdmEyVnVRMjkxYm5RaU9qVXNJbTkxZEhCMWRGUnZhMlZ1UTI5MWJu
+        UWlPakV3TENKcGJuWnZZMkYwYVc5dVRHRjBaVzVqZVNJNk5qTXhMQ0ptYVhKemRFSjVkR1ZNWVhS
+        bGJtTjVJam8yTXpGOWZRPT0iLCJwIjoiYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZH
+        SElKS0xNTk9QUVJTVFVWV1hZWjAifaS9D7U=
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/vnd.amazon.eventstream
+      Date:
+      - Thu, 06 Feb 2025 05:12:42 GMT
+      Set-Cookie: test_set_cookie
+      Transfer-Encoding:
+      - chunked
+      X-Amzn-Bedrock-Content-Type:
+      - application/json
+      x-amzn-RequestId:
+      - a17c5c00-e8f2-4851-8183-2302bc145791
+    status:
+      code: 200
+      message: OK
+version: 1

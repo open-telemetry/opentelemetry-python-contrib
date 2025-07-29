@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 from unittest.mock import ANY, Mock, patch
 
 import botocore.session
@@ -26,6 +27,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_REGION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -60,9 +64,12 @@ class TestBotocoreInstrumentor(TestBase):
             SpanAttributes.RPC_SYSTEM: "aws-api",
             SpanAttributes.RPC_SERVICE: service,
             SpanAttributes.RPC_METHOD: operation,
-            "aws.region": self.region,
+            CLOUD_REGION: self.region,
             "retry_attempts": 0,
             SpanAttributes.HTTP_STATUS_CODE: 200,
+            # Some services like IAM or STS have a global endpoint and exclude specified region.
+            SpanAttributes.SERVER_ADDRESS: f"{service.lower()}.{'' if self.region == 'aws-global' else self.region + '.'}amazonaws.com",
+            SpanAttributes.SERVER_PORT: 443,
         }
 
     def assert_only_span(self):
@@ -102,6 +109,19 @@ class TestBotocoreInstrumentor(TestBase):
 
         request_id = "fdcdcab1-ae5c-489e-9c33-4637c5dda355"
         self.assert_span("EC2", "DescribeInstances", request_id=request_id)
+
+    @mock_aws
+    def test_no_op_tracer_provider_ec2(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        ec2 = self._make_client("ec2")
+        ec2.describe_instances()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_not_recording(self):
@@ -149,6 +169,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span("S3", "ListBuckets")
 
     @mock_aws
+    def test_no_op_tracer_provider_s3(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        s3 = self._make_client("s3")
+        s3.list_buckets()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_s3_put(self):
         s3 = self._make_client("s3")
 
@@ -175,6 +208,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span(
             "SQS", "ListQueues", request_id=_REQUEST_ID_REGEX_MATCH
         )
+
+    @mock_aws
+    def test_no_op_tracer_provider_sqs(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        sqs = self._make_client("sqs")
+        sqs.list_queues()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_sqs_send_message(self):
@@ -205,6 +251,19 @@ class TestBotocoreInstrumentor(TestBase):
         self.assert_span("Kinesis", "ListStreams")
 
     @mock_aws
+    def test_no_op_tracer_provider_kinesis(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        kinesis = self._make_client("kinesis")
+        kinesis.list_streams()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    @mock_aws
     def test_unpatch(self):
         kinesis = self._make_client("kinesis")
 
@@ -212,6 +271,19 @@ class TestBotocoreInstrumentor(TestBase):
 
         kinesis.list_streams()
         self.assertEqual(0, len(self.memory_exporter.get_finished_spans()))
+
+    @mock_aws
+    def test_no_op_tracer_provider_kms(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        kms = self._make_client("kms")
+        kms.list_keys(Limit=21)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_uninstrument_does_not_inject_headers(self):
@@ -265,8 +337,22 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
+        expected[SpanAttributes.SERVER_ADDRESS] = "sts.amazonaws.com"
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
+
+    @mock_aws
+    def test_no_op_tracer_provider_sts(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        sts = self._make_client("sts")
+        sts.get_caller_identity()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_propagator_injects_into_request(self):
@@ -307,6 +393,19 @@ class TestBotocoreInstrumentor(TestBase):
             )
         finally:
             set_global_textmap(previous_propagator)
+
+    @mock_aws
+    def test_no_op_tracer_provider_xray(self):
+        BotocoreInstrumentor().uninstrument()
+        BotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+
+        xray_client = self._make_client("xray")
+        xray_client.put_trace_segments(TraceSegmentDocuments=["str1"])
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     @mock_aws
     def test_override_xray_propagator_injects_into_request(self):
@@ -406,3 +505,54 @@ class TestBotocoreInstrumentor(TestBase):
                 response_hook_result_attribute_name: 0,
             },
         )
+
+    @mock_aws
+    def test_server_attributes(self):
+        # Test regional endpoint
+        ec2 = self._make_client("ec2")
+        ec2.describe_instances()
+        self.assert_span(
+            "EC2",
+            "DescribeInstances",
+            attributes={
+                SpanAttributes.SERVER_ADDRESS: f"ec2.{self.region}.amazonaws.com",
+                SpanAttributes.SERVER_PORT: 443,
+            },
+        )
+        self.memory_exporter.clear()
+
+        # Test global endpoint
+        iam_global = self._make_client("iam")
+        iam_global.list_users()
+        self.assert_span(
+            "IAM",
+            "ListUsers",
+            attributes={
+                SpanAttributes.SERVER_ADDRESS: "iam.amazonaws.com",
+                SpanAttributes.SERVER_PORT: 443,
+                CLOUD_REGION: "aws-global",
+            },
+        )
+
+    @mock_aws
+    def test_server_attributes_with_custom_endpoint(self):
+        with patch.dict(
+            os.environ,
+            {"MOTO_S3_CUSTOM_ENDPOINTS": "https://proxy.amazon.org:2025"},
+        ):
+            s3 = self.session.create_client(
+                "s3",
+                region_name=self.region,
+                endpoint_url="https://proxy.amazon.org:2025",
+            )
+
+            s3.list_buckets()
+
+            self.assert_span(
+                "S3",
+                "ListBuckets",
+                attributes={
+                    SpanAttributes.SERVER_ADDRESS: "proxy.amazon.org",
+                    SpanAttributes.SERVER_PORT: 2025,
+                },
+            )

@@ -1,0 +1,67 @@
+interactions:
+- request:
+    body: |-
+      {
+        "inputText": "Say this is a test",
+        "textGenerationConfig": {
+          "maxTokenCount": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
+    headers:
+      Content-Length:
+      - '137'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250211T141038Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-9c97c329-c012872e6f21fb9ddf4e7a98;Parent=60362f98aa20fa2d;Sampled=1
+      amz-sdk-invocation-id:
+      - 8feb1f58-f561-497c-9b7e-8050c3d1fd88
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/invoke
+  response:
+    body:
+      string: |-
+        {
+          "inputTextTokenCount": 5,
+          "results": [
+            {
+              "tokenCount": 10,
+              "outputText": "\nHello! I am a computer program designed to",
+              "completionReason": "LENGTH"
+            }
+          ]
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 11 Feb 2025 14:10:39 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '5'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '623'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '10'
+      x-amzn-RequestId:
+      - 25260e3f-4a5f-47aa-afe2-99bca8f9bf68
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,5 +1,5 @@
 OpenTelemetry click Instrumentation
-===========================
+====================================
 
 |pypi|
 

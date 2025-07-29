@@ -25,13 +25,13 @@ from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
-    _HTTPStabilityMode,
     _report_new,
     _report_old,
     _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_new,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
@@ -158,7 +158,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     _duration_histogram_old = None
     _duration_histogram_new = None
     _active_request_counter = None
-    _sem_conv_opt_in_mode = _HTTPStabilityMode.DEFAULT
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
@@ -430,7 +430,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.DEFAULT
+                    duration_attrs, _StabilityMode.DEFAULT
                 )
                 # http.target to be included in old semantic conventions
                 target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
@@ -441,7 +441,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _HTTPStabilityMode.HTTP
+                    duration_attrs, _StabilityMode.HTTP
                 )
                 self._duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
@@ -455,7 +455,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
 
 def _parse_duration_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_duration_attrs(
         req_attrs,
@@ -466,7 +466,7 @@ def _parse_duration_attrs(
 
 
 def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
 ):
     return _filter_semconv_active_request_count_attr(
         req_attrs,

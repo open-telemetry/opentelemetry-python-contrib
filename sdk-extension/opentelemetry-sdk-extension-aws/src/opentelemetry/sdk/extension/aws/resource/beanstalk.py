@@ -41,6 +41,9 @@ class AwsBeanstalkResourceDetector(ResourceDetector):
         else:
             conf_file_path = "/var/elasticbeanstalk/xray/environment.conf"
 
+        if not os.path.exists(conf_file_path):
+            return Resource.get_empty()
+
         try:
             with open(conf_file_path, encoding="utf-8") as conf_file:
                 parsed_data = json.load(conf_file)

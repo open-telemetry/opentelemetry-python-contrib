@@ -43,17 +43,24 @@ The hooks can be configured as follows:
 
 .. code:: python
 
-    # `request_obj` is an instance of urllib.request.Request
-    def request_hook(span, request_obj):
+    from http.client import HTTPResponse
+    from urllib.request import Request
+
+    from opentelemetry.instrumentation.urllib import URLLibInstrumentor
+    from opentelemetry.trace import Span
+
+
+    def request_hook(span: Span, request: Request):
         pass
 
-    # `request_obj` is an instance of urllib.request.Request
-    # `response` is an instance of http.client.HTTPResponse
-    def response_hook(span, request_obj, response)
+
+    def response_hook(span: Span, request: Request, response: HTTPResponse):
         pass
 
-    URLLibInstrumentor.instrument(
-        request_hook=request_hook, response_hook=response_hook)
+
+    URLLibInstrumentor().instrument(
+        request_hook=request_hook,
+        response_hook=response_hook
     )
 
 Exclude lists
@@ -74,23 +81,25 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import functools
 import types
 import typing
 from http import client
 from timeit import default_timer
-from typing import Collection, Dict
+from typing import Any, Collection
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
 )
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
     _get_schema_url,
-    _HTTPStabilityMode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
@@ -99,6 +108,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_network_protocol_version,
     _set_http_url,
     _set_status,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.urllib.package import _instruments
@@ -107,8 +117,11 @@ from opentelemetry.instrumentation.utils import (
     is_http_instrumentation_enabled,
     suppress_http_instrumentation,
 )
-from opentelemetry.metrics import Histogram, get_meter
+from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_URL,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_BODY_SIZE,
     HTTP_CLIENT_RESPONSE_BODY_SIZE,
@@ -120,15 +133,15 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, get_tracer
+from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
-    remove_url_credentials,
+    redact_url,
     sanitize_method,
 )
+from opentelemetry.util.types import Attributes
 
 _excluded_urls_from_env = get_excluded_urls("URLLIB")
 
@@ -146,7 +159,7 @@ class URLLibInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instruments urllib module
 
         Args:
@@ -194,7 +207,7 @@ class URLLibInstrumentor(BaseInstrumentor):
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         _uninstrument()
 
     def uninstrument_opener(self, opener: OpenerDirector):  # pylint: disable=no-self-use
@@ -204,12 +217,12 @@ class URLLibInstrumentor(BaseInstrumentor):
 
 # pylint: disable=too-many-statements
 def _instrument(
-    tracer,
-    histograms: Dict[str, Histogram],
+    tracer: Tracer,
+    histograms: dict[str, Histogram],
     request_hook: _RequestHookT = None,
     response_hook: _ResponseHookT = None,
-    excluded_urls: ExcludeList = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    excluded_urls: ExcludeList | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
@@ -247,7 +260,7 @@ def _instrument(
 
         span_name = _get_span_name(method)
 
-        url = remove_url_credentials(url)
+        url = redact_url(url)
 
         data = getattr(request, "data", None)
         request_size = 0 if data is None else len(data)
@@ -305,16 +318,16 @@ def _instrument(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT,
+                sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
             )
             duration_attrs_new = _filter_semconv_duration_attrs(
                 labels,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
-                sem_conv_opt_in_mode=_HTTPStabilityMode.HTTP,
+                sem_conv_opt_in_mode=_StabilityMode.HTTP,
             )
 
-            duration_attrs_old[SpanAttributes.HTTP_URL] = url
+            duration_attrs_old[HTTP_URL] = url
 
             _record_histograms(
                 histograms,
@@ -345,7 +358,7 @@ def _uninstrument():
     _uninstrument_from(OpenerDirector)
 
 
-def _uninstrument_from(instr_root, restore_as_bound_func=False):
+def _uninstrument_from(instr_root, restore_as_bound_func: bool = False):
     instr_func_name = "open"
     instr_func = getattr(instr_root, instr_func_name)
     if not getattr(
@@ -371,8 +384,8 @@ def _get_span_name(method: str) -> str:
 def _set_status_code_attribute(
     span: Span,
     status_code: int,
-    metric_attributes: dict = None,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    metric_attributes: dict[str, Any] | None = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     status_code_str = str(status_code)
     try:
@@ -394,8 +407,8 @@ def _set_status_code_attribute(
 
 
 def _create_client_histograms(
-    meter, sem_conv_opt_in_mode=_HTTPStabilityMode.DEFAULT
-) -> Dict[str, Histogram]:
+    meter: Meter, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT
+) -> dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
         histograms[MetricInstruments.HTTP_CLIENT_DURATION] = (
@@ -424,6 +437,7 @@ def _create_client_histograms(
             name=HTTP_CLIENT_REQUEST_DURATION,
             unit="s",
             description="Duration of HTTP client requests.",
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
         histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
             create_http_client_request_body_size(meter)
@@ -436,13 +450,13 @@ def _create_client_histograms(
 
 
 def _record_histograms(
-    histograms: Dict[str, Histogram],
-    metric_attributes_old: dict,
-    metric_attributes_new: dict,
+    histograms: dict[str, Histogram],
+    metric_attributes_old: Attributes,
+    metric_attributes_new: Attributes,
     request_size: int,
     response_size: int,
     duration_s: float,
-    sem_conv_opt_in_mode: _HTTPStabilityMode = _HTTPStabilityMode.DEFAULT,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     if _report_old(sem_conv_opt_in_mode):
         duration = max(round(duration_s * 1000), 0)

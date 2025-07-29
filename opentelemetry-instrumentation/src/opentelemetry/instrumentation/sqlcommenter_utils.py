@@ -23,7 +23,7 @@ def _add_sql_comment(sql, **meta) -> str:
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
     sql = sql.rstrip()
-    if sql[-1] == ";":
+    if sql.endswith(";"):
         sql = sql[:-1] + comment + ";"
     else:
         sql = sql + comment

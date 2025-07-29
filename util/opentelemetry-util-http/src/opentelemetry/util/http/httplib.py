@@ -17,39 +17,45 @@ This library provides functionality to enrich HTTP client spans with IPs. It doe
 not create spans on its own.
 """
 
+from __future__ import annotations
+
 import contextlib
 import http.client
 import logging
 import socket  # pylint:disable=unused-import # Used for typing
 import typing
-from typing import Collection
+from typing import Any, Callable, Collection, TypedDict, cast
 
 import wrapt
 
 from opentelemetry import context
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+)
 from opentelemetry.trace.span import Span
 
 _STATE_KEY = "httpbase_instrumentation_state"
 
 logger = logging.getLogger(__name__)
 
+R = typing.TypeVar("R")
+
 
 class HttpClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return ()  # This instruments http.client from stdlib; no extra deps.
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Instruments the http.client module (not creating spans on its own)"""
         _instrument()
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         _uninstrument()
 
 
-def _remove_nonrecording(spanlist: typing.List[Span]):
+def _remove_nonrecording(spanlist: list[Span]) -> bool:
     idx = len(spanlist) - 1
     while idx >= 0:
         if not spanlist[idx].is_recording():
@@ -67,7 +73,9 @@ def _remove_nonrecording(spanlist: typing.List[Span]):
     return True
 
 
-def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
+def trysetip(
+    conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG
+) -> bool:
     """Tries to set the net.peer.ip semantic attribute on the current span from the given
     HttpConnection.
 
@@ -105,19 +113,22 @@ def trysetip(conn: http.client.HTTPConnection, loglevel=logging.DEBUG) -> bool:
         )
     else:
         for span in spanlist:
-            span.set_attribute(SpanAttributes.NET_PEER_IP, ip)
+            span.set_attribute(NET_PEER_IP, ip)
     return True
 
 
 def _instrumented_connect(
-    wrapped, instance: http.client.HTTPConnection, args, kwargs
-):
+    wrapped: Callable[..., R],
+    instance: http.client.HTTPConnection,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> R:
     result = wrapped(*args, **kwargs)
     trysetip(instance, loglevel=logging.WARNING)
     return result
 
 
-def instrument_connect(module, name="connect"):
+def instrument_connect(module: type[Any], name: str = "connect"):
     """Instrument additional connect() methods, e.g. for derived classes."""
 
     wrapt.wrap_function_wrapper(
@@ -129,8 +140,11 @@ def instrument_connect(module, name="connect"):
 
 def _instrument():
     def instrumented_send(
-        wrapped, instance: http.client.HTTPConnection, args, kwargs
-    ):
+        wrapped: Callable[..., R],
+        instance: http.client.HTTPConnection,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> R:
         done = trysetip(instance)
         result = wrapped(*args, **kwargs)
         if not done:
@@ -147,8 +161,12 @@ def _instrument():
     # No need to instrument HTTPSConnection, as it calls super().connect()
 
 
-def _getstate() -> typing.Optional[dict]:
-    return context.get_value(_STATE_KEY)
+class _ConnectionState(TypedDict):
+    need_ip: list[Span]
+
+
+def _getstate() -> _ConnectionState | None:
+    return cast(_ConnectionState, context.get_value(_STATE_KEY))
 
 
 @contextlib.contextmanager
@@ -163,7 +181,7 @@ def set_ip_on_next_http_connection(span: Span):
         finally:
             context.detach(token)
     else:
-        spans: typing.List[Span] = state["need_ip"]
+        spans = state["need_ip"]
         spans.append(span)
         try:
             yield

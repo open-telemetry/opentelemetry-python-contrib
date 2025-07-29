@@ -16,7 +16,13 @@ import os
 from unittest import mock
 
 import click
+import pytest
 from click.testing import CliRunner
+
+try:
+    from flask import cli as flask_cli
+except ImportError:
+    flask_cli = None
 
 from opentelemetry.instrumentation.click import ClickInstrumentor
 from opentelemetry.test.test_base import TestBase
@@ -60,7 +66,7 @@ class ClickTestCase(TestBase):
         )
 
     @mock.patch("sys.argv", ["flask", "command"])
-    def test_flask_run_command_wrapping(self):
+    def test_flask_command_wrapping(self):
         @click.command()
         def command():
             pass
@@ -161,6 +167,27 @@ class ClickTestCase(TestBase):
                 "error.type": "ValueError",
             },
         )
+
+    def test_uvicorn_cli_command_ignored(self):
+        @click.command("uvicorn")
+        def command_uvicorn():
+            pass
+
+        runner = CliRunner()
+        result = runner.invoke(command_uvicorn)
+        self.assertEqual(result.exit_code, 0)
+
+        self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    @pytest.mark.skipif(flask_cli is None, reason="requires flask")
+    def test_flask_run_command_ignored(self):
+        runner = CliRunner()
+        result = runner.invoke(
+            flask_cli.run_command, obj=flask_cli.ScriptInfo()
+        )
+        self.assertEqual(result.exit_code, 2)
+
+        self.assertFalse(self.memory_exporter.get_finished_spans())
 
     def test_uninstrument(self):
         ClickInstrumentor().uninstrument()

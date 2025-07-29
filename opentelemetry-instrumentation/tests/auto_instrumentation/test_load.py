@@ -17,6 +17,9 @@ from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
 from opentelemetry.instrumentation.auto_instrumentation import _load
+from opentelemetry.instrumentation.dependencies import (
+    DependencyConflict,
+)
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_CONFIGURATOR,
     OTEL_PYTHON_DISABLED_INSTRUMENTATIONS,
@@ -200,6 +203,12 @@ class TestLoad(TestCase):
         # Confirm method raises exception if it fails to load a distro.
         self.assertRaises(Exception, _load._load_distro)
 
+    @staticmethod
+    def _instrumentation_failed_to_load_call(entry_point, dependency_conflict):
+        return call(
+            "Skipping instrumentation %s: %s", entry_point, dependency_conflict
+        )
+
     @patch.dict(
         "os.environ",
         {OTEL_PYTHON_DISABLED_INSTRUMENTATIONS: " instr1 , instr3 "},
@@ -210,7 +219,7 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors(self, iter_mock, dep_mock):
+    def test_load_instrumentors(self, iter_mock, mock_dep):
         # Mock opentelemetry_pre_instrument entry points
         # pylint: disable=too-many-locals
         pre_ep_mock1 = Mock()
@@ -256,7 +265,7 @@ class TestLoad(TestCase):
             (post_ep_mock1, post_ep_mock2),
         ]
         # No dependency conflict
-        dep_mock.return_value = None
+        mock_dep.return_value = None
         _load._load_instrumentors(distro_mock)
         # All opentelemetry_pre_instrument entry points should be loaded
         pre_mock1.assert_called_once()
@@ -281,27 +290,34 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_dep_conflict(self, iter_mock, dep_mock):  # pylint: disable=no-self-use
+    def test_load_instrumentors_dep_conflict(
+        self, iter_mock, mock_logger, mock_dep
+    ):  # pylint: disable=no-self-use
         ep_mock1 = Mock()
-        ep_mock1.name = "instr1"
+        ep_mock1.name = "instr1"  # disabled
 
         ep_mock2 = Mock()
         ep_mock2.name = "instr2"
 
         ep_mock3 = Mock()
-        ep_mock3.name = "instr3"
+        ep_mock3.name = "instr3"  # disabled
 
         ep_mock4 = Mock()
-        ep_mock4.name = "instr4"
+        ep_mock4.name = "instr4"  # dependency conflict
+
+        dependency_conflict = DependencyConflict("1.2.3", None)
 
         distro_mock = Mock()
 
         iter_mock.return_value = (ep_mock1, ep_mock2, ep_mock3, ep_mock4)
+        print((ep_mock1, ep_mock2, ep_mock3, ep_mock4))
         # If a dependency conflict is raised, that instrumentation should not be loaded, but others still should.
-        dep_mock.side_effect = [None, "DependencyConflict"]
+        # In this case, ep_mock4 will not be loaded and ep_mock2 will succeed. (ep_mock1 and ep_mock3 are disabled)
+        mock_dep.side_effect = [None, dependency_conflict]
         _load._load_instrumentors(distro_mock)
         distro_mock.load_instrumentor.assert_has_calls(
             [
@@ -309,15 +325,33 @@ class TestLoad(TestCase):
             ]
         )
         distro_mock.load_instrumentor.assert_called_once()
+        mock_logger.debug.assert_has_calls(
+            [
+                call(
+                    "Instrumentation skipped for library %s",
+                    ep_mock1.name,
+                ),
+                call("Instrumented %s", ep_mock2.name),
+                call(
+                    "Instrumentation skipped for library %s",
+                    ep_mock3.name,
+                ),
+                self._instrumentation_failed_to_load_call(
+                    ep_mock4.name,
+                    dependency_conflict,
+                ),
+            ]
+        )
 
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
     def test_load_instrumentors_import_error_does_not_stop_everything(
-        self, iter_mock, dep_mock
+        self, iter_mock, mock_logger, mock_dep
     ):
         ep_mock1 = Mock(name="instr1")
         ep_mock2 = Mock(name="instr2")
@@ -331,7 +365,7 @@ class TestLoad(TestCase):
             (ep_mock1, ep_mock2),
             (),
         ]
-        dep_mock.return_value = None
+        mock_dep.return_value = None
 
         _load._load_instrumentors(distro_mock)
 
@@ -342,6 +376,12 @@ class TestLoad(TestCase):
             ]
         )
         self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+        mock_logger.exception.assert_any_call(
+            "Importing of %s failed, skipping it",
+            ep_mock1.name,
+        )
+
+        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
 
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
@@ -349,7 +389,7 @@ class TestLoad(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_raises_exception(self, iter_mock, dep_mock):
+    def test_load_instrumentors_raises_exception(self, iter_mock, mock_dep):
         ep_mock1 = Mock(name="instr1")
         ep_mock2 = Mock(name="instr2")
 
@@ -362,7 +402,7 @@ class TestLoad(TestCase):
             (ep_mock1, ep_mock2),
             (),
         ]
-        dep_mock.return_value = None
+        mock_dep.return_value = None
 
         with self.assertRaises(ValueError):
             _load._load_instrumentors(distro_mock)
@@ -373,6 +413,51 @@ class TestLoad(TestCase):
             ]
         )
         self.assertEqual(distro_mock.load_instrumentor.call_count, 1)
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_load_instrumentors_module_not_found_error(
+        self, iter_mock, mock_logger, mock_dep
+    ):
+        ep_mock1 = Mock()
+        ep_mock1.name = "instr1"
+
+        ep_mock2 = Mock()
+        ep_mock2.name = "instr2"
+
+        distro_mock = Mock()
+
+        mock_dep.return_value = None
+
+        distro_mock.load_instrumentor.side_effect = [
+            ModuleNotFoundError("No module named 'fake_module'"),
+            None,
+        ]
+
+        iter_mock.side_effect = [(), (ep_mock1, ep_mock2), ()]
+
+        _load._load_instrumentors(distro_mock)
+
+        distro_mock.load_instrumentor.assert_has_calls(
+            [
+                call(ep_mock1, skip_dep_check=True),
+                call(ep_mock2, skip_dep_check=True),
+            ]
+        )
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
+
+        mock_logger.debug.assert_any_call(
+            "Skipping instrumentation %s: %s",
+            "instr1",
+            "No module named 'fake_module'",
+        )
+
+        mock_logger.debug.assert_any_call("Instrumented %s", ep_mock2.name)
 
     def test_load_instrumentors_no_entry_point_mocks(self):
         distro_mock = Mock()

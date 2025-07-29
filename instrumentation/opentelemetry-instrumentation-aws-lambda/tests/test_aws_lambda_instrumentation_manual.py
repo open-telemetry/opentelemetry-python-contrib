@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import logging
 import os
 from dataclasses import dataclass
 from importlib import import_module, reload
@@ -31,8 +33,25 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_FIRST_PART_LENGTH,
     TRACE_ID_VERSION,
 )
-from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_ACCOUNT_ID,
+    CLOUD_RESOURCE_ID,
+)
+from opentelemetry.semconv._incubating.attributes.faas_attributes import (
+    FAAS_INVOCATION_ID,
+    FAAS_TRIGGER,
+)
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
@@ -66,11 +85,9 @@ MOCK_LAMBDA_CONTEXT = MockLambdaContext(
 )
 
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    SpanAttributes.CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
-    SpanAttributes.FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
-    ResourceAttributes.CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(
-        ":"
-    )[4],
+    CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+    FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
+    CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
 }
 
 MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
@@ -124,7 +141,10 @@ class TestAwsLambdaInstrumentorBase(TestBase):
         super().setUp()
         self.common_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: "tests.mocks.lambda_function.handler"},
+            {
+                _HANDLER: "tests.mocks.lambda_function.handler",
+                "AWS_LAMBDA_FUNCTION_NAME": "mylambda",
+            },
         )
         self.common_env_patch.start()
 
@@ -466,15 +486,40 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         exc_env_patch.stop()
 
-    def test_lambda_handles_should_do_nothing_when_environment_variables_not_present(
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.logger")
+    def test_lambda_handles_should_do_nothing_when_aws_lambda_environment_variables_not_present(
+        self, logger_mock
+    ):
+        exc_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
+            clear=True,
+        )
+        exc_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        exc_env_patch.stop()
+
+        logger_mock.warnings.assert_not_called()
+
+    def test_lambda_handles_should_warn_when_handler_environment_variable_not_present(
         self,
     ):
         exc_env_patch = mock.patch.dict(
             "os.environ",
-            {_HANDLER: ""},
+            {"AWS_LAMBDA_FUNCTION_NAME": "mylambda"},
+            clear=True,
         )
         exc_env_patch.start()
-        AwsLambdaInstrumentor().instrument()
+        with self.assertLogs(level=logging.WARNING) as warning:
+            AwsLambdaInstrumentor().instrument()
+        self.assertEqual(len(warning.records), 1)
+        self.assertIn(
+            "This instrumentation requires the OpenTelemetry Lambda extension installed",
+            warning.records[0].message,
+        )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
@@ -541,14 +586,14 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_ROUTE: "/{proxy+}",
-                SpanAttributes.HTTP_TARGET: "/{proxy+}?foo=bar",
-                SpanAttributes.NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "Custom User Agent String",
-                SpanAttributes.HTTP_SCHEME: "https",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "POST",
+                HTTP_ROUTE: "/{proxy+}",
+                HTTP_TARGET: "/{proxy+}?foo=bar",
+                NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
+                HTTP_USER_AGENT: "Custom User Agent String",
+                HTTP_SCHEME: "https",
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -569,12 +614,12 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_ROUTE: "/path/to/resource",
-                SpanAttributes.HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
-                SpanAttributes.NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
-                SpanAttributes.HTTP_USER_AGENT: "agent",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "POST",
+                HTTP_ROUTE: "/path/to/resource",
+                HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
+                NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
+                HTTP_USER_AGENT: "agent",
             },
         )
 
@@ -595,8 +640,8 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "GET",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "GET",
             },
         )
 
@@ -617,8 +662,8 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.FAAS_TRIGGER: "http",
-                SpanAttributes.HTTP_METHOD: "GET",
+                FAAS_TRIGGER: "http",
+                HTTP_METHOD: "GET",
             },
         )
 
