@@ -258,7 +258,7 @@ from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
 from opentelemetry.instrumentation.django.middleware.otel_middleware import (
-    _DjangoMiddleware,
+    DjangoMiddleware,
 )
 from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
@@ -320,7 +320,7 @@ class DjangoInstrumentor(BaseInstrumentor):
     """
 
     _opentelemetry_middleware = ".".join(
-        [_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__]
+        [DjangoMiddleware.__module__, DjangoMiddleware.__qualname__]
     )
 
     _sql_commenter_middleware = "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
@@ -355,34 +355,34 @@ class DjangoInstrumentor(BaseInstrumentor):
             meter_provider=meter_provider,
             schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
-        _DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
-        _DjangoMiddleware._tracer = tracer
-        _DjangoMiddleware._meter = meter
-        _DjangoMiddleware._excluded_urls = (
+        DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        DjangoMiddleware._tracer = tracer
+        DjangoMiddleware._meter = meter
+        DjangoMiddleware._excluded_urls = (
             _excluded_urls_from_env
             if _excluded_urls is None
             else parse_excluded_urls(_excluded_urls)
         )
-        _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
-        _DjangoMiddleware._otel_response_hook = kwargs.pop(
+        DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
+        DjangoMiddleware._otel_response_hook = kwargs.pop(
             "response_hook", None
         )
-        _DjangoMiddleware._duration_histogram_old = None
+        DjangoMiddleware._duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
-            _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
+            DjangoMiddleware._duration_histogram_old = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
                 description="Measures the duration of inbound HTTP requests.",
             )
-        _DjangoMiddleware._duration_histogram_new = None
+        DjangoMiddleware._duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
-            _DjangoMiddleware._duration_histogram_new = meter.create_histogram(
+            DjangoMiddleware._duration_histogram_new = meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        _DjangoMiddleware._active_request_counter = (
+        DjangoMiddleware._active_request_counter = (
             create_http_server_active_requests(meter)
         )
         # This can not be solved, but is an inherent problem of this approach:
@@ -449,10 +449,10 @@ class DjangoInstrumentor(BaseInstrumentor):
         except ModuleNotFoundError:
             return False
 
-        # Require the custom middleware to inherit from `_DjangoMiddleware` because we do some
+        # Require the custom middleware to inherit from `DjangoMiddleware` because we do some
         # patching to that class that the custom one needs to inherit.
         return isinstance(middleware_cls, type) and issubclass(
-            middleware_cls, _DjangoMiddleware
+            middleware_cls, DjangoMiddleware
         )
 
     def _uninstrument(self, **kwargs):

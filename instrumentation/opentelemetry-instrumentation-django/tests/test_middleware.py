@@ -37,7 +37,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
-    _DjangoMiddleware,
+    DjangoMiddleware,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -104,7 +104,7 @@ urlpatterns = [
 _django_instrumentor = DjangoInstrumentor()
 
 
-class CustomMiddleware(_DjangoMiddleware):
+class CustomMiddleware(DjangoMiddleware):
     pass
 
 
@@ -152,11 +152,11 @@ class TestMiddleware(WsgiTestBase):
         self.env_patch.start()
         _django_instrumentor.instrument()
         self.exclude_patch = patch(
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware._excluded_urls",
             get_excluded_urls("DJANGO"),
         )
         self.traced_patch = patch(
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._traced_request_attrs",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware._traced_request_attrs",
             get_traced_request_attrs("DJANGO"),
         )
         self.exclude_patch.start()
@@ -192,7 +192,7 @@ class TestMiddleware(WsgiTestBase):
         )
         self.assertEqual(
             middleware[middleware_position],
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware",
         )
 
     def test_custom_middleware_added_at_position(self):
@@ -243,7 +243,7 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             middleware[middleware_position],
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware",
         )
 
     def test_custom_middleware_does_not_exist_default_to_django_middleware(
@@ -268,7 +268,7 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             middleware[middleware_position],
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware",
         )
 
     def test_middleware_added_at_position_if_wrong_position(self):
@@ -288,7 +288,7 @@ class TestMiddleware(WsgiTestBase):
         )
         self.assertEqual(
             middleware[0],
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware",
         )
 
     def test_templated_route_get(self):
@@ -697,12 +697,12 @@ class TestMiddleware(WsgiTestBase):
             response_hook_args = (span, request, response)
             response["hook-header"] = "set by hook"
 
-        _DjangoMiddleware._otel_request_hook = request_hook
-        _DjangoMiddleware._otel_response_hook = response_hook
+        DjangoMiddleware._otel_request_hook = request_hook
+        DjangoMiddleware._otel_response_hook = response_hook
 
         response = Client().get("/span_name/1234/")
-        _DjangoMiddleware._otel_request_hook = (
-            _DjangoMiddleware._otel_response_hook
+        DjangoMiddleware._otel_request_hook = (
+            DjangoMiddleware._otel_response_hook
         ) = None
 
         self.assertEqual(response["hook-header"], "set by hook")
@@ -728,9 +728,9 @@ class TestMiddleware(WsgiTestBase):
             # pylint: disable=broad-exception-raised
             raise Exception("request hook exception")
 
-        _DjangoMiddleware._otel_request_hook = request_hook
+        DjangoMiddleware._otel_request_hook = request_hook
         Client().get("/span_name/1234/")
-        _DjangoMiddleware._otel_request_hook = None
+        DjangoMiddleware._otel_request_hook = None
 
         # ensure that span ended
         finished_spans = self.memory_exporter.get_finished_spans()
@@ -741,9 +741,9 @@ class TestMiddleware(WsgiTestBase):
             # pylint: disable=broad-exception-raised
             raise Exception("response hook exception")
 
-        _DjangoMiddleware._otel_response_hook = response_hook
+        DjangoMiddleware._otel_response_hook = response_hook
         Client().get("/span_name/1234/")
-        _DjangoMiddleware._otel_response_hook = None
+        DjangoMiddleware._otel_response_hook = None
 
         # ensure that span ended
         finished_spans = self.memory_exporter.get_finished_spans()
