@@ -14,7 +14,7 @@ from opentelemetry.instrumentation.openai_v2.utils import (
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
+    InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.metrics import (
@@ -39,7 +39,7 @@ def fixture_span_exporter():
 
 @pytest.fixture(scope="function", name="log_exporter")
 def fixture_log_exporter():
-    exporter = InMemoryLogExporter()
+    exporter = InMemoryLogRecordExporter()
     yield exporter
 
 
