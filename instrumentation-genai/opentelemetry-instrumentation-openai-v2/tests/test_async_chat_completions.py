@@ -673,13 +673,13 @@ async def test_async_chat_completion_streaming_unsampled(
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, None)
 
-    assert logs[0].log_record.trace_id is not None
-    assert logs[0].log_record.span_id is not None
-    assert logs[0].log_record.trace_flags == 0
+    assert logs[0].trace_id is not None
+    assert logs[0].span_id is not None
+    assert logs[0].trace_flags == 0
 
-    assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
-    assert logs[0].log_record.span_id == logs[1].log_record.span_id
-    assert logs[0].log_record.trace_flags == logs[1].log_record.trace_flags
+    assert logs[0].trace_id == logs[1].trace_id
+    assert logs[0].span_id == logs[1].span_id
+    assert logs[0].trace_flags == logs[1].trace_flags
 
 
 async def async_chat_completion_multiple_tools_streaming(
@@ -797,19 +797,17 @@ async def async_chat_completion_multiple_tools_streaming(
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    assert log.attributes[EventAttributes.EVENT_NAME] == event_name
     assert (
-        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        log.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.OPENAI.value
     )
 
     if not expected_content:
-        assert not log.log_record.body
+        assert not log.body
     else:
-        assert log.log_record.body
-        assert dict(log.log_record.body) == remove_none_values(
-            expected_content
-        )
+        assert log.body
+        assert dict(log.body) == remove_none_values(expected_content)
     assert_log_parent(log, parent_span)
 
 
@@ -906,11 +904,9 @@ def assert_all_attributes(
 
 def assert_log_parent(log, span):
     if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
-        assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
+        assert log.trace_id == span.get_span_context().trace_id
+        assert log.span_id == span.get_span_context().span_id
+        assert log.trace_flags == span.get_span_context().trace_flags
 
 
 def get_current_weather_tool_definition():
