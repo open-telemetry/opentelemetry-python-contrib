@@ -189,7 +189,6 @@ from typing import Collection, Literal
 
 import fastapi
 from starlette.applications import Starlette
-from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match
 from starlette.types import ASGIApp
 
