@@ -37,7 +37,7 @@ instr = "../instrumentation"
 instr_dirs = [
     os.path.abspath("/".join([instr, f, "src"]))
     for f in listdir(instr)
-    if isdir(join(instr, f)) and f != "opentelemetry-instrumentation-boto"
+    if isdir(join(instr, f))
 ]
 
 instr_genai = "../instrumentation-genai"
