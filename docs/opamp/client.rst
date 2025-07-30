@@ -2,6 +2,6 @@ OpenTelemetry Python - OpAMP Client
 ===================================
 
 .. automodule:: opentelemetry._opamp
-    :members: agent, client
+    :members:
     :undoc-members:
     :show-inheritance:
