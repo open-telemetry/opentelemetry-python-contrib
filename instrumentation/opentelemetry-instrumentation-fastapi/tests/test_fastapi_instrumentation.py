@@ -1913,13 +1913,13 @@ class TestTraceableExceptionHandling(TestBase):
             self.request_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
-            raise Exception("Test Exception")
+            raise UnhandledException("Test Exception")
 
         try:
             self.client.get(
                 "/foobar",
             )
-        except Exception:
+        except Exception:  # pylint: disable=W0718
             pass
 
         self.assertIsNotNone(self.request_trace_id)
@@ -1934,13 +1934,13 @@ class TestTraceableExceptionHandling(TestBase):
 
         @self.app.get("/foobar")
         async def _():
-            raise Exception("Test Exception")
+            raise UnhandledException("Test Exception")
 
         try:
             self.client.get(
                 "/foobar",
             )
-        except Exception:
+        except Exception:  # pylint: disable=W0718
             pass
 
         self.assertEqual(self.executed, 1)
@@ -1959,7 +1959,7 @@ class TestFailsafeHooks(TestBase):
             return {"message": "Hello World"}
 
         def failing_hook(*_):
-            raise Exception("Hook Exception")
+            raise UnhandledException("Hook Exception")
 
         otel_fastapi.FastAPIInstrumentor().instrument_app(
             self.app,
