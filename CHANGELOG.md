@@ -30,8 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - `opentelemetry-instrumentation-kafka-python` Utilize instruments-any functionality.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
-- `opentelemetry-instrumentation-requests` Added support for post-injection-hook.
-  ([#3657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3657))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collections` metrics with collection unit is specified in semconv ([3617](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3617))
 
 
