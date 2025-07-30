@@ -299,7 +299,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     def wrapper(*args, **kwargs):
                         try:
                             func(*args, **kwargs)
-                        except Exception:
+                        except Exception:  # pylint: disable=W0718
                             pass
 
                     return wrapper
