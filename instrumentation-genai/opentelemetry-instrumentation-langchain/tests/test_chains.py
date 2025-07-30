@@ -16,7 +16,7 @@ from langchain.chains import LLMChain, SequentialChain
 def test_sequential_chain(instrument_legacy, span_exporter, log_exporter):
     bedrock_client = boto3.client(
         service_name='bedrock-runtime',
-        region_name='us-west-2'  # Replace with your region
+        region_name='us-west-2' 
     )
     
     llm = BedrockLLM(
