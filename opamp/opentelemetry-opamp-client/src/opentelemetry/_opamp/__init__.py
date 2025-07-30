@@ -17,7 +17,7 @@ OpenTelemetry Python - OpAMP client
 -----------------------------------
 
 This package provides a bunch of classes that can be used by OpenTelemetry distributions implementors
-to implement remote config support via the OpAMP protocol.
+to implement remote config support via the `OpAMP protocol`_.
 
 The client implements the following capabilities:
 
@@ -27,6 +27,10 @@ The client implements the following capabilities:
 * ReportsRemoteConfig
 
 These capabilities are enough to get a remote config from an opamp server, parse it, apply it and ack it.
+
+While the client supports pluggable transports, only an HTTP backends using the ``requests`` library is
+implemented. Adding WebSocket support shouldn't be hard but it will require some rework in the OpAMPAgent
+class.
 
 Since OpAMP APIs, config options or environment variables are not standardizes the distros are required
 to provide code doing so.
@@ -82,6 +86,7 @@ Usage
 
 API
 ---
+.. _OpAMP protocol: https://opentelemetry.io/docs/specs/opamp/
 """
 
 from opentelemetry._opamp.agent import OpAMPAgent
