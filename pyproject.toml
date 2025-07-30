@@ -66,6 +66,7 @@ dependencies = [
   "opentelemetry-util-http",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
+  "opentelemetry-instrumentation-langchain[instruments]",
 ]
 
 
@@ -136,6 +137,7 @@ opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
+opentelemetry-instrumentation-langchain = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
