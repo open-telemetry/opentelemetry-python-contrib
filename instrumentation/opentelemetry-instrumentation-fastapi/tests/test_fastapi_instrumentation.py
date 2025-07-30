@@ -1877,3 +1877,107 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
+
+
+class TestTraceableExceptionHandling(TestBase):
+    """Tests to ensure FastAPI exception handlers are only executed once and with a valid context"""
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = fastapi.FastAPI()
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        self.client = TestClient(self.app)
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.executed = 0
+        self.request_trace_id = None
+        self.error_trace_id = None
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_error_handler_context(self):
+        """OTEL tracing contexts must be available during error handler execution"""
+
+        @self.app.exception_handler(Exception)
+        async def _(*_):
+            self.error_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+
+        @self.app.get("/foobar")
+        async def _():
+            self.request_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+            raise Exception("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:
+            pass
+
+        self.assertIsNotNone(self.request_trace_id)
+        self.assertEqual(self.request_trace_id, self.error_trace_id)
+
+    def test_error_handler_side_effects(self):
+        """FastAPI default exception handlers (aka error handlers) must be executed exactly once per exception"""
+
+        @self.app.exception_handler(Exception)
+        async def _(*_):
+            self.executed += 1
+
+        @self.app.get("/foobar")
+        async def _():
+            raise Exception("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:
+            pass
+
+        self.assertEqual(self.executed, 1)
+
+
+class TestFailsafeHooks(TestBase):
+    """Tests to ensure FastAPI instrumentation hooks don't tear through"""
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = fastapi.FastAPI()
+
+        @self.app.get("/foobar")
+        async def _():
+            return {"message": "Hello World"}
+
+        def failing_hook(*_):
+            raise Exception("Hook Exception")
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app,
+            server_request_hook=failing_hook,
+            client_request_hook=failing_hook,
+            client_response_hook=failing_hook,
+        )
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_failsafe_hooks(self):
+        """Crashing hooks must not tear through"""
+        resp = self.client.get(
+            "/foobar",
+        )
+
+        self.assertEqual(200, resp.status_code)
