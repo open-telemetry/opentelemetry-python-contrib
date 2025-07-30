@@ -144,7 +144,7 @@ class OpAMPAgent:
     def __init__(
         self,
         *,
-        interval: float,
+        interval: float = 30,
         message_handler: Callable[
             ["OpAMPAgent", OpAMPClient, opamp_pb2.ServerToAgent], None
         ],
@@ -154,7 +154,7 @@ class OpAMPAgent:
         client: OpAMPClient,
     ):
         """
-        :param interval: seconds between automatic calls
+        :param interval: seconds between heartbeat calls
         :param message_handler: user provided function that takes the received ServerToAgent message
         :param max_retries: how many times to retry a failed job for ad-hoc messages
         :param heartbeat_max_retries: how many times to retry an heartbeat failed job
