@@ -43,6 +43,10 @@ _HANDLED_CAPABILITIES = (
 
 
 class OpAMPClient:
+    """
+    OpAMPClient implement the helpers for building and sending messages that the agent will use.
+    """
+
     def __init__(
         self,
         *,

@@ -14,6 +14,8 @@ Installation
     pip install opentelemetry-opamp-client
 
 
+This package provides an HTTP OpAMP client than can be used by OpenTelemetry distributions to provide remote config.
+
 References
 ----------
 * `OpenTelemetry OpAMP Client <https://opentelemetry-python-contrib.readthedocs.io/en/latest/opamp/client/client.html>`_
