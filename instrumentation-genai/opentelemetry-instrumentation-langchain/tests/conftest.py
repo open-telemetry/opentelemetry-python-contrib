@@ -114,7 +114,17 @@ def vcr_config():
         "decode_compressed_response": True,
         "before_record_response": scrub_aws_credentials,
     }
-    
+
+@pytest.fixture(scope="session")
+def instrument_langchain(reader, tracer_provider):
+    langchain_instrumentor = LangChainInstrumentor()
+    langchain_instrumentor.instrument(
+        tracer_provider=tracer_provider
+    )
+
+    yield
+
+    langchain_instrumentor.uninstrument()
     
 @pytest.fixture(scope="function")
 def instrument_no_content(
