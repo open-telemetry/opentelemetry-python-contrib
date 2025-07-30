@@ -905,10 +905,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection"""
-        for index, count in enumerate(gc.get_count()):
+        for index, stat in enumerate(gc.get_stats()):
             self._runtime_gc_collections_labels["generation"] = str(index)
             yield Observation(
-                count, self._runtime_gc_collections_labels.copy()
+                stat["collections"], self._runtime_gc_collections_labels.copy()
             )
 
     def _get_runtime_thread_count(
