@@ -16,13 +16,24 @@ from typing import Optional
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_DESTINATION_TEMPORARY,
+    MESSAGING_MESSAGE_CONVERSATION_ID,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
-    SpanAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 
-_DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: "rabbitmq"}
+_DEFAULT_ATTRIBUTES = {MESSAGING_SYSTEM: "rabbitmq"}
 
 
 class SpanBuilder:
@@ -44,7 +55,7 @@ class SpanBuilder:
 
     def set_destination(self, destination: str):
         self._destination = destination
-        self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
+        self._attributes[MESSAGING_DESTINATION_NAME] = destination
 
     def set_channel(self, channel: AbstractChannel):
         if hasattr(channel, "_connection"):
@@ -61,19 +72,17 @@ class SpanBuilder:
             url = connection.url
         self._attributes.update(
             {
-                SpanAttributes.NET_PEER_NAME: url.host,
-                SpanAttributes.NET_PEER_PORT: url.port or 5672,
+                NET_PEER_NAME: url.host,
+                NET_PEER_PORT: url.port or 5672,
             }
         )
 
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
-            self._attributes[SpanAttributes.MESSAGING_MESSAGE_ID] = (
-                properties.message_id
-            )
+            self._attributes[MESSAGING_MESSAGE_ID] = properties.message_id
         if properties.correlation_id:
-            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = (
+            self._attributes[MESSAGING_MESSAGE_CONVERSATION_ID] = (
                 properties.correlation_id
             )
 
@@ -81,11 +90,9 @@ class SpanBuilder:
         if not is_instrumentation_enabled():
             return None
         if self._operation:
-            self._attributes[SpanAttributes.MESSAGING_OPERATION] = (
-                self._operation.value
-            )
+            self._attributes[MESSAGING_OPERATION] = self._operation.value
         else:
-            self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
+            self._attributes[MESSAGING_DESTINATION_TEMPORARY] = True
         span = self._tracer.start_span(
             self._generate_span_name(),
             kind=self._kind,
