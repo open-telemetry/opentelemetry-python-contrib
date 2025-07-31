@@ -92,7 +92,7 @@ class LangChainInstrumentor(BaseInstrumentor):
         """
         Cleanup instrumentation (unwrap).
         """
-        unwrap("langchain_core.callbacks.base", "BaseCallbackManager.__init__")
+        unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
 
 
 class _BaseCallbackManagerInitWrapper:
