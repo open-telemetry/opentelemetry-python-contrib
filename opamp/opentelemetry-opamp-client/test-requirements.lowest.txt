@@ -51,8 +51,10 @@ requests==2.32.3
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
-tomli==1.0.0 ; python_full_version < '3.11'
-    # via pytest
+tomli==1.1.0
+    # via
+    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   pytest
 urllib3==2.5.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
