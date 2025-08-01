@@ -65,9 +65,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-Bz9YAjBZIcn27qki9RCKA4jWNBodm",
+          "id": "chatcmpl-BzXyZbwSwCmuSOKwRx7tnsia3V9lH",
           "object": "chat.completion",
-          "created": 1753914418,
+          "created": 1754008311,
           "model": "gpt-3.5-turbo-0125",
           "choices": [
             {
@@ -102,13 +102,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 967847d78c752ee5-LAX
+      - 96813c201ae62f46-LAX
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 30 Jul 2025 22:26:58 GMT
+      - Fri, 01 Aug 2025 00:31:51 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -128,13 +128,15 @@ interactions:
       - '822'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '206'
+      - '189'
       openai-project:
       - proj_GLiYlAc06hF0Fm06IMReZLy4
       openai-version:
       - '2020-10-01'
+      x-envoy-decorator-operation:
+      - router.openai.svc.cluster.local:5004/*
       x-envoy-upstream-service-time:
-      - '209'
+      - '211'
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
@@ -148,7 +150,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 5ms
       x-request-id:
-      - 8439b806-5346-4ebc-a3fa-adea9059e510
+      - 8a5db9a5-6103-41d4-baf3-813be646bae4
     status:
       code: 200
       message: OK
