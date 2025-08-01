@@ -59,7 +59,9 @@ class LangChainInstrumentor(BaseInstrumentor):
     to capture LLM telemetry.
     """
 
-    def __init__(self, exception_logger: Optional[Callable[[Exception], Any]] = None):
+    def __init__(
+        self, exception_logger: Optional[Callable[[Exception], Any]] = None
+    ):
         super().__init__()
         Config.exception_logger = exception_logger
 
@@ -100,10 +102,18 @@ class _BaseCallbackManagerInitWrapper:
     Wrap the BaseCallbackManager __init__ to insert custom callback handler in the manager's handlers list.
     """
 
-    def __init__(self, callback_handler: OpenTelemetryLangChainCallbackHandler):
+    def __init__(
+        self, callback_handler: OpenTelemetryLangChainCallbackHandler
+    ):
         self._otel_handler = callback_handler
 
-    def __call__(self, wrapped: Callable[..., None], instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]):
+    def __call__(
+        self,
+        wrapped: Callable[..., None],
+        instance: Any,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ):
         wrapped(*args, **kwargs)
         # Ensure our OTel callback is present if not already.
         for handler in instance.inheritable_handlers:

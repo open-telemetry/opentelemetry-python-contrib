@@ -20,11 +20,13 @@ logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
+
 def dont_throw(func: F) -> F:
     """
     Decorator that catches and logs exceptions, rather than re-raising them,
     to avoid interfering with user code if instrumentation fails.
     """
+
     def wrapper(*args: Any, **kwargs: Any) -> Optional[Any]:
         try:
             return func(*args, **kwargs)
@@ -35,7 +37,9 @@ def dont_throw(func: F) -> F:
                 traceback.format_exc(),
             )
             from opentelemetry.instrumentation.langchain.config import Config
+
             if Config.exception_logger:
                 Config.exception_logger(e)
             return None
+
     return wrapper  # type: ignore
