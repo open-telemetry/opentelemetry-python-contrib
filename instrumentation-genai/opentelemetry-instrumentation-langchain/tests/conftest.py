@@ -7,10 +7,13 @@ import pytest
 import yaml
 from langchain_openai import ChatOpenAI
 
+from opentelemetry.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.instrumentation.langchain import LangChainInstrumentor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+
 
 @pytest.fixture(scope="function", name="span_exporter")
 def fixture_span_exporter():
@@ -131,3 +134,4 @@ def scrub_response_headers(response):
     response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response
+

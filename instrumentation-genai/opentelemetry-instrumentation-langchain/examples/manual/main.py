@@ -1,9 +1,11 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from opentelemetry.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
+)
+from opentelemetry.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 

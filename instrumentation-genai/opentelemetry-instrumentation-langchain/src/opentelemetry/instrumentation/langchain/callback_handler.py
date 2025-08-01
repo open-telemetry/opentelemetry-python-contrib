@@ -1,19 +1,23 @@
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.messages import BaseMessage
-from langchain_core.outputs import LLMResult
+from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
+from langchain_core.messages import BaseMessage  # type: ignore
+from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.context import get_current, Context
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as GenAI
-from opentelemetry.semconv.attributes import error_attributes as ErrorAttributes
-from opentelemetry.trace import Span, SpanKind, set_span_in_context, use_span
+from opentelemetry.context import Context, get_current
+from opentelemetry.instrumentation.langchain.utils import dont_throw
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
+from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
-from opentelemetry.instrumentation.langchain.utils import dont_throw
 
 @dataclass
 class _SpanState:
@@ -23,16 +27,16 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
+class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler): # type: ignore[misc]
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
 
     def __init__(
         self,
-        tracer,
+        tracer: Tracer,
     ) -> None:
-        super().__init__()
+        super().__init__() # type: ignore
         self._tracer = tracer
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
@@ -80,14 +84,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         return span
 
-    def _end_span(self, run_id: UUID):
+    def _end_span(self, run_id: UUID) -> None:
         state = self.spans[run_id]
         for child_id in state.children:
             child_state = self.spans.get(child_id)
-            if child_state and child_state.span.end_time is None:
+            if child_state:
+                # Always end child spans as OpenTelemetry spans don't expose end_time directly
                 child_state.span.end()
-        if state.span.end_time is None:
-            state.span.end()
+            # Always end the span as OpenTelemetry spans don't expose end_time directly
+        state.span.end()
 
     def _get_span(self, run_id: UUID) -> Span:
         return self.spans[run_id].span
@@ -95,15 +100,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     @dont_throw
     def on_chat_model_start(
             self,
-            serialized: dict,
-            messages: List[List[BaseMessage]],
+            serialized: Dict[str, Any],
+            messages: List[List[BaseMessage]], # type: ignore
             *,
             run_id: UUID,
-            tags: Optional[list[str]] = None,
+            tags: Optional[List[str]] = None,
             parent_run_id: Optional[UUID] = None,
-            metadata: Optional[dict[str, Any]] = None,
-            **kwargs,
-    ):
+            metadata: Optional[Dict[str, Any]] = None,
+            **kwargs: Any,
+    ) -> None:
         name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
         span = self._create_llm_span(
             run_id=run_id,
@@ -113,7 +118,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         invocation_params = kwargs.get("invocation_params")
         if invocation_params is not None:
-            request_model = kwargs.get("invocation_params").get("model_name")
+            request_model = invocation_params.get("model_name")
             if request_model is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
             top_p = invocation_params.get("top_p")
@@ -129,7 +134,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             if stop_sequences is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences)
             seed = invocation_params.get("seed")
-            if stop_sequences is not None:
+            if seed is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
 
 
@@ -148,41 +153,44 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     @dont_throw
     def on_llm_end(
             self,
-            response: LLMResult,
+            response: LLMResult, # type: ignore
             *,
             run_id: UUID,
-            parent_run_id: Union[UUID, None] = None,
-            **kwargs,
-    ):
+            parent_run_id: Optional[UUID] = None,
+            **kwargs: Any,
+    ) -> None:
         span = self._get_span(run_id)
 
-        finish_reasons = []
-        for generation in getattr(response, "generations", []):
-            for index, chat_generation in enumerate(generation):
-                generation_info = chat_generation.generation_info
+        finish_reasons: List[str] = []
+        for generation in getattr(response, "generations", []): # type: ignore
+            for chat_generation in generation:
+                generation_info = getattr(chat_generation, "generation_info", None)
                 if generation_info is not None:
                     finish_reason = generation_info.get("finish_reason")
                     if finish_reason is not None:
-                        finish_reasons.append(finish_reason or "error")
+                        finish_reasons.append(str(finish_reason) or "error")
 
         span.set_attribute(GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons)
 
-        if response.llm_output is not None:
-            response_model = response.llm_output.get("model_name") or response.llm_output.get("model")
+        llm_output = getattr(response, "llm_output", None) # type: ignore
+        if llm_output is not None:
+            response_model = llm_output.get("model_name") or llm_output.get("model")
             if response_model is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
+                span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, str(response_model))
 
-            response_id = response.llm_output.get("id")
+            response_id = llm_output.get("id")
             if response_id is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
+                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, str(response_id))
 
             # usage
-            usage = response.llm_output.get("usage") or response.llm_output.get("token_usage")
+            usage = llm_output.get("usage") or llm_output.get("token_usage")
             if usage:
                 prompt_tokens = usage.get("prompt_tokens", 0)
                 completion_tokens = usage.get("completion_tokens", 0)
-                span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
-                span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
+                span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS,
+                                   int(prompt_tokens) if prompt_tokens is not None else 0)
+                span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS,
+                                   int(completion_tokens) if completion_tokens is not None else 0)
 
         # End the LLM span
         self._end_span(run_id)
@@ -194,8 +202,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             *,
             run_id: UUID,
             parent_run_id: Optional[UUID] = None,
-            **kwargs,
-    ):
+            **kwargs: Any,
+    ) -> None:
         self._handle_error(error, run_id)
 
     def _handle_error(self, error: BaseException, run_id: UUID):

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Callable, Optional
+
 
 class Config:
     """
@@ -18,4 +20,4 @@ class Config:
     """
 
     # Logger to handle exceptions during instrumentation
-    exception_logger = None
+    exception_logger: Optional[Callable[[Exception], Any]] = None

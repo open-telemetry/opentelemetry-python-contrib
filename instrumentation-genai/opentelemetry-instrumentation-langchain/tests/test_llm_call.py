@@ -3,6 +3,7 @@ from typing import Optional
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
@@ -71,5 +72,6 @@ def assert_openai_completion_attributes(
         assert output_tokens == span.attributes[gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS]
     else:
         assert gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
+
 
 
