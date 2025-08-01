@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-sampler-consistent`: Add consistent samplers
+  ([#3668](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3668))
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
