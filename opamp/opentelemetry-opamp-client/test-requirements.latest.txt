@@ -16,12 +16,16 @@ idna==3.10
     # via
     #   requests
     #   yarl
+importlib-metadata==8.7.0
+    # via opentelemetry-api
 iniconfig==2.1.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   pytest
 multidict==6.6.3
     # via yarl
+opentelemetry-api==1.36.0
+    # via opentelemetry-opamp-client
 packaging==25.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
@@ -55,10 +59,11 @@ tomli==2.2.1
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   pytest
-typing-extensions==4.14.0 ; python_full_version < '3.11'
+typing-extensions==4.14.0
     # via
     #   exceptiongroup
     #   multidict
+    #   opentelemetry-api
 urllib3==2.5.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
@@ -80,3 +85,5 @@ yarl==1.20.1
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   vcrpy
+zipp==3.23.0
+    # via importlib-metadata
