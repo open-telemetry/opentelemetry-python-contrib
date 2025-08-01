@@ -44,6 +44,11 @@ sqlalchemy>=1.0
 tornado>=5.1.1
 tortoise-orm>=0.17.0
 
+# required by opamp
+uuid_utils
+protobuf>=5.0,< 7.0
+
 # indirect dependency pins
 markupsafe==2.0.1
 itsdangerous==2.0.1
+
