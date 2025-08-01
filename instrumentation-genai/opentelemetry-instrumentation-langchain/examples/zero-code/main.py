@@ -22,6 +22,6 @@ def main():
     result = llm.invoke(messages).content
     print("LLM output:\n", result)
 
+
 if __name__ == "__main__":
     main()
-
