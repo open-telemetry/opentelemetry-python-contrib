@@ -25,6 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+  "opentelemetry-api ~= 1.12",
   "protobuf>=5.0, < 7.0",
   "uuid-utils>=0.11.0, <1"
 ]
