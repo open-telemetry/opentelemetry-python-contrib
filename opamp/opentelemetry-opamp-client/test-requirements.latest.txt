@@ -24,8 +24,6 @@ iniconfig==2.1.0
     #   pytest
 multidict==6.6.3
     # via yarl
-opentelemetry-api==1.36.0
-    # via opentelemetry-opamp-client
 packaging==25.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
