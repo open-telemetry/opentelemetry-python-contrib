@@ -62,6 +62,7 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import Status, StatusCode
 
 # Values defined in milliseconds
@@ -483,4 +484,4 @@ def _set_status(
 def _get_schema_url(mode: _StabilityMode) -> str:
     if mode is _StabilityMode.DEFAULT:
         return "https://opentelemetry.io/schemas/1.11.0"
-    return "https://opentelemetry.io/schemas/1.21.0"
+    return Schemas.V1_21_0.value
