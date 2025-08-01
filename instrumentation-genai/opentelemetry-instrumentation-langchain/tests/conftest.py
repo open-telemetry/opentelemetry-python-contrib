@@ -20,11 +20,13 @@ def fixture_span_exporter():
     exporter = InMemorySpanExporter()
     yield exporter
 
+
 @pytest.fixture(scope="function", name="tracer_provider")
 def fixture_tracer_provider(span_exporter):
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(span_exporter))
     return provider
+
 
 @pytest.fixture(scope="function")
 def start_instrumentation(
@@ -38,6 +40,7 @@ def start_instrumentation(
     yield instrumentor
     instrumentor.uninstrument()
 
+
 @pytest.fixture(autouse=True)
 def environment():
     if not os.getenv("OPENAI_API_KEY"):
@@ -47,6 +50,7 @@ def environment():
 @pytest.fixture
 def chatOpenAI_client():
     return ChatOpenAI()
+
 
 @pytest.fixture(scope="module")
 def vcr_config():
@@ -61,9 +65,11 @@ def vcr_config():
         "before_record_response": scrub_response_headers,
     }
 
+
 class LiteralBlockScalar(str):
     """Formats the string as a literal block scalar, preserving whitespace and
     without interpreting escape characters"""
+
 
 def literal_block_scalar_presenter(dumper, data):
     """Represents a scalar string as a literal block, via '|' syntax"""
@@ -134,4 +140,3 @@ def scrub_response_headers(response):
     response["headers"]["openai-organization"] = "test_openai_org_id"
     response["headers"]["Set-Cookie"] = "test_set_cookie"
     return response
-

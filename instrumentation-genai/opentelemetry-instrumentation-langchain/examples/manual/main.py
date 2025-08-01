@@ -14,8 +14,8 @@ trace.set_tracer_provider(TracerProvider())
 span_processor = BatchSpanProcessor(OTLPSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)
 
-def main():
 
+def main():
     # Set up instrumentation
     LangChainInstrumentor().instrument()
 
@@ -42,6 +42,7 @@ def main():
 
     # Un-instrument after use
     LangChainInstrumentor().uninstrument()
+
 
 if __name__ == "__main__":
     main()
