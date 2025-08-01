@@ -453,8 +453,8 @@ def get_host_port_url_tuple(scope):
         if isinstance(host_value, bytes):
             host_value = host_value.decode("utf-8")
 
-        url_host = host_value + (":" + str(port) if str(port) != "80" else "")
-        
+        url_host = host_value
+
     else:
         url_host = server[0] + (":" + str(port) if str(port) != "80" else "")
     server_host = server[0] + (":" + str(port) if str(port) != "80" else "")

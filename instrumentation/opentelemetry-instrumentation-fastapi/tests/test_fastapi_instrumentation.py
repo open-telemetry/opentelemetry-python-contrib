@@ -300,7 +300,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
-            "https://testserver:443/sub/home",
+            "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
 
@@ -1244,7 +1244,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
-            "https://testserver:443/sub/home",
+            "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
 
@@ -1332,7 +1332,7 @@ class TestAutoInstrumentationHooks(TestBaseAutoFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
-            "https://testserver:443/sub/home",
+            "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
 
@@ -1881,7 +1881,7 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
 
 class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
     """Test suite for Host header URL functionality in FastAPI instrumentation."""
-    
+
     def test_host_header_url_construction(self):
         """Test that URLs use Host header value instead of server IP when available."""
         # Test with a custom Host header - should use the domain name
@@ -1890,24 +1890,24 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
             headers={"host": "api.mycompany.com"}
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
-        
+
         # Find the server span (the main span, not internal middleware spans)
         server_span = None
         for span in spans:
             if HTTP_URL in span.attributes:
                 server_span = span
                 break
-        
+
         self.assertIsNotNone(server_span, "Server span with HTTP_URL not found")
-        
+
         # Verify the URL uses the Host header domain instead of testserver
-        expected_url = "https://api.mycompany.com:443/foobar?param=value"
+        expected_url = "https://api.mycompany.com/foobar?param=value"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
-        
+
         # Also verify that the server name attribute is set correctly
         self.assertEqual("api.mycompany.com", server_span.attributes.get("http.server_name"))
 
@@ -1918,13 +1918,13 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
             headers={"host": "staging.myapp.com:8443"}
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Should use the host header value with non-standard port included
-        expected_url = "https://staging.myapp.com:8443:443/user/123"
+        expected_url = "https://staging.myapp.com:8443/user/123"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
 
@@ -1933,13 +1933,13 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
         # Make request without custom Host header - should use testserver (default TestClient base)
         resp = self._client.get("/foobar")
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Should fallback to testserver (TestClient default, standard port stripped)
-        expected_url = "https://testserver:443/foobar"
+        expected_url = "https://testserver/foobar"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
 
@@ -1954,16 +1954,16 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
             }
         )
         self.assertEqual(200, resp.status_code)  # Valid route should return 200
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # URL should use the production domain from Host header (AS-IS, no default port)
-        expected_url = "https://prod-api.example.com:443/foobar?limit=10&offset=20"
+        expected_url = "https://prod-api.example.com/foobar?limit=10&offset=20"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
-        
+
         # Verify other attributes are still correct
         self.assertEqual("GET", server_span.attributes[HTTP_METHOD])
         self.assertEqual("/foobar", server_span.attributes[HTTP_TARGET])
@@ -1972,12 +1972,12 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
     def test_host_header_with_special_characters(self):
         """Test Host header handling with special characters and edge cases."""
         test_cases = [
-            ("api-v2.test-domain.com", "https://api-v2.test-domain.com:443/foobar"),
-            ("localhost", "https://localhost:443/foobar"),
-            ("192.168.1.100", "https://192.168.1.100:443/foobar"),  # IP address as host
-            ("test.domain.co.uk", "https://test.domain.co.uk:443/foobar"),  # Multiple dots
+            ("api-v2.test-domain.com", "https://api-v2.test-domain.com/foobar"),
+            ("localhost", "https://localhost/foobar"),
+            ("192.168.1.100", "https://192.168.1.100/foobar"),  # IP address as host
+            ("test.domain.co.uk", "https://test.domain.co.uk/foobar"),  # Multiple dots
         ]
-        
+
         for host_value, expected_url in test_cases:
             with self.subTest(host=host_value):
                 # Clear previous spans
@@ -1988,11 +1988,11 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
                     headers={"host": host_value}
                 )
                 self.assertEqual(200, resp.status_code)
-                
+
                 spans = self.memory_exporter.get_finished_spans()
                 server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
                 self.assertIsNotNone(server_span)
-                
+
                 actual_url = server_span.attributes[HTTP_URL]
                 self.assertEqual(expected_url, actual_url)
 
@@ -2004,13 +2004,13 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
             headers={"host": "bytes-test.example.com"}
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Should properly decode and use the host header
-        expected_url = "https://bytes-test.example.com:443/foobar"
+        expected_url = "https://bytes-test.example.com/foobar"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
 
@@ -2024,22 +2024,22 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
             }
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Verify URL uses Host header
-        self.assertEqual("https://api.testapp.com:443/user/testuser?debug=true", 
+        self.assertEqual("https://api.testapp.com/user/testuser?debug=true", 
                         server_span.attributes[HTTP_URL])
-        
+
         # Verify all other attributes are still present and correct
         self.assertEqual("GET", server_span.attributes[HTTP_METHOD])
         self.assertEqual("/user/testuser", server_span.attributes[HTTP_TARGET])
         self.assertEqual("https", server_span.attributes[HTTP_SCHEME])
         self.assertEqual("api.testapp.com", server_span.attributes.get("http.server_name"))
         self.assertEqual(200, server_span.attributes[HTTP_STATUS_CODE])
-        
+
         # Check that route attribute is still set correctly
         if HTTP_ROUTE in server_span.attributes:
             self.assertEqual("/user/{username}", server_span.attributes[HTTP_ROUTE])
@@ -2047,10 +2047,10 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
 class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
     """Test Host header URL functionality with new semantic conventions."""
-    
+
     def test_host_header_url_new_semconv(self):
         """Test Host header URL construction with new semantic conventions.
-        
+
         Note: With new semantic conventions, the URL is split into components
         (url.scheme, server.address, url.path, etc.) rather than a single http.url.
         Host header support may work differently with new semantic conventions.
@@ -2060,19 +2060,19 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
             headers={"host": "newapi.example.com"}
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         # With new semantic conventions, look for the main HTTP span with route information
         server_span = next((span for span in spans if "http.route" in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Verify we have the new semantic convention attributes
         self.assertIn("url.scheme", server_span.attributes)
         self.assertIn("server.address", server_span.attributes)
         self.assertIn("url.path", server_span.attributes)
         self.assertEqual("https", server_span.attributes.get("url.scheme"))
         self.assertEqual("/foobar", server_span.attributes.get("url.path"))
-        
+
         # Current behavior: Host header may not affect server.address in new semantic conventions
         # This test documents the current behavior rather than enforcing Host header usage
         server_address = server_span.attributes.get("server.address", "")
@@ -2081,7 +2081,6 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
 
 class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
     """Test Host header URL functionality with both old and new semantic conventions."""
-    
     def test_host_header_url_both_semconv(self):
         """Test Host header URL construction with both semantic conventions enabled."""
         resp = self._client.get(
@@ -2089,13 +2088,13 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
             headers={"host": "dual.example.com"}
         )
         self.assertEqual(200, resp.status_code)
-        
+
         spans = self.memory_exporter.get_finished_spans()
         server_span = next((span for span in spans if HTTP_URL in span.attributes), None)
         self.assertIsNotNone(server_span)
-        
+
         # Should use Host header for URL construction regardless of semantic convention mode
-        expected_url = "https://dual.example.com:443/foobar?test=both_semconv"
+        expected_url = "https://dual.example.com/foobar?test=both_semconv"
         actual_url = server_span.attributes[HTTP_URL]
         self.assertEqual(expected_url, actual_url)
 
@@ -2121,15 +2120,14 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
         # 2. ASGI receive span  
         # 3. ASGI send span (for error response)
         self.assertEqual(len(spans), 3)
-        
+
         # Find the server span (it should have HTTP attributes)
         server_spans = [span for span in spans if hasattr(span, 'attributes') and span.attributes and HTTP_URL in span.attributes]
-        
+
         self.assertEqual(len(server_spans), 1, "Expected exactly one server span with HTTP_URL")
         server_span = server_spans[0]
-        
+
         # Ensure server_span is not None
         assert server_span is not None
-        
-        self.assertEqual(server_span.name, "GET /error")
 
+        self.assertEqual(server_span.name, "GET /error")
