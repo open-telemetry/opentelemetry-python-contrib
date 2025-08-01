@@ -36,20 +36,20 @@ API
 ---
 """
 
-from typing import Collection
+from typing import Any, Callable, Collection, Optional
 
-from wrapt import wrap_function_wrapper
+from wrapt import wrap_function_wrapper  # type: ignore
 
-from opentelemetry.instrumentation.langchain.config import Config
-from opentelemetry.instrumentation.langchain.version import __version__
-from opentelemetry.instrumentation.langchain.package import _instruments
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.langchain.config import Config
+from opentelemetry.instrumentation.langchain.package import _instruments
+from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import get_tracer
 from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.trace import get_tracer
 
 
 class LangChainInstrumentor(BaseInstrumentor):
@@ -59,14 +59,14 @@ class LangChainInstrumentor(BaseInstrumentor):
     to capture LLM telemetry.
     """
 
-    def __init__(self, exception_logger=None):
+    def __init__(self, exception_logger: Optional[Callable[[Exception], Any]] = None):
         super().__init__()
         Config.exception_logger = exception_logger
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """
         Enable Langchain instrumentation.
         """
@@ -88,7 +88,7 @@ class LangChainInstrumentor(BaseInstrumentor):
             wrapper=_BaseCallbackManagerInitWrapper(otel_callback_handler),
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         """
         Cleanup instrumentation (unwrap).
         """
@@ -100,10 +100,10 @@ class _BaseCallbackManagerInitWrapper:
     Wrap the BaseCallbackManager __init__ to insert custom callback handler in the manager's handlers list.
     """
 
-    def __init__(self, callback_handler):
+    def __init__(self, callback_handler: OpenTelemetryLangChainCallbackHandler):
         self._otel_handler = callback_handler
 
-    def __call__(self, wrapped, instance, args, kwargs):
+    def __call__(self, wrapped: Callable[..., None], instance: Any, args: tuple[Any, ...], kwargs: dict[str, Any]):
         wrapped(*args, **kwargs)
         # Ensure our OTel callback is present if not already.
         for handler in instance.inheritable_handlers:
