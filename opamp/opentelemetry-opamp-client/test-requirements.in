@@ -13,3 +13,6 @@ urllib3>=2.5.0
 uuid-utils>=0.11.0
 wrapt>=1.16.0
 -e opamp/opentelemetry-opamp-client
+
+# for pylint
+tomli>=1.1.0
