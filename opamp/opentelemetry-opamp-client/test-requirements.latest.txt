@@ -51,8 +51,10 @@ requests==2.32.3
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
-tomli==2.2.1 ; python_full_version < '3.11'
-    # via pytest
+tomli==2.2.1
+    # via
+    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   pytest
 typing-extensions==4.14.0 ; python_full_version < '3.11'
     # via
     #   exceptiongroup
@@ -63,7 +65,9 @@ urllib3==2.5.0
     #   requests
     #   vcrpy
 uuid-utils==0.11.0
-    # via -r opamp/opentelemetry-opamp-client/test-requirements.in
+    # via
+    #   -r opamp/opentelemetry-opamp-client/test-requirements.in
+    #   opentelemetry-opamp-client
 vcrpy==7.0.0 ; python_full_version >= '3.10' and platform_python_implementation != 'PyPy'
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
