@@ -63,27 +63,27 @@ class OTelProviderSnapshot:
 
 
 class _LogWrapper:
-    def __init__(self, log_data):
-        self._log_data = log_data
+    def __init__(self, log_record):
+        self._log_record = log_record
 
     @property
     def scope(self):
-        return self._log_data.instrumentation_scope
+        return self._log_record.instrumentation_scope
 
     @property
     def resource(self):
-        return self._log_data.log_record.resource
+        return self._log_record.resource
 
     @property
     def attributes(self):
-        return self._log_data.log_record.attributes
+        return self._log_record.attributes
 
     @property
     def body(self):
-        return self._log_data.log_record.body
+        return self._log_record.body
 
     def __str__(self):
-        return self._log_data.log_record.to_json()
+        return self._log_record.to_json()
 
 
 class _MetricDataPointWrapper:
