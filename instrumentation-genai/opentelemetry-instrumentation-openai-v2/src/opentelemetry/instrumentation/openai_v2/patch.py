@@ -91,6 +91,7 @@ def chat_completions_create(
                     result,
                     span_attributes,
                     error_type,
+                    GenAIAttributes.GenAiOperationNameValues.CHAT.value,
                 )
 
     return traced_method
@@ -149,6 +150,133 @@ def async_chat_completions_create(
                     result,
                     span_attributes,
                     error_type,
+                    GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+                )
+
+    return traced_method
+
+
+def embeddings_create(
+    tracer: Tracer,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `Embeddings` class to trace it."""
+
+    def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = {
+            **get_llm_request_attributes(
+                kwargs,
+                instance,
+                GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+            )
+        }
+
+        # Using a custom attribute "gen_ai.embeddings.dimension.count". Will propose to semantic conventions.
+        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
+            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
+                "dimensions"
+            ]
+
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=True,
+        ) as span:
+            # Store the input for later use in the response attributes
+            input_text = kwargs.get("input", "")
+
+            start = default_timer()
+            result = None
+            error_type = None
+            try:
+                result = wrapped(*args, **kwargs)
+
+                if span.is_recording():
+                    _set_embeddings_response_attributes(
+                        span, result, capture_content, input_text
+                    )
+
+                return result
+
+            except Exception as error:
+                error_type = type(error).__qualname__
+                handle_span_exception(span, error)
+                raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_metrics(
+                    instruments,
+                    duration,
+                    result,
+                    span_attributes,
+                    error_type,
+                    GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+                )
+
+    return traced_method
+
+
+def async_embeddings_create(
+    tracer: Tracer,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `AsyncEmbeddings` class to trace it."""
+
+    async def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = {
+            **get_llm_request_attributes(
+                kwargs,
+                instance,
+                GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+            )
+        }
+
+        # Set embeddings dimensions if specified in the request
+        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
+            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
+                "dimensions"
+            ]
+
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=True,
+        ) as span:
+            # Store the input for later use in the response attributes
+            input_text = kwargs.get("input", "")
+
+            start = default_timer()
+            result = None
+            error_type = None
+            try:
+                result = await wrapped(*args, **kwargs)
+
+                if span.is_recording():
+                    _set_embeddings_response_attributes(
+                        span, result, capture_content, input_text
+                    )
+
+                return result
+
+            except Exception as error:
+                error_type = type(error).__qualname__
+                handle_span_exception(span, error)
+                raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_metrics(
+                    instruments,
+                    duration,
+                    result,
+                    span_attributes,
+                    error_type,
+                    GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
                 )
 
     return traced_method
@@ -158,16 +286,22 @@ def _record_metrics(
     instruments: Instruments,
     duration: float,
     result,
-    span_attributes: dict,
+    request_attributes: dict,
     error_type: Optional[str],
+    operation_name: str,
 ):
     common_attributes = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
             GenAIAttributes.GEN_AI_REQUEST_MODEL
         ],
     }
+
+    if "gen_ai.embeddings.dimension.count" in request_attributes:
+        common_attributes["gen_ai.embeddings.dimension.count"] = (
+            request_attributes["gen_ai.embeddings.dimension.count"]
+        )
 
     if error_type:
         common_attributes["error.type"] = error_type
@@ -185,13 +319,13 @@ def _record_metrics(
             result.system_fingerprint
         )
 
-    if ServerAttributes.SERVER_ADDRESS in span_attributes:
-        common_attributes[ServerAttributes.SERVER_ADDRESS] = span_attributes[
-            ServerAttributes.SERVER_ADDRESS
-        ]
+    if ServerAttributes.SERVER_ADDRESS in request_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = (
+            request_attributes[ServerAttributes.SERVER_ADDRESS]
+        )
 
-    if ServerAttributes.SERVER_PORT in span_attributes:
-        common_attributes[ServerAttributes.SERVER_PORT] = span_attributes[
+    if ServerAttributes.SERVER_PORT in request_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[
             ServerAttributes.SERVER_PORT
         ]
 
@@ -201,6 +335,7 @@ def _record_metrics(
     )
 
     if result and getattr(result, "usage", None):
+        # Always record input tokens
         input_attributes = {
             **common_attributes,
             GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
@@ -210,14 +345,18 @@ def _record_metrics(
             attributes=input_attributes,
         )
 
-        completion_attributes = {
-            **common_attributes,
-            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
-        }
-        instruments.token_usage_histogram.record(
-            result.usage.completion_tokens,
-            attributes=completion_attributes,
-        )
+        # For embeddings, don't record output tokens as all tokens are input tokens
+        if (
+            operation_name
+            != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+        ):
+            output_attributes = {
+                **common_attributes,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+            }
+            instruments.token_usage_histogram.record(
+                result.usage.completion_tokens, attributes=output_attributes
+            )
 
 
 def _set_response_attributes(
@@ -260,6 +399,38 @@ def _set_response_attributes(
             GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             result.usage.completion_tokens,
         )
+
+
+def _set_embeddings_response_attributes(
+    span,
+    result,
+    capture_content: bool,
+    input_text: str,
+):
+    """Set attributes on the span based on the embeddings response."""
+    # Set the model name if available
+    set_span_attribute(
+        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
+    )
+
+    # Set embeddings dimensions if we can determine it from the response
+    if getattr(result, "data", None) and len(result.data) > 0:
+        first_embedding = result.data[0]
+        if getattr(first_embedding, "embedding", None):
+            set_span_attribute(
+                span,
+                "gen_ai.embeddings.dimension.count",
+                len(first_embedding.embedding),
+            )
+
+    # Get the usage
+    if getattr(result, "usage", None):
+        set_span_attribute(
+            span,
+            GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+            result.usage.prompt_tokens,
+        )
+        # Don't set output tokens for embeddings as all tokens are input tokens
 
 
 class ToolCallBuffer:
