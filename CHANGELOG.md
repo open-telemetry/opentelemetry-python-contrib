@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
+- `opentelemetry-instrumentation-asgi` Fixed issue where FastAPI reports IP instead of URL.
+  ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
-- `opentelemetry-instrumentation-asgi` Fixed issue where FastAPI reports IP instead of URL.
-  ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 - `opentelemetry-instrumentation`: Fix dependency conflict detection when instrumented packages are not installed by moving check back to before instrumentors are loaded. Add "instruments-any" feature for instrumentations that target multiple packages.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - infra(ci): Fix git pull failures in core contrib test
