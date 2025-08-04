@@ -68,10 +68,10 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-langchain",
-    # GenAI SDK is currently excluded because it is still in early
+    # GenAI utils is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
-    "opentelemetry-genai-sdk",
+    "opentelemetry-genai-utils",
 ]
 
 # Static version specifiers for instrumentations that are released independently

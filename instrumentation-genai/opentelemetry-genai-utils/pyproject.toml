@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-genai-sdk"
+name = "opentelemetry-genai-utils"
 dynamic = ["version"]
-description = "OpenTelemetry GenAI SDK"
+description = "OpenTelemetry GenAI Utils"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.8"
@@ -36,14 +36,13 @@ dependencies = [
 test = [
   "pytest>=7.0.0",
 ]
-# evaluation = ["deepevals>=0.1.0", "openlit-sdk>=0.1.0"]
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-genai-sdk"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-genai-utils"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/genai/sdk/version.py"
+path = "src/opentelemetry/genai/utils/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
