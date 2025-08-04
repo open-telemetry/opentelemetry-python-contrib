@@ -197,7 +197,7 @@ def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
         test_pattern in user_agent_lower for test_pattern in _TEST_PATTERNS
     ):
         return USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST
-    elif any(bot_pattern in user_agent_lower for bot_pattern in _BOT_PATTERNS):
+    if any(bot_pattern in user_agent_lower for bot_pattern in _BOT_PATTERNS):
         return USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT
 
     return None
