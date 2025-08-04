@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+import asyncio
 from unittest.mock import Mock, patch
 
+import tornado.websocket
 from http_server_mock import HttpServerMock
 from tornado.httpclient import HTTPClientError
 from tornado.testing import AsyncHTTPTestCase
@@ -453,6 +455,53 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(auditor.context.trace_id, client.context.trace_id)
 
         self.assertEqual(auditor.kind, SpanKind.INTERNAL)
+
+    @tornado.testing.gen_test()
+    async def test_websockethandler(self):
+        ws_client = await tornado.websocket.websocket_connect(
+            f"ws://127.0.0.1:{self.get_http_port()}/echo_socket"
+        )
+
+        await ws_client.write_message("world")
+        resp = await ws_client.read_message()
+        self.assertEqual(resp, "hello world")
+
+        ws_client.close()
+        await asyncio.sleep(0.5)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 3)
+        close_span, msg_span, req_span = spans
+
+        self.assertEqual(req_span.name, "GET /echo_socket")
+        self.assertEqual(req_span.context.trace_id, msg_span.context.trace_id)
+        self.assertIsNone(req_span.parent)
+        self.assertEqual(req_span.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            req_span,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: f"127.0.0.1:{self.get_http_port()}",
+                HTTP_TARGET: "/echo_socket",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 101,
+                "tornado.handler": "tests.tornado_test_app.EchoWebSocketHandler",
+            },
+        )
+
+        self.assertEqual(msg_span.name, "audit_message")
+        self.assertFalse(msg_span.context.is_remote)
+        self.assertEqual(msg_span.kind, SpanKind.INTERNAL)
+        self.assertEqual(msg_span.parent.span_id, req_span.context.span_id)
+
+        self.assertEqual(close_span.name, "audit_on_close")
+        self.assertFalse(close_span.context.is_remote)
+        self.assertEqual(close_span.parent.span_id, req_span.context.span_id)
+        self.assertEqual(
+            close_span.context.trace_id, msg_span.context.trace_id
+        )
+        self.assertEqual(close_span.kind, SpanKind.INTERNAL)
 
     def test_exclude_lists(self):
         def test_excluded(path):
