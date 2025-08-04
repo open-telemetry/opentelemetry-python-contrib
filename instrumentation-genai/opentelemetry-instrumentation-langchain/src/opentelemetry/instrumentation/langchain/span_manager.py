@@ -1,0 +1,105 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import time
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from uuid import UUID
+
+from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
+from langchain_core.messages import BaseMessage  # type: ignore
+from langchain_core.outputs import LLMResult  # type: ignore
+
+from opentelemetry.context import Context, get_current
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
+
+from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
+
+
+@dataclass
+class _SpanState:
+    span: Span
+    context: Context
+    start_time: float = field(default_factory=time.time)
+    children: List[UUID] = field(default_factory=list)
+
+class SpanManager:
+    def __init__(
+        self,
+        tracer: Tracer,
+    ) -> None:
+        self._tracer = tracer
+
+        # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
+        self.spans: Dict[UUID, _SpanState] = {}
+
+    def create_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        span_name: str,
+        kind: SpanKind = SpanKind.INTERNAL,
+    ) -> Span:
+        if parent_run_id is not None and parent_run_id in self.spans:
+            parent_span = self.spans[parent_run_id].span
+            ctx = set_span_in_context(parent_span)
+            span = self._tracer.start_span(
+                name=span_name, kind=kind, context=ctx
+            )
+        else:
+            # top-level or missing parent
+            span = self._tracer.start_span(name=span_name, kind=kind)
+
+        span_state = _SpanState(span=span, context=get_current())
+        self.spans[run_id] = span_state
+
+        if parent_run_id is not None and parent_run_id in self.spans:
+            self.spans[parent_run_id].children.append(run_id)
+
+        return span
+
+    def create_llm_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        name: str,
+    ) -> Span:
+        span = self.create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=f"{name}.{GenAI.GenAiOperationNameValues.CHAT.value}",
+            kind=SpanKind.CLIENT,
+        )
+        span.set_attribute(
+            GenAI.GEN_AI_OPERATION_NAME,
+            GenAI.GenAiOperationNameValues.CHAT.value,
+        )
+        span.set_attribute(GenAI.GEN_AI_SYSTEM, name)
+
+        return span
+
+    def end_span(self, run_id: UUID) -> None:
+        state = self.spans[run_id]
+        for child_id in state.children:
+            child_state = self.spans.get(child_id)
+            if child_state:
+                # Always end child spans as OpenTelemetry spans don't expose end_time directly
+                child_state.span.end()
+            # Always end the span as OpenTelemetry spans don't expose end_time directly
+        state.span.end()
+
+    def get_span(self, run_id: UUID) -> Span:
+        return self.spans[run_id].span
