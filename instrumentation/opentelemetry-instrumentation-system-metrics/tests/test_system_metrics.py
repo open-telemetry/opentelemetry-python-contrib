@@ -139,6 +139,12 @@ class TestSystemMetrics(TestBase):
             observer_names.append(
                 "cpython.gc.collections",
             )
+            observer_names.append(
+                "cpython.gc.collected_objects",
+            )
+            observer_names.append(
+                "cpython.gc.uncollectable_objects",
+            )
         if sys.platform != "darwin":
             observer_names.append("system.network.connections")
 
@@ -981,6 +987,54 @@ class TestSystemMetrics(TestBase):
         self._test_metrics(
             "cpython.gc.collections",
             expected_gc_collections,
+        )
+
+    @mock.patch("gc.get_stats")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
+    def test_runtime_get_gc_collected_objects(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
+        expected_gc_collected_objects = [
+            _SystemMetricsResult({"generation": "0"}, 100),
+            _SystemMetricsResult({"generation": "1"}, 200),
+            _SystemMetricsResult({"generation": "2"}, 300),
+        ]
+        self._test_metrics(
+            "cpython.gc.collected_objects",
+            expected_gc_collected_objects,
+        )
+
+    @mock.patch("gc.get_stats")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
+    def test_runtime_get_gc_uncollectable_objects(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
+        expected_gc_uncollectable_objects = [
+            _SystemMetricsResult({"generation": "0"}, 1),
+            _SystemMetricsResult({"generation": "1"}, 2),
+            _SystemMetricsResult({"generation": "2"}, 3),
+        ]
+        self._test_metrics(
+            "cpython.gc.uncollectable_objects",
+            expected_gc_uncollectable_objects,
         )
 
     @mock.patch("psutil.Process.num_ctx_switches")
