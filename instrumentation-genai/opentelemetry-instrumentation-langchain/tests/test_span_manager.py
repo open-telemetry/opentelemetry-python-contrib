@@ -54,7 +54,7 @@ class TestSpanManager:
             ) as mock_set_span_in_context,
             unittest.mock.patch(
                 "opentelemetry.instrumentation.langchain.span_manager.get_current"
-            ) as mock_get_current,
+            ),
         ):
             # Act
             result = handler.create_span(
