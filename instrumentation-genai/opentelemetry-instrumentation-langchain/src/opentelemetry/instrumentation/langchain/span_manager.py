@@ -17,15 +17,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
-from langchain_core.messages import BaseMessage  # type: ignore
-from langchain_core.outputs import LLMResult  # type: ignore
-
 from opentelemetry.context import Context, get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 
 
@@ -35,6 +30,7 @@ class _SpanState:
     context: Context
     start_time: float = field(default_factory=time.time)
     children: List[UUID] = field(default_factory=list)
+
 
 class SpanManager:
     def __init__(
