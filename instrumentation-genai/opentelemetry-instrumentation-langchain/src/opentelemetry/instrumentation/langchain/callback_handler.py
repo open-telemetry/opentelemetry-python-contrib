@@ -1,5 +1,17 @@
-import time
-from dataclasses import dataclass, field
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -7,7 +19,7 @@ from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.context import Context, get_current
+from opentelemetry.instrumentation.langchain.span_manager import SpanManager
 from opentelemetry.instrumentation.langchain.utils import dont_throw
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -15,16 +27,8 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
-from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
+from opentelemetry.trace import Tracer
 from opentelemetry.trace.status import Status, StatusCode
-
-
-@dataclass
-class _SpanState:
-    span: Span
-    span_context: Context
-    start_time: float = field(default_factory=time.time)
-    children: List[UUID] = field(default_factory=list)
 
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
@@ -37,69 +41,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         tracer: Tracer,
     ) -> None:
         super().__init__()  # type: ignore
-        self._tracer = tracer
 
-        # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
-        self.spans: Dict[UUID, _SpanState] = {}
-        self.run_inline = True  # Whether to run the callback inline.
-
-    def _create_span(
-        self,
-        run_id: UUID,
-        parent_run_id: Optional[UUID],
-        span_name: str,
-        kind: SpanKind = SpanKind.INTERNAL,
-    ) -> Span:
-        if parent_run_id is not None and parent_run_id in self.spans:
-            parent_span = self.spans[parent_run_id].span
-            ctx = set_span_in_context(parent_span)
-            span = self._tracer.start_span(
-                name=span_name, kind=kind, context=ctx
-            )
-        else:
-            # top-level or missing parent
-            span = self._tracer.start_span(name=span_name, kind=kind)
-
-        span_state = _SpanState(span=span, span_context=get_current())
-        self.spans[run_id] = span_state
-
-        if parent_run_id is not None and parent_run_id in self.spans:
-            self.spans[parent_run_id].children.append(run_id)
-
-        return span
-
-    def _create_llm_span(
-        self,
-        run_id: UUID,
-        parent_run_id: Optional[UUID],
-        name: str,
-    ) -> Span:
-        span = self._create_span(
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            span_name=f"{name}.{GenAI.GenAiOperationNameValues.CHAT.value}",
-            kind=SpanKind.CLIENT,
+        self.span_manager = SpanManager(
+            tracer=tracer,
         )
-        span.set_attribute(
-            GenAI.GEN_AI_OPERATION_NAME,
-            GenAI.GenAiOperationNameValues.CHAT.value,
-        )
-        span.set_attribute(GenAI.GEN_AI_SYSTEM, name)
-
-        return span
-
-    def _end_span(self, run_id: UUID) -> None:
-        state = self.spans[run_id]
-        for child_id in state.children:
-            child_state = self.spans.get(child_id)
-            if child_state:
-                # Always end child spans as OpenTelemetry spans don't expose end_time directly
-                child_state.span.end()
-            # Always end the span as OpenTelemetry spans don't expose end_time directly
-        state.span.end()
-
-    def _get_span(self, run_id: UUID) -> Span:
-        return self.spans[run_id].span
 
     @dont_throw
     def on_chat_model_start(
@@ -114,7 +59,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
-        span = self._create_llm_span(
+        span = self.span_manager.create_llm_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
             name=name,
@@ -170,7 +115,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
-        span = self._get_span(run_id)
+        span = self.span_manager.get_span(run_id)
 
         finish_reasons: List[str] = []
         for generation in getattr(response, "generations", []):  # type: ignore
@@ -218,7 +163,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 )
 
         # End the LLM span
-        self._end_span(run_id)
+        self.span_manager.end_span(run_id)
 
     @dont_throw
     def on_llm_error(
@@ -232,9 +177,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         self._handle_error(error, run_id)
 
     def _handle_error(self, error: BaseException, run_id: UUID):
-        span = self._get_span(run_id)
+        span = self.span_manager.get_span(run_id)
         span.set_status(Status(StatusCode.ERROR, str(error)))
         span.set_attribute(
             ErrorAttributes.ERROR_TYPE, type(error).__qualname__
         )
-        self._end_span(run_id)
+        self.span_manager.end_span(run_id)
