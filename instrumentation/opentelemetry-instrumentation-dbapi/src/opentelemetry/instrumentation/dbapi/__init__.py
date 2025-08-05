@@ -68,6 +68,18 @@ _logger = logging.getLogger(__name__)
 ConnectionT = TypeVar("ConnectionT")
 CursorT = TypeVar("CursorT")
 
+TABLE_NAME_REGEX = r"(?i)(?:FROM|INTO|UPDATE|DELETE FROM)\s+\"?(\w+\"?\.\"?\w+|\w+)\"?"
+
+
+def extract_table_name(statement):
+    """
+    Extracts the table name from an SQL statement.
+    """
+    match = re.search(TABLE_NAME_REGEX, statement)
+    if match:
+        return match.group(1).replace('"', '')
+    return None
+
 
 def trace_integration(
     connect_module: Callable[..., Any],
@@ -566,6 +578,10 @@ class CursorTracer(Generic[CursorT]):
             return query_method(*args, **kwargs)
 
         name = self.get_operation_name(cursor, args)
+        statement = self.get_statement(cursor, args)
+        table_name = extract_table_name(statement)
+        if table_name:
+            name = f"{name} {table_name}"
         if not name:
             name = (
                 self._db_api_integration.database

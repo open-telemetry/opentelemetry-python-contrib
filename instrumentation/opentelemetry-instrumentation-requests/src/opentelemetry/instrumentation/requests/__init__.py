@@ -234,6 +234,8 @@ def _instrument(
 
         url = redact_url(request.url)
 
+        span_name = f"{span_name} {url}"
+
         span_attributes = {}
         _set_http_method(
             span_attributes,
