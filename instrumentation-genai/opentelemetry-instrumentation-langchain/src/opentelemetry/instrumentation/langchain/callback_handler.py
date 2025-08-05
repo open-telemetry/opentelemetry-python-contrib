@@ -56,18 +56,17 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         metadata: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
+        invocation_params = kwargs.get("invocation_params")
+        request_model = invocation_params.get("model_name") if invocation_params else None
         span = self.span_manager.create_llm_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            name=name,
+            request_model = request_model,
         )
+        name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
+        span.set_attribute(GenAI.GEN_AI_SYSTEM, name)
 
-        invocation_params = kwargs.get("invocation_params")
         if invocation_params is not None:
-            request_model = invocation_params.get("model_name")
-            if request_model is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
             top_p = invocation_params.get("top_p")
             if top_p is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
