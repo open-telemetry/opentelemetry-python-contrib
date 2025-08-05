@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
+  ([#3679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3679))
+- `opentelemetry-instrumentation-tornado` Fix to properly skip all server telemetry when URL excluded.
+  ([#3680](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3680))
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
