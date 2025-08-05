@@ -36,10 +36,6 @@ def dont_throw(func: F) -> F:
                 func.__name__,
                 traceback.format_exc(),
             )
-            from opentelemetry.instrumentation.langchain.config import Config
-
-            if Config.exception_logger:
-                Config.exception_logger(e)
             return None
 
     return wrapper  # type: ignore
