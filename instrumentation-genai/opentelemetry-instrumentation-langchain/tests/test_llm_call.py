@@ -44,7 +44,7 @@ def test_langchain_call(
 def assert_openai_completion_attributes(
     span: ReadableSpan, response: Optional
 ):
-    assert span.name == "ChatOpenAI.chat"
+    assert span.name == "chat gpt-3.5-turbo"
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
     assert span.attributes[gen_ai_attributes.GEN_AI_SYSTEM] == "ChatOpenAI"
     assert (
