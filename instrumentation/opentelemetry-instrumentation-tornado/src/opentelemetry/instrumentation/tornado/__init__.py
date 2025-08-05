@@ -403,9 +403,7 @@ def _wrap(cls, method_name, wrapper):
 def _prepare(
     tracer, server_histograms, request_hook, func, handler, args, kwargs
 ):
-    otel_handler_state = {
-        _START_TIME: default_timer()
-    }
+    otel_handler_state = {_START_TIME: default_timer()}
     setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
 
     request = handler.request
@@ -628,9 +626,7 @@ def _record_prepare_metrics(server_histograms, handler):
 def _record_on_finish_metrics(server_histograms, handler, error=None):
     otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
     start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
-    elapsed_time = round(
-        (default_timer() - start_time) * 1000
-    )
+    elapsed_time = round((default_timer() - start_time) * 1000)
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
