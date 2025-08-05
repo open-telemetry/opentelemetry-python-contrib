@@ -403,13 +403,14 @@ def _wrap(cls, method_name, wrapper):
 def _prepare(
     tracer, server_histograms, request_hook, func, handler, args, kwargs
 ):
+    request = handler.request
     otel_handler_state = {
-        _START_TIME: default_timer()
+        _START_TIME: default_timer(),
+        'exclude_request': _excluded_urls.url_disabled(request.uri),
     }
     setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
 
-    request = handler.request
-    if _excluded_urls.url_disabled(request.uri):
+    if otel_handler_state['exclude_request']:
         return func(*args, **kwargs)
 
     _record_prepare_metrics(server_histograms, handler)
@@ -627,6 +628,8 @@ def _record_prepare_metrics(server_histograms, handler):
 
 def _record_on_finish_metrics(server_histograms, handler, error=None):
     otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
+    if otel_handler_state.get('exclude_request'):
+        return
     start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
     elapsed_time = round(
         (default_timer() - start_time) * 1000
