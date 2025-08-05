@@ -22,6 +22,7 @@ from packaging import version as package_version
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -426,6 +427,20 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_no_op_tracer_provider(self):
+        FalconInstrumentor().uninstrument()
+
+        FalconInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_exclude_lists(self):
         self.client().simulate_get(path="/ping")
         span_list = self.memory_exporter.get_finished_spans()
@@ -550,6 +565,10 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                             self.assertAlmostEqual(
                                 duration, point.sum, delta=10
                             )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)
                             number_data_point_seen = True
@@ -600,6 +619,11 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                                 self.assertAlmostEqual(
                                     max(duration_s, 0), point.sum, delta=10
                                 )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             self.assertEqual(point.value, 0)

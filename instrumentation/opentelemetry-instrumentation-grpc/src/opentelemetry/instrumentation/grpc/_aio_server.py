@@ -16,7 +16,9 @@ import grpc
 import grpc.aio
 import wrapt
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+)
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
 from ._utilities import _server_status
@@ -34,7 +36,7 @@ class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
         self._self_code = code
         self._self_details = details
         self._self_active_span.set_attribute(
-            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+            RPC_GRPC_STATUS_CODE, code.value[0]
         )
         status = _server_status(code, details)
         self._self_active_span.set_status(status)
@@ -44,7 +46,7 @@ class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
         self._self_code = code
         details = self._self_details or code.value[1]
         self._self_active_span.set_attribute(
-            SpanAttributes.RPC_GRPC_STATUS_CODE, code.value[0]
+            RPC_GRPC_STATUS_CODE, code.value[0]
         )
         if code != grpc.StatusCode.OK:
             status = _server_status(code, details)

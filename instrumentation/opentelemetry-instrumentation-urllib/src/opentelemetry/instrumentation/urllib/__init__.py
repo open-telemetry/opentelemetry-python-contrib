@@ -95,6 +95,7 @@ from urllib.request import (  # pylint: disable=no-name-in-module,import-error
 )
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -118,6 +119,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_URL,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_BODY_SIZE,
     HTTP_CLIENT_RESPONSE_BODY_SIZE,
@@ -129,13 +133,12 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.util.http import (
     ExcludeList,
     get_excluded_urls,
     parse_excluded_urls,
-    remove_url_credentials,
+    redact_url,
     sanitize_method,
 )
 from opentelemetry.util.types import Attributes
@@ -257,7 +260,7 @@ def _instrument(
 
         span_name = _get_span_name(method)
 
-        url = remove_url_credentials(url)
+        url = redact_url(url)
 
         data = getattr(request, "data", None)
         request_size = 0 if data is None else len(data)
@@ -324,7 +327,7 @@ def _instrument(
                 sem_conv_opt_in_mode=_StabilityMode.HTTP,
             )
 
-            duration_attrs_old[SpanAttributes.HTTP_URL] = url
+            duration_attrs_old[HTTP_URL] = url
 
             _record_histograms(
                 histograms,
@@ -434,6 +437,7 @@ def _create_client_histograms(
             name=HTTP_CLIENT_REQUEST_DURATION,
             unit="s",
             description="Duration of HTTP client requests.",
+            explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
         histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
             create_http_client_request_body_size(meter)

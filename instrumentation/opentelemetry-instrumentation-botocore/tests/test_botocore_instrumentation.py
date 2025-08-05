@@ -27,6 +27,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_REGION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -61,7 +64,7 @@ class TestBotocoreInstrumentor(TestBase):
             SpanAttributes.RPC_SYSTEM: "aws-api",
             SpanAttributes.RPC_SERVICE: service,
             SpanAttributes.RPC_METHOD: operation,
-            "aws.region": self.region,
+            CLOUD_REGION: self.region,
             "retry_attempts": 0,
             SpanAttributes.HTTP_STATUS_CODE: 200,
             # Some services like IAM or STS have a global endpoint and exclude specified region.
@@ -527,7 +530,7 @@ class TestBotocoreInstrumentor(TestBase):
             attributes={
                 SpanAttributes.SERVER_ADDRESS: "iam.amazonaws.com",
                 SpanAttributes.SERVER_PORT: 443,
-                "aws.region": "aws-global",
+                CLOUD_REGION: "aws-global",
             },
         )
 

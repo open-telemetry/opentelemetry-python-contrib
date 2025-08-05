@@ -13,6 +13,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 env:
   CORE_REPO_SHA: ${% raw %}{{ inputs.CORE_REPO_SHA }}{% endraw %}
   CONTRIB_REPO_SHA: ${% raw %}{{ inputs.CONTRIB_REPO_SHA }}{% endraw %}
@@ -32,10 +35,17 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${% raw %}{{ env.CONTRIB_REPO_SHA }}{% endraw %}
 
-      - name: Set up Python 3.8
+      - name: Checkout core repo @ SHA - ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${% raw %}{{ env.CORE_REPO_SHA }}{% endraw %}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.9"
           architecture: "x64"
 
       - name: Install tox
