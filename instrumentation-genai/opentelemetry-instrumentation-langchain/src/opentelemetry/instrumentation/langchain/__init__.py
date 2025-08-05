@@ -44,7 +44,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.instrumentation.langchain.config import Config
 from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -63,7 +62,6 @@ class LangChainInstrumentor(BaseInstrumentor):
         self, exception_logger: Optional[Callable[[Exception], Any]] = None
     ):
         super().__init__()
-        Config.exception_logger = exception_logger
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
