@@ -22,7 +22,6 @@ from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_TEMPORARY,
     MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_SYSTEM,
@@ -60,7 +59,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
         MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
-        MESSAGING_DESTINATION_TEMPORARY: True,
+        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
     }
 
     def setUp(self):
@@ -139,7 +138,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
         MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
-        MESSAGING_DESTINATION_TEMPORARY: True,
+        SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
     }
 
     def setUp(self):

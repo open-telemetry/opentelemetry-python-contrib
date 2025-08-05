@@ -17,7 +17,6 @@ from aio_pika.abc import AbstractChannel, AbstractMessage
 
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_TEMPORARY,
     MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
@@ -94,7 +93,9 @@ class SpanBuilder:
         if self._operation:
             self._attributes[MESSAGING_OPERATION] = self._operation.value
         else:
-            self._attributes[MESSAGING_DESTINATION_TEMPORARY] = True
+            # TODO: Update this implementation once the semantic conventions for messaging stabilize
+            # See: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/messaging.md
+            self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
         span = self._tracer.start_span(
             self._generate_span_name(),
             kind=self._kind,
