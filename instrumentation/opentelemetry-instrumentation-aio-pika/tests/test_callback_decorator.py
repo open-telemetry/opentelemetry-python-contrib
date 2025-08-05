@@ -20,7 +20,6 @@ from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_NAME,
     MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
@@ -30,6 +29,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
@@ -51,7 +51,7 @@ from .consts import (
 class TestInstrumentedQueueAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
-        MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -91,7 +91,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
 class TestInstrumentedQueueAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
-        MESSAGING_DESTINATION_NAME: EXCHANGE_NAME,
+        SpanAttributes.MESSAGING_DESTINATION: EXCHANGE_NAME,
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,

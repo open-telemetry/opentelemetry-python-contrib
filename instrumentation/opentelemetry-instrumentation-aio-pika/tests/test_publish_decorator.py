@@ -22,7 +22,6 @@ from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_NAME,
     MESSAGING_DESTINATION_TEMPORARY,
     MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
@@ -32,6 +31,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
 from .consts import (
@@ -55,7 +55,7 @@ from .consts import (
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
         MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
-        MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}",
+        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
@@ -134,7 +134,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
         MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
-        MESSAGING_DESTINATION_NAME: f"{EXCHANGE_NAME},{ROUTING_KEY}",
+        SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
