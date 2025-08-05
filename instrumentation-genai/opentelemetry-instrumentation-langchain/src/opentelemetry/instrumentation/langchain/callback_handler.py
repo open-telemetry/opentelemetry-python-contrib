@@ -20,7 +20,6 @@ from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
 from opentelemetry.instrumentation.langchain.span_manager import SpanManager
-from opentelemetry.instrumentation.langchain.utils import dont_throw
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -46,7 +45,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             tracer=tracer,
         )
 
-    @dont_throw
     def on_chat_model_start(
         self,
         serialized: Dict[str, Any],
@@ -106,7 +104,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
 
-    @dont_throw
     def on_llm_end(
         self,
         response: LLMResult,  # type: ignore
@@ -165,7 +162,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         # End the LLM span
         self.span_manager.end_span(run_id)
 
-    @dont_throw
     def on_llm_error(
         self,
         error: BaseException,
