@@ -177,6 +177,7 @@ API
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Collection, cast
+from weakref import WeakSet
 
 from starlette import applications
 from starlette.routing import Match
@@ -191,7 +192,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import MeterProvider, get_meter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
@@ -239,7 +242,7 @@ class StarletteInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        if not getattr(app, "is_instrumented_by_opentelemetry", False):
+        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
@@ -251,11 +254,10 @@ class StarletteInstrumentor(BaseInstrumentor):
                 tracer=tracer,
                 meter=meter,
             )
-            app.is_instrumented_by_opentelemetry = True
+            app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
-            if app not in _InstrumentedStarlette._instrumented_starlette_apps:
-                _InstrumentedStarlette._instrumented_starlette_apps.add(app)
+            _InstrumentedStarlette._instrumented_starlette_apps.add(app)
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
@@ -300,7 +302,7 @@ class _InstrumentedStarlette(applications.Starlette):
     _server_request_hook: ServerRequestHook = None
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
-    _instrumented_starlette_apps: set[applications.Starlette] = set()
+    _instrumented_starlette_apps: WeakSet[applications.Starlette] = WeakSet()
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -330,9 +332,6 @@ class _InstrumentedStarlette(applications.Starlette):
         self._is_instrumented_by_opentelemetry = True
         # adding apps to set for uninstrumenting
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
-
-    def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.discard(self)
 
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:
@@ -377,7 +376,7 @@ def _get_default_span_details(
     method: str = scope.get("method", "")
     attributes: dict[str, Any] = {}
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket

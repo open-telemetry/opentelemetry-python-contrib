@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.55b0.dev"
+
+_instruments = ("langchain >= 0.3.21",)

@@ -9,6 +9,9 @@ on:
     - 'release/*'
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -85,8 +88,8 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-google-genai
 
-  lint-resource-detector-container:
-    name: resource-detector-container
+  lint-resource-detector-containerid:
+    name: resource-detector-containerid
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -102,7 +105,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e lint-resource-detector-container
+        run: tox -e lint-resource-detector-containerid
 
   lint-resource-detector-azure:
     name: resource-detector-azure
