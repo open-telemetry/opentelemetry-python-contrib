@@ -399,17 +399,17 @@ def _new_cursor_async_factory(
 
     class TracedCursorAsyncFactory(base_factory):
         async def execute(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().execute, *args, **kwargs
             )
 
         async def executemany(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().executemany, *args, **kwargs
             )
 
         async def callproc(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().callproc, *args, **kwargs
             )
 

@@ -42,7 +42,7 @@ from __future__ import annotations
 import functools
 import logging
 import re
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 import wrapt
 from wrapt import wrap_function_wrapper
@@ -595,6 +595,44 @@ class CursorTracer(Generic[CursorT]):
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
             return query_method(*args, **kwargs)
+
+    async def traced_execution_async(
+        self,
+        cursor: CursorT,
+        query_method: Callable[..., Awaitable[Any]],
+        *args: tuple[Any, ...],
+        **kwargs: dict[Any, Any],
+    ):
+        name = self.get_operation_name(cursor, args)
+        if not name:
+            name = (
+                self._db_api_integration.database
+                if self._db_api_integration.database
+                else self._db_api_integration.name
+            )
+
+        with self._db_api_integration._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                if args and self._commenter_enabled:
+                    if self._enable_attribute_commenter:
+                        # sqlcomment is added to executed query and db.statement span attribute
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
+                        self._populate_span(span, cursor, *args)
+                    else:
+                        # sqlcomment is only added to executed query
+                        # so db.statement is set before add_sql_comment
+                        self._populate_span(span, cursor, *args)
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
+                else:
+                    # no sqlcomment anywhere
+                    self._populate_span(span, cursor, *args)
+            return await query_method(*args, **kwargs)
 
 
 # pylint: disable=abstract-method
