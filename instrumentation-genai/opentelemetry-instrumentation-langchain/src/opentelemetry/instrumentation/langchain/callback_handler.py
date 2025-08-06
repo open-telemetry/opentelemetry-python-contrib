@@ -58,7 +58,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     ) -> None:
         invocation_params = kwargs.get("invocation_params")
         request_model = (
-            invocation_params.get("model_name") if invocation_params else None
+            invocation_params.get("model_name") if invocation_params else ""
         )
         span = self.span_manager.create_llm_span(
             run_id=run_id,
