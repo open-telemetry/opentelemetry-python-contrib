@@ -26,6 +26,7 @@
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
+> - opentelemetry-instrumentation-mcp
 >
 > These libraries are also excluded from the general release.
 
