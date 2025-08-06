@@ -95,7 +95,7 @@ from opentelemetry.instrumentation.kafka.package import (
     _instruments_kafka_python,
     _instruments_kafka_python_ng,
 )
-from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
+from opentelemetry.instrumentation.kafka.utils import _wrap_poll, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 
@@ -150,10 +150,10 @@ class KafkaInstrumentor(BaseInstrumentor):
         )
         wrap_function_wrapper(
             kafka.KafkaConsumer,
-            "__next__",
-            _wrap_next(tracer, consume_hook),
+            "poll",
+            _wrap_poll(tracer, consume_hook),
         )
 
     def _uninstrument(self, **kwargs):
         unwrap(kafka.KafkaProducer, "send")
-        unwrap(kafka.KafkaConsumer, "__next__")
+        unwrap(kafka.KafkaConsumer, "poll")

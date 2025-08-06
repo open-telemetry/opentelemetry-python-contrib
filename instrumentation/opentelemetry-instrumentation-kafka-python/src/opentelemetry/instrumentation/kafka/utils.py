@@ -199,30 +199,30 @@ def _create_consumer_span(
         context.detach(token)
 
 
-def _wrap_next(
-    tracer: Tracer,
-    consume_hook: ConsumeHookT,
-) -> Callable:
-    def _traced_next(func, instance, args, kwargs):
-        record = func(*args, **kwargs)
+def _wrap_poll(tracer: Tracer, consume_hook: ConsumeHookT) -> Callable:
+    def _traced_poll(func, instance, args, kwargs):
+        records = func(*args, **kwargs)
 
-        if record:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+        for items in records.values():
+            for record in items:
+                if record:
+                    bootstrap_servers = (
+                        KafkaPropertiesExtractor.extract_bootstrap_servers(
+                            instance)
+                    )
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_kafka_getter
-            )
-            _create_consumer_span(
-                tracer,
-                consume_hook,
-                record,
-                extracted_context,
-                bootstrap_servers,
-                args,
-                kwargs,
-            )
-        return record
+                    extracted_context = propagate.extract(
+                        record.headers, getter=_kafka_getter
+                    )
+                    _create_consumer_span(
+                        tracer,
+                        consume_hook,
+                        record,
+                        extracted_context,
+                        bootstrap_servers,
+                        args,
+                        kwargs,
+                    )
+        return records
 
-    return _traced_next
+    return _traced_poll
