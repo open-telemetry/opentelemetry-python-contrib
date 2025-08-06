@@ -216,6 +216,4 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-mcp/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-mcp/examples/**/*.py",
 ]

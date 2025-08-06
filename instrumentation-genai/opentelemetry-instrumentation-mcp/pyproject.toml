@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry Official MCP instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.14"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,7 +18,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -32,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "mcp >= 0.1.6",
+  "mcp >= 1.8.1",
 ]
 
 [project.urls]
