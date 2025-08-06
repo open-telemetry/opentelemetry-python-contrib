@@ -66,12 +66,14 @@ def demonstrate_multiple_cycles():
     print(f"Initial refcount: {initial_refcount}")
 
     # Perform multiple cycles
-    for i in range(3):
+    for cycle_num in range(3):
         FastAPIInstrumentor.instrument_app(app)
         FastAPIInstrumentor.uninstrument_app(app)
         current_refcount = sys.getrefcount(app)
         set_size = len(_InstrumentedFastAPI._instrumented_fastapi_apps)
-        print(f"Cycle {i+1}: refcount={current_refcount}, set_size={set_size}")
+        print(
+            f"Cycle {cycle_num+1}: refcount={current_refcount}, set_size={set_size}"
+        )
 
     final_refcount = sys.getrefcount(app)
     final_set_size = len(_InstrumentedFastAPI._instrumented_fastapi_apps)
@@ -92,18 +94,18 @@ def demonstrate_multiple_apps():
     apps = [fastapi.FastAPI() for _ in range(3)]
 
     print("Instrumenting all apps...")
-    for i, app in enumerate(apps):
+    for app_idx, app in enumerate(apps):
         FastAPIInstrumentor.instrument_app(app)
-        print(f"App {i}: refcount={sys.getrefcount(app)}")
+        print(f"App {app_idx}: refcount={sys.getrefcount(app)}")
 
     print(
         f"Set size after instrumenting: {len(_InstrumentedFastAPI._instrumented_fastapi_apps)}"
     )
 
     print("Uninstrumenting all apps...")
-    for i, app in enumerate(apps):
+    for app_idx, app in enumerate(apps):
         FastAPIInstrumentor.uninstrument_app(app)
-        print(f"App {i}: refcount={sys.getrefcount(app)}")
+        print(f"App {app_idx}: refcount={sys.getrefcount(app)}")
 
     final_set_size = len(_InstrumentedFastAPI._instrumented_fastapi_apps)
     print(f"Final set size: {final_set_size}")

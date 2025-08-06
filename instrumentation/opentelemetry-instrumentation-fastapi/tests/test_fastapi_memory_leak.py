@@ -17,7 +17,10 @@ import unittest
 
 import fastapi
 
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.fastapi import (
+    FastAPIInstrumentor,
+    _InstrumentedFastAPI,
+)
 
 
 class TestFastAPIMemoryLeak(unittest.TestCase):
@@ -43,8 +46,6 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
         )
 
         # Verify that the app was removed from the set
-        from opentelemetry.instrumentation.fastapi import _InstrumentedFastAPI
-
         self.assertNotIn(
             app,
             _InstrumentedFastAPI._instrumented_fastapi_apps,
@@ -58,7 +59,7 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
         initial_refcount = sys.getrefcount(app)
 
         # Perform multiple instrument/uninstrument cycles
-        for i in range(5):
+        for cycle_num in range(5):
             FastAPIInstrumentor.instrument_app(app)
             FastAPIInstrumentor.uninstrument_app(app)
 
@@ -70,12 +71,10 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
             final_refcount,
             initial_refcount
             + 2,  # Allow small increase due to Python internals
-            f"Refcount after {i+1} instrument/uninstrument cycles should not grow significantly",
+            f"Refcount after {cycle_num+1} instrument/uninstrument cycles should not grow significantly",
         )
 
         # Verify that the app is not in the set
-        from opentelemetry.instrumentation.fastapi import _InstrumentedFastAPI
-
         self.assertNotIn(
             app,
             _InstrumentedFastAPI._instrumented_fastapi_apps,
@@ -96,18 +95,16 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
             FastAPIInstrumentor.uninstrument_app(app)
 
         # Check that refcounts are not significantly increased
-        for i, app in enumerate(apps):
+        for app_idx, app in enumerate(apps):
             final_refcount = sys.getrefcount(app)
             self.assertLessEqual(
                 final_refcount,
-                initial_refcounts[i]
+                initial_refcounts[app_idx]
                 + 2,  # Allow small increase due to Python internals
-                f"App {i} refcount should not grow significantly",
+                f"App {app_idx} refcount should not grow significantly",
             )
 
         # Verify that no apps are in the set
-        from opentelemetry.instrumentation.fastapi import _InstrumentedFastAPI
-
         for app in apps:
             self.assertNotIn(
                 app,
@@ -123,7 +120,6 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
         # After the fix: app should be removed from _instrumented_fastapi_apps
 
         FastAPIInstrumentor.instrument_app(app)
-        from opentelemetry.instrumentation.fastapi import _InstrumentedFastAPI
 
         # Verify app is in the set after instrumentation
         self.assertIn(app, _InstrumentedFastAPI._instrumented_fastapi_apps)
