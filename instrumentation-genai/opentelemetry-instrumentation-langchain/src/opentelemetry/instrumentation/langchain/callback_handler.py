@@ -57,11 +57,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         invocation_params = kwargs.get("invocation_params")
-        request_model = invocation_params.get("model_name") if invocation_params else None
+        request_model = (
+            invocation_params.get("model_name") if invocation_params else None
+        )
         span = self.span_manager.create_llm_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            request_model = request_model,
+            request_model=request_model,
         )
         name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
         span.set_attribute(GenAI.GEN_AI_SYSTEM, name)
