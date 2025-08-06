@@ -22,12 +22,20 @@ from opentelemetry.instrumentation.fastapi import (
     _InstrumentedFastAPI,
 )
 
+# Check if sys.getrefcount is available (not available in PyPy)
+HAS_GETREFCOUNT = hasattr(sys, "getrefcount")
+
 
 class TestFastAPIMemoryLeak(unittest.TestCase):
     """Test for memory leak in FastAPIInstrumentor.uninstrument_app()"""
 
     def test_refcount_after_uninstrument(self):
         """Test that refcount is restored after uninstrument_app()"""
+        if not HAS_GETREFCOUNT:
+            self.skipTest(
+                "sys.getrefcount not available in this Python implementation"
+            )
+
         app = fastapi.FastAPI()
 
         # Instrument the app
@@ -54,6 +62,11 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
 
     def test_multiple_instrument_uninstrument_cycles(self):
         """Test that multiple instrument/uninstrument cycles don't leak memory"""
+        if not HAS_GETREFCOUNT:
+            self.skipTest(
+                "sys.getrefcount not available in this Python implementation"
+            )
+
         app = fastapi.FastAPI()
 
         initial_refcount = sys.getrefcount(app)
@@ -83,6 +96,11 @@ class TestFastAPIMemoryLeak(unittest.TestCase):
 
     def test_multiple_apps_instrument_uninstrument(self):
         """Test that multiple apps can be instrumented and uninstrumented without leaks"""
+        if not HAS_GETREFCOUNT:
+            self.skipTest(
+                "sys.getrefcount not available in this Python implementation"
+            )
+
         apps = [fastapi.FastAPI() for _ in range(3)]
         initial_refcounts = [sys.getrefcount(app) for app in apps]
 
