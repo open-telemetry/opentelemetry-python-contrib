@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
+  ([#3684](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3684))
 - `opentelemetry-instrumentation-psycopg2` Utilize instruments-any functionality.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - `opentelemetry-instrumentation-kafka-python` Utilize instruments-any functionality.
@@ -111,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 - Drop support for Python 3.8, bump baseline to Python 3.9.
-([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
+  ([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
