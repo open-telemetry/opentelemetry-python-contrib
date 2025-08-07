@@ -98,4 +98,5 @@ class SpanManager:
         state.span.end()
 
     def get_span(self, run_id: UUID) -> Span:
-        return self.spans[run_id].span
+        state = self.spans.get(run_id)
+        return state.span if state else None
