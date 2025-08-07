@@ -97,6 +97,6 @@ class SpanManager:
             # Always end the span as OpenTelemetry spans don't expose end_time directly
         state.span.end()
 
-    def get_span(self, run_id: UUID) -> Span:
+    def get_span(self, run_id: UUID) -> Optional[Span]:
         state = self.spans.get(run_id)
         return state.span if state else None
