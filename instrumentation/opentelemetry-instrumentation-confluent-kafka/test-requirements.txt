@@ -1,5 +1,5 @@
 asgiref==3.8.1
-confluent-kafka==2.6.1
+confluent-kafka==2.11.0
 Deprecated==1.2.14
 iniconfig==2.0.0
 packaging==24.0
