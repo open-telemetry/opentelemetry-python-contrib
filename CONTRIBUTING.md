@@ -216,7 +216,7 @@ files are opened.
 If you are not getting reviews, please contact the respective owners directly.
 
 > [!TIP]
-> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate to lend your expertise.
+> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate if you have expertise to review a PR.
 
 ### How to Get PRs Merged
 
