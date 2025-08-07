@@ -115,6 +115,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     ) -> None:
         span = self.span_manager.get_span(run_id)
 
+        if span is None:
+            # If the span does not exist, we cannot set attributes or end it
+            return
+
         finish_reasons: List[str] = []
         for generation in getattr(response, "generations", []):  # type: ignore
             for chat_generation in generation:
@@ -175,6 +179,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def _handle_error(self, error: BaseException, run_id: UUID):
         span = self.span_manager.get_span(run_id)
+        if span is None:
+            # If the span does not exist, we cannot set the error status
+            return
         span.set_status(Status(StatusCode.ERROR, str(error)))
         span.set_attribute(
             ErrorAttributes.ERROR_TYPE, type(error).__qualname__
