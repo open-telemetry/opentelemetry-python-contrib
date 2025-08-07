@@ -214,7 +214,6 @@ libraries = [
     },
 ]
 default_instrumentations = [
-    "opentelemetry-genai-utils==0.1b0.dev",
     "opentelemetry-instrumentation-asyncio==0.58b0.dev",
     "opentelemetry-instrumentation-dbapi==0.58b0.dev",
     "opentelemetry-instrumentation-logging==0.58b0.dev",

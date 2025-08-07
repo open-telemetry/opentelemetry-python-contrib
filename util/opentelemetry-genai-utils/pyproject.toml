@@ -36,7 +36,7 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-genai-utils"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/util/opentelemetry-genai-utils"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
