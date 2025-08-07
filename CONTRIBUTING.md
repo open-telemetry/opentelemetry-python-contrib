@@ -206,14 +206,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 
 ### How to Get PRs Reviewed
 
-The maintainers and approvers of this repo are not experts in every instrumentation there is here.
-In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+The maintainers and approvers of this repository are not experts in every instrumentation there is here.
+In fact, each one of us knows enough about them to only review a few. Unfortunately, it can be hard
 to find enough experts in every instrumentation to quickly review every instrumentation PR. The
 instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
 or directories that they own. The owners listed there will be notified when PRs that modify their
 files are opened.
 
 If you are not getting reviews, please contact the respective owners directly.
+
+> [!TIP]
+> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate to lend your expertise.
 
 ### How to Get PRs Merged
 
