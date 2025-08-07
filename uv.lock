@@ -2436,7 +2436,6 @@ source = { editable = "instrumentation-genai/opentelemetry-genai-utils" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
 ]
 
@@ -2449,7 +2448,6 @@ test = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
 ]
