@@ -26,6 +26,8 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
+__all__ = ["_SpanManager"]
+
 
 @dataclass
 class _SpanState:
@@ -34,7 +36,7 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-class SpanManager:
+class _SpanManager:
     def __init__(
         self,
         tracer: Tracer,
@@ -44,7 +46,7 @@ class SpanManager:
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
 
-    def create_span(
+    def _create_span(
         self,
         run_id: UUID,
         parent_run_id: Optional[UUID],
@@ -52,20 +54,19 @@ class SpanManager:
         kind: SpanKind = SpanKind.INTERNAL,
     ) -> Span:
         if parent_run_id is not None and parent_run_id in self.spans:
-            parent_span = self.spans[parent_run_id].span
+            parent_state = self.spans[parent_run_id]
+            parent_span = parent_state.span
             ctx = set_span_in_context(parent_span)
             span = self._tracer.start_span(
                 name=span_name, kind=kind, context=ctx
             )
+            parent_state.children.append(run_id)
         else:
             # top-level or missing parent
             span = self._tracer.start_span(name=span_name, kind=kind)
 
         span_state = _SpanState(span=span, context=get_current())
         self.spans[run_id] = span_state
-
-        if parent_run_id is not None and parent_run_id in self.spans:
-            self.spans[parent_run_id].children.append(run_id)
 
         return span
 
@@ -75,7 +76,7 @@ class SpanManager:
         parent_run_id: Optional[UUID],
         request_model: str,
     ) -> Span:
-        span = self.create_span(
+        span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
             span_name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
