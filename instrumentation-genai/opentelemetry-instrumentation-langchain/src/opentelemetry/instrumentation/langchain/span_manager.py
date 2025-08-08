@@ -22,13 +22,16 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
+from opentelemetry.trace.status import Status, StatusCode
 
 
 @dataclass
 class _SpanState:
     span: Span
     context: Context
-    start_time: float = field(default_factory=time.time)
     children: List[UUID] = field(default_factory=list)
 
 
@@ -100,3 +103,14 @@ class SpanManager:
     def get_span(self, run_id: UUID) -> Optional[Span]:
         state = self.spans.get(run_id)
         return state.span if state else None
+
+    def handle_error(self, error: BaseException, run_id: UUID):
+        span = self.get_span(run_id)
+        if span is None:
+            # If the span does not exist, we cannot set the error status
+            return
+        span.set_status(Status(StatusCode.ERROR, str(error)))
+        span.set_attribute(
+            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+        )
+        self.end_span(run_id)

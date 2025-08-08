@@ -23,11 +23,7 @@ from opentelemetry.instrumentation.langchain.span_manager import SpanManager
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
 from opentelemetry.trace import Tracer
-from opentelemetry.trace.status import Status, StatusCode
 
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
@@ -175,15 +171,4 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         parent_run_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> None:
-        self._handle_error(error, run_id)
-
-    def _handle_error(self, error: BaseException, run_id: UUID):
-        span = self.span_manager.get_span(run_id)
-        if span is None:
-            # If the span does not exist, we cannot set the error status
-            return
-        span.set_status(Status(StatusCode.ERROR, str(error)))
-        span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-        )
-        self.span_manager.end_span(run_id)
+        self.span_manager.handle_error(error, run_id)
