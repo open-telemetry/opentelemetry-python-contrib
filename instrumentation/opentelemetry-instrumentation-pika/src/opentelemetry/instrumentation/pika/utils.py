@@ -80,7 +80,8 @@ def _decorate_callback(
                     _LOG.exception(hook_exception)
                 retval = callback(channel, method, properties, body)
         finally:
-            context.detach(token)
+            if token:
+                context.detach(token)
         return retval
 
     return decorated_callback
@@ -252,7 +253,8 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     operation=MessagingOperationValues.RECEIVE,
                 )
                 try:
-                    context.detach(message_ctx_token)
+                    if message_ctx_token:
+                        context.detach(message_ctx_token)
                     self._self_active_token = context.attach(
                         trace.set_span_in_context(span)
                     )

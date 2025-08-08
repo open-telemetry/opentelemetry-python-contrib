@@ -207,7 +207,8 @@ def _suppress_instrumentation(*keys: str) -> Generator[None]:
     try:
         yield
     finally:
-        context.detach(token)
+        if token:
+            context.detach(token)
 
 
 @contextmanager

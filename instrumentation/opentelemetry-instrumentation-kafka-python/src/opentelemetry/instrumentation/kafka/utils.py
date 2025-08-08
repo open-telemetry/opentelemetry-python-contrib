@@ -196,7 +196,8 @@ def _create_consumer_span(
                 consume_hook(span, record, args, kwargs)
         except Exception as hook_exception:  # pylint: disable=W0703
             _LOG.exception(hook_exception)
-        context.detach(token)
+        if token:
+            context.detach(token)
 
 
 def _wrap_next(

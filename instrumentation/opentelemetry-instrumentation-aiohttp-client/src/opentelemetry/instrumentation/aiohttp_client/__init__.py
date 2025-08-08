@@ -273,7 +273,8 @@ def create_trace_config(
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         elapsed_time = max(default_timer() - trace_config_ctx.start_time, 0)
-        context_api.detach(trace_config_ctx.token)
+        if trace_config_ctx.token:
+            context_api.detach(trace_config_ctx.token)
         trace_config_ctx.span.end()
 
         if trace_config_ctx.duration_histogram_old is not None:
