@@ -19,7 +19,7 @@ from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.instrumentation.langchain.span_manager import SpanManager
+from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -37,7 +37,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     ) -> None:
         super().__init__()  # type: ignore
 
-        self.span_manager = SpanManager(
+        self.span_manager = _SpanManager(
             tracer=tracer,
         )
 
