@@ -124,6 +124,10 @@ from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.requests.constants import (
+    BOT_PATTERNS,
+    TEST_PATTERNS,
+)
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.semconv import (
     ATTR_USER_AGENT_SYNTHETIC_TYPE,
@@ -162,17 +166,6 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
 
-# Test patterns to detect (case-insensitive)
-_TEST_PATTERNS = [
-    "alwayson",
-]
-
-# Bot patterns to detect (case-insensitive)
-_BOT_PATTERNS = [
-    "googlebot",
-    "bingbot",
-]
-
 
 def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
     """
@@ -182,8 +175,8 @@ def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
         user_agent: The user agent string to analyze
 
     Returns:
-        USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST if user agent contains any pattern from _TEST_PATTERNS
-        USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT if user agent contains any pattern from _BOT_PATTERNS
+        USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST if user agent contains any pattern from TEST_PATTERNS
+        USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT if user agent contains any pattern from BOT_PATTERNS
         None otherwise
 
     Note: Test patterns take priority over bot patterns.
@@ -193,11 +186,9 @@ def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
 
     user_agent_lower = user_agent.lower()
 
-    if any(
-        test_pattern in user_agent_lower for test_pattern in _TEST_PATTERNS
-    ):
+    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
         return USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST
-    if any(bot_pattern in user_agent_lower for bot_pattern in _BOT_PATTERNS):
+    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
         return USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT
 
     return None
