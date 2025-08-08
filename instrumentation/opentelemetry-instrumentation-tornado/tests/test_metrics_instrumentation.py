@@ -13,7 +13,10 @@
 # limitations under the License.
 
 
+import asyncio
 from timeit import default_timer
+
+import tornado.testing
 
 from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 from opentelemetry.sdk.metrics.export import HistogramDataPoint
@@ -163,6 +166,78 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                     "http.url": response.effective_url,
                 },
             ),
+        )
+
+    @tornado.testing.gen_test
+    async def test_metrics_concurrent_requests(self):
+        """
+        Test that metrics can handle concurrent requests and calculate in an async-safe way.
+        """
+        req1 = self.http_client.fetch(self.get_url("/slow?duration=1.0"))
+        req2 = self.http_client.fetch(self.get_url("/async"))
+        await asyncio.gather(req1, req2)
+
+        metrics = self.get_sorted_metrics()
+        self.assertEqual(len(metrics), 7)
+
+        client_duration = metrics[0]
+        server_duration = metrics[4]
+        self.assertEqual(client_duration.name, "http.client.duration")
+        self.assertEqual(server_duration.name, "http.server.duration")
+
+        # Calculating duration requires tracking state via `_HANDLER_STATE_KEY`, so we want to make sure
+        # duration is calculated properly per request, and doesn't affect concurrent requests.
+        req1_client_duration_data_point = next(
+            dp
+            for dp in client_duration.data.data_points
+            if "/slow" in dp.attributes.get("http.url")
+        )
+        req1_server_duration_data_point = next(
+            dp
+            for dp in server_duration.data.data_points
+            if "/slow" in dp.attributes.get("http.target")
+        )
+        req2_client_duration_data_point = next(
+            dp
+            for dp in client_duration.data.data_points
+            if "/async" in dp.attributes.get("http.url")
+        )
+        req2_server_duration_data_point = next(
+            dp
+            for dp in server_duration.data.data_points
+            if "/async" in dp.attributes.get("http.target")
+        )
+
+        # Server and client durations should be similar (adjusting for msecs vs secs)
+        self.assertAlmostEqual(
+            abs(
+                req1_server_duration_data_point.sum / 1000.0
+                - req1_client_duration_data_point.sum
+            ),
+            0.0,
+            delta=0.01,
+        )
+        self.assertAlmostEqual(
+            abs(
+                req2_server_duration_data_point.sum / 1000.0
+                - req2_client_duration_data_point.sum
+            ),
+            0.0,
+            delta=0.01,
+        )
+
+        # Make sure duration is roughly equivalent to expected (req1/slow) should be around 1 second
+        self.assertAlmostEqual(
+            req1_server_duration_data_point.sum / 1000.0,
+            1.0,
+            delta=0.1,
+            msg="Should have been about 1 second",
+        )
+        self.assertAlmostEqual(
+            req2_server_duration_data_point.sum / 1000.0,
+            0.0,
+            delta=0.1,
+            msg="Should have been really short",
         )
 
     def test_metric_uninstrument(self):
