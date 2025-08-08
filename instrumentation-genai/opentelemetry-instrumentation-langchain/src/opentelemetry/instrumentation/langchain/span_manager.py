@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -21,10 +20,10 @@ from opentelemetry.context import Context, get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
+from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
 
