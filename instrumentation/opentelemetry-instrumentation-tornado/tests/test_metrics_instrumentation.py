@@ -234,7 +234,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             msg="Should have been about 1 second",
         )
         self.assertAlmostEqual(
-            req2_server_duration_data_point.sum,
+            req2_server_duration_data_point.sum / 1000.0,
             0.0,
             delta=0.1,
             msg="Should have been really short",
