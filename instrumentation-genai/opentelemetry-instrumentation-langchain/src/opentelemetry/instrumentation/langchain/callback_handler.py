@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any, Dict
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -27,6 +27,7 @@ from opentelemetry.genai.sdk.data import (
     Message,
     ChatGeneration,
     Error,
+    ToolOutput, ToolFunction, ToolFunctionCall
 )
 from opentelemetry.genai.sdk.api import TelemetryClient
 
@@ -54,32 +55,98 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         messages: List[List[BaseMessage]],
         *,
         run_id: UUID,
+        tags: Optional[List[str]] = None,
         parent_run_id: Optional[UUID] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         if Config.is_instrumentation_suppressed():
             return
 
-        request_model = kwargs.get("invocation_params", {}).get("model_name")
         system = serialized.get("name", kwargs.get("name", "ChatLLM"))
+        invocation_params =  kwargs.get("invocation_params", {})
+
         attributes = {
-            "request_model": request_model,
             "system": system,
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             "framework": "langchain",
         }
 
-        prompts: list[Message] = [
-            Message(
-                content=get_property_value(message, "content"),
-                type=get_property_value(message, "type"),
-            )
-            for sub_messages in messages
-            for message in sub_messages
-        ]
+        if invocation_params:
+            request_model = invocation_params.get("model_name")
+            if request_model:
+                attributes.update({"request_model": request_model})
+            top_p = invocation_params.get("top_p")
+            if top_p:
+                attributes.update({"request_top_p": top_p})
+            frequency_penalty = invocation_params.get("frequency_penalty")
+            if frequency_penalty:
+                attributes.update({"request_frequency_penalty": frequency_penalty})
+            presence_penalty = invocation_params.get("presence_penalty")
+            if presence_penalty:
+                attributes.update({"request_presence_penalty": presence_penalty})
+            stop_sequences = invocation_params.get("stop")
+            if stop_sequences:
+                attributes.update({"request_stop_sequences": stop_sequences})
+            seed = invocation_params.get("seed")
+            if seed:
+                attributes.update({"request_seed": seed})
+
+        if metadata:
+            max_tokens = metadata.get("ls_max_tokens")
+            if max_tokens:
+                attributes.update({"request_max_tokens": max_tokens})
+            provider_name = metadata.get("ls_provider")
+            if provider_name:
+                # TODO: add to semantic conventions
+                attributes.update({"provider_name": provider_name})
+            temperature = metadata.get("ls_temperature")
+            if temperature:
+                attributes.update({"request_temperature": temperature})
+
+        # invoked during first invoke to llm with tool start --
+        tool_functions: List[ToolFunction] = []
+        tools = kwargs.get("invocation_params").get("tools") if kwargs.get("invocation_params") else None
+        if tools is not None:
+            for index, tool in enumerate(tools):
+                function = tool.get("function")
+                if function is not None:
+                    tool_function = ToolFunction(
+                        name=function.get("name"),
+                        description=function.get("description"),
+                        parameters=str(function.get("parameters"))
+                    )
+                    tool_functions.append(tool_function)
+        # tool end --
+
+
+        prompts: list[Message] = []
+        for sub_messages in messages:
+            for message in sub_messages:
+                # llm invoked with  all messages tool support start --
+                additional_kwargs = get_property_value(message, "additional_kwargs")
+                tool_calls = get_property_value(additional_kwargs, "tool_calls")
+                tool_function_calls = []
+                for tool_call in tool_calls or []:
+                    tool_function_call = ToolFunctionCall(
+                        id=tool_call.get("id"),
+                        name=tool_call.get("function").get("name"),
+                        arguments=str(tool_call.get("function").get("arguments")),
+                        type=tool_call.get("type"),
+                    )
+                    tool_function_calls.append(tool_function_call)
+                # tool support end --
+                prompt = Message(
+                    name=get_property_value(message, "name"),
+                    content=get_property_value(message, "content"),
+                    type=get_property_value(message, "type"),
+                    tool_call_id=get_property_value(message, "tool_call_id"),
+                    tool_function_calls=tool_function_calls,
+                )
+                prompts.append(prompt)
 
         # Invoke genai-sdk api
-        self._telemetry_client.start_llm(prompts, run_id, parent_run_id, **attributes)
+        self._telemetry_client.start_llm(prompts, tool_functions, run_id, parent_run_id, **attributes)
 
     @dont_throw
     def on_llm_end(
@@ -94,8 +161,20 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         chat_generations: list[ChatGeneration] = []
+        tool_function_calls: list[ToolFunctionCall] = []
         for generation in getattr(response, "generations", []):
             for chat_generation in generation:
+                # llm creates tool calls during first llm invoke tool support start --
+                tool_calls = chat_generation.message.additional_kwargs.get("tool_calls")
+                for tool_call in tool_calls or []:
+                    tool_function_call = ToolFunctionCall(
+                        id=tool_call.get("id"),
+                        name=tool_call.get("function").get("name"),
+                        arguments=tool_call.get("function").get("arguments"),
+                        type=tool_call.get("type"),
+                    )
+                    tool_function_calls.append(tool_function_call)
+                # tool support end --
                 if chat_generation.generation_info is not None:
                     finish_reason = chat_generation.generation_info.get("finish_reason")
                     content = get_property_value(chat_generation.message, "content")
@@ -103,6 +182,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                         content=content,
                         type=chat_generation.type,
                         finish_reason=finish_reason,
+                        tool_function_calls=tool_function_calls,
                     )
                     chat_generations.append(chat)
 
@@ -129,6 +209,49 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._telemetry_client.stop_llm(run_id=run_id, chat_generations=chat_generations, **attributes)
 
     @dont_throw
+    def on_tool_start(
+        self,
+        serialized: dict,
+        input_str: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs,
+    ):
+        if Config.is_instrumentation_suppressed():
+            return
+
+        tool_name = serialized.get("name") or kwargs.get("name") or "execute_tool"
+        attributes = {
+            "tool_name": tool_name,
+            "description": serialized.get("description"),
+        }
+
+        # Invoke genai-sdk api
+        self._telemetry_client.start_tool(run_id=run_id, input_str=input_str, **attributes)
+
+    @dont_throw
+    def on_tool_end(
+        self,
+        output: Any,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs,
+    ):
+        if Config.is_instrumentation_suppressed():
+            return
+
+        output = ToolOutput(
+            content=get_property_value(output, "content"),
+            tool_call_id=get_property_value(output, "tool_call_id"),
+        )
+        # Invoke genai-sdk api
+        self._telemetry_client.stop_tool(run_id=run_id, output=output)
+
+    @dont_throw
     def on_llm_error(
         self,
         error: BaseException,
@@ -142,3 +265,18 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         llm_error = Error(message=str(error), type=type(error))
         self._telemetry_client.fail_llm(run_id=run_id, error=llm_error, **kwargs)
+
+    @dont_throw
+    def on_tool_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs,
+    ):
+        if Config.is_instrumentation_suppressed():
+            return
+
+        tool_error = Error(message=str(error), type=type(error))
+        self._telemetry_client.fail_tool(run_id=run_id, error=tool_error, **kwargs)

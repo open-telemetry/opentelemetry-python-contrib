@@ -32,17 +32,15 @@ from opentelemetry.semconv.attributes import error_attributes as ErrorAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 from .instruments import Instruments
-from .types import LLMInvocation
-from .data import Error
+from .types import LLMInvocation, ToolInvocation
+from .data import Error, ToolFunctionCall
+
 
 @dataclass
 class _SpanState:
     span: Span
-    span_context: Context
+    context: Context
     start_time: float
-    request_model: Optional[str] = None
-    system: Optional[str] = None
-    db_system: Optional[str] = None
     children: List[UUID] = field(default_factory=list)
 
 def _get_property_value(obj, property_name)-> object:
@@ -51,30 +49,62 @@ def _get_property_value(obj, property_name)-> object:
 
     return getattr(obj, property_name, None)
 
-def _message_to_event(message, system, framework)-> Optional[Event]:
+def _message_to_event(message, tool_functions, provider_name, framework)-> Optional[Event]:
     content = _get_property_value(message, "content")
-    if content:
-        type = _get_property_value(message, "type")
-        type = "user" if type == "human" else type
-        body = {"content": content}
-        attributes = {
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,
-        }
-
-        return Event(
-            name=f"gen_ai.{type}.message",
-            attributes=attributes,
-            body=body or None,
+    # check if content is not None and should_collect_content()
+    type = _get_property_value(message, "type")
+    body = {}
+    if type == "tool":
+        name = message.name
+        tool_call_id = message.tool_call_id
+        body.update([
+            ("content", content),
+            ("name", name),
+            ("tool_call_id", tool_call_id)]
         )
+    elif type == "ai":
+        tool_function_calls = [
+            {"id": tfc.id, "name": tfc.name, "arguments": tfc.arguments, "type": getattr(tfc, "type", None)} for tfc in
+            message.tool_function_calls] if message.tool_function_calls else []
+        tool_function_calls_str = str(tool_function_calls) if tool_function_calls else ""
+        body.update({
+            "content": content if content else "",
+            "tool_calls": tool_function_calls_str
+        })
+    # changes for bedrock start
+    elif type == "human" or type == "system":
+        body.update([
+            ("content", content)
+        ])
 
-def _chat_generation_to_event(chat_generation, index, system, framework)-> Optional[Event]:
-    if chat_generation.content:
+    attributes = {
+        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+        "gen_ai.framework": framework,
+        "gen_ai.provider.name": provider_name,
+    }
+
+    # tools generation during first invocation of llm start --
+    if tool_functions is not None:
+        for index, tool_function in enumerate(tool_functions):
+            attributes.update([
+                (f"gen_ai.request.function.{index}.name", tool_function.name),
+                (f"gen_ai.request.function.{index}.description", tool_function.description),
+                (f"gen_ai.request.function.{index}.parameters", tool_function.parameters),
+            ])
+    # tools generation during first invocation of llm end --
+
+    return Event(
+        name=f"gen_ai.{type}.message",
+        attributes=attributes,
+        body=body or None,
+    )
+
+def _chat_generation_to_event(chat_generation, index, prefix, provider_name, framework)-> Optional[Event]:
+    if chat_generation:
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,
+            "gen_ai.provider.name": provider_name,
         }
 
         message = {
@@ -87,20 +117,62 @@ def _chat_generation_to_event(chat_generation, index, system, framework)-> Optio
             "message": message,
         }
 
+        # tools generation during first invocation of llm start --
+        tool_function_calls = chat_generation.tool_function_calls
+        if tool_function_calls is not None:
+            attributes.update(
+                chat_generation_tool_function_calls_attributes(tool_function_calls, prefix)
+            )
+        # tools generation during first invocation of llm end --
+
         return Event(
             name="gen_ai.choice",
             attributes=attributes,
             body=body or None,
         )
 
-def _get_metric_attributes(request_model: Optional[str], response_model: Optional[str],
-                           operation_name: Optional[str], system: Optional[str], framework: Optional[str])-> Dict:
+def _input_to_event(input):
+    # TODO: add check should_collect_content()
+    if input is not None:
+        body = {
+            "content" : input,
+            "role": "tool",
+        }
+        attributes = {
+            "gen_ai.framework": "langchain",
+        }
+
+        return Event(
+            name="gen_ai.tool.message",
+            attributes=attributes,
+            body=body if body else None,
+        )
+
+def _output_to_event(output):
+    if output is not None:
+        body = {
+            "content":output.content,
+            "id":output.tool_call_id,
+            "role":"tool",
+        }
+        attributes = {
+            "gen_ai.framework": "langchain",
+        }
+
+        return Event(
+            name="gen_ai.tool.message",
+            attributes=attributes,
+            body=body if body else None,
+        )
+
+def _get_metric_attributes_llm(request_model: Optional[str], response_model: Optional[str],
+                           operation_name: Optional[str], provider_name: Optional[str], framework: Optional[str])-> Dict:
     attributes = {
         # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
         "gen_ai.framework": framework,
     }
-    if system:
-        attributes[GenAI.GEN_AI_SYSTEM] = system
+    if provider_name:
+        attributes["gen_ai.provider.name"] = provider_name
     if operation_name:
         attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
     if request_model:
@@ -110,18 +182,37 @@ def _get_metric_attributes(request_model: Optional[str], response_model: Optiona
 
     return attributes
 
+
+def chat_generation_tool_function_calls_attributes(tool_function_calls, prefix):
+    attributes = {}
+    for idx, tool_function_call in enumerate(tool_function_calls):
+        tool_call_prefix = f"{prefix}.tool_calls.{idx}"
+        attributes[f"{tool_call_prefix}.id"] = tool_function_call.id
+        attributes[f"{tool_call_prefix}.name"] = tool_function_call.name
+        attributes[f"{tool_call_prefix}.arguments"] = tool_function_call.arguments
+    return attributes
+
 class BaseExporter:
     """
     Abstract base for exporters mapping GenAI types -> OpenTelemetry.
     """
 
-    def init(self, invocation: LLMInvocation):
+    def init_llm(self, invocation: LLMInvocation):
         raise NotImplementedError
 
-    def export(self, invocation: LLMInvocation):
+    def init_tool(self, invocation: ToolInvocation):
         raise NotImplementedError
 
-    def error(self, error: Error, invocation: LLMInvocation):
+    def export_llm(self, invocation: LLMInvocation):
+        raise NotImplementedError
+
+    def export_tool(self, invocation: ToolInvocation):
+        raise NotImplementedError
+
+    def error_llm(self, error: Error, invocation: LLMInvocation):
+        raise NotImplementedError
+
+    def error_tool(self, error: Error, invocation: ToolInvocation):
         raise NotImplementedError
 
 class SpanMetricEventExporter(BaseExporter):
@@ -163,18 +254,18 @@ class SpanMetricEventExporter(BaseExporter):
         if state.span._end_time is None:
             state.span.end()
 
-    def init(self, invocation: LLMInvocation):
+    def init_llm(self, invocation: LLMInvocation):
         if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
             self.spans[invocation.parent_run_id].children.append(invocation.run_id)
 
         for message in invocation.messages:
-            system = invocation.attributes.get("system")
-            self._event_logger.emit(_message_to_event(message=message, system=system, framework=invocation.attributes.get("framework")))
+            provider_name = invocation.attributes.get("provider_name")
+            self._event_logger.emit(_message_to_event(message=message, tool_functions=invocation.tool_functions, provider_name=provider_name, framework=invocation.attributes.get("framework")))
 
-    def export(self, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
+    def export_llm(self, invocation: LLMInvocation):
+        request_model = invocation.attributes.get("request_model")
         span = self._start_span(
-            name=f"{system}.chat",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
@@ -183,52 +274,103 @@ class SpanMetricEventExporter(BaseExporter):
             span,
             end_on_exit=False,
         ) as span:
-            request_model = invocation.attributes.get("request_model")
-            span_state = _SpanState(span=span, span_context=get_current(), request_model=request_model, system=system, start_time=invocation.start_time,)
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time, )
             self.spans[invocation.run_id] = span_state
 
+            provider_name = ""
+            attributes = invocation.attributes
+            if attributes:
+                top_p = attributes.get("request_top_p")
+                if top_p:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+                frequency_penalty = attributes.get("request_frequency_penalty")
+                if frequency_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+                    )
+                presence_penalty = attributes.get("request_presence_penalty")
+                if presence_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+                    )
+                stop_sequences = attributes.get("request_stop_sequences")
+                if stop_sequences:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+                    )
+                seed = attributes.get("request_seed")
+                if seed:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+                max_tokens = attributes.get("request_max_tokens")
+                if max_tokens:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                provider_name = attributes.get("provider_name")
+                if provider_name:
+                    # TODO: add to semantic conventions
+                    span.set_attribute("gen_ai.provider.name", provider_name)
+                temperature = attributes.get("request_temperature")
+                if temperature:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    )
             span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value)
-
             if request_model:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
 
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             framework = invocation.attributes.get("framework")
-            if framework is not None:
+            if framework:
                 span.set_attribute("gen_ai.framework", framework)
 
-            if system is not None:
-                span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+            # tools function during 1st and 2nd llm invocation request attributes start --
+            if invocation.tool_functions is not None:
+                for index, tool_function in enumerate(invocation.tool_functions):
+                    span.set_attribute(f"gen_ai.request.function.{index}.name", tool_function.name)
+                    span.set_attribute(f"gen_ai.request.function.{index}.description", tool_function.description)
+                    span.set_attribute(f"gen_ai.request.function.{index}.parameters", tool_function.parameters)
+            # tools request attributes end --
 
-            finish_reasons = []
+            # span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+
+            # Add response details as span attributes
+            tool_calls_attributes = {}
             for index, chat_generation in enumerate(invocation.chat_generations):
-                self._event_logger.emit(_chat_generation_to_event(chat_generation, index, system, framework))
-                finish_reasons.append(chat_generation.finish_reason)
+                # tools generation during first invocation of llm start --
+                prefix = f"{GenAI.GEN_AI_COMPLETION}.{index}"
+                tool_function_calls = chat_generation.tool_function_calls
+                if tool_function_calls is not None:
+                    tool_calls_attributes.update(
+                        chat_generation_tool_function_calls_attributes(tool_function_calls, prefix)
+                    )
+                # tools attributes end --
+                self._event_logger.emit(_chat_generation_to_event(chat_generation, index, prefix, provider_name, framework))
+                span.set_attribute(f"{GenAI.GEN_AI_RESPONSE_FINISH_REASONS}.{index}", chat_generation.finish_reason)
 
-            if finish_reasons is not None and len(finish_reasons) > 0:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons)
+            # TODO: decide if we want to show this as span attributes
+            # span.set_attributes(tool_calls_attributes)
 
-            response_model = invocation.attributes.get("response_model_name")
-            if response_model is not None:
+            response_model = attributes.get("response_model_name")
+            if response_model:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
 
-            response_id = invocation.attributes.get("response_id")
-            if response_id is not None:
+            response_id = attributes.get("response_id")
+            if response_id:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
 
             # usage
-            prompt_tokens = invocation.attributes.get("input_tokens")
-            if prompt_tokens is not None:
+            prompt_tokens = attributes.get("input_tokens")
+            if prompt_tokens:
                 span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
 
-            completion_tokens = invocation.attributes.get("output_tokens")
-            if completion_tokens is not None:
+            completion_tokens = attributes.get("output_tokens")
+            if completion_tokens:
                 span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
 
-            metric_attributes = _get_metric_attributes(request_model, response_model, GenAI.GenAiOperationNameValues.CHAT.value, system, framework)
+            metric_attributes = _get_metric_attributes_llm(request_model, response_model,
+                                                           GenAI.GenAiOperationNameValues.CHAT.value, provider_name, framework)
 
             # Record token usage metrics
-            prompt_tokens_attributes = {GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value, }
+            prompt_tokens_attributes = {GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value}
             prompt_tokens_attributes.update(metric_attributes)
             self._token_histogram.record(prompt_tokens, attributes=prompt_tokens_attributes)
 
@@ -243,10 +385,10 @@ class SpanMetricEventExporter(BaseExporter):
             elapsed = invocation.end_time - invocation.start_time
             self._duration_histogram.record(elapsed, attributes=metric_attributes)
 
-    def error(self, error: Error, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
+    def error_llm(self, error: Error, invocation: LLMInvocation):
+        request_model = invocation.attributes.get("request_model")
         span = self._start_span(
-            name=f"{system}.chat",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
@@ -255,11 +397,127 @@ class SpanMetricEventExporter(BaseExporter):
             span,
             end_on_exit=False,
         ) as span:
-            request_model = invocation.attributes.get("request_model")
-            system = invocation.attributes.get("system")
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time, )
+            self.spans[invocation.run_id] = span_state
 
-            span_state = _SpanState(span=span, span_context=get_current(), request_model=request_model, system=system,
-                                    start_time=invocation.start_time, )
+            provider_name = ""
+            attributes = invocation.attributes
+            if attributes:
+                top_p = attributes.get("request_top_p")
+                if top_p:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+                frequency_penalty = attributes.get("request_frequency_penalty")
+                if frequency_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+                    )
+                presence_penalty = attributes.get("request_presence_penalty")
+                if presence_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+                    )
+                stop_sequences = attributes.get("request_stop_sequences")
+                if stop_sequences:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+                    )
+                seed = attributes.get("request_seed")
+                if seed:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+                max_tokens = attributes.get("request_max_tokens")
+                if max_tokens:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                provider_name = attributes.get("provider_name")
+                if provider_name:
+                    # TODO: add to semantic conventions
+                    span.set_attribute("gen_ai.provider.name", provider_name)
+                temperature = attributes.get("request_temperature")
+                if temperature:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    )
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value)
+            if request_model:
+                span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
+
+            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            framework = attributes.get("framework")
+            if framework:
+                span.set_attribute("gen_ai.framework", framework)
+
+            span.set_status(Status(StatusCode.ERROR, error.message))
+            if span.is_recording():
+                span.set_attribute(
+                    ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+                )
+
+            self._end_span(invocation.run_id)
+
+            framework = attributes.get("framework")
+
+            metric_attributes = _get_metric_attributes_llm(request_model, "",
+                                                       GenAI.GenAiOperationNameValues.CHAT.value, provider_name, framework)
+
+            # Record overall duration metric
+            elapsed = invocation.end_time - invocation.start_time
+            self._duration_histogram.record(elapsed, attributes=metric_attributes)
+
+    def init_tool(self, invocation: ToolInvocation):
+        if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
+            self.spans[invocation.parent_run_id].children.append(invocation.run_id)
+
+        self._event_logger.emit(_input_to_event(invocation.input_str))
+
+    def export_tool(self, invocation: ToolInvocation):
+        attributes = invocation.attributes
+        tool_name = attributes.get("tool_name")
+        span = self._start_span(
+            name=f"{GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value} {tool_name}",
+            kind=SpanKind.INTERNAL,
+            parent_run_id=invocation.parent_run_id,
+        )
+        with use_span(
+                span,
+                end_on_exit=False,
+        ) as span:
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time)
+            self.spans[invocation.run_id] = span_state
+
+            description = attributes.get("description")
+            span.set_attribute("gen_ai.tool.description", description)
+            span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_name)
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value)
+
+            # TODO: if should_collect_content():
+            span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, invocation.output.tool_call_id)
+            self._event_logger.emit(_output_to_event(invocation.output))
+
+            self._end_span(invocation.run_id)
+
+            # Record overall duration metric
+            elapsed = invocation.end_time - invocation.start_time
+            metric_attributes = {
+                GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+            }
+            self._duration_histogram.record(elapsed, attributes=metric_attributes)
+
+    def error_tool(self, error: Error, invocation: ToolInvocation):
+        tool_name = invocation.attributes.get("tool_name")
+        span = self._start_span(
+            name=f"{GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value} {tool_name}",
+            kind=SpanKind.INTERNAL,
+            parent_run_id=invocation.parent_run_id,
+        )
+        with use_span(
+                span,
+                end_on_exit=False,
+        ) as span:
+            description = invocation.attributes.get("description")
+            span.set_attribute("gen_ai.tool.description", description)
+            span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_name)
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value)
+
+            span_state = _SpanState(span=span, span_context=get_current(), start_time=invocation.start_time, system=tool_name)
             self.spans[invocation.run_id] = span_state
 
             span.set_status(Status(StatusCode.ERROR, error.message))
@@ -270,14 +528,12 @@ class SpanMetricEventExporter(BaseExporter):
 
             self._end_span(invocation.run_id)
 
-            response_model = invocation.attributes.get("response_model_name")
-            framework = invocation.attributes.get("framework")
-
-            metric_attributes = _get_metric_attributes(request_model, response_model,
-                                                       GenAI.GenAiOperationNameValues.CHAT.value, system, framework)
-
             # Record overall duration metric
             elapsed = invocation.end_time - invocation.start_time
+            metric_attributes = {
+                GenAI.GEN_AI_SYSTEM: tool_name,
+                GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+            }
             self._duration_histogram.record(elapsed, attributes=metric_attributes)
 
 class SpanMetricExporter(BaseExporter):
@@ -318,75 +574,142 @@ class SpanMetricExporter(BaseExporter):
         if state.span._end_time is None:
             state.span.end()
 
-    def init(self, invocation: LLMInvocation):
+    def init_llm(self, invocation: LLMInvocation):
         if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
             self.spans[invocation.parent_run_id].children.append(invocation.run_id)
 
-    def export(self, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
+    def export_llm(self, invocation: LLMInvocation):
+        request_model = invocation.attributes.get("request_model")
         span = self._start_span(
-            name=f"{system}.chat",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
 
         with use_span(
-                span,
-                end_on_exit=False,
+            span,
+            end_on_exit=False,
         ) as span:
-            request_model = invocation.attributes.get("request_model")
-            span_state = _SpanState(span=span, span_context=get_current(),
-                                    request_model=request_model,
-                                    system=system, start_time=invocation.start_time,)
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time)
             self.spans[invocation.run_id] = span_state
 
+            provider_name = ""
+            attributes = invocation.attributes
+            if attributes :
+                top_p = attributes.get("request_top_p")
+                if top_p:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+                frequency_penalty = attributes.get("request_frequency_penalty")
+                if frequency_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+                    )
+                presence_penalty = attributes.get("request_presence_penalty")
+                if presence_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+                    )
+                stop_sequences = attributes.get("request_stop_sequences")
+                if stop_sequences:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+                    )
+                seed = attributes.get("request_seed")
+                if seed:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+                max_tokens = attributes.get("request_max_tokens")
+                if max_tokens:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                provider_name = attributes.get("provider_name")
+                if provider_name:
+                    # TODO: add to semantic conventions
+                    span.set_attribute("gen_ai.provider.name", provider_name)
+                temperature = attributes.get("request_temperature")
+                if temperature:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    )
             span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value)
-
-
-            if request_model is not None:
+            if request_model:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
 
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             framework = invocation.attributes.get("framework")
-            if framework is not None:
-                span.set_attribute("gen_ai.framework", invocation.attributes.get("framework"))
-            span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+            if framework:
+                span.set_attribute("gen_ai.framework", framework)
+            # span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
 
-            finish_reasons = []
+            # tools function during 1st and 2nd llm invocation request attributes start --
+            if invocation.tool_functions is not None:
+                for index, tool_function in enumerate(invocation.tool_functions):
+                    span.set_attribute(f"gen_ai.request.function.{index}.name", tool_function.name)
+                    span.set_attribute(f"gen_ai.request.function.{index}.description", tool_function.description)
+                    span.set_attribute(f"gen_ai.request.function.{index}.parameters", tool_function.parameters)
+            # tools request attributes end --
+
+            # tools support for 2nd llm invocation request attributes start --
+            messages = invocation.messages if invocation.messages else None
+            for index, message in enumerate(messages):
+                content = message.content
+                type = message.type
+                tool_call_id = message.tool_call_id
+                # TODO: if should_collect_content():
+                if type == "human" or type == "system":
+                    span.set_attribute(f"gen_ai.prompt.{index}.content", content)
+                    span.set_attribute(f"gen_ai.prompt.{index}.role", "human")
+                elif type == "tool":
+                    span.set_attribute(f"gen_ai.prompt.{index}.content", content)
+                    span.set_attribute(f"gen_ai.prompt.{index}.role", "tool")
+                    span.set_attribute(f"gen_ai.prompt.{index}.tool_call_id", tool_call_id)
+                elif type == "ai":
+                    tool_function_calls = message.tool_function_calls
+                    if tool_function_calls is not None:
+                        for index3, tool_function_call in enumerate(tool_function_calls):
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.id", tool_function_call.id)
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.arguments", tool_function_call.arguments)
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.name", tool_function_call.name)
+
+            # tools request attributes end --
+
+            # Add response details as span attributes
+            tool_calls_attributes = {}
             for index, chat_generation in enumerate(invocation.chat_generations):
-                finish_reasons.append(chat_generation.finish_reason)
-            if finish_reasons is not None and len(finish_reasons) > 0:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons)
+                # tools attributes start --
+                prefix = f"{GenAI.GEN_AI_COMPLETION}.{index}"
+                tool_function_calls = chat_generation.tool_function_calls
+                if tool_function_calls is not None:
+                    tool_calls_attributes.update(
+                        chat_generation_tool_function_calls_attributes(tool_function_calls, prefix)
+                    )
+                # tools attributes end --
+                span.set_attribute(f"{GenAI.GEN_AI_RESPONSE_FINISH_REASONS} {index}", chat_generation.finish_reason)
 
-            response_model = invocation.attributes.get("response_model_name")
-            if response_model is not None:
+            span.set_attributes(tool_calls_attributes)
+
+            response_model = attributes.get("response_model_name")
+            if response_model:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
 
-            response_id = invocation.attributes.get("response_id")
-            if response_id is not None:
+            response_id = attributes.get("response_id")
+            if response_id:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
 
             # usage
-            prompt_tokens = invocation.attributes.get("input_tokens")
-            if prompt_tokens is not None:
+            prompt_tokens = attributes.get("input_tokens")
+            if prompt_tokens:
                 span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
 
-            completion_tokens = invocation.attributes.get("output_tokens")
-            if completion_tokens is not None:
+            completion_tokens = attributes.get("output_tokens")
+            if completion_tokens:
                 span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
 
-            for index, message in enumerate(invocation.messages):
-                content = message.content
-                type = message.type
-                span.set_attribute(f"gen_ai.prompt.{index}.content", content)
-                span.set_attribute(f"gen_ai.prompt.{index}.role", type)
-
+            # Add output content as span
             for index, chat_generation in enumerate(invocation.chat_generations):
                 span.set_attribute(f"gen_ai.completion.{index}.content", chat_generation.content)
                 span.set_attribute(f"gen_ai.completion.{index}.role", chat_generation.type)
 
-            metric_attributes = _get_metric_attributes(request_model, response_model,
-                                                       GenAI.GenAiOperationNameValues.CHAT.value, system, framework)
+            metric_attributes = _get_metric_attributes_llm(request_model, response_model,
+                                                       GenAI.GenAiOperationNameValues.CHAT.value, provider_name, framework,)
 
             # Record token usage metrics
             prompt_tokens_attributes = {GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value}
@@ -404,23 +727,88 @@ class SpanMetricExporter(BaseExporter):
             elapsed = invocation.end_time - invocation.start_time
             self._duration_histogram.record(elapsed, attributes=metric_attributes)
 
-    def error(self, error: Error, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
+
+    def error_llm(self, error: Error, invocation: LLMInvocation):
+        request_model = invocation.attributes.get("request_model")
         span = self._start_span(
-            name=f"{system}.chat",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
 
         with use_span(
-                span,
-                end_on_exit=False,
+            span,
+            end_on_exit=False,
         ) as span:
-            request_model = invocation.attributes.get("request_model")
-            system = invocation.attributes.get("system")
-
-            span_state = _SpanState(span=span, span_context=get_current(), request_model=request_model, system=system, start_time=invocation.start_time,)
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time, )
             self.spans[invocation.run_id] = span_state
+
+            provider_name = ""
+            attributes = invocation.attributes
+            if attributes:
+                top_p = attributes.get("request_top_p")
+                if top_p:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+                frequency_penalty = attributes.get("request_frequency_penalty")
+                if frequency_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+                    )
+                presence_penalty = attributes.get("request_presence_penalty")
+                if presence_penalty:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+                    )
+                stop_sequences = attributes.get("request_stop_sequences")
+                if stop_sequences:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+                    )
+                seed = attributes.get("request_seed")
+                if seed:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+                max_tokens = attributes.get("request_max_tokens")
+                if max_tokens:
+                    span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                provider_name = attributes.get("provider_name")
+                if provider_name:
+                    # TODO: add to semantic conventions
+                    span.set_attribute("gen_ai.provider.name", provider_name)
+                temperature = attributes.get("request_temperature")
+                if temperature:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    )
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value)
+            if request_model:
+                span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
+
+            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            framework = attributes.get("framework")
+            if framework:
+                span.set_attribute("gen_ai.framework", framework)
+
+            # tools support for 2nd llm invocation request attributes start --
+            messages = invocation.messages if invocation.messages else None
+            for index, message in enumerate(messages):
+                content = message.content
+                type = message.type
+                tool_call_id = message.tool_call_id
+                # TODO: if should_collect_content():
+                if type == "human" or type == "system":
+                    span.set_attribute(f"gen_ai.prompt.{index}.content", content)
+                    span.set_attribute(f"gen_ai.prompt.{index}.role", "human")
+                elif type == "tool":
+                    span.set_attribute(f"gen_ai.prompt.{index}.content", content)
+                    span.set_attribute(f"gen_ai.prompt.{index}.role", "tool")
+                    span.set_attribute(f"gen_ai.prompt.{index}.tool_call_id", tool_call_id)
+                elif type == "ai":
+                    tool_function_calls = message.tool_function_calls
+                    if tool_function_calls is not None:
+                        for index3, tool_function_call in enumerate(tool_function_calls):
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.id", tool_function_call.id)
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.arguments", tool_function_call.arguments)
+                            span.set_attribute(f"gen_ai.prompt.{index}.tool_calls.{index3}.name", tool_function_call.name)
 
             span.set_status(Status(StatusCode.ERROR, error.message))
             if span.is_recording():
@@ -430,13 +818,84 @@ class SpanMetricExporter(BaseExporter):
 
             self._end_span(invocation.run_id)
 
-            response_model = invocation.attributes.get("response_model_name")
-            framework = invocation.attributes.get("framework")
+            framework = attributes.get("framework")
 
-
-            metric_attributes = _get_metric_attributes(request_model, response_model,
-                                                       GenAI.GenAiOperationNameValues.CHAT.value, system, framework)
+            metric_attributes = _get_metric_attributes_llm(request_model, "",
+                                                       GenAI.GenAiOperationNameValues.CHAT.value, provider_name, framework)
 
             # Record overall duration metric
             elapsed = invocation.end_time - invocation.start_time
+            self._duration_histogram.record(elapsed, attributes=metric_attributes)
+
+    def init_tool(self, invocation: ToolInvocation):
+        if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
+            self.spans[invocation.parent_run_id].children.append(invocation.run_id)
+
+    def export_tool(self, invocation: ToolInvocation):
+        attributes = invocation.attributes
+        tool_name = attributes.get("tool_name")
+        span = self._start_span(
+            name=f"{GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value} {tool_name}",
+            kind=SpanKind.INTERNAL,
+            parent_run_id=invocation.parent_run_id,
+        )
+        with use_span(
+                span,
+                end_on_exit=False,
+        ) as span:
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time)
+            self.spans[invocation.run_id] = span_state
+
+            description = attributes.get("description")
+            span.set_attribute("gen_ai.tool.description", description)
+            span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_name)
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value)
+
+            # TODO: if should_collect_content():
+            span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, invocation.output.tool_call_id)
+            # TODO: if should_collect_content():
+            span.set_attribute("gen_ai.tool.output.content", invocation.output.content)
+
+            self._end_span(invocation.run_id)
+
+            # Record overall duration metric
+            elapsed = invocation.end_time - invocation.start_time
+            metric_attributes = {
+                GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+            }
+            self._duration_histogram.record(elapsed, attributes=metric_attributes)
+
+    def error_tool(self, error: Error, invocation: ToolInvocation):
+        attributes = invocation.attributes
+        tool_name = attributes.get("tool_name")
+        span = self._start_span(
+            name=f"{GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value} {tool_name}",
+            kind=SpanKind.INTERNAL,
+            parent_run_id=invocation.parent_run_id,
+        )
+        with use_span(
+                span,
+                end_on_exit=False,
+        ) as span:
+            span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time)
+            self.spans[invocation.run_id] = span_state
+
+            description = attributes.get("description")
+            span.set_attribute("gen_ai.tool.description", description)
+            span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_name)
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value)
+
+            span.set_status(Status(StatusCode.ERROR, error.message))
+            if span.is_recording():
+                span.set_attribute(
+                    ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+                )
+
+            self._end_span(invocation.run_id)
+
+            # Record overall duration metric
+            elapsed = invocation.end_time - invocation.start_time
+            metric_attributes = {
+                GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+            }
             self._duration_histogram.record(elapsed, attributes=metric_attributes)

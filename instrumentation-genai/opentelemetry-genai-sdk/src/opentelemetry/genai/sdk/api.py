@@ -17,9 +17,9 @@ from threading import Lock
 from typing import List, Optional
 from uuid import UUID
 
-from .types import LLMInvocation
+from .types import LLMInvocation, ToolInvocation
 from .exporters import SpanMetricEventExporter, SpanMetricExporter
-from .data import Message, ChatGeneration, Error
+from .data import Message, ChatGeneration, Error, ToolOutput, ToolFunction
 
 from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.metrics import get_meter
@@ -56,13 +56,14 @@ class TelemetryClient:
         )
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
+        self._tool_registry: dict[UUID, ToolInvocation] = {}
         self._lock = Lock()
 
-    def start_llm(self, prompts: List[Message], run_id: UUID, parent_run_id: Optional[UUID] = None, **attributes):
-        invocation = LLMInvocation(messages=prompts , run_id=run_id, parent_run_id=parent_run_id, attributes=attributes)
+    def start_llm(self, prompts: List[Message], tool_functions: List[ToolFunction], run_id: UUID, parent_run_id: Optional[UUID] = None, **attributes):
+        invocation = LLMInvocation(messages=prompts , tool_functions=tool_functions, run_id=run_id, parent_run_id=parent_run_id, attributes=attributes)
         with self._lock:
             self._llm_registry[invocation.run_id] = invocation
-        self._exporter.init(invocation)
+        self._exporter.init_llm(invocation)
 
     def stop_llm(self, run_id: UUID, chat_generations: List[ChatGeneration], **attributes) -> LLMInvocation:
         with self._lock:
@@ -70,7 +71,7 @@ class TelemetryClient:
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         invocation.attributes.update(attributes)
-        self._exporter.export(invocation)
+        self._exporter.export_llm(invocation)
         return invocation
 
     def fail_llm(self, run_id: UUID, error: Error, **attributes) -> LLMInvocation:
@@ -78,7 +79,29 @@ class TelemetryClient:
             invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.attributes.update(**attributes)
-        self._exporter.error(error, invocation)
+        self._exporter.error_llm(error, invocation)
+        return invocation
+
+    def start_tool(self, input_str: str, run_id: UUID, parent_run_id: Optional[UUID] = None, **attributes):
+        invocation = ToolInvocation(input_str=input_str , run_id=run_id, parent_run_id=parent_run_id, attributes=attributes)
+        with self._lock:
+            self._tool_registry[invocation.run_id] = invocation
+        self._exporter.init_tool(invocation)
+
+    def stop_tool(self, run_id: UUID, output: ToolOutput, **attributes) -> ToolInvocation:
+        with self._lock:
+            invocation = self._tool_registry.pop(run_id)
+        invocation.end_time = time.time()
+        invocation.output = output
+        self._exporter.export_tool(invocation)
+        return invocation
+
+    def fail_tool(self, run_id: UUID, error: Error, **attributes) -> ToolInvocation:
+        with self._lock:
+            invocation = self._tool_registry.pop(run_id)
+        invocation.end_time = time.time()
+        invocation.attributes.update(**attributes)
+        self._exporter.error_tool(error, invocation)
         return invocation
 
 # Singleton accessor

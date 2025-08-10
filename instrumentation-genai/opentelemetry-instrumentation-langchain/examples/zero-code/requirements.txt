@@ -1,8 +1,9 @@
 langchain==0.3.21 #todo: find the lowest compatible version
 langchain_openai
 
-opentelemetry-sdk~=1.31.1
-opentelemetry-exporter-otlp-proto-grpc~=1.31.1
+opentelemetry-sdk~=1.36.0
+opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+opentelemetry-distro~=0.57b0
 
 python-dotenv[cli]
 
