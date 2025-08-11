@@ -95,6 +95,38 @@ Usage
     if __name__ == "__main__":
         app.run(debug=True)
 
+Custom Metrics Attributes using Labeler
+***************************************
+The Flask instrumentation reads from a Labeler utility that supports adding custom attributes 
+to the HTTP metrics recorded by the instrumentation.
+
+.. code-block:: python
+
+    from flask import Flask
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation._labeler import get_labeler
+
+    app = Flask(__name__)
+    FlaskInstrumentor().instrument_app(app)
+
+    @app.route("/user/<user_id>")
+    def user_profile(user_id):
+        # Get the labeler for the current request
+        labeler = get_labeler()
+        
+        # Add custom attributes to Flask instrumentation metrics
+        labeler.add("user_id", user_id)
+        labeler.add("user_type", "registered")
+        
+        # Or, add multiple attributes at once
+        labeler.add_attributes({
+            "feature_flag": "new_ui",
+            "experiment_group": "control"
+        })
+        
+        return f"User profile for {user_id}"
+
+
 Configuration
 -------------
 
@@ -268,6 +300,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation._labeler import enhance_metric_attributes
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -340,6 +373,10 @@ def _rewrapped_app(
         start = default_timer()
         attributes = otel_wsgi.collect_request_attributes(
             wrapped_app_environ, sem_conv_opt_in_mode
+        )
+        # Enhance attributes with custom labeler attributes
+        attributes = enhance_metric_attributes(
+            attributes, wrapped_app_environ, "request"
         )
         active_requests_count_attrs = (
             otel_wsgi._parse_active_request_count_attrs(
@@ -445,6 +482,10 @@ def _wrapped_before_request(
         attributes = otel_wsgi.collect_request_attributes(
             flask_request_environ,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        )
+        # Enhance attributes with custom labeler attributes
+        attributes = enhance_metric_attributes(
+            attributes, flask_request_environ, "request"
         )
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
