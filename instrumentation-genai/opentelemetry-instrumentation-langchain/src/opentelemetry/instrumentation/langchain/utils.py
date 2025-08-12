@@ -28,6 +28,14 @@ OTEL_INSTRUMENTATION_GENAI_EXPORTER = (
     "OTEL_INSTRUMENTATION_GENAI_EXPORTER"
 )
 
+OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK"
+)
+
+OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE"
+)
+
 
 def should_collect_content() -> bool:
     val = os.getenv(OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT, "false")
@@ -41,6 +49,14 @@ def should_emit_events() -> bool:
         return False
     else:
         raise ValueError(f"Unknown exporter_type: {val}")
+
+def should_enable_evaluation() -> bool:
+    val = os.getenv(OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE, "True")
+    return val.strip().lower() == "true"
+
+def get_evaluation_framework_name() -> str:
+    val = os.getenv(OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK, "Deepeval")
+    return val.strip().lower()
 
 def get_property_value(obj, property_name):
     if isinstance(obj, dict):

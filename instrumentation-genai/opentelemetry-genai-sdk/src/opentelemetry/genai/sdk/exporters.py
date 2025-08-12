@@ -27,6 +27,7 @@ from opentelemetry.trace import (
     use_span,
 )
 from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as GenAI
 from opentelemetry.semconv.attributes import error_attributes as ErrorAttributes
 from opentelemetry.trace.status import Status, StatusCode
@@ -99,6 +100,56 @@ def _message_to_event(message, tool_functions, provider_name, framework)-> Optio
         body=body or None,
     )
 
+def _message_to_log_record(message, tool_functions, provider_name, framework)-> Optional[LogRecord]:
+    content = _get_property_value(message, "content")
+    # check if content is not None and should_collect_content()
+    type = _get_property_value(message, "type")
+    body = {}
+    if type == "tool":
+        name = message.name
+        tool_call_id = message.tool_call_id
+        body.update([
+            ("content", content),
+            ("name", name),
+            ("tool_call_id", tool_call_id)]
+        )
+    elif type == "ai":
+        tool_function_calls = [
+            {"id": tfc.id, "name": tfc.name, "arguments": tfc.arguments, "type": getattr(tfc, "type", None)} for tfc in
+            message.tool_function_calls] if message.tool_function_calls else []
+        tool_function_calls_str = str(tool_function_calls) if tool_function_calls else ""
+        body.update({
+            "content": content if content else "",
+            "tool_calls": tool_function_calls_str
+        })
+    # changes for bedrock start
+    elif type == "human" or type == "system":
+        body.update([
+            ("content", content)
+        ])
+
+    attributes = {
+        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+        "gen_ai.framework": framework,
+        "gen_ai.provider.name": provider_name,
+    }
+
+    # tools generation during first invocation of llm start --
+    if tool_functions is not None:
+        for index, tool_function in enumerate(tool_functions):
+            attributes.update([
+                (f"gen_ai.request.function.{index}.name", tool_function.name),
+                (f"gen_ai.request.function.{index}.description", tool_function.description),
+                (f"gen_ai.request.function.{index}.parameters", tool_function.parameters),
+            ])
+    # tools generation during first invocation of llm end --
+
+    return LogRecord(
+        event_name=f"gen_ai.{type}.message",
+        attributes=attributes,
+        body=body or None,
+    )
+
 def _chat_generation_to_event(chat_generation, index, prefix, provider_name, framework)-> Optional[Event]:
     if chat_generation:
         attributes = {
@@ -131,6 +182,38 @@ def _chat_generation_to_event(chat_generation, index, prefix, provider_name, fra
             body=body or None,
         )
 
+def _chat_generation_to_log_record(chat_generation, index, prefix, provider_name, framework)-> Optional[LogRecord]:
+    if chat_generation:
+        attributes = {
+            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            "gen_ai.framework": framework,
+            "gen_ai.provider.name": provider_name,
+        }
+
+        message = {
+            "content": chat_generation.content,
+            "type": chat_generation.type,
+        }
+        body = {
+            "index": index,
+            "finish_reason": chat_generation.finish_reason or "error",
+            "message": message,
+        }
+
+        # tools generation during first invocation of llm start --
+        tool_function_calls = chat_generation.tool_function_calls
+        if tool_function_calls is not None:
+            attributes.update(
+                chat_generation_tool_function_calls_attributes(tool_function_calls, prefix)
+            )
+        # tools generation during first invocation of llm end --
+
+        return LogRecord(
+            event_name="gen_ai.choice",
+            attributes=attributes,
+            body=body or None,
+        )
+
 def _input_to_event(input):
     # TODO: add check should_collect_content()
     if input is not None:
@@ -148,6 +231,23 @@ def _input_to_event(input):
             body=body if body else None,
         )
 
+def _input_to_log_record(input):
+    # TODO: add check should_collect_content()
+    if input is not None:
+        body = {
+            "content" : input,
+            "role": "tool",
+        }
+        attributes = {
+            "gen_ai.framework": "langchain",
+        }
+
+        return LogRecord(
+            event_name="gen_ai.tool.message",
+            attributes=attributes,
+            body=body if body else None,
+        )
+
 def _output_to_event(output):
     if output is not None:
         body = {
@@ -161,6 +261,23 @@ def _output_to_event(output):
 
         return Event(
             name="gen_ai.tool.message",
+            attributes=attributes,
+            body=body if body else None,
+        )
+
+def _output_to_log_record(output):
+    if output is not None:
+        body = {
+            "content":output.content,
+            "id":output.tool_call_id,
+            "role":"tool",
+        }
+        attributes = {
+            "gen_ai.framework": "langchain",
+        }
+
+        return LogRecord(
+            event_name="gen_ai.tool.message",
             attributes=attributes,
             body=body if body else None,
         )
@@ -219,12 +336,13 @@ class SpanMetricEventExporter(BaseExporter):
     """
     Emits spans, metrics and events for a full telemetry picture.
     """
-    def __init__(self, event_logger, tracer: Tracer = None, meter: Meter = None):
+    def __init__(self, event_logger, logger, tracer: Tracer = None, meter: Meter = None):
         self._tracer = tracer or trace.get_tracer(__name__)
         instruments = Instruments(meter)
         self._duration_histogram = instruments.operation_duration_histogram
         self._token_histogram = instruments.token_usage_histogram
         self._event_logger = event_logger
+        self._logger = logger
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
@@ -258,10 +376,6 @@ class SpanMetricEventExporter(BaseExporter):
         if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
             self.spans[invocation.parent_run_id].children.append(invocation.run_id)
 
-        for message in invocation.messages:
-            provider_name = invocation.attributes.get("provider_name")
-            self._event_logger.emit(_message_to_event(message=message, tool_functions=invocation.tool_functions, provider_name=provider_name, framework=invocation.attributes.get("framework")))
-
     def export_llm(self, invocation: LLMInvocation):
         request_model = invocation.attributes.get("request_model")
         span = self._start_span(
@@ -274,6 +388,17 @@ class SpanMetricEventExporter(BaseExporter):
             span,
             end_on_exit=False,
         ) as span:
+            for message in invocation.messages:
+                provider_name = invocation.attributes.get("provider_name")
+                # TODO: remove deprecated event logging and its initialization and use below logger instead
+                self._event_logger.emit(_message_to_event(message=message, tool_functions=invocation.tool_functions,
+                                                          provider_name=provider_name,
+                                                          framework=invocation.attributes.get("framework")))
+                # TODO: logger is not emitting event name, fix it
+                self._logger.emit(_message_to_log_record(message=message, tool_functions=invocation.tool_functions,
+                                                         provider_name=provider_name,
+                                                         framework=invocation.attributes.get("framework")))
+
             span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time, )
             self.spans[invocation.run_id] = span_state
 
@@ -343,7 +468,11 @@ class SpanMetricEventExporter(BaseExporter):
                         chat_generation_tool_function_calls_attributes(tool_function_calls, prefix)
                     )
                 # tools attributes end --
+
+                # TODO: remove deprecated event logging and its initialization and use below logger instead
                 self._event_logger.emit(_chat_generation_to_event(chat_generation, index, prefix, provider_name, framework))
+                # TODO: logger is not emitting event name, fix it
+                self._logger.emit(_chat_generation_to_log_record(chat_generation, index, prefix, provider_name, framework))
                 span.set_attribute(f"{GenAI.GEN_AI_RESPONSE_FINISH_REASONS}.{index}", chat_generation.finish_reason)
 
             # TODO: decide if we want to show this as span attributes
@@ -380,6 +509,8 @@ class SpanMetricEventExporter(BaseExporter):
 
             # End the LLM span
             self._end_span(invocation.run_id)
+            invocation.span_id = span_state.span.get_span_context().span_id
+            invocation.trace_id = span_state.span.get_span_context().trace_id
 
             # Record overall duration metric
             elapsed = invocation.end_time - invocation.start_time
@@ -466,8 +597,6 @@ class SpanMetricEventExporter(BaseExporter):
         if invocation.parent_run_id is not None and invocation.parent_run_id in self.spans:
             self.spans[invocation.parent_run_id].children.append(invocation.run_id)
 
-        self._event_logger.emit(_input_to_event(invocation.input_str))
-
     def export_tool(self, invocation: ToolInvocation):
         attributes = invocation.attributes
         tool_name = attributes.get("tool_name")
@@ -480,6 +609,11 @@ class SpanMetricEventExporter(BaseExporter):
                 span,
                 end_on_exit=False,
         ) as span:
+            # TODO: remove deprecated event logging and its initialization and use below logger instead
+            self._event_logger.emit(_input_to_event(invocation.input_str))
+            # TODO: logger is not emitting event name, fix it
+            self._logger.emit(_input_to_log_record(invocation.input_str))
+
             span_state = _SpanState(span=span, context=get_current(), start_time=invocation.start_time)
             self.spans[invocation.run_id] = span_state
 
@@ -490,7 +624,10 @@ class SpanMetricEventExporter(BaseExporter):
 
             # TODO: if should_collect_content():
             span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, invocation.output.tool_call_id)
+            # TODO: remove deprecated event logging and its initialization and use below logger instead
             self._event_logger.emit(_output_to_event(invocation.output))
+            # TODO: logger is not emitting event name, fix it
+            self._logger.emit(_output_to_log_record(invocation.output))
 
             self._end_span(invocation.run_id)
 
@@ -722,6 +859,8 @@ class SpanMetricExporter(BaseExporter):
 
             # End the LLM span
             self._end_span(invocation.run_id)
+            invocation.span_id = span_state.span.get_span_context().span_id
+            invocation.trace_id =span_state.span.get_span_context().trace_id
 
             # Record overall duration metric
             elapsed = invocation.end_time - invocation.start_time

@@ -59,6 +59,10 @@ from opentelemetry.genai.sdk.api import get_telemetry_client
 from opentelemetry.genai.sdk.api import TelemetryClient
 from .utils import (
     should_emit_events,
+    get_evaluation_framework_name,
+)
+from opentelemetry.genai.sdk.evals import (
+    get_evaluator,
 )
 
 class LangChainInstrumentor(BaseInstrumentor):
@@ -91,8 +95,14 @@ class LangChainInstrumentor(BaseInstrumentor):
         # Instantiate a singleton TelemetryClient bound to our tracer & meter
         self._telemetry = get_telemetry_client(exporter_type_full, **kwargs)
 
+        # initialize evaluation framework if needed
+        evaluation_framework_name = get_evaluation_framework_name()
+        # TODO: add check for OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE
+        self._evaluation = get_evaluator(evaluation_framework_name)
+
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             telemetry_client=self._telemetry,
+            evaluation_client=self._evaluation,
         )
 
         wrap_function_wrapper(

@@ -32,6 +32,8 @@ class LLMInvocation:
     chat_generations: List[ChatGeneration] = field(default_factory=list)
     tool_functions: List[ToolFunction] = field(default_factory=list)
     attributes: dict = field(default_factory=dict)
+    span_id: int = 0
+    trace_id: int = 0
 
 @dataclass
 class ToolInvocation:

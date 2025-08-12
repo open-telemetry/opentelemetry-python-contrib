@@ -25,6 +25,7 @@ from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.metrics import get_meter
 from opentelemetry.trace import get_tracer
 from opentelemetry._events import get_event_logger
+from opentelemetry._logs import get_logger
 from opentelemetry.semconv.schemas import Schemas
 
 
@@ -49,8 +50,13 @@ class TelemetryClient:
             __name__, __version__, event_logger_provider=event_logger_provider, schema_url=Schemas.V1_28_0.value
         )
 
+        logger_provider = kwargs.get("logger_provider")
+        self._logger = get_logger(
+            __name__, __version__, logger_provider=logger_provider, schema_url=Schemas.V1_28_0.value
+        )
+
         self._exporter = (
-            SpanMetricEventExporter(tracer=self._tracer, meter=self._meter, event_logger=self._event_logger)
+            SpanMetricEventExporter(tracer=self._tracer, meter=self._meter, event_logger=self._event_logger, logger=self._event_logger)
             if exporter_type_full
             else SpanMetricExporter(tracer=self._tracer, meter=self._meter)
         )

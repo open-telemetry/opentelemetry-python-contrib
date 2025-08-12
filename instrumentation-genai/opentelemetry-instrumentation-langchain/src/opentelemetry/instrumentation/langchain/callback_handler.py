@@ -29,7 +29,10 @@ from opentelemetry.genai.sdk.data import (
     Error,
     ToolOutput, ToolFunction, ToolFunctionCall
 )
+from .utils import should_enable_evaluation
 from opentelemetry.genai.sdk.api import TelemetryClient
+from opentelemetry.genai.sdk.evals import Evaluator
+from opentelemetry.genai.sdk.types import LLMInvocation
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +46,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     def __init__(
         self,
         telemetry_client: TelemetryClient,
+        evaluation_client: Evaluator,
     ) -> None:
         super().__init__()
         self._telemetry_client = telemetry_client
-        self.run_inline = True  # Whether to run the callback inline.
+        self._evaluation_client = evaluation_client
 
     @dont_throw
     def on_chat_model_start(
@@ -206,7 +210,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         }
 
         # Invoke genai-sdk api
-        self._telemetry_client.stop_llm(run_id=run_id, chat_generations=chat_generations, **attributes)
+        invocation: LLMInvocation =  self._telemetry_client.stop_llm(run_id=run_id, chat_generations=chat_generations, **attributes)
+
+        # generates evaluation child spans.
+        # pass only required attributes to evaluation client
+        if should_enable_evaluation():
+            import asyncio
+            asyncio.create_task(self._evaluation_client.evaluate(invocation))
+        # self._evaluation_client.evaluate(invocation)
+
 
     @dont_throw
     def on_tool_start(
