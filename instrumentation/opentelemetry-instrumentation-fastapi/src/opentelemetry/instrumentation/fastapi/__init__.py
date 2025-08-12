@@ -392,7 +392,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
-        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
+        # Create a copy of the set to avoid RuntimeError during iteration
+        instances_to_uninstrument = list(
+            _InstrumentedFastAPI._instrumented_fastapi_apps
+        )
+        for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
         fastapi.FastAPI = self._original_fastapi
