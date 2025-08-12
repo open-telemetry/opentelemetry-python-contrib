@@ -186,6 +186,7 @@ import functools
 import logging
 import types
 from typing import Collection, Literal
+from weakref import WeakSet as _WeakSet
 
 import fastapi
 from starlette.applications import Starlette
@@ -415,9 +416,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _exclude_spans: list[Literal["receive", "send"]] | None = None
 
     # Track instrumented app instances using weak references to avoid GC leaks
-    from weakref import WeakSet as _WeakSet  # type: ignore
-
-    _instrumented_fastapi_apps: "_InstrumentedFastAPI._WeakSet" = _WeakSet()
+    _instrumented_fastapi_apps = _WeakSet()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
