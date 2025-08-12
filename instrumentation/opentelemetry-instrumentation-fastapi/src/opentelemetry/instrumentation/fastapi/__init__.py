@@ -437,10 +437,6 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         )
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
-    def __del__(self):
-        # Best-effort cleanup; WeakSet clears references on GC automatically
-        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(self)
-
 
 def _get_route_details(scope):
     """
