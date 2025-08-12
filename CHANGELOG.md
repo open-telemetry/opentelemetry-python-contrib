@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
-  ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX), [#3683](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3683))
+  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688), [#3683](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3683))
 
 - `opentelemetry-instrumentation-fastapi`: fix wrapping of middlewares
   ([#3012](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3012))
