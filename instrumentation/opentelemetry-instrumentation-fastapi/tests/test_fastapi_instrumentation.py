@@ -1407,6 +1407,19 @@ class TestWrappedApplication(TestBase):
         )
 
 
+class TestFastAPIGarbageCollection(unittest.TestCase):
+    def test_fastapi_app_is_collected_after_instrument(self):
+        import gc
+        import weakref
+
+        app = fastapi.FastAPI()
+        otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+        app_ref = weakref.ref(app)
+        del app
+        gc.collect()
+        self.assertIsNone(app_ref())
+
+
 @patch.dict(
     "os.environ",
     {

@@ -359,8 +359,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app._is_instrumented_by_opentelemetry = False
 
         # Remove the app from the set of instrumented apps to prevent memory leaks
-        if app in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(app)
+        # Use discard to avoid KeyError if already GC'ed
+        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(app)
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -414,7 +414,10 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _http_capture_headers_sanitize_fields: list[str] | None = None
     _exclude_spans: list[Literal["receive", "send"]] | None = None
 
-    _instrumented_fastapi_apps = set()
+    # Track instrumented app instances using weak references to avoid GC leaks
+    from weakref import WeakSet as _WeakSet  # type: ignore
+
+    _instrumented_fastapi_apps: "_InstrumentedFastAPI._WeakSet" = _WeakSet()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
@@ -435,8 +438,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
     def __del__(self):
-        if self in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
+        # Best-effort cleanup; WeakSet clears references on GC automatically
+        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(self)
 
 
 def _get_route_details(scope):
