@@ -64,7 +64,9 @@ class ConverseStreamWrapper(ObjectProxy):
         self._response = {}
         self._message = None
         self._content_block = {}
+        self._tool_json_input_buf = ""
         self._record_message = False
+        self._ended = False
 
     def __iter__(self):
         try:
@@ -72,7 +74,7 @@ class ConverseStreamWrapper(ObjectProxy):
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
-            self._stream_error_callback(exc)
+            self._handle_stream_error(exc)
             raise
 
     def _process_event(self, event):
@@ -88,28 +90,40 @@ class ConverseStreamWrapper(ObjectProxy):
             # {'contentBlockStart': {'start': {'toolUse': {'toolUseId': 'id', 'name': 'func_name'}}, 'contentBlockIndex': 1}}
             start = event["contentBlockStart"].get("start", {})
             if "toolUse" in start:
-                tool_use = _decode_tool_use(start["toolUse"])
-                self._content_block = {"toolUse": tool_use}
+                self._content_block = {"toolUse": start["toolUse"]}
             return
 
         if "contentBlockDelta" in event:
             # {'contentBlockDelta': {'delta': {'text': "Hello"}, 'contentBlockIndex': 0}}
             # {'contentBlockDelta': {'delta': {'toolUse': {'input': '{"location":"Seattle"}'}}, 'contentBlockIndex': 1}}
+            # {'contentBlockDelta': {'delta': {'toolUse': {'input': 'a", "Yok'}}, 'contentBlockIndex': 1}}
             if self._record_message:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
                     self._content_block.setdefault("text", "")
                     self._content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
-                    tool_use = _decode_tool_use(delta["toolUse"])
-                    self._content_block["toolUse"].update(tool_use)
+                    if (
+                        input_buf := delta["toolUse"].get("input")
+                    ) is not None:
+                        self._tool_json_input_buf += input_buf
             return
 
         if "contentBlockStop" in event:
             # {'contentBlockStop': {'contentBlockIndex': 0}}
             if self._record_message:
+                if self._tool_json_input_buf:
+                    try:
+                        self._content_block["toolUse"]["input"] = json.loads(
+                            self._tool_json_input_buf
+                        )
+                    except json.DecodeError:
+                        self._content_block["toolUse"]["input"] = (
+                            self._tool_json_input_buf
+                        )
                 self._message["content"].append(self._content_block)
                 self._content_block = {}
+                self._tool_json_input_buf = ""
             return
 
         if "messageStop" in event:
@@ -133,10 +147,22 @@ class ConverseStreamWrapper(ObjectProxy):
 
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
-
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
 
             return
+
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._complete_stream(self._response)
+
+    def _complete_stream(self, response):
+        self._stream_done_callback(response, self._ended)
+        self._ended = True
+
+    def _handle_stream_error(self, exc):
+        self._stream_error_callback(exc, self._ended)
+        self._ended = True
 
 
 # pylint: disable=abstract-method
@@ -163,6 +189,20 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         self._content_block = {}
         self._tool_json_input_buf = ""
         self._record_message = False
+        self._ended = False
+
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._stream_done_callback(self._response, self._ended)
+
+    def _complete_stream(self, response):
+        self._stream_done_callback(response, self._ended)
+        self._ended = True
+
+    def _handle_stream_error(self, exc):
+        self._stream_error_callback(exc, self._ended)
+        self._ended = True
 
     def __iter__(self):
         try:
@@ -170,7 +210,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
-            self._stream_error_callback(exc)
+            self._handle_stream_error(exc)
             raise
 
     def _process_event(self, event):
@@ -213,7 +253,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             self._response["output"] = {
                 "message": {"content": [{"text": chunk["outputText"]}]}
             }
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
 
     def _process_amazon_nova_chunk(self, chunk):
         # pylint: disable=too-many-branches
@@ -283,7 +323,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
 
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
             return
 
     def _process_anthropic_claude_chunk(self, chunk):
@@ -355,7 +395,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._record_message = False
                 self._message = None
 
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
             return
 
 
@@ -382,7 +422,9 @@ def extract_tool_calls(
     tool_uses = [item["toolUse"] for item in content if "toolUse" in item]
     if not tool_uses:
         tool_uses = [
-            item for item in content if item.get("type") == "tool_use"
+            item
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "tool_use"
         ]
         tool_id_key = "id"
     else:

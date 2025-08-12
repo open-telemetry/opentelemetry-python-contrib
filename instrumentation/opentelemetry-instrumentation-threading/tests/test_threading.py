@@ -267,9 +267,10 @@ class TestThreading(TestBase):
         autospec=True,
     )
     def test_thread_pool_with_none_context_token(self, mock_detach: MagicMock):
-        with self.get_root_span(), ThreadPoolExecutor(
-            max_workers=1
-        ) as executor:
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_not_called()
@@ -284,9 +285,10 @@ class TestThreading(TestBase):
     )
     @patch("opentelemetry.context.detach", autospec=True)
     def test_threadpool_with_valid_context_token(self, mock_detach: MagicMock):
-        with self.get_root_span(), ThreadPoolExecutor(
-            max_workers=1
-        ) as executor:
+        with (
+            self.get_root_span(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_called_once()

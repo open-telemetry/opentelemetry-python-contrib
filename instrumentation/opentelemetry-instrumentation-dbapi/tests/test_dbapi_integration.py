@@ -21,6 +21,7 @@ from unittest import mock
 from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
@@ -240,6 +241,21 @@ class TestDBApiIntegration(TestBase):
         )
         cursor = mock_connection.cursor()
         cursor.executemany("Test query")
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with suppress_instrumentation():
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 

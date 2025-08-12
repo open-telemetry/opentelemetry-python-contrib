@@ -40,7 +40,6 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
 )
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
-    DependencyConflictError,
 )
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -1102,40 +1101,34 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
             [self._instrumentation_loaded_successfully_call()]
         )
 
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_with_old_fastapi_installed(self, mock_logger):  # pylint: disable=no-self-use
+    def test_instruments_with_old_fastapi_installed(
+        self, mock_logger, mock_dep
+    ):  # pylint: disable=no-self-use
         dependency_conflict = DependencyConflict("0.58", "0.57")
         mock_distro = Mock()
-        mock_distro.load_instrumentor.side_effect = DependencyConflictError(
-            dependency_conflict
-        )
+        mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
-        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
-        (ep,) = mock_distro.load_instrumentor.call_args.args
-        self.assertEqual(ep.name, "fastapi")
-        assert (
-            self._instrumentation_loaded_successfully_call()
-            not in mock_logger.debug.call_args_list
-        )
+        mock_distro.load_instrumentor.assert_not_called()
         mock_logger.debug.assert_has_calls(
             [self._instrumentation_failed_to_load_call(dependency_conflict)]
         )
 
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_without_fastapi_installed(self, mock_logger):  # pylint: disable=no-self-use
+    def test_instruments_without_fastapi_installed(
+        self, mock_logger, mock_dep
+    ):  # pylint: disable=no-self-use
         dependency_conflict = DependencyConflict("0.58", None)
         mock_distro = Mock()
-        mock_distro.load_instrumentor.side_effect = DependencyConflictError(
-            dependency_conflict
-        )
+        mock_dep.return_value = dependency_conflict
         _load_instrumentors(mock_distro)
-        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
-        (ep,) = mock_distro.load_instrumentor.call_args.args
-        self.assertEqual(ep.name, "fastapi")
-        assert (
-            self._instrumentation_loaded_successfully_call()
-            not in mock_logger.debug.call_args_list
-        )
+        mock_distro.load_instrumentor.assert_not_called()
         mock_logger.debug.assert_has_calls(
             [self._instrumentation_failed_to_load_call(dependency_conflict)]
         )

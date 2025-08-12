@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+import asyncio
 from unittest.mock import Mock, patch
 
+import tornado.websocket
 from http_server_mock import HttpServerMock
 from tornado.httpclient import HTTPClientError
 from tornado.testing import AsyncHTTPTestCase
@@ -30,7 +32,18 @@ from opentelemetry.instrumentation.tornado import (
     patch_handler_class,
     unpatch_handler_class,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_CLIENT_IP,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -146,13 +159,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
+                HTTP_METHOD: method,
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 201,
                 "tornado.handler": "tests.tornado_test_app.MainHandler",
             },
         )
@@ -164,9 +176,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/"),
-                SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_STATUS_CODE: 201,
+                HTTP_URL: self.get_url("/"),
+                HTTP_METHOD: method,
+                HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -224,13 +236,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: url,
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: url,
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 201,
                 "tornado.handler": f"tests.tornado_test_app.{handler_name}",
             },
         )
@@ -242,9 +253,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url(url),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
+                HTTP_URL: self.get_url(url),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 201,
             },
         )
 
@@ -263,13 +274,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/error",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/error",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 500,
                 "tornado.handler": "tests.tornado_test_app.BadHandler",
             },
         )
@@ -279,9 +289,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/error"),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_URL: self.get_url("/error"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 500,
             },
         )
 
@@ -298,13 +308,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/missing-url",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/missing-url",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 404,
                 "tornado.handler": "tornado.web.ErrorHandler",
             },
         )
@@ -314,9 +323,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/missing-url"),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_URL: self.get_url("/missing-url"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 404,
             },
         )
 
@@ -333,13 +342,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/raise_403",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 403,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/raise_403",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 403,
                 "tornado.handler": "tests.tornado_test_app.RaiseHTTPErrorHandler",
             },
         )
@@ -349,9 +357,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/raise_403"),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 403,
+                HTTP_URL: self.get_url("/raise_403"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 403,
             },
         )
 
@@ -378,13 +386,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/dyna",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 202,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/dyna",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 202,
                 "tornado.handler": "tests.tornado_test_app.DynamicHandler",
             },
         )
@@ -396,9 +403,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/dyna"),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 202,
+                HTTP_URL: self.get_url("/dyna"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 202,
             },
         )
 
@@ -419,13 +426,12 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             server,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/on_finish",
-                SpanAttributes.HTTP_CLIENT_IP: "127.0.0.1",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/on_finish",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 200,
                 "tornado.handler": "tests.tornado_test_app.FinishedHandler",
             },
         )
@@ -437,9 +443,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: self.get_url("/on_finish"),
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_URL: self.get_url("/on_finish"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -449,6 +455,53 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(auditor.context.trace_id, client.context.trace_id)
 
         self.assertEqual(auditor.kind, SpanKind.INTERNAL)
+
+    @tornado.testing.gen_test()
+    async def test_websockethandler(self):
+        ws_client = await tornado.websocket.websocket_connect(
+            f"ws://127.0.0.1:{self.get_http_port()}/echo_socket"
+        )
+
+        await ws_client.write_message("world")
+        resp = await ws_client.read_message()
+        self.assertEqual(resp, "hello world")
+
+        ws_client.close()
+        await asyncio.sleep(0.5)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 3)
+        close_span, msg_span, req_span = spans
+
+        self.assertEqual(req_span.name, "GET /echo_socket")
+        self.assertEqual(req_span.context.trace_id, msg_span.context.trace_id)
+        self.assertIsNone(req_span.parent)
+        self.assertEqual(req_span.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            req_span,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: f"127.0.0.1:{self.get_http_port()}",
+                HTTP_TARGET: "/echo_socket",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 101,
+                "tornado.handler": "tests.tornado_test_app.EchoWebSocketHandler",
+            },
+        )
+
+        self.assertEqual(msg_span.name, "audit_message")
+        self.assertFalse(msg_span.context.is_remote)
+        self.assertEqual(msg_span.kind, SpanKind.INTERNAL)
+        self.assertEqual(msg_span.parent.span_id, req_span.context.span_id)
+
+        self.assertEqual(close_span.name, "audit_on_close")
+        self.assertFalse(close_span.context.is_remote)
+        self.assertEqual(close_span.parent.span_id, req_span.context.span_id)
+        self.assertEqual(
+            close_span.context.trace_id, msg_span.context.trace_id
+        )
+        self.assertEqual(close_span.kind, SpanKind.INTERNAL)
 
     def test_exclude_lists(self):
         def test_excluded(path):
@@ -463,9 +516,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             self.assertSpanHasAttributes(
                 client,
                 {
-                    SpanAttributes.HTTP_URL: self.get_url(path),
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_URL: self.get_url(path),
+                    HTTP_METHOD: "GET",
+                    HTTP_STATUS_CODE: 200,
                 },
             )
             self.memory_exporter.clear()
@@ -496,8 +549,8 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_credential_removal(self):
-        app = HttpServerMock("test_credential_removal")
+    def test_remove_sensitive_params(self):
+        app = HttpServerMock("test_remove_sensitive_params")
 
         @app.route("/status/200")
         def index():
@@ -505,7 +558,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         with app.run("localhost", 5000):
             response = self.fetch(
-                "http://username:password@localhost:5000/status/200"
+                "http://username:password@localhost:5000/status/200?Signature=secret"
             )
         self.assertEqual(response.code, 200)
 
@@ -518,9 +571,9 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertSpanHasAttributes(
             client,
             {
-                SpanAttributes.HTTP_URL: "http://localhost:5000/status/200",
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_URL: "http://REDACTED:REDACTED@localhost:5000/status/200?Signature=REDACTED",
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -538,14 +591,13 @@ class TestTornadoInstrumentationWithXHeaders(TornadoTest):
         self.assertSpanHasAttributes(
             spans.by_name("GET /"),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_HOST: "127.0.0.1:"
-                + str(self.get_http_port()),
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_CLIENT_IP: "12.34.56.78",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/",
+                HTTP_CLIENT_IP: "12.34.56.78",
+                HTTP_STATUS_CODE: 201,
+                NET_PEER_IP: "127.0.0.1",
                 "tornado.handler": "tests.tornado_test_app.MainHandler",
             },
         )
