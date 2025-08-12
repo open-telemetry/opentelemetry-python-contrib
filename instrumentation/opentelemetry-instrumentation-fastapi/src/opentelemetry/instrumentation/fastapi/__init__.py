@@ -358,6 +358,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
+        # Remove the app from the set of instrumented apps to prevent memory leaks
+        if app in _InstrumentedFastAPI._instrumented_fastapi_apps:
+            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(app)
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
