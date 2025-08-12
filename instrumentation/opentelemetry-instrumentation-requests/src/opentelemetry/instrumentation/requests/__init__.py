@@ -232,9 +232,7 @@ def _instrument(
         method = request.method
         span_name = get_default_span_name(method)
         url = remove_url_credentials(request.url)
-        parsed_url = urlparse(url)
-        hostname = parsed_url.hostname
-        span_name = f"{span_name} {hostname}"
+        span_name = f"{span_name} {url}"
 
         span_attributes = {}
         _set_http_method(
