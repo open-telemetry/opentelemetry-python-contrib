@@ -14,7 +14,9 @@
 
 # pylint: disable=too-many-lines
 
+import gc as _gc
 import unittest
+import weakref as _weakref
 from contextlib import ExitStack
 from timeit import default_timer
 from unittest.mock import Mock, call, patch
@@ -1402,9 +1404,6 @@ class TestWrappedApplication(TestBase):
 
 class TestFastAPIGarbageCollection(unittest.TestCase):
     def test_fastapi_app_is_collected_after_instrument(self):
-        import gc as _gc
-        import weakref as _weakref
-
         app = fastapi.FastAPI()
         otel_fastapi.FastAPIInstrumentor().instrument_app(app)
         app_ref = _weakref.ref(app)
