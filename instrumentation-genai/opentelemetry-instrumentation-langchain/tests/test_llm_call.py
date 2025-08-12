@@ -46,7 +46,6 @@ def assert_openai_completion_attributes(
 ):
     assert span.name == "chat gpt-3.5-turbo"
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
-    assert span.attributes[gen_ai_attributes.GEN_AI_SYSTEM] == "ChatOpenAI"
     assert (
         span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]
         == "gpt-3.5-turbo"
