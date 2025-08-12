@@ -61,8 +61,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             parent_run_id=parent_run_id,
             request_model=request_model,
         )
-        name = serialized.get("name") or kwargs.get("name") or "ChatLLM"
-        span.set_attribute(GenAI.GEN_AI_SYSTEM, name)
 
         if invocation_params is not None:
             top_p = invocation_params.get("top_p")
