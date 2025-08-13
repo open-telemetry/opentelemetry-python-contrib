@@ -427,6 +427,20 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_no_op_tracer_provider(self):
+        FalconInstrumentor().uninstrument()
+
+        FalconInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_exclude_lists(self):
         self.client().simulate_get(path="/ping")
         span_list = self.memory_exporter.get_finished_spans()

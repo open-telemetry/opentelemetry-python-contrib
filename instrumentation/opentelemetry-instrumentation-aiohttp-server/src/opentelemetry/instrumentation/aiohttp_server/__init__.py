@@ -72,7 +72,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls, remove_url_credentials
+from opentelemetry.util.http import get_excluded_urls, redact_url
 
 _duration_attrs = [
     HTTP_METHOD,
@@ -148,6 +148,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         request.url.port,
         str(request.url),
     )
+
     query_string = request.query_string
     if query_string and http_url:
         if isinstance(query_string, bytes):
@@ -161,7 +162,7 @@ def collect_request_attributes(request: web.Request) -> Dict:
         HTTP_ROUTE: _get_view_func(request),
         HTTP_FLAVOR: f"{request.version.major}.{request.version.minor}",
         HTTP_TARGET: request.path,
-        HTTP_URL: remove_url_credentials(http_url),
+        HTTP_URL: redact_url(http_url),
     }
 
     http_method = request.method

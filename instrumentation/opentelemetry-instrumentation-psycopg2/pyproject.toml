@@ -26,12 +26,13 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.55b0.dev",
-  "opentelemetry-instrumentation-dbapi == 0.55b0.dev",
+  "opentelemetry-instrumentation == 0.58b0.dev",
+  "opentelemetry-instrumentation-dbapi == 0.58b0.dev",
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
   "psycopg2 >= 2.7.3.1",
   "psycopg2-binary >= 2.7.3.1",
 ]
