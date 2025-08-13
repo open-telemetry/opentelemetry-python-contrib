@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import types
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -50,9 +51,14 @@ class MockAsyncCursor:
         pass
 
     # pylint: disable=unused-argument, no-self-use
-    async def execute(self, query, params=None, throw_exception=False):
+    async def execute(
+        self, query, params=None, throw_exception=False, delay=0.0
+    ):
         if throw_exception:
             raise psycopg.Error("Test Exception")
+
+        if delay:
+            await asyncio.sleep(delay)
 
     # pylint: disable=unused-argument, no-self-use
     async def executemany(self, query, params=None, throw_exception=False):
@@ -490,5 +496,29 @@ class TestPostgresqlIntegrationAsync(
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_tracing_is_async(self):
+        PsycopgInstrumentor().instrument()
+
+        # before this async fix cursor.execute would take 14000 ns, delaying for
+        # 100,000ns
+        delay = 0.0001
+
+        async def test_async_connection():
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test", delay=delay)
+
+        await test_async_connection()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # duration is nanoseconds
+        duration = span.end_time - span.start_time
+        self.assertGreater(duration, delay * 1e9)
 
         PsycopgInstrumentor().uninstrument()
