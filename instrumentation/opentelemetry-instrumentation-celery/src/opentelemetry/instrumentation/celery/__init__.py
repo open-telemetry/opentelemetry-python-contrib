@@ -362,6 +362,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             self.task_id_to_start_time.get(task_id),
             attributes=metric_attributes,
         )
+        self.task_id_to_start_time.pop(task_id, None)
 
     def create_celery_metrics(self, meter) -> None:
         self.metrics = {
