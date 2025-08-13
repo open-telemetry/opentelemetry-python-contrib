@@ -86,6 +86,31 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Post Injection Hook
+*******************
+To customize headers after the current context is injected, you can provide a function that will be called with
+both the headers and request object.
+
+For example, to avoid propagating `tracestate`/`baggage` to non-allowed hosts while still creating a span:
+
+.. code:: python
+
+    allowed_hosts = frozenset(["my-company.com", "my-cloud-provider.com"])
+
+    def post_injection_hook(headers, request):
+        # Parse the domain from the request URL
+        parsed_url = urlparse(request.url)
+        request_host = parsed_url.hostname
+
+        # Remove headers if the host is NOT in the allowed list
+        if request_host not in allowed_hosts:
+            headers.pop("tracestate", None)
+            headers.pop("baggage", None)
+
+    RequestsInstrumentor().instrument(
+        post_injection_hook=post_injection_hook
+    )
+
 API
 ---
 """
@@ -156,6 +181,9 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
+_PostInjectionHookT = Optional[
+    Callable[[CaseInsensitiveDict[str], PreparedRequest], None]
+]
 
 
 def _set_http_status_code_attribute(
@@ -194,6 +222,7 @@ def _instrument(
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    post_injection_hook: _PostInjectionHookT = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -299,6 +328,9 @@ def _instrument(
 
             headers = get_or_create_headers()
             inject(headers)
+
+            if callable(post_injection_hook):
+                post_injection_hook(headers, request)
 
             with suppress_http_instrumentation():
                 start_time = default_timer()
@@ -450,6 +482,7 @@ class RequestsInstrumentor(BaseInstrumentor):
         duration_histogram_boundaries = kwargs.get(
             "duration_histogram_boundaries"
         )
+        post_injection_hook = kwargs.get("post_injection_hook")
         meter = get_meter(
             __name__,
             __version__,
@@ -486,6 +519,7 @@ class RequestsInstrumentor(BaseInstrumentor):
                 else parse_excluded_urls(excluded_urls)
             ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
+            post_injection_hook=post_injection_hook,
         )
 
     def _uninstrument(self, **kwargs: Any):
