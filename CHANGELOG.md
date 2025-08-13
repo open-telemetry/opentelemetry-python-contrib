@@ -35,8 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - infra(ci): Fix git pull failures in core contrib test
   ([#3357](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3357))
 
-## Version 1.34.0/0.55b0 (2025-06-04)
-
 ### Added
 
 - `opentelemetry-instrumentation-psycopg2` Utilize instruments-any functionality.

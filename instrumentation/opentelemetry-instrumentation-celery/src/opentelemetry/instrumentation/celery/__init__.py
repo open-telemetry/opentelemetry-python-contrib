@@ -60,7 +60,7 @@ API
 """
 
 import logging
-import time
+from timeit import default_timer
 from typing import Collection, Iterable
 
 from billiard import VERSION
@@ -126,7 +126,7 @@ class TaskDurationTracker:
         self.tracker = {}
 
     def record_start(self, key, step):
-        self.tracker.setdefault(key, {})[step] = time.perf_counter()
+        self.tracker.setdefault(key, {})[step] = default_timer()
 
     def record_finish(self, key, metric_name, attributes):
         try:
@@ -138,7 +138,7 @@ class TaskDurationTracker:
             logger.warning("Failed to record %s for task %s", metric_name, key)
 
     def _time_elapsed(self, key, step):
-        end_time = time.perf_counter()
+        end_time = default_timer()
         try:
             start_time = self.tracker.get(key, {}).pop(step)
             time_elapsed = end_time - start_time
