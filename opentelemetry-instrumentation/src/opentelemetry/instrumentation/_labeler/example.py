@@ -50,7 +50,3 @@ def user_profile(user_id):
     })
     
     return f"Got user profile for {user_id}"
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000, host='0.0.0.0')

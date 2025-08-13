@@ -374,10 +374,6 @@ def _rewrapped_app(
         attributes = otel_wsgi.collect_request_attributes(
             wrapped_app_environ, sem_conv_opt_in_mode
         )
-        # Enhance attributes with custom labeler attributes
-        attributes = enhance_metric_attributes(
-            attributes, wrapped_app_environ, "request"
-        )
         active_requests_count_attrs = (
             otel_wsgi._parse_active_request_count_attrs(
                 attributes,
@@ -445,6 +441,11 @@ def _rewrapped_app(
                     request_route
                 )
 
+            # Enhance attributes with any custom labeler attributes
+            duration_attrs_old = enhance_metric_attributes(
+                duration_attrs_old
+            )
+
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
             )
@@ -455,6 +456,11 @@ def _rewrapped_app(
 
             if request_route:
                 duration_attrs_new[HTTP_ROUTE] = str(request_route)
+
+            # Enhance attributes with any custom labeler attributes
+            duration_attrs_new = enhance_metric_attributes(
+                duration_attrs_new
+            )
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
@@ -485,7 +491,7 @@ def _wrapped_before_request(
         )
         # Enhance attributes with custom labeler attributes
         attributes = enhance_metric_attributes(
-            attributes, flask_request_environ, "request"
+            attributes
         )
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
