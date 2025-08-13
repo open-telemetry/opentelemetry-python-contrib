@@ -24,11 +24,13 @@ _labeler_context: contextvars.ContextVar[Optional["Labeler"]] = contextvars.Cont
 
 class Labeler:
     """
-    Labeler is used to allow instrumented web applications to add custom attributes
-    to the metrics recorded by OpenTelemetry instrumentations.
+    Labeler can be used by instrumented code or distro to add custom attributes
+    to the metrics recorded by those OpenTelemetry instrumentations reading it.
     
-    This class is thread-safe and can be used to accumulate custom attributes
-    that will be included in OpenTelemetry metrics for the current request.
+    Labeler accumulates custom attributes for OpenTelemetry metrics for the
+    current request in context.
+
+    This feature is experimental and unstable.
     """
 
     def __init__(self):
@@ -134,10 +136,13 @@ def enhance_metric_attributes(
     max_attr_value_length: int = 100
 ) -> Dict[str, Any]:
     """
-    Enhance metric attributes with custom labeler attributes.
-    
-    This function combines base metric attributes with custom attributes
+    This function combines base_attributes with custom attributes
     from the current labeler.
+    
+    Custom attributes are skipped if they would override base_attributes,
+    exceed max_custom_attrs number, or are not simple types (str, int, float,
+    bool). If custom attributes have string values exceeding the
+    max_attr_value_length, then they are truncated.
     
     Args:
         base_attributes: The base attributes for the metric
@@ -146,34 +151,27 @@ def enhance_metric_attributes(
         max_attr_value_length: Maximum length for string attribute values
         
     Returns:
-        Enhanced attributes dictionary combining base and custom attributes
+        Dictionary combining base and custom attributes
     """
     if not include_custom:
         return base_attributes.copy()
     
-    # Get custom attributes from labeler
     custom_attributes = get_labeler_attributes()
     if not custom_attributes:
         return base_attributes.copy()
     
-    # Create enhanced attributes dict
     enhanced_attributes = base_attributes.copy()
     
-    # Filter and add custom attributes with safety checks
     added_count = 0
     for key, value in custom_attributes.items():
         if added_count >= max_custom_attrs:
             break
-            
-        # Skip attributes that would override base attributes
         if key in base_attributes:
             continue
-            
-        # Apply value length limit for strings
+
         if isinstance(value, str) and len(value) > max_attr_value_length:
             value = value[:max_attr_value_length]
-        
-        # Only include safe attribute types
+
         if isinstance(value, (str, int, float, bool)):
             enhanced_attributes[key] = value
             added_count += 1
