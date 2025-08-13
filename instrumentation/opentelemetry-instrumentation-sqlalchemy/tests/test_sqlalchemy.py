@@ -23,7 +23,11 @@ from sqlalchemy import (
 )
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import (
+    EngineTracer,
+    SQLAlchemyInstrumentor,
+)
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.semconv.trace import SpanAttributes
@@ -630,3 +634,63 @@ class TestSqlalchemyInstrumentation(TestBase):
         gc.collect()
         assert callback.call_count == 5
         assert len(EngineTracer._remove_event_listener_params) == 0
+
+    def test_suppress_instrumentation_create_engine(self):
+        SQLAlchemyInstrumentor().instrument()
+
+        from sqlalchemy import create_engine
+
+        with suppress_instrumentation():
+            engine = create_engine("sqlite:///:memory:")
+
+        self.assertTrue(not isinstance(engine, EngineTracer))
+
+    @pytest.mark.skipif(
+        not sqlalchemy.__version__.startswith("1.4"),
+        reason="only run async tests for 1.4",
+    )
+    def test_suppress_instrumentation_create_async_engine(self):
+        async def run():
+            SQLAlchemyInstrumentor().instrument()
+            from sqlalchemy.ext.asyncio import (  # pylint: disable-all
+                create_async_engine,
+            )
+
+            with suppress_instrumentation():
+                engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+            self.assertTrue(not isinstance(engine, EngineTracer))
+
+        asyncio.get_event_loop().run_until_complete(run())
+
+    def test_suppress_instrumentation_connect(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+
+        with suppress_instrumentation():
+            with engine.connect():
+                pass
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation_cursor_and_metric(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+        )
+
+        with suppress_instrumentation():
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1 + 1;")).fetchall()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        metric_list = self.get_sorted_metrics()
+        self.assertEqual(len(metric_list), 0)

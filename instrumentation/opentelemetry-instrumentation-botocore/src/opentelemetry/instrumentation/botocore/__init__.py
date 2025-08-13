@@ -78,38 +78,6 @@ for example:
     )
     ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
-
-Extensions
-----------
-
-The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
-for the following AWS services:
-
-- Bedrock Runtime
-- DynamoDB
-- Lambda
-- SNS
-- SQS
-
-Bedrock Runtime
-***************
-
-This extension implements the GenAI semantic conventions for the following API calls:
-
-- Converse
-- ConverseStream
-- InvokeModel
-- InvokeModelWithResponseStream
-
-For the Converse and ConverseStream APIs tracing, events and metrics are implemented.
-
-For the InvokeModel and InvokeModelWithResponseStream APIs tracing, events and metrics implemented only for a subset of
-the available models, namely:
-- Amazon Titan models
-- Amazon Nova models
-- Anthropic Claude
-
-There is no support for tool calls with Amazon Models for the InvokeModel and InvokeModelWithResponseStream APIs.
 """
 
 import logging
@@ -131,6 +99,7 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.package import _instruments
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -140,6 +109,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_REGION,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
@@ -307,8 +279,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
             SpanAttributes.RPC_SYSTEM: "aws-api",
             SpanAttributes.RPC_SERVICE: call_context.service_id,
             SpanAttributes.RPC_METHOD: call_context.operation,
-            # TODO: update when semantic conventions exist
-            "aws.region": call_context.region,
+            CLOUD_REGION: call_context.region,
+            **get_server_attributes(call_context.endpoint_url),
         }
 
         _safe_invoke(extension.extract_attributes, attributes)

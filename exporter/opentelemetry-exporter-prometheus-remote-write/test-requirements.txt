@@ -1,9 +1,7 @@
 asgiref==3.8.1
 certifi==2024.7.4
 charset-normalizer==3.3.2
-# We can drop this after bumping baseline to pypy-39
-cramjam==2.1.0; platform_python_implementation == "PyPy"
-cramjam==2.8.4; platform_python_implementation != "PyPy"
+cramjam==2.8.4
 Deprecated==1.2.14
 idna==3.7
 iniconfig==2.0.0

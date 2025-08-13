@@ -52,6 +52,7 @@ from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
+    is_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -498,6 +499,11 @@ class CursorTracer(Generic[CursorT]):
             args_list = list(args)
             self._capture_mysql_version(cursor)
             commenter_data = self._get_commenter_data()
+            # Convert sql statement to string, handling  psycopg2.sql.Composable object
+            if hasattr(args_list[0], "as_string"):
+                args_list[0] = args_list[0].as_string(cursor.connection)
+
+            args_list[0] = str(args_list[0])
             statement = _add_sql_comment(args_list[0], **commenter_data)
             args_list[0] = statement
             args = tuple(args_list)
@@ -556,6 +562,9 @@ class CursorTracer(Generic[CursorT]):
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
+        if not is_instrumentation_enabled():
+            return query_method(*args, **kwargs)
+
         name = self.get_operation_name(cursor, args)
         if not name:
             name = (

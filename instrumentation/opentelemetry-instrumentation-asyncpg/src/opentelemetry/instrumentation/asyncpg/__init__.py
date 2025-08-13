@@ -19,16 +19,31 @@ This library allows tracing PostgreSQL queries made by the
 Usage
 -----
 
+Start PostgreSQL:
+
+::
+
+    docker run -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DATABASE=database -p 5432:5432 postgres
+
+Run instrumented code:
+
 .. code-block:: python
 
+    import asyncio
     import asyncpg
     from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
-    conn = await asyncpg.connect(user='user', password='password',
-                                 database='database', host='127.0.0.1')
-    values = await conn.fetch('''SELECT 42;''')
+
+    async def main():
+        conn = await asyncpg.connect(user='user', password='password')
+
+        await conn.fetch('''SELECT 42;''')
+
+        await conn.close()
+
+    asyncio.run(main())
 
 API
 ---
@@ -45,10 +60,18 @@ from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import (
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
     DbSystemValues,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+    NET_TRANSPORT,
     NetTransportValues,
-    SpanAttributes,
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
@@ -56,9 +79,7 @@ from opentelemetry.trace.status import Status, StatusCode
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
     """Get network and database attributes from connection."""
-    span_attributes = {
-        SpanAttributes.DB_SYSTEM: DbSystemValues.POSTGRESQL.value
-    }
+    span_attributes = {DB_SYSTEM: DbSystemValues.POSTGRESQL.value}
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
     # https://github.com/MagicStack/asyncpg/blob/master/asyncpg/connection.py#L68
@@ -66,28 +87,24 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     params = getattr(connection, "_params", None)
     dbname = getattr(params, "database", None)
     if dbname:
-        span_attributes[SpanAttributes.DB_NAME] = dbname
+        span_attributes[DB_NAME] = dbname
     user = getattr(params, "user", None)
     if user:
-        span_attributes[SpanAttributes.DB_USER] = user
+        span_attributes[DB_USER] = user
 
     # connection contains _addr attribute which is either a host/port tuple, or unix socket string
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        span_attributes[SpanAttributes.NET_PEER_NAME] = addr[0]
-        span_attributes[SpanAttributes.NET_PEER_PORT] = addr[1]
-        span_attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.IP_TCP.value
-        )
+        span_attributes[NET_PEER_NAME] = addr[0]
+        span_attributes[NET_PEER_PORT] = addr[1]
+        span_attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
     elif isinstance(addr, str):
-        span_attributes[SpanAttributes.NET_PEER_NAME] = addr
-        span_attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.OTHER.value
-        )
+        span_attributes[NET_PEER_NAME] = addr
+        span_attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
 
     if query is not None:
-        span_attributes[SpanAttributes.DB_STATEMENT] = query
+        span_attributes[DB_STATEMENT] = query
 
     if parameters is not None and len(parameters) > 0:
         span_attributes["db.statement.parameters"] = str(parameters)

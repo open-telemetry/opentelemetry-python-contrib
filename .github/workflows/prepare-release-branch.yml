@@ -6,6 +6,9 @@ on:
         description: "Pre-release version number? (e.g. 1.9.0rc2)"
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   prereqs:
     runs-on: ubuntu-latest
@@ -38,6 +41,9 @@ jobs:
   create-pull-request-against-release-branch:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating and editing pull requests
     steps:
       - uses: actions/checkout@v4
 
@@ -93,24 +99,42 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request against the release branch
+        id: create_release_branch_pr
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Prepare release ${STABLE_VERSION}/${UNSTABLE_VERSION}"
-          branch="opentelemetrybot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+          branch="otelbot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
-          gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
+          pr_url=$(gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
                        --body "$message." \
                        --head $branch \
-                       --base $RELEASE_BRANCH_NAME
+                       --base $RELEASE_BRANCH_NAME)
+          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+
+      - name: Add prepare-release label to PR
+        if: steps.create_release_branch_pr.outputs.pr_url != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ steps.create_release_branch_pr.outputs.pr_url }}  --add-label "prepare-release"
 
   create-pull-request-against-main:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating and editing pull requests
     steps:
       - uses: actions/checkout@v4
 
@@ -178,18 +202,33 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token-main
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request against main
+        id: create_main_pr
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token-main.outputs.token }}
         run: |
           message="Update version to ${STABLE_NEXT_VERSION}/${UNSTABLE_NEXT_VERSION}"
           body="Update version to \`${STABLE_NEXT_VERSION}/${UNSTABLE_NEXT_VERSION}\`."
-          branch="opentelemetrybot/update-version-to-${STABLE_NEXT_VERSION}-${UNSTABLE_NEXT_VERSION}"
+          branch="otelbot/update-version-to-${STABLE_NEXT_VERSION}-${UNSTABLE_NEXT_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
-          gh pr create --title "$message" \
+          pr_url=$(gh pr create --title "$message" \
                        --body "$body" \
                        --head $branch \
-                       --base main
+                       --base main)
+          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+
+      - name: Add prepare-release label to PR
+        if: steps.create_main_pr.outputs.pr_url != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ steps.create_main_pr.outputs.pr_url }}  --add-label "prepare-release"

@@ -27,10 +27,7 @@ header = """
 | --------------- | ------------------ | --------------- | -------------- |"""
 
 
-def main():
-    root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    base_instrumentation_path = os.path.join(root_path, "instrumentation")
-
+def main(base_instrumentation_path):
     table = [header]
     for instrumentation in sorted(os.listdir(base_instrumentation_path)):
         instrumentation_path = os.path.join(
@@ -61,11 +58,16 @@ def main():
         with open(version_filename, encoding="utf-8") as fh:
             exec(fh.read(), pkg_info)
 
-        instruments = pkg_info["_instruments"]
+        instruments_and = pkg_info.get("_instruments", ())
+        # _instruments_any is an optional field that can be used instead of or in addition to _instruments. While _instruments is a list of dependencies, all of which are expected by the instrumentation, _instruments_any is a list any of which but not all are expected.
+        instruments_any = pkg_info.get("_instruments_any", ())
         supports_metrics = pkg_info.get("_supports_metrics")
         semconv_status = pkg_info.get("_semconv_status")
-        if not instruments:
-            instruments = (name,)
+        instruments_all = ()
+        if not instruments_and and not instruments_any:
+            instruments_all = (name,)
+        else:
+            instruments_all = tuple(instruments_and + instruments_any)
 
         if not semconv_status:
             semconv_status = "development"
@@ -73,7 +75,7 @@ def main():
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments)} | {metric_column} | {semconv_status}"
+            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments_all)} | {metric_column} | {semconv_status}"
         )
 
     with open(
@@ -85,4 +87,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    instrumentation_path = os.path.join(root_path, "instrumentation")
+    main(instrumentation_path)
+    genai_instrumentation_path = os.path.join(
+        root_path, "instrumentation-genai"
+    )
+    main(genai_instrumentation_path)

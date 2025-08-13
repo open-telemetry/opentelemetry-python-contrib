@@ -9,8 +9,23 @@ on:
     - 'release/*'
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
-  CORE_REPO_SHA: main
+  # Set the SHA to the branch name if the PR has a label 'prepare-release' or 'backport' otherwise, set it to 'main'
+  # For PRs you can change the inner fallback ('main')
+  # For pushes you change the outer fallback ('main')
+  # The logic below is used during releases and depends on having an equivalent branch name in the core repo.
+  CORE_REPO_SHA: ${{ github.event_name == 'pull_request' && (
+       contains(github.event.pull_request.labels.*.name, 'prepare-release') && github.event.pull_request.head.ref ||
+       contains(github.event.pull_request.labels.*.name, 'backport') && github.event.pull_request.base.ref ||
+       'main'
+    ) || 'main' }}
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -19,6 +34,7 @@ jobs:
   lint-instrumentation-openai-v2:
     name: instrumentation-openai-v2
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -37,6 +53,7 @@ jobs:
   lint-instrumentation-vertexai:
     name: instrumentation-vertexai
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -55,6 +72,7 @@ jobs:
   lint-instrumentation-google-genai:
     name: instrumentation-google-genai
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -70,9 +88,10 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-google-genai
 
-  lint-resource-detector-container:
-    name: resource-detector-container
+  lint-resource-detector-containerid:
+    name: resource-detector-containerid
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -86,11 +105,12 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e lint-resource-detector-container
+        run: tox -e lint-resource-detector-containerid
 
   lint-resource-detector-azure:
     name: resource-detector-azure
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -109,6 +129,7 @@ jobs:
   lint-sdk-extension-aws:
     name: sdk-extension-aws
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -127,6 +148,7 @@ jobs:
   lint-distro:
     name: distro
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -145,6 +167,7 @@ jobs:
   lint-opentelemetry-instrumentation:
     name: opentelemetry-instrumentation
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -163,6 +186,7 @@ jobs:
   lint-instrumentation-aiohttp-client:
     name: instrumentation-aiohttp-client
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -181,6 +205,7 @@ jobs:
   lint-instrumentation-aiohttp-server:
     name: instrumentation-aiohttp-server
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -199,6 +224,7 @@ jobs:
   lint-instrumentation-aiopg:
     name: instrumentation-aiopg
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -217,6 +243,7 @@ jobs:
   lint-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -235,6 +262,7 @@ jobs:
   lint-instrumentation-botocore:
     name: instrumentation-botocore
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -253,6 +281,7 @@ jobs:
   lint-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -271,6 +300,7 @@ jobs:
   lint-instrumentation-django:
     name: instrumentation-django
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -289,6 +319,7 @@ jobs:
   lint-instrumentation-dbapi:
     name: instrumentation-dbapi
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -307,6 +338,7 @@ jobs:
   lint-instrumentation-boto:
     name: instrumentation-boto
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -322,9 +354,29 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-boto
 
+  lint-instrumentation-asyncclick:
+    name: instrumentation-asyncclick
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-asyncclick
+
   lint-instrumentation-click:
     name: instrumentation-click
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -343,6 +395,7 @@ jobs:
   lint-instrumentation-elasticsearch:
     name: instrumentation-elasticsearch
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -361,6 +414,7 @@ jobs:
   lint-instrumentation-falcon:
     name: instrumentation-falcon
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -379,6 +433,7 @@ jobs:
   lint-instrumentation-fastapi:
     name: instrumentation-fastapi
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -397,6 +452,7 @@ jobs:
   lint-instrumentation-flask:
     name: instrumentation-flask
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -415,6 +471,7 @@ jobs:
   lint-instrumentation-urllib:
     name: instrumentation-urllib
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -433,6 +490,7 @@ jobs:
   lint-instrumentation-urllib3:
     name: instrumentation-urllib3
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -451,6 +509,7 @@ jobs:
   lint-instrumentation-requests:
     name: instrumentation-requests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -469,6 +528,7 @@ jobs:
   lint-instrumentation-starlette:
     name: instrumentation-starlette
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -487,6 +547,7 @@ jobs:
   lint-instrumentation-jinja2:
     name: instrumentation-jinja2
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -505,6 +566,7 @@ jobs:
   lint-instrumentation-logging:
     name: instrumentation-logging
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -523,6 +585,7 @@ jobs:
   lint-exporter-richconsole:
     name: exporter-richconsole
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -541,6 +604,7 @@ jobs:
   lint-exporter-prometheus-remote-write:
     name: exporter-prometheus-remote-write
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -559,6 +623,7 @@ jobs:
   lint-instrumentation-mysql:
     name: instrumentation-mysql
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -577,6 +642,7 @@ jobs:
   lint-instrumentation-mysqlclient:
     name: instrumentation-mysqlclient
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -595,6 +661,7 @@ jobs:
   lint-instrumentation-psycopg2:
     name: instrumentation-psycopg2
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -613,6 +680,7 @@ jobs:
   lint-instrumentation-psycopg:
     name: instrumentation-psycopg
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -631,6 +699,7 @@ jobs:
   lint-instrumentation-pymemcache:
     name: instrumentation-pymemcache
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -649,6 +718,7 @@ jobs:
   lint-instrumentation-pymongo:
     name: instrumentation-pymongo
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -667,6 +737,7 @@ jobs:
   lint-instrumentation-pymysql:
     name: instrumentation-pymysql
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -685,6 +756,7 @@ jobs:
   lint-instrumentation-pymssql:
     name: instrumentation-pymssql
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -703,6 +775,7 @@ jobs:
   lint-instrumentation-pyramid:
     name: instrumentation-pyramid
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -721,6 +794,7 @@ jobs:
   lint-instrumentation-asgi:
     name: instrumentation-asgi
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -739,6 +813,7 @@ jobs:
   lint-instrumentation-asyncpg:
     name: instrumentation-asyncpg
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -757,6 +832,7 @@ jobs:
   lint-instrumentation-sqlite3:
     name: instrumentation-sqlite3
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -775,6 +851,7 @@ jobs:
   lint-instrumentation-wsgi:
     name: instrumentation-wsgi
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -793,6 +870,7 @@ jobs:
   lint-instrumentation-grpc:
     name: instrumentation-grpc
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -811,6 +889,7 @@ jobs:
   lint-instrumentation-sqlalchemy:
     name: instrumentation-sqlalchemy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -829,6 +908,7 @@ jobs:
   lint-instrumentation-redis:
     name: instrumentation-redis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -847,6 +927,7 @@ jobs:
   lint-instrumentation-remoulade:
     name: instrumentation-remoulade
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -865,6 +946,7 @@ jobs:
   lint-instrumentation-celery:
     name: instrumentation-celery
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -883,6 +965,7 @@ jobs:
   lint-instrumentation-system-metrics:
     name: instrumentation-system-metrics
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -901,6 +984,7 @@ jobs:
   lint-instrumentation-threading:
     name: instrumentation-threading
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -919,6 +1003,7 @@ jobs:
   lint-instrumentation-tornado:
     name: instrumentation-tornado
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -937,6 +1022,7 @@ jobs:
   lint-instrumentation-tortoiseorm:
     name: instrumentation-tortoiseorm
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -955,6 +1041,7 @@ jobs:
   lint-instrumentation-httpx:
     name: instrumentation-httpx
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -973,6 +1060,7 @@ jobs:
   lint-util-http:
     name: util-http
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -991,6 +1079,7 @@ jobs:
   lint-propagator-aws-xray:
     name: propagator-aws-xray
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1009,6 +1098,7 @@ jobs:
   lint-propagator-ot-trace:
     name: propagator-ot-trace
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1027,6 +1117,7 @@ jobs:
   lint-instrumentation-sio-pika:
     name: instrumentation-sio-pika
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1045,6 +1136,7 @@ jobs:
   lint-instrumentation-aio-pika:
     name: instrumentation-aio-pika
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1063,6 +1155,7 @@ jobs:
   lint-instrumentation-aiokafka:
     name: instrumentation-aiokafka
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1081,6 +1174,7 @@ jobs:
   lint-instrumentation-kafka-python:
     name: instrumentation-kafka-python
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1099,6 +1193,7 @@ jobs:
   lint-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1117,6 +1212,7 @@ jobs:
   lint-instrumentation-asyncio:
     name: instrumentation-asyncio
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1135,6 +1231,7 @@ jobs:
   lint-instrumentation-cassandra:
     name: instrumentation-cassandra
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
@@ -1153,6 +1250,7 @@ jobs:
   lint-processor-baggage:
     name: processor-baggage
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
