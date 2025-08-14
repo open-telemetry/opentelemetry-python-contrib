@@ -301,13 +301,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
                             func(span, *args, **kwargs)
                         except Exception as exc:  # pylint: disable=W0718
                             span.record_exception(exc)
-                            # span.set_status(Status(StatusCode.ERROR, str(exc)))
-                            # if span.is_recording():
-                            #     span.set_attribute(
-                            #         ErrorAttributes.ERROR_TYPE, type(exc).__qualname__
-                            #     )
-                            # if span.record_exception
-                            # span.end()
 
                     return wrapper
 
