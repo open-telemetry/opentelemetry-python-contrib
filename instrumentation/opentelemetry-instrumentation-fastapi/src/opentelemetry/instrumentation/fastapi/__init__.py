@@ -210,11 +210,7 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import (
-    TracerProvider,
-    get_current_span,
-    get_tracer,
-)
+from opentelemetry.trace import TracerProvider, get_current_span, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -247,7 +243,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[Literal["receive", "send"]] | None = None,
-    ):
+    ):  # pylint: disable=too-many-locals
         """Instrument an uninstrumented FastAPI application.
 
         Args:
