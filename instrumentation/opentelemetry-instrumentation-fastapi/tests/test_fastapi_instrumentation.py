@@ -59,6 +59,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_PORT,
 )
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_TYPE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -1981,3 +1984,22 @@ class TestFailsafeHooks(TestBase):
         )
 
         self.assertEqual(200, resp.status_code)
+
+    def test_failsafe_error_recording(self):
+        """Failing hooks must record the exception on the span"""
+        self.client.get(
+            "/foobar",
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+        span = spans[0]
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )

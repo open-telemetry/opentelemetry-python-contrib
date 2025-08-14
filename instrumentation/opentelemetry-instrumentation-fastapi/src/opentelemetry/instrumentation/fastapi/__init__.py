@@ -209,7 +209,7 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import TracerProvider, get_tracer
+from opentelemetry.trace import Span, TracerProvider, get_tracer
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -296,11 +296,18 @@ class FastAPIInstrumentor(BaseInstrumentor):
             def build_middleware_stack(self: Starlette) -> ASGIApp:
                 def failsafe(func):
                     @functools.wraps(func)
-                    def wrapper(*args, **kwargs):
+                    def wrapper(span: Span, *args, **kwargs):
                         try:
-                            func(*args, **kwargs)
-                        except Exception:  # pylint: disable=W0718
-                            pass
+                            func(span, *args, **kwargs)
+                        except Exception as exc:  # pylint: disable=W0718
+                            span.record_exception(exc)
+                            # span.set_status(Status(StatusCode.ERROR, str(exc)))
+                            # if span.is_recording():
+                            #     span.set_attribute(
+                            #         ErrorAttributes.ERROR_TYPE, type(exc).__qualname__
+                            #     )
+                            # if span.record_exception
+                            # span.end()
 
                     return wrapper
 
