@@ -1,4 +1,4 @@
----
+--- 
 <p align="center">
   <strong>
     <a href="https://opentelemetry.io/docs/instrumentation/python/getting-started/">Getting Started<a/>
