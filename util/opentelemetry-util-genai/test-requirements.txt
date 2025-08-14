@@ -1,2 +1,2 @@
-pytest>=8
+pytest==7.4.4
 -e opentelemetry-instrumentation
