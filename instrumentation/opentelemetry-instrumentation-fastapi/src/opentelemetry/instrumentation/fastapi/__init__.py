@@ -297,10 +297,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 def failsafe(func):
                     @functools.wraps(func)
                     def wrapper(span: Span, *args, **kwargs):
-                        try:
-                            func(span, *args, **kwargs)
-                        except Exception as exc:  # pylint: disable=W0718
-                            span.record_exception(exc)
+                        if func is not None:
+                            try:
+                                func(span, *args, **kwargs)
+                            except Exception as exc:  # pylint: disable=W0718
+                                span.record_exception(exc)
 
                     return wrapper
 
