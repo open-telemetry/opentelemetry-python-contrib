@@ -189,6 +189,7 @@ from typing import Collection, Literal
 
 import fastapi
 from starlette.applications import Starlette
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -210,7 +211,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.trace import (
-    Span,
     TracerProvider,
     get_current_span,
     get_tracer,
@@ -300,28 +300,17 @@ class FastAPIInstrumentor(BaseInstrumentor):
             # exceptions from user-provided hooks of tearing through, we wrap
             # them to return without failure unconditionally.
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                def failsafe(func):
-                    @functools.wraps(func)
-                    def wrapper(span: Span, *args, **kwargs):
-                        if func is not None:
-                            try:
-                                func(span, *args, **kwargs)
-                            except Exception as exc:  # pylint: disable=broad-exception-caught
-                                span.record_exception(exc)
-
-                    return wrapper
-
                 inner_server_error_middleware: ASGIApp = (  # type: ignore
                     self._original_build_middleware_stack()  # type: ignore
                 )
 
-                return OpenTelemetryMiddleware(
+                otel_middleware = OpenTelemetryMiddleware(
                     inner_server_error_middleware,
                     excluded_urls=excluded_urls,
                     default_span_details=_get_default_span_details,
-                    server_request_hook=failsafe(server_request_hook),
-                    client_request_hook=failsafe(client_request_hook),
-                    client_response_hook=failsafe(client_response_hook),
+                    server_request_hook=server_request_hook,
+                    client_request_hook=client_request_hook,
+                    client_response_hook=client_response_hook,
                     # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
                     tracer=tracer,
                     meter=meter,
@@ -330,6 +319,24 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
                     exclude_spans=exclude_spans,
                 )
+
+                # Wrap in an outer layer of ServerErrorMiddleware so that any exceptions raised in OpenTelemetryMiddleware
+                # are handled.
+                # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
+                # to impact the user's application just because we wrapped the middlewares in this order.
+                if isinstance(
+                    inner_server_error_middleware, ServerErrorMiddleware
+                ):  # usually true
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware,
+                    )
+                else:
+                    # Something else seems to have patched things, or maybe Starlette changed.
+                    # Just create a default ServerErrorMiddleware.
+                    outer_server_error_middleware = ServerErrorMiddleware(
+                        app=otel_middleware
+                    )
+                return outer_server_error_middleware
 
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
