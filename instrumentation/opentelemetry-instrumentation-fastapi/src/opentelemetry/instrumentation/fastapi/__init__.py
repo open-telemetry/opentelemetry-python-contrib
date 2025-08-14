@@ -190,7 +190,7 @@ from typing import Collection, Literal
 import fastapi
 from starlette.applications import Starlette
 from starlette.routing import Match
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -209,7 +209,13 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import Span, TracerProvider, get_tracer
+from opentelemetry.trace import (
+    Span,
+    TracerProvider,
+    get_current_span,
+    get_tracer,
+)
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -300,7 +306,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                         if func is not None:
                             try:
                                 func(span, *args, **kwargs)
-                            except Exception as exc:  # pylint: disable=W0718
+                            except Exception as exc:  # pylint: disable=broad-exception-caught
                                 span.record_exception(exc)
 
                     return wrapper
@@ -332,6 +338,28 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 ),
                 app,
             )
+
+            class ExceptionHandlerMiddleware:
+                def __init__(self, app):
+                    self.app = app
+
+                async def __call__(
+                    self, scope: Scope, receive: Receive, send: Send
+                ) -> None:
+                    try:
+                        await self.app(scope, receive, send)
+                    except Exception as exc:  # pylint: disable=broad-exception-caught
+                        span = get_current_span()
+                        span.record_exception(exc)
+                        span.set_status(
+                            Status(
+                                status_code=StatusCode.ERROR,
+                                description=f"{type(exc).__name__}: {exc}",
+                            )
+                        )
+                        raise
+
+            app.add_middleware(ExceptionHandlerMiddleware)
 
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:

@@ -73,6 +73,7 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -1947,6 +1948,34 @@ class TestTraceableExceptionHandling(TestBase):
             pass
 
         self.assertEqual(self.executed, 1)
+
+    def test_exception_span_recording(self):
+        """Exception are always recorded in the active span"""
+
+        @self.app.get("/foobar")
+        async def _():
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:  # pylint: disable=W0718
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+        span = spans[2]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
 
 
 class TestFailsafeHooks(TestBase):
