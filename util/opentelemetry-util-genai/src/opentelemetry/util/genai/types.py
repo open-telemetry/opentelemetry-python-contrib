@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from uuid import UUID
 
-from .data import ChatGeneration, Message, ToolFunction, ToolOutput
+from .data import ChatGeneration, Message
 
 
 @dataclass
@@ -32,22 +32,6 @@ class LLMInvocation:
     end_time: float = None
     messages: List[Message] = field(default_factory=list)
     chat_generations: List[ChatGeneration] = field(default_factory=list)
-    tool_functions: List[ToolFunction] = field(default_factory=list)
     attributes: dict = field(default_factory=dict)
     span_id: int = 0
     trace_id: int = 0
-
-
-@dataclass
-class ToolInvocation:
-    """
-    Represents a single Tool call invocation.
-    """
-
-    run_id: UUID
-    output: Optional[ToolOutput] = None
-    parent_run_id: Optional[UUID] = None
-    start_time: float = field(default_factory=time.time)
-    end_time: float = None
-    input_str: Optional[str] = None
-    attributes: dict = field(default_factory=dict)
