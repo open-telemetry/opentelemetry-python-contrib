@@ -22,7 +22,10 @@ from unittest.mock import Mock, call, patch
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from starlette.routing import Match
+from starlette.types import Receive, Scope, Send
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
 from opentelemetry import trace
@@ -38,9 +41,7 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
-from opentelemetry.instrumentation.dependencies import (
-    DependencyConflict,
-)
+from opentelemetry.instrumentation.dependencies import DependencyConflict
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -123,6 +124,23 @@ _recommended_attrs_both["http.server.active_requests"].extend(
 )
 
 
+class CustomMiddleware:
+    def __init__(self, app: fastapi.FastAPI) -> None:
+        self.app = app
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        scope["nonstandard_field"] = "here"
+        await self.app(scope, receive, send)
+
+
+class CustomRoute(APIRoute):
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        assert "nonstandard_field" in scope
+        return super().matches(scope)
+
+
 class TestBaseFastAPI(TestBase):
     def _create_app(self):
         app = self._create_fastapi_app()
@@ -183,6 +201,7 @@ class TestBaseFastAPI(TestBase):
         self._instrumentor = otel_fastapi.FastAPIInstrumentor()
         self._app = self._create_app()
         self._app.add_middleware(HTTPSRedirectMiddleware)
+        self._app.add_middleware(CustomMiddleware)
         self._client = TestClient(self._app, base_url="https://testserver:443")
         # run the lifespan, initialize the middleware stack
         # this is more in-line with what happens in a real application when the server starts up
@@ -202,6 +221,7 @@ class TestBaseFastAPI(TestBase):
     def _create_fastapi_app():
         app = fastapi.FastAPI()
         sub_app = fastapi.FastAPI()
+        custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
         async def _():
@@ -226,6 +246,12 @@ class TestBaseFastAPI(TestBase):
         @app.get("/error")
         async def _():
             raise UnhandledException("This is an unhandled exception")
+
+        @custom_router.get("/success")
+        async def _():
+            return None
+
+        app.include_router(custom_router, prefix="/custom-router")
 
         app.mount("/sub", app=sub_app)
 
@@ -303,6 +329,14 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
         )
+
+    def test_custom_api_router(self):
+        """
+        This test is to ensure that custom API routers the OpenTelemetryMiddleware does not cause issues with
+        custom API routers that depend on non-standard fields on the ASGI scope.
+        """
+        resp = self._client.get("/custom-router/success")
+        self.assertEqual(resp.status_code, 200)
 
 
 class TestBaseAutoFastAPI(TestBaseFastAPI):
@@ -988,6 +1022,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
     def _create_fastapi_app():
         app = fastapi.FastAPI()
         sub_app = fastapi.FastAPI()
+        custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
         async def _():
@@ -1012,6 +1047,12 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         @app.get("/error")
         async def _():
             raise UnhandledException("This is an unhandled exception")
+
+        @custom_router.get("/success")
+        async def _():
+            return None
+
+        app.include_router(custom_router, prefix="/custom-router")
 
         app.mount("/sub", app=sub_app)
 
