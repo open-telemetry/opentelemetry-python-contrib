@@ -209,7 +209,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             try:
                 yield
             finally:
-                detach(token)
+                if token:
+                    detach(token)
         else:
             yield
 

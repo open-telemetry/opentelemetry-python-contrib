@@ -180,8 +180,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 Boto3SQSInstrumentor.current_span_related_to_token
                 == started_span
             ):
-                context.detach(Boto3SQSInstrumentor.current_context_token)
-                Boto3SQSInstrumentor.current_context_token = None
+                if Boto3SQSInstrumentor.current_context_token:
+                    context.detach(Boto3SQSInstrumentor.current_context_token)
+                    Boto3SQSInstrumentor.current_context_token = None
             started_span.end()
 
     @staticmethod

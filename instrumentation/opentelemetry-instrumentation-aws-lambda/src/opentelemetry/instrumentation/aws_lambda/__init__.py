@@ -384,7 +384,8 @@ def _instrument(
                             result.get("statusCode"),
                         )
         finally:
-            context_api.detach(token)
+            if token:
+                context_api.detach(token)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
