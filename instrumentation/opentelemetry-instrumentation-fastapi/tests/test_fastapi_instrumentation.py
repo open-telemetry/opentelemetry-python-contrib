@@ -59,6 +59,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_PORT,
 )
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_TYPE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -70,6 +73,7 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -1877,3 +1881,154 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
+
+
+class TestTraceableExceptionHandling(TestBase):
+    """Tests to ensure FastAPI exception handlers are only executed once and with a valid context"""
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = fastapi.FastAPI()
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        self.client = TestClient(self.app)
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.executed = 0
+        self.request_trace_id = None
+        self.error_trace_id = None
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_error_handler_context(self):
+        """OTEL tracing contexts must be available during error handler execution"""
+
+        @self.app.exception_handler(Exception)
+        async def _(*_):
+            self.error_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+
+        @self.app.get("/foobar")
+        async def _():
+            self.request_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:  # pylint: disable=W0718
+            pass
+
+        self.assertIsNotNone(self.request_trace_id)
+        self.assertEqual(self.request_trace_id, self.error_trace_id)
+
+    def test_error_handler_side_effects(self):
+        """FastAPI default exception handlers (aka error handlers) must be executed exactly once per exception"""
+
+        @self.app.exception_handler(Exception)
+        async def _(*_):
+            self.executed += 1
+
+        @self.app.get("/foobar")
+        async def _():
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:  # pylint: disable=W0718
+            pass
+
+        self.assertEqual(self.executed, 1)
+
+    def test_exception_span_recording(self):
+        """Exception are always recorded in the active span"""
+
+        @self.app.get("/foobar")
+        async def _():
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:  # pylint: disable=W0718
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+        span = spans[2]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
+
+
+class TestFailsafeHooks(TestBase):
+    """Tests to ensure FastAPI instrumentation hooks don't tear through"""
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = fastapi.FastAPI()
+
+        @self.app.get("/foobar")
+        async def _():
+            return {"message": "Hello World"}
+
+        def failing_hook(*_):
+            raise UnhandledException("Hook Exception")
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app,
+            server_request_hook=failing_hook,
+            client_request_hook=failing_hook,
+            client_response_hook=failing_hook,
+        )
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_failsafe_hooks(self):
+        """Crashing hooks must not tear through"""
+        resp = self.client.get(
+            "/foobar",
+        )
+
+        self.assertEqual(200, resp.status_code)
+
+    def test_failsafe_error_recording(self):
+        """Failing hooks must record the exception on the span"""
+        self.client.get(
+            "/foobar",
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+        span = spans[0]
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )

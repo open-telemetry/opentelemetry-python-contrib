@@ -191,7 +191,7 @@ import fastapi
 from starlette.applications import Starlette
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -210,7 +210,8 @@ from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.trace import TracerProvider, get_tracer
+from opentelemetry.trace import TracerProvider, get_current_span, get_tracer
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     get_excluded_urls,
     parse_excluded_urls,
@@ -242,7 +243,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[Literal["receive", "send"]] | None = None,
-    ):
+    ):  # pylint: disable=too-many-locals
         """Instrument an uninstrumented FastAPI application.
 
         Args:
@@ -289,15 +290,16 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
-            # Instead of using `app.add_middleware` we monkey patch `build_middleware_stack` to insert our middleware
-            # as the outermost middleware.
-            # Otherwise `OpenTelemetryMiddleware` would have unhandled exceptions tearing through it and would not be able
-            # to faithfully record what is returned to the client since it technically cannot know what `ServerErrorMiddleware` is going to do.
-
+            # In order to make traces available at any stage of the request
+            # processing - including exception handling - we wrap ourselves as
+            # the new, outermost middleware. However in order to prevent
+            # exceptions from user-provided hooks of tearing through, we wrap
+            # them to return without failure unconditionally.
             def build_middleware_stack(self: Starlette) -> ASGIApp:
                 inner_server_error_middleware: ASGIApp = (  # type: ignore
                     self._original_build_middleware_stack()  # type: ignore
                 )
+
                 otel_middleware = OpenTelemetryMiddleware(
                     inner_server_error_middleware,
                     excluded_urls=excluded_urls,
@@ -313,6 +315,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
                     exclude_spans=exclude_spans,
                 )
+
                 # Wrap in an outer layer of ServerErrorMiddleware so that any exceptions raised in OpenTelemetryMiddleware
                 # are handled.
                 # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
@@ -338,6 +341,28 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 ),
                 app,
             )
+
+            class ExceptionHandlerMiddleware:
+                def __init__(self, app):
+                    self.app = app
+
+                async def __call__(
+                    self, scope: Scope, receive: Receive, send: Send
+                ) -> None:
+                    try:
+                        await self.app(scope, receive, send)
+                    except Exception as exc:  # pylint: disable=broad-exception-caught
+                        span = get_current_span()
+                        span.record_exception(exc)
+                        span.set_status(
+                            Status(
+                                status_code=StatusCode.ERROR,
+                                description=f"{type(exc).__name__}: {exc}",
+                            )
+                        )
+                        raise
+
+            app.add_middleware(ExceptionHandlerMiddleware)
 
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
