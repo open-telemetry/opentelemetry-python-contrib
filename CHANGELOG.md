@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-celery` Fix a memory leak where a reference to a task identifier is kept indefinitely
+  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed

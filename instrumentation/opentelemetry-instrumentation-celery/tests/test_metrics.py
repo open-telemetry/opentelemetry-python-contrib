@@ -42,6 +42,8 @@ class TestMetrics(TestBase):
         task_runtime_estimated = (default_timer() - start_time) * 1000
 
         metrics = self.get_metrics()
+        self.assertEqual(CeleryInstrumentor().task_id_to_start_time, {})
+
         CeleryInstrumentor().uninstrument()
         self.assertEqual(len(metrics), 1)
 
