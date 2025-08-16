@@ -14,7 +14,9 @@
 
 # pylint: disable=too-many-lines
 
+import gc as _gc
 import unittest
+import weakref as _weakref
 from contextlib import ExitStack
 from timeit import default_timer
 from unittest.mock import Mock, call, patch
@@ -1398,6 +1400,16 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(
             parent_span.context.span_id, span_list[3].context.span_id
         )
+
+
+class TestFastAPIGarbageCollection(unittest.TestCase):
+    def test_fastapi_app_is_collected_after_instrument(self):
+        app = fastapi.FastAPI()
+        otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+        app_ref = _weakref.ref(app)
+        del app
+        _gc.collect()
+        self.assertIsNone(app_ref())
 
 
 @patch.dict(
