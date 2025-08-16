@@ -11,12 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
+  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
-
-- `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
-  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688), [#3683](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3683))
 
 - `opentelemetry-instrumentation`: Fix dependency conflict detection when instrumented packages are not installed by moving check back to before instrumentors are loaded. Add "instruments-any" feature for instrumentations that target multiple packages.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
@@ -1763,8 +1763,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/195))
 - `opentelemetry-instrumentation-dbapi` Stop capturing query parameters by default
   ([#156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/156))
-- `opentelemetry-instrumentation-asyncpg` Update asyncpg instrumentation to follow semantic conventions
-  ([#188](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/188))
+- `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
+  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688))
 - `opentelemetry-instrumentation-grpc` Update protobuf versions
   ([#1356](https://github.com/open-telemetry/opentelemetry-python/pull/1356))
 
