@@ -179,10 +179,9 @@ class SpanMetricEventExporter(BaseExporter):
         state = self.spans[run_id]
         for child_id in state.children:
             child_state = self.spans.get(child_id)
-            if child_state and child_state.span._end_time is None:
+            if child_state:
                 child_state.span.end()
-        if state.span._end_time is None:
-            state.span.end()
+        state.span.end()
 
     def init(self, invocation: LLMInvocation):
         if (
@@ -481,9 +480,8 @@ class SpanMetricExporter(BaseExporter):
 
             for index, message in enumerate(invocation.messages):
                 content = message.content
-                message_type = message.type
                 span.set_attribute(f"gen_ai.prompt.{index}.content", content)
-                span.set_attribute(f"gen_ai.prompt.{index}.role", message_type)
+                span.set_attribute(f"gen_ai.prompt.{index}.role", message.type)
 
             for index, chat_generation in enumerate(
                 invocation.chat_generations

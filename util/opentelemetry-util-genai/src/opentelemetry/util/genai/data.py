@@ -6,7 +6,6 @@ class Message:
     content: str
     type: str
     name: str
-    tool_call_id: str
 
 
 @dataclass
