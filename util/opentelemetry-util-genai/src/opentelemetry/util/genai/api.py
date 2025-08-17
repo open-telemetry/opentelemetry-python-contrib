@@ -18,7 +18,6 @@ from typing import List, Optional
 from uuid import UUID
 
 from opentelemetry._events import get_event_logger
-from opentelemetry._logs import get_logger
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
@@ -26,6 +25,8 @@ from opentelemetry.trace import get_tracer
 from .data import ChatGeneration, Error, Message
 from .exporters import SpanMetricEventExporter, SpanMetricExporter
 from .types import LLMInvocation
+
+# TODO: Get the tool version for emitting spans, use GenAI Utils for now
 from .version import __version__
 
 
@@ -60,20 +61,11 @@ class TelemetryClient:
             schema_url=Schemas.V1_28_0.value,
         )
 
-        logger_provider = kwargs.get("logger_provider")
-        self._logger = get_logger(
-            __name__,
-            __version__,
-            logger_provider=logger_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
-
         self._exporter = (
             SpanMetricEventExporter(
                 tracer=self._tracer,
                 meter=self._meter,
                 event_logger=self._event_logger,
-                logger=self._event_logger,
             )
             if exporter_type_full
             else SpanMetricExporter(tracer=self._tracer, meter=self._meter)
@@ -97,7 +89,7 @@ class TelemetryClient:
         )
         with self._lock:
             self._llm_registry[invocation.run_id] = invocation
-        self._exporter.init_llm(invocation)
+        self._exporter.init(invocation)
 
     def stop_llm(
         self,
@@ -110,7 +102,7 @@ class TelemetryClient:
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         invocation.attributes.update(attributes)
-        self._exporter.export_llm(invocation)
+        self._exporter.export(invocation)
         return invocation
 
     def fail_llm(
@@ -119,8 +111,8 @@ class TelemetryClient:
         with self._lock:
             invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
-        invocation.attributes.update(attributes)
-        self._exporter.error_llm(error, invocation)
+        invocation.attributes.update(**attributes)
+        self._exporter.error(error, invocation)
         return invocation
 
 
