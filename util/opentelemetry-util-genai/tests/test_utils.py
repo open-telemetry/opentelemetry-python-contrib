@@ -24,8 +24,17 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
-from opentelemetry.util.genai.types import ContentCapturingMode
 from opentelemetry.util.genai.utils import get_content_capturing_mode
+from opentelemetry.util.genai.client import (
+    llm_start,
+    ContentCapturingMode,
+    llm_stop,
+)
+from opentelemetry.util.genai.types import (
+    ChatGeneration,
+    Message,
+)
+
 
 from uuid import uuid4
 
@@ -37,7 +46,6 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-
 
 
 def patch_env_vars(stability_mode, content_capturing):
