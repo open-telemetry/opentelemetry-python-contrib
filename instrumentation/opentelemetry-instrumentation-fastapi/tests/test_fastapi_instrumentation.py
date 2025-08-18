@@ -1982,6 +1982,9 @@ class TestTraceableExceptionHandling(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 3)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /foobar http send")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
         span = spans[2]
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(len(span.events), 1)
