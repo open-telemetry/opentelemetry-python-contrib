@@ -127,22 +127,22 @@ def _get_metric_attributes(
     return attributes
 
 
-class BaseExporter:
+class BaseEmitter:
     """
-    Abstract base for exporters mapping GenAI types -> OpenTelemetry.
+    Abstract base for emitters mapping GenAI types -> OpenTelemetry.
     """
 
     def init(self, invocation: LLMInvocation):
         raise NotImplementedError
 
-    def export(self, invocation: LLMInvocation):
+    def emit(self, invocation: LLMInvocation):
         raise NotImplementedError
 
     def error(self, error: Error, invocation: LLMInvocation):
         raise NotImplementedError
 
 
-class SpanMetricEventExporter(BaseExporter):
+class SpanMetricEventEmitter(BaseEmitter):
     """
     Emits spans, metrics and events for a full telemetry picture.
     """
@@ -202,7 +202,7 @@ class SpanMetricEventExporter(BaseExporter):
                 )
             )
 
-    def export(self, invocation: LLMInvocation):
+    def emit(self, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
         span = self._start_span(
             name=f"{system}.chat",
@@ -361,7 +361,7 @@ class SpanMetricEventExporter(BaseExporter):
             )
 
 
-class SpanMetricExporter(BaseExporter):
+class SpanMetricEmitter(BaseEmitter):
     """
     Emits only spans and metrics (no events).
     """
@@ -409,7 +409,7 @@ class SpanMetricExporter(BaseExporter):
                 invocation.run_id
             )
 
-    def export(self, invocation: LLMInvocation):
+    def emit(self, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
         span = self._start_span(
             name=f"{system}.chat",

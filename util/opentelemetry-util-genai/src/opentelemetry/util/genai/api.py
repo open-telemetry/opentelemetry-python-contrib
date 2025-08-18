@@ -23,7 +23,7 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .data import ChatGeneration, Error, Message
-from .exporters import SpanMetricEventExporter, SpanMetricExporter
+from .emitters import SpanMetricEmitter, SpanMetricEventEmitter
 from .types import LLMInvocation
 
 # TODO: Get the tool version for emitting spans, use GenAI Utils for now
@@ -32,11 +32,11 @@ from .version import __version__
 
 class TelemetryClient:
     """
-    High-level client managing GenAI invocation lifecycles and exporting
+    High-level client managing GenAI invocation lifecycles and emitting
     them as spans, metrics, and events.
     """
 
-    def __init__(self, exporter_type_full: bool = True, **kwargs):
+    def __init__(self, emitter_type_full: bool = True, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
         self._tracer = get_tracer(
             __name__,
@@ -61,14 +61,14 @@ class TelemetryClient:
             schema_url=Schemas.V1_28_0.value,
         )
 
-        self._exporter = (
-            SpanMetricEventExporter(
+        self._emitter = (
+            SpanMetricEventEmitter(
                 tracer=self._tracer,
                 meter=self._meter,
                 event_logger=self._event_logger,
             )
-            if exporter_type_full
-            else SpanMetricExporter(tracer=self._tracer, meter=self._meter)
+            if emitter_type_full
+            else SpanMetricEmitter(tracer=self._tracer, meter=self._meter)
         )
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
@@ -89,7 +89,7 @@ class TelemetryClient:
         )
         with self._lock:
             self._llm_registry[invocation.run_id] = invocation
-        self._exporter.init(invocation)
+        self._emitter.init(invocation)
 
     def stop_llm(
         self,
@@ -102,7 +102,7 @@ class TelemetryClient:
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         invocation.attributes.update(attributes)
-        self._exporter.export(invocation)
+        self._emitter.emit(invocation)
         return invocation
 
     def fail_llm(
@@ -112,7 +112,7 @@ class TelemetryClient:
             invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.attributes.update(**attributes)
-        self._exporter.error(error, invocation)
+        self._emitter.error(error, invocation)
         return invocation
 
 
@@ -121,12 +121,12 @@ _default_client: TelemetryClient | None = None
 
 
 def get_telemetry_client(
-    exporter_type_full: bool = True, **kwargs
+    emitter_type_full: bool = True, **kwargs
 ) -> TelemetryClient:
     global _default_client
     if _default_client is None:
         _default_client = TelemetryClient(
-            exporter_type_full=exporter_type_full, **kwargs
+            emitter_type_full=emitter_type_full, **kwargs
         )
     return _default_client
 
