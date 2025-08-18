@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
+  ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
+
+### Added
+
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 

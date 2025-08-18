@@ -490,7 +490,8 @@ async def _create_consumer_span(
                 await async_consume_hook(span, record, args, kwargs)
         except Exception as hook_exception:  # pylint: disable=W0703
             _LOG.exception(hook_exception)
-        context.detach(token)
+        if token:
+            context.detach(token)
 
     return span
 
