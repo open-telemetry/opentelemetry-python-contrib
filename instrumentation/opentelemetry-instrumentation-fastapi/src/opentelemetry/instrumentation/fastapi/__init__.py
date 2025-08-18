@@ -327,6 +327,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 app,
             )
 
+            # Define an additional middleware for exception handling that gets
+            # added as a regular user middleware.
+            # Normally, `opentelemetry.trace.use_span` covers the recording of
+            # exceptions into the active span, but because of order of
+            # middleware execution, that doesn't work so we have to do it in an
+            # inner middleware.
             class ExceptionHandlerMiddleware:
                 def __init__(self, app):
                     self.app = app
