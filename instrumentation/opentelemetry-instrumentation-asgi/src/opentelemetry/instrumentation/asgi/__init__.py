@@ -648,13 +648,15 @@ class OpenTelemetryMiddleware:
         )
 
         def failsafe(func):
+            if func is None:
+                return None
+
             @wraps(func)
             def wrapper(span: Span, *args, **kwargs):
-                if func is not None:
-                    try:
-                        func(span, *args, **kwargs)
-                    except Exception as exc:  # pylint: disable=broad-exception-caught
-                        span.record_exception(exc)
+                try:
+                    func(span, *args, **kwargs)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    span.record_exception(exc)
 
             return wrapper
 
