@@ -1929,6 +1929,22 @@ class TestTraceableExceptionHandling(TestBase):
         self.assertIsNotNone(self.request_trace_id)
         self.assertEqual(self.request_trace_id, self.error_trace_id)
 
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            len(span.events), 2
+        )  # The other span is a `TypeError` from the exception handler not returning a proper response, that's expected
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
+
     def test_error_handler_side_effects(self):
         """FastAPI default exception handlers (aka error handlers) must be executed exactly once per exception"""
 
