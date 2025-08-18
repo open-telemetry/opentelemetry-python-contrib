@@ -21,7 +21,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
@@ -38,9 +38,7 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
-from opentelemetry.instrumentation.dependencies import (
-    DependencyConflict,
-)
+from opentelemetry.instrumentation.dependencies import DependencyConflict
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -1911,6 +1909,7 @@ class TestTraceableExceptionHandling(TestBase):
             self.error_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
+            return PlainTextResponse("", status_code=500)
 
         @self.app.get("/foobar")
         async def _():
@@ -1931,12 +1930,12 @@ class TestTraceableExceptionHandling(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
+        self.assertEqual(len(spans), 3)
+        span = spans[2]
+        self.assertEqual(span.name, "GET /foobar")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            len(span.events), 2
-        )  # The other span is a `TypeError` from the exception handler not returning a proper response, that's expected
+        self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
         assert event.attributes is not None
