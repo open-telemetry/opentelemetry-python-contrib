@@ -136,7 +136,7 @@ For more information about the approver role, see the [community repository](htt
 - [Alex Boten](https://github.com/codeboten)
 - [Diego Hurtado](https://github.com/ocelotl)
 - [Owais Lone](https://github.com/owais)
-- [Shalev Roda](https://github.com/shalevr), Cisco
+- [Shalev Roda](https://github.com/shalevr)
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi)
 
 For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
