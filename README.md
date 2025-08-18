@@ -116,7 +116,6 @@ Meeting notes are available as a public [Google doc](https://docs.google.com/doc
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Leighton Chen](https://github.com/lzchen), Microsoft
 - [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
-- [Shalev Roda](https://github.com/shalevr), Cisco
 
 For more information about the maintainer role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#maintainer).
 
@@ -137,6 +136,7 @@ For more information about the approver role, see the [community repository](htt
 - [Alex Boten](https://github.com/codeboten)
 - [Diego Hurtado](https://github.com/ocelotl)
 - [Owais Lone](https://github.com/owais)
+- [Shalev Roda](https://github.com/shalevr)
 - [Yusuke Tsutsumi](https://github.com/toumorokoshi)
 
 For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
