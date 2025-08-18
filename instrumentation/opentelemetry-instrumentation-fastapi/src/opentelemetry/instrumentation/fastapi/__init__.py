@@ -291,12 +291,77 @@ class FastAPIInstrumentor(BaseInstrumentor):
             )
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                inner_server_error_middleware: ASGIApp = (  # type: ignore
+                # Define an additional middleware for exception handling that gets
+                # added as a regular user middleware.
+                # Normally, `opentelemetry.trace.use_span` covers the recording of
+                # exceptions into the active span, but `OpenTelemetryMiddleware`
+                # ends the span too early before the exception can be recorded.
+                class ExceptionHandlerMiddleware:
+                    def __init__(self, app):
+                        self.app = app
+
+                    async def __call__(
+                        self, scope: Scope, receive: Receive, send: Send
+                    ) -> None:
+                        try:
+                            await self.app(scope, receive, send)
+                        except Exception as exc:  # pylint: disable=broad-exception-caught
+                            span = get_current_span()
+                            span.record_exception(exc)
+                            span.set_status(
+                                Status(
+                                    status_code=StatusCode.ERROR,
+                                    description=f"{type(exc).__name__}: {exc}",
+                                )
+                            )
+                            raise
+
+                # For every possible use case of error handling, exception
+                # handling, trace availability in exception handlers and
+                # automatic exception recording to work, we need to make a
+                # series of wrapping and re-wrapping middlewares.
+
+                # First, grab the original middleware stack from Starlette. It
+                # comprises a stack of
+                # `ServerErrorMiddleware` -> [user defined middlewares] -> `ExceptionMiddleware`
+                inner_server_error_middleware: ServerErrorMiddleware = (  # type: ignore
                     self._original_build_middleware_stack()  # type: ignore
                 )
 
+                if not isinstance(
+                    inner_server_error_middleware, ServerErrorMiddleware
+                ):
+                    # Oops, something changed about how Starlette creates middleware stacks
+                    _logger.error(
+                        "Cannot instrument FastAPI as the expected middleware stack has changed"
+                    )
+                    return inner_server_error_middleware
+
+                # We take [user defined middlewares] -> `ExceptionHandlerMiddleware`
+                # out of the outermost `ServerErrorMiddleware` and instead pass
+                # it to our own `ExceptionHandlerMiddleware`
+                exception_middleware = ExceptionHandlerMiddleware(
+                    inner_server_error_middleware.app
+                )
+
+                # Now, we create a new `ServerErrorMiddleware` that wraps
+                # `ExceptionHandlerMiddleware` but otherwise uses the same
+                # original `handler` and debug setting. The end result is a
+                # middleware stack that's identical to the original stack except
+                # all user middlewares are covered by our
+                # `ExceptionHandlerMiddleware`.
+                error_middleware = ServerErrorMiddleware(
+                    app=exception_middleware,
+                    handler=inner_server_error_middleware.handler,
+                    debug=inner_server_error_middleware.debug,
+                )
+
+                # Finally, we wrap the stack above in our actual OTEL
+                # middleware. As a result, an active tracing context exists for
+                # every use case of user-defined error and exception handlers as
+                # well as automatic recording of exceptions in active spans.
                 otel_middleware = OpenTelemetryMiddleware(
-                    inner_server_error_middleware,
+                    error_middleware,
                     excluded_urls=excluded_urls,
                     default_span_details=_get_default_span_details,
                     server_request_hook=server_request_hook,
@@ -311,10 +376,14 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     exclude_spans=exclude_spans,
                 )
 
-                # Wrap in an outer layer of ServerErrorMiddleware so that any exceptions raised in OpenTelemetryMiddleware
-                # are handled.
-                # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
-                # to impact the user's application just because we wrapped the middlewares in this order.
+                # Ultimately, wrap everything in another default
+                # `ServerErrorMiddleware` (w/o user handlers) so that any
+                # exceptions raised in `OpenTelemetryMiddleware` are handled.
+                #
+                # This should not happen unless there is a bug in
+                # OpenTelemetryMiddleware, but if there is we don't want that to
+                # impact the user's application just because we wrapped the
+                # middlewares in this order.
                 return ServerErrorMiddleware(
                     app=otel_middleware,
                 )
@@ -326,33 +395,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 ),
                 app,
             )
-
-            # Define an additional middleware for exception handling that gets
-            # added as a regular user middleware.
-            # Normally, `opentelemetry.trace.use_span` covers the recording of
-            # exceptions into the active span, but `OpenTelemetryMiddleware`
-            # ends the span too early before the exception can be recorded.
-            class ExceptionHandlerMiddleware:
-                def __init__(self, app):
-                    self.app = app
-
-                async def __call__(
-                    self, scope: Scope, receive: Receive, send: Send
-                ) -> None:
-                    try:
-                        await self.app(scope, receive, send)
-                    except Exception as exc:  # pylint: disable=broad-exception-caught
-                        span = get_current_span()
-                        span.record_exception(exc)
-                        span.set_status(
-                            Status(
-                                status_code=StatusCode.ERROR,
-                                description=f"{type(exc).__name__}: {exc}",
-                            )
-                        )
-                        raise
-
-            app.add_middleware(ExceptionHandlerMiddleware)
 
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:

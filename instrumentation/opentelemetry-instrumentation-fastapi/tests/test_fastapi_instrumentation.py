@@ -1965,10 +1965,44 @@ class TestTraceableExceptionHandling(TestBase):
         self.assertEqual(self.executed, 1)
 
     def test_exception_span_recording(self):
-        """Exception are always recorded in the active span"""
+        """Exceptions are always recorded in the active span"""
 
         @self.app.get("/foobar")
         async def _():
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except Exception:  # pylint: disable=W0718
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 3)
+        span = spans[2]
+        self.assertEqual(span.name, "GET /foobar")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
+
+    def test_middleware_exceptions(self):
+        """Exceptions from user middlewares are recorded in the active span"""
+
+        @self.app.get("/foobar")
+        async def _():
+            return PlainTextResponse("Hello World")
+
+        @self.app.middleware("http")
+        async def _(*_):
             raise UnhandledException("Test Exception")
 
         try:
