@@ -290,11 +290,6 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
-            # In order to make traces available at any stage of the request
-            # processing - including exception handling - we wrap ourselves as
-            # the new, outermost middleware. However in order to prevent
-            # exceptions from user-provided hooks of tearing through, we wrap
-            # them to return without failure unconditionally.
             def build_middleware_stack(self: Starlette) -> ASGIApp:
                 inner_server_error_middleware: ASGIApp = (  # type: ignore
                     self._original_build_middleware_stack()  # type: ignore
@@ -320,19 +315,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # are handled.
                 # This should not happen unless there is a bug in OpenTelemetryMiddleware, but if there is we don't want that
                 # to impact the user's application just because we wrapped the middlewares in this order.
-                if isinstance(
-                    inner_server_error_middleware, ServerErrorMiddleware
-                ):  # usually true
-                    outer_server_error_middleware = ServerErrorMiddleware(
-                        app=otel_middleware,
-                    )
-                else:
-                    # Something else seems to have patched things, or maybe Starlette changed.
-                    # Just create a default ServerErrorMiddleware.
-                    outer_server_error_middleware = ServerErrorMiddleware(
-                        app=otel_middleware
-                    )
-                return outer_server_error_middleware
+                return ServerErrorMiddleware(
+                    app=otel_middleware,
+                )
 
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
