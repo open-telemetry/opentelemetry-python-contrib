@@ -959,16 +959,24 @@ class TestSystemMetrics(TestBase):
             expected_gc_count,
         )
 
-    @mock.patch("gc.get_count")
+    @mock.patch("gc.get_stats")
     @skipIf(
         python_implementation().lower() == "pypy", "not supported for pypy"
     )
-    def test_runtime_get_gc_collections(self, mock_gc_get_count):
-        mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
+    def test_runtime_get_gc_collections(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
         expected_gc_collections = [
-            _SystemMetricsResult({"generation": "0"}, 1),
-            _SystemMetricsResult({"generation": "1"}, 2),
-            _SystemMetricsResult({"generation": "2"}, 3),
+            _SystemMetricsResult({"generation": "0"}, 10),
+            _SystemMetricsResult({"generation": "1"}, 20),
+            _SystemMetricsResult({"generation": "2"}, 30),
         ]
         self._test_metrics(
             "cpython.gc.collections",
