@@ -291,8 +291,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
             )
 
             def build_middleware_stack(self: Starlette) -> ASGIApp:
-                # Define an additional middleware for exception handling that gets
-                # added as a regular user middleware.
+                # Define an additional middleware for exception handling
                 # Normally, `opentelemetry.trace.use_span` covers the recording of
                 # exceptions into the active span, but `OpenTelemetryMiddleware`
                 # ends the span too early before the exception can be recorded.
