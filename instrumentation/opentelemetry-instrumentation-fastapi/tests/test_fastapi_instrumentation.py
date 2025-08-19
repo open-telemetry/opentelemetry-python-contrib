@@ -1904,7 +1904,8 @@ class TestTraceableExceptionHandling(TestBase):
             otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
 
     def test_error_handler_context(self):
-        """OTEL tracing contexts must be available during error handler execution"""
+        """OTEL tracing contexts must be available during error handler
+        execution, and handlers must only be executed once"""
 
         status_code = 501
 
@@ -1913,6 +1914,7 @@ class TestTraceableExceptionHandling(TestBase):
             self.error_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
+            self.executed += 1
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
@@ -1947,25 +1949,6 @@ class TestTraceableExceptionHandling(TestBase):
             event.attributes.get(EXCEPTION_TYPE),
             f"{__name__}.UnhandledException",
         )
-
-    def test_error_handler_side_effects(self):
-        """FastAPI default exception handlers (aka error handlers) must be executed exactly once per exception"""
-
-        @self.app.exception_handler(Exception)
-        async def _(*_):
-            self.executed += 1
-
-        @self.app.get("/foobar")
-        async def _():
-            raise UnhandledException("Test Exception")
-
-        try:
-            self.client.get(
-                "/foobar",
-            )
-        except Exception:  # pylint: disable=W0718
-            pass
-
         self.assertEqual(self.executed, 1)
 
     def test_exception_span_recording(self):
@@ -1979,7 +1962,7 @@ class TestTraceableExceptionHandling(TestBase):
             self.client.get(
                 "/foobar",
             )
-        except Exception:  # pylint: disable=W0718
+        except UnhandledException:
             pass
 
         spans = self.memory_exporter.get_finished_spans()
@@ -2013,7 +1996,7 @@ class TestTraceableExceptionHandling(TestBase):
             self.client.get(
                 "/foobar",
             )
-        except Exception:  # pylint: disable=W0718
+        except UnhandledException:
             pass
 
         spans = self.memory_exporter.get_finished_spans()
