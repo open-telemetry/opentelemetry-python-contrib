@@ -374,7 +374,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
 
     def _wrap_client_creation(self) -> None:
         """
-        Since botocore creates classes on the fly using schemas, the SQS class is not necesraily created upon the call
+        Since botocore creates classes on the fly using schemas, the SQS class is not necessarily created upon the call
         of `instrument()`. Therefore we need to wrap the creation of the boto3 client, which triggers the creation of
         the SQS client.
         """
