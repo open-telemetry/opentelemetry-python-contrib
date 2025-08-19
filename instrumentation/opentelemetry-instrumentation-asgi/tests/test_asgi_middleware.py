@@ -277,6 +277,17 @@ async def error_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*"})
 
 
+class UnhandledException(Exception):
+    pass
+
+
+def failing_hook(msg):
+    def hook(*_):
+        raise UnhandledException(msg)
+
+    return hook
+
+
 # pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
@@ -481,6 +492,12 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 span.instrumentation_scope.name,
                 "opentelemetry.instrumentation.asgi",
             )
+            if "events" in expected:
+                self.assertEqual(len(span.events), len(expected["events"]))
+                for event, expected in zip(span.events, expected["events"]):
+                    self.assertEqual(event.name, expected["name"])
+                    for k, v in expected["attributes"].items():
+                        self.assertEqual(event.attributes[k], v)
 
     async def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
@@ -1198,6 +1215,40 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             server_request_hook=server_request_hook,
             client_request_hook=client_request_hook,
             client_response_hook=client_response_hook,
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs, modifiers=[update_expected_hook_results]
+        )
+
+    async def test_hook_exceptions(self):
+        def exception_event(msg):
+            return {
+                "name": "exception",
+                "attributes": {
+                    "exception.type": f"{__name__}.UnhandledException",
+                    "exception.message": msg,
+                },
+            }
+
+        def update_expected_hook_results(expected):
+            for entry in expected:
+                if entry["kind"] == trace_api.SpanKind.SERVER:
+                    entry["events"] = [exception_event("server request")]
+                elif entry["name"] == "GET / http receive":
+                    entry["events"] = [exception_event("client request")]
+                elif entry["name"] == "GET / http send":
+                    entry["events"] = [exception_event("client response")]
+
+            return expected
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi,
+            server_request_hook=failing_hook("server request"),
+            client_request_hook=failing_hook("client request"),
+            client_response_hook=failing_hook("client response"),
         )
         self.seed_app(app)
         await self.send_default_request()
