@@ -145,6 +145,7 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
             )
         else:
             try:
+                # pylint: disable=import-outside-toplevel
                 from gevent import monkey
 
                 getattr(monkey, gevent_patch)()
