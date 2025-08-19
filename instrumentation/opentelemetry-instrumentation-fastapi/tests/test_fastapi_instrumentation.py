@@ -1904,12 +1904,14 @@ class TestTraceableExceptionHandling(TestBase):
     def test_error_handler_context(self):
         """OTEL tracing contexts must be available during error handler execution"""
 
+        status_code = 501
+
         @self.app.exception_handler(Exception)
         async def _(*_):
             self.error_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
-            return PlainTextResponse("", status_code=500)
+            return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
         async def _():
@@ -1933,7 +1935,7 @@ class TestTraceableExceptionHandling(TestBase):
         self.assertEqual(len(spans), 3)
         span = spans[2]
         self.assertEqual(span.name, "GET /foobar")
-        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), status_code)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
