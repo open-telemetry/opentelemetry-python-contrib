@@ -121,6 +121,7 @@ For more information about the maintainer role, see the [community repository](h
 
 ### Approvers
 
+- [Dylan Russell](https://github.com/dylanrussell), Google
 - [Emídio Neto](https://github.com/emdneto), PicPay
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Owais Lone](https://github.com/owais), Splunk
