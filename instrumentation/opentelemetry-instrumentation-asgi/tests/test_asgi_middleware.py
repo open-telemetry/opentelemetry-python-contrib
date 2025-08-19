@@ -496,8 +496,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.assertEqual(len(span.events), len(expected["events"]))
                 for event, expected in zip(span.events, expected["events"]):
                     self.assertEqual(event.name, expected["name"])
-                    for k, v in expected["attributes"].items():
-                        self.assertEqual(event.attributes[k], v)
+                    for name, value in expected["attributes"].items():
+                        self.assertEqual(event.attributes[name], value)
 
     async def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
