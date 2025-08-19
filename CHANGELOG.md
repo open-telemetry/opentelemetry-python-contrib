@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-fastapi`: Implement failsafe middleware stack.
+- `opentelemetry-instrumentation-fastapi`: Fix middleware ordering to cover all exception handling use cases.
+  ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
+- `opentelemetry-instrumentation-asgi`: Make all user hooks failsafe and record exceptions in hooks.
   ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
 - `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
   ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
