@@ -1889,7 +1889,9 @@ class TestTraceableExceptionHandling(TestBase):
 
         self.app = fastapi.FastAPI()
 
-        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app, exclude_spans=["receive", "send"]
+        )
         self.client = TestClient(self.app)
         self.tracer = self.tracer_provider.get_tracer(__name__)
         self.executed = 0
@@ -1932,8 +1934,8 @@ class TestTraceableExceptionHandling(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 3)
-        span = spans[2]
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
         self.assertEqual(span.name, "GET /foobar")
         self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), status_code)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -1982,8 +1984,8 @@ class TestTraceableExceptionHandling(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 3)
-        span = spans[2]
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
         self.assertEqual(span.name, "GET /foobar")
         self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -2016,8 +2018,8 @@ class TestTraceableExceptionHandling(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
 
-        self.assertEqual(len(spans), 3)
-        span = spans[2]
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
         self.assertEqual(span.name, "GET /foobar")
         self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
