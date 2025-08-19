@@ -1924,7 +1924,7 @@ class TestTraceableExceptionHandling(TestBase):
             self.client.get(
                 "/foobar",
             )
-        except Exception:  # pylint: disable=W0718
+        except UnhandledException:
             pass
 
         self.assertIsNotNone(self.request_trace_id)
