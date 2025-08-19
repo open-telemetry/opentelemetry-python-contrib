@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from argparse import REMAINDER, ArgumentParser
 from logging import getLogger
 from os import environ, execl, getcwd
@@ -129,6 +131,29 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
         environ["PYTHONPATH"] = _python_path_without_directory(
             environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
         )
+
+    # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
+    # opentelemetry operator
+    gevent_patch_env_variable_name = (
+        "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH"
+    )
+    gevent_patch: str | None = environ.get(gevent_patch_env_variable_name)
+    if gevent_patch is not None:
+        if gevent_patch != "patch_all":
+            _logger.error(
+                "%s values must be `patch_all`", gevent_patch_env_variable_name
+            )
+        else:
+            try:
+                from gevent import monkey
+
+                getattr(monkey, gevent_patch)()
+            except ImportError:
+                _logger.error(
+                    "Requested to monkey patch with gevent but gevent is not available"
+                )
+                if not swallow_exceptions:
+                    raise
 
     try:
         distro = _load_distro()
