@@ -24,6 +24,7 @@ from opentelemetry.instrumentation._labeler import (
     get_labeler_attributes,
     set_labeler,
 )
+from opentelemetry.instrumentation._labeler._internal import _labeler_context
 
 
 class TestLabeler(unittest.TestCase):
@@ -183,3 +184,39 @@ class TestLabelerContext(unittest.TestCase):
                 "value": f"context_{i_operation}",
             }
             self.assertEqual(results[i_operation], expected)
+
+
+class TestLabelerContextVar(unittest.TestCase):
+    def setUp(self):
+        clear_labeler()
+
+    def test_contextvar_name_and_api_consistency(self):
+        self.assertEqual(_labeler_context.name, "otel_labeler")
+        labeler = get_labeler()
+        labeler.add("test", "value")
+        ctx_labeler = _labeler_context.get()
+        self.assertIs(labeler, ctx_labeler)
+
+    def test_contextvar_isolation(self):
+        def context_worker(worker_id, results):
+            labeler = get_labeler()
+            labeler.add("worker_id", worker_id)
+            results[worker_id] = labeler.get_attributes()
+
+        results = {}
+        for worker_id in range(3):
+            ctx = contextvars.copy_context()
+            ctx.run(context_worker, worker_id, results)
+        for worker_id in range(3):
+            expected = {"worker_id": worker_id}
+            self.assertEqual(results[worker_id], expected)
+
+    def test_clear_and_get_labeler_contextvar(self):
+        labeler = get_labeler()
+        labeler.add("test", "value")
+        self.assertIs(_labeler_context.get(), labeler)
+        clear_labeler()
+        self.assertIsNone(_labeler_context.get())
+        new_labeler = get_labeler()
+        self.assertIsNot(new_labeler, labeler)
+        self.assertEqual(new_labeler.get_attributes(), {})
