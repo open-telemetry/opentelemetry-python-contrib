@@ -2,16 +2,16 @@
 Test cases for the common Labeler functionality in opentelemetry-instrumentation.
 """
 
-import unittest
-import threading
 import contextvars
+import threading
+import unittest
 
 from opentelemetry.instrumentation._labeler import (
     Labeler,
-    get_labeler,
-    set_labeler,
     clear_labeler,
+    get_labeler,
     get_labeler_attributes,
+    set_labeler,
 )
 
 
@@ -51,13 +51,13 @@ class TestLabeler(unittest.TestCase):
 
     def test_invalid_attribute_types(self):
         labeler = Labeler()
-        
+
         with self.assertRaises(ValueError):
             labeler.add("key", [1, 2, 3])
-        
+
         with self.assertRaises(ValueError):
             labeler.add("key", {"nested": "dict"})
-        
+
         with self.assertRaises(ValueError):
             labeler.add_attributes({"key": None})
 
@@ -80,22 +80,22 @@ class TestLabeler(unittest.TestCase):
         labeler = Labeler()
         num_threads = 10
         num_operations = 100
-        
+
         def worker(thread_id):
             for i in range(num_operations):
                 labeler.add(f"thread_{thread_id}_key_{i}", f"value_{i}")
-        
+
         # Start multiple threads
         threads = []
         for thread_id in range(num_threads):
             thread = threading.Thread(target=worker, args=(thread_id,))
             threads.append(thread)
             thread.start()
-        
+
         # Wait for all threads to complete
         for thread in threads:
             thread.join()
-        
+
         # Check that all attributes were added
         attributes = labeler.get_attributes()
         expected_count = num_threads * num_operations
@@ -126,7 +126,9 @@ class TestLabelerContext(unittest.TestCase):
         set_labeler(custom_labeler)
         retrieved_labeler = get_labeler()
         self.assertIs(retrieved_labeler, custom_labeler)
-        self.assertEqual(retrieved_labeler.get_attributes(), {"custom": "value"})
+        self.assertEqual(
+            retrieved_labeler.get_attributes(), {"custom": "value"}
+        )
 
     def test_clear_labeler(self):
         labeler = get_labeler()
@@ -152,14 +154,14 @@ class TestLabelerContext(unittest.TestCase):
             labeler.add("context_id", context_id)
             labeler.add("value", f"context_{context_id}")
             results[context_id] = labeler.get_attributes()
-        
+
         results = {}
-        
+
         # Run in different contextvars contexts
         for i in range(3):
             ctx = contextvars.copy_context()
             ctx.run(context_worker, i, results)
-        
+
         # Each context should have its own labeler with its own values
         for i in range(3):
             expected = {"context_id": i, "value": f"context_{i}"}

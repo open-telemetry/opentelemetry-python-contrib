@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import threading
-from typing import Dict, Union, Optional, Any
 import contextvars
+import threading
+from typing import Any, Dict, Optional, Union
 
 # Context variable to store the current labeler
-_labeler_context: contextvars.ContextVar[Optional["Labeler"]] = contextvars.ContextVar(
-    "otel_labeler", default=None
+_labeler_context: contextvars.ContextVar[Optional["Labeler"]] = (
+    contextvars.ContextVar("otel_labeler", default=None)
 )
 
 
@@ -26,7 +26,7 @@ class Labeler:
     """
     Labeler can be used by instrumented code or distro to add custom attributes
     to the metrics recorded by those OpenTelemetry instrumentations reading it.
-    
+
     Labeler accumulates custom attributes for OpenTelemetry metrics for the
     current request in context.
 
@@ -40,28 +40,34 @@ class Labeler:
     def add(self, key: str, value: Union[str, int, float, bool]) -> None:
         """
         Add a single attribute to the labeler.
-        
+
         Args:
             key: The attribute key
             value: The attribute value (must be a primitive type)
         """
         if not isinstance(value, (str, int, float, bool)):
-            raise ValueError(f"Attribute value must be str, int, float, or bool, got {type(value)}")
-        
+            raise ValueError(
+                f"Attribute value must be str, int, float, or bool, got {type(value)}"
+            )
+
         with self._lock:
             self._attributes[key] = value
 
-    def add_attributes(self, attributes: Dict[str, Union[str, int, float, bool]]) -> None:
+    def add_attributes(
+        self, attributes: Dict[str, Union[str, int, float, bool]]
+    ) -> None:
         """
         Add multiple attributes to the labeler.
-        
+
         Args:
             attributes: Dictionary of attributes to add
         """
         for key, value in attributes.items():
             if not isinstance(value, (str, int, float, bool)):
-                raise ValueError(f"Attribute value for '{key}' must be str, int, float, or bool, got {type(value)}")
-        
+                raise ValueError(
+                    f"Attribute value for '{key}' must be str, int, float, or bool, got {type(value)}"
+                )
+
         with self._lock:
             self._attributes.update(attributes)
 
@@ -84,10 +90,10 @@ class Labeler:
 def get_labeler() -> Labeler:
     """
     Get the Labeler instance for the current request context.
-    
+
     If no Labeler exists in the current context, a new one is created
     and stored in the context.
-    
+
     Returns:
         Labeler instance for the current request, or a new empty Labeler
         if not in a request context
@@ -102,7 +108,7 @@ def get_labeler() -> Labeler:
 def set_labeler(labeler: Labeler) -> None:
     """
     Set the Labeler instance for the current request context.
-    
+
     Args:
         labeler: The Labeler instance to set
     """
@@ -119,7 +125,7 @@ def clear_labeler() -> None:
 def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
     """
     Get attributes from the current labeler, if any.
-    
+
     Returns:
         Dictionary of custom attributes, or empty dict if no labeler exists
     """
@@ -130,38 +136,38 @@ def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
 
 
 def enhance_metric_attributes(
-    base_attributes: Dict[str, Any], 
+    base_attributes: Dict[str, Any],
     include_custom: bool = True,
     max_custom_attrs: int = 20,
-    max_attr_value_length: int = 100
+    max_attr_value_length: int = 100,
 ) -> Dict[str, Any]:
     """
     This function combines base_attributes with custom attributes
     from the current labeler.
-    
+
     Custom attributes are skipped if they would override base_attributes,
     exceed max_custom_attrs number, or are not simple types (str, int, float,
     bool). If custom attributes have string values exceeding the
     max_attr_value_length, then they are truncated.
-    
+
     Args:
         base_attributes: The base attributes for the metric
         include_custom: Whether to include custom labeler attributes
         max_custom_attrs: Maximum number of custom attributes to include
         max_attr_value_length: Maximum length for string attribute values
-        
+
     Returns:
         Dictionary combining base and custom attributes
     """
     if not include_custom:
         return base_attributes.copy()
-    
+
     custom_attributes = get_labeler_attributes()
     if not custom_attributes:
         return base_attributes.copy()
-    
+
     enhanced_attributes = base_attributes.copy()
-    
+
     added_count = 0
     for key, value in custom_attributes.items():
         if added_count >= max_custom_attrs:
@@ -175,5 +181,5 @@ def enhance_metric_attributes(
         if isinstance(value, (str, int, float, bool)):
             enhanced_attributes[key] = value
             added_count += 1
-    
+
     return enhanced_attributes

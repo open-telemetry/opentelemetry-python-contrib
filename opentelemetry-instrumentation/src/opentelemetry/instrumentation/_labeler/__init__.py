@@ -22,17 +22,17 @@ https://github.com/open-telemetry/opentelemetry-go-contrib/pull/306
 
 from opentelemetry.instrumentation._labeler._internal import (
     Labeler,
-    get_labeler,
-    set_labeler,
     clear_labeler,
-    get_labeler_attributes,
     enhance_metric_attributes,
+    get_labeler,
+    get_labeler_attributes,
+    set_labeler,
 )
 
 __all__ = [
     "Labeler",
     "get_labeler",
-    "set_labeler", 
+    "set_labeler",
     "clear_labeler",
     "get_labeler_attributes",
     "enhance_metric_attributes",

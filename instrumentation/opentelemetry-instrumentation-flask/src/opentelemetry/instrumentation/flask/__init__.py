@@ -97,7 +97,7 @@ Usage
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The Flask instrumentation reads from a Labeler utility that supports adding custom attributes 
+The Flask instrumentation reads from a Labeler utility that supports adding custom attributes
 to the HTTP metrics recorded by the instrumentation.
 
 .. code-block:: python
@@ -113,17 +113,17 @@ to the HTTP metrics recorded by the instrumentation.
     def user_profile(user_id):
         # Get the labeler for the current request
         labeler = get_labeler()
-        
+
         # Add custom attributes to Flask instrumentation metrics
         labeler.add("user_id", user_id)
         labeler.add("user_type", "registered")
-        
+
         # Or, add multiple attributes at once
         labeler.add_attributes({
             "feature_flag": "new_ui",
             "experiment_group": "control"
         })
-        
+
         return f"User profile for {user_id}"
 
 
@@ -288,6 +288,7 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._labeler import enhance_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
@@ -300,7 +301,6 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.flask.package import _instruments
 from opentelemetry.instrumentation.flask.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation._labeler import enhance_metric_attributes
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -442,9 +442,7 @@ def _rewrapped_app(
                 )
 
             # Enhance attributes with any custom labeler attributes
-            duration_attrs_old = enhance_metric_attributes(
-                duration_attrs_old
-            )
+            duration_attrs_old = enhance_metric_attributes(duration_attrs_old)
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
@@ -458,9 +456,7 @@ def _rewrapped_app(
                 duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
             # Enhance attributes with any custom labeler attributes
-            duration_attrs_new = enhance_metric_attributes(
-                duration_attrs_new
-            )
+            duration_attrs_new = enhance_metric_attributes(duration_attrs_new)
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
@@ -490,9 +486,7 @@ def _wrapped_before_request(
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
         # Enhance attributes with custom labeler attributes
-        attributes = enhance_metric_attributes(
-            attributes
-        )
+        attributes = enhance_metric_attributes(attributes)
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
