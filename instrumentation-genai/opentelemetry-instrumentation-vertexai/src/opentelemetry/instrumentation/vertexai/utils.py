@@ -104,6 +104,7 @@ def get_server_attributes(
 
 
 def get_genai_request_attributes(
+    use_latest_semconvs: bool,
     params: GenerateContentParams,
     operation_name: GenAIAttributes.GenAiOperationNameValues = GenAIAttributes.GenAiOperationNameValues.CHAT,
 ):
@@ -111,9 +112,12 @@ def get_genai_request_attributes(
     generation_config = params.generation_config
     attributes: dict[str, AttributeValue] = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.VERTEX_AI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: model,
     }
+    if not use_latest_semconvs:
+        attributes[GenAIAttributes.GEN_AI_SYSTEM] = (
+            GenAIAttributes.GenAiSystemValues.VERTEX_AI.value
+        )
 
     if not generation_config:
         return attributes
@@ -140,12 +144,10 @@ def get_genai_request_attributes(
         attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
             generation_config.frequency_penalty
         )
-    # Uncomment once GEN_AI_REQUEST_SEED is released in 1.30
-    # https://github.com/open-telemetry/semantic-conventions/pull/1710
-    # if "seed" in generation_config:
-    #     attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-    #         generation_config.seed
-    #     )
+    if "seed" in generation_config and use_latest_semconvs:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+            generation_config.seed
+        )
     if "stop_sequences" in generation_config:
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
@@ -254,6 +256,92 @@ def request_to_events(
             capture_content=capture_content, parts=content.parts
         )
         yield user_event(role=content.role, content=request_content)
+
+
+def create_operation_details_event(
+    *,
+    api_endpoint: str,
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+    params: GenerateContentParams,
+    capture_content: bool,
+) -> Event:
+    event = Event(name="gen_ai.client.inference.operation.details")
+    attributes: dict[str, AnyValue] = {
+        **get_genai_request_attributes(True, params),
+        **get_server_attributes(api_endpoint),
+    }
+    event.attributes = attributes
+    if not capture_content:
+        return event
+
+    attributes["gen_ai.system_instructions"] = [
+        {
+            "type": "text",
+            "content": "\n".join(
+                part.text for part in params.system_instruction.parts
+            ),
+        }
+    ]
+    if params.contents:
+        attributes["gen_ai.input.messages"] = [
+            _convert_content_to_message(content) for content in params.contents
+        ]
+    if response.candidates:
+        attributes["gen_ai.output.messages"] = (
+            _convert_response_to_output_messages(response)
+        )
+    return event
+
+
+def _convert_response_to_output_messages(
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+) -> list:
+    output_messages = []
+    for candidate in response.candidates:
+        message = _convert_content_to_message(candidate.content)
+        message["finish_reason"] = _map_finish_reason(candidate.finish_reason)
+        output_messages.append(message)
+    return output_messages
+
+
+def _convert_content_to_message(content: content.Content) -> dict:
+    message = {}
+    message["role"] = content.role
+    message["parts"] = []
+    for part in content.parts:
+        if "function_response" in part:
+            part = part.function_response
+            message["parts"].append(
+                {
+                    "type": "tool_call_response",
+                    "id": part.id,
+                    "response": json_format.MessageToDict(part._pb.response),
+                }
+            )
+        elif "function_call" in part:
+            part = part.function_call
+            message["parts"].append(
+                {
+                    "type": "tool_call",
+                    "id": part.id,
+                    "name": part.name,
+                    # TODO: support partial_args/streaming  here?
+                    "response": json_format.MessageToDict(
+                        part._pb.args,
+                    ),
+                }
+            )
+        elif "text" in part:
+            message["parts"].append({"type": "text", "content": part.text})
+            part = part.text
+        else:
+            message["parts"].append(
+                type(part).to_dict(part, including_default_value_fields=False)
+            )
+            message["parts"][-1]["type"] = type(part)
+    return message
 
 
 def response_to_events(

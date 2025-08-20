@@ -1,4 +1,5 @@
 import pytest
+import vcr
 from vertexai.generative_models import (
     Content,
     FunctionDeclaration,
@@ -16,25 +17,28 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr("cassettes/test_function_call_choice.yaml")
 def test_function_call_choice(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
+    generate_content: callable,
+    cassette_name: str,
 ):
-    ask_about_weather()
+    print(type(generate_content))
+    ask_about_weather(generate_content, cassette_name)
 
     # Emits span
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert spans[0].name == "chat gemini-1.5-flash-002"
+    assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": "gemini-1.5-flash-002",
+        "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
-        "gen_ai.response.model": "gemini-1.5-flash-002",
+        "gen_ai.response.model": "gemini-2.5-pro",
         "gen_ai.system": "vertex_ai",
-        "gen_ai.usage.input_tokens": 72,
+        "gen_ai.usage.input_tokens": 74,
         "gen_ai.usage.output_tokens": 16,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
@@ -100,12 +104,14 @@ def test_function_call_choice(
     }
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr("cassettes/test_function_call_choice_no_content.yaml")
 def test_function_call_choice_no_content(
     log_exporter: InMemoryLogExporter,
     instrument_no_content: VertexAIInstrumentor,
+    generate_content: callable,
+    cassette_name: str,
 ):
-    ask_about_weather()
+    ask_about_weather(generate_content, cassette_name)
 
     # Emits user and choice events
     logs = log_exporter.get_finished_logs()
@@ -142,26 +148,28 @@ def test_function_call_choice_no_content(
     }
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr("cassettes/test_tool_events.yaml")
 def test_tool_events(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
+    generate_content: callable,
+    cassette_name: str,
 ):
-    ask_about_weather_function_response()
+    ask_about_weather_function_response(generate_content, cassette_name)
 
     # Emits span
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert spans[0].name == "chat gemini-1.5-flash-002"
+    assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": "gemini-1.5-flash-002",
+        "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
-        "gen_ai.response.model": "gemini-1.5-flash-002",
+        "gen_ai.response.model": "gemini-2.5-pro",
         "gen_ai.system": "vertex_ai",
-        "gen_ai.usage.input_tokens": 126,
-        "gen_ai.usage.output_tokens": 24,
+        "gen_ai.usage.input_tokens": 128,
+        "gen_ai.usage.output_tokens": 26,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
     }
@@ -236,7 +244,7 @@ def test_tool_events(
         "message": {
             "content": [
                 {
-                    "text": "The current temperature in New Delhi is 35 degrees Celsius and in San Francisco is 25 degrees Celsius.\n"
+                    "text": "The current temperature in New Delhi is 35°C, and in San Francisco, it is 25°C."
                 }
             ],
             "role": "model",
@@ -244,26 +252,28 @@ def test_tool_events(
     }
 
 
-@pytest.mark.vcr
+@pytest.mark.vcr("cassettes/test_tool_events_no_content.yaml")
 def test_tool_events_no_content(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     instrument_no_content: VertexAIInstrumentor,
+    generate_content: callable,
+    cassette_name: str,
 ):
-    ask_about_weather_function_response()
+    ask_about_weather_function_response(generate_content, cassette_name)
 
     # Emits span
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert spans[0].name == "chat gemini-1.5-flash-002"
+    assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": "gemini-1.5-flash-002",
+        "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
-        "gen_ai.response.model": "gemini-1.5-flash-002",
+        "gen_ai.response.model": "gemini-2.5-pro",
         "gen_ai.system": "vertex_ai",
-        "gen_ai.usage.input_tokens": 126,
-        "gen_ai.usage.output_tokens": 24,
+        "gen_ai.usage.input_tokens": 128,
+        "gen_ai.usage.output_tokens": 22,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
     }
@@ -331,10 +341,12 @@ def weather_tool() -> Tool:
     )
 
 
-def ask_about_weather() -> None:
-    model = GenerativeModel("gemini-1.5-flash-002", tools=[weather_tool()])
+@vcr.use_cassette()
+def ask_about_weather(generate_content: callable, cassette_name: str) -> None:
+    model = GenerativeModel("gemini-2.5-pro", tools=[weather_tool()])
     # Model will respond asking for function calls
-    model.generate_content(
+    generate_content(
+        model,
         [
             # User asked about weather
             Content(
@@ -346,12 +358,16 @@ def ask_about_weather() -> None:
                 ],
             ),
         ],
+        cassette_name,
     )
 
 
-def ask_about_weather_function_response() -> None:
-    model = GenerativeModel("gemini-1.5-flash-002", tools=[weather_tool()])
-    model.generate_content(
+def ask_about_weather_function_response(
+    generate_content: callable, cassette_name: str
+) -> None:
+    model = GenerativeModel("gemini-2.5-pro", tools=[weather_tool()])
+    generate_content(
+        model,
         [
             # User asked about weather
             Content(
@@ -402,5 +418,6 @@ def ask_about_weather_function_response() -> None:
                     ),
                 ],
             ),
-        ]
+        ],
+        cassette_name,
     )

@@ -24,8 +24,12 @@ from typing import (
 )
 
 from opentelemetry._events import EventLogger
+from opentelemetry.instrumentation._semconv import (
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
+    create_operation_details_event,
     get_genai_request_attributes,
     get_genai_response_attributes,
     get_server_attributes,
@@ -91,14 +95,26 @@ def _extract_params(
 
 class MethodWrappers:
     def __init__(
-        self, tracer: Tracer, event_logger: EventLogger, capture_content: bool
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: bool,
+        sem_conv_opt_in_mode: _StabilityMode,
     ) -> None:
         self.tracer = tracer
         self.event_logger = event_logger
         self.capture_content = capture_content
+        self.sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
+    #   Deprecations:
+    #   - `gen_ai.system.message` event - use `gen_ai.system_instructions` or
+    #     `gen_ai.input.messages` attributes instead.
+    #   - `gen_ai.user.message`, `gen_ai.assistant.message`, `gen_ai.tool.message` events
+    #     (use `gen_ai.input.messages` attribute instead)
+    #   - `gen_ai.choice` event (use `gen_ai.output.messages` attribute instead)
 
     @contextmanager
-    def _with_instrumentation(
+    def _with_new_instrumentation(
         self,
         instance: client.PredictionServiceClient
         | client_v1beta1.PredictionServiceClient,
@@ -108,7 +124,53 @@ class MethodWrappers:
         params = _extract_params(*args, **kwargs)
         api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
         span_attributes = {
-            **get_genai_request_attributes(params),
+            **get_genai_request_attributes(False, params),
+            **get_server_attributes(api_endpoint),
+        }
+
+        span_name = get_span_name(span_attributes)
+
+        with self.tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+        ) as span:
+
+            def handle_response(
+                response: prediction_service.GenerateContentResponse
+                | prediction_service_v1beta1.GenerateContentResponse,
+            ) -> None:
+                if span.is_recording():
+                    # When streaming, this is called multiple times so attributes would be
+                    # overwritten. In practice, it looks the API only returns the interesting
+                    # attributes on the last streamed response. However, I couldn't find
+                    # documentation for this and setting attributes shouldn't be too expensive.
+                    span.set_attributes(
+                        get_genai_response_attributes(response)
+                    )
+                self.event_logger.emit(
+                    create_operation_details_event(
+                        api_endpoint = api_endpoint,
+                        params=params,
+                        capture_content=self.capture_content,
+                        response=response,
+                    )
+                )
+
+            yield handle_response
+
+    @contextmanager
+    def _with_default_instrumentation(
+        self,
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
+        args: Any,
+        kwargs: Any,
+    ):
+        params = _extract_params(*args, **kwargs)
+        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+        span_attributes = {
+            **get_genai_request_attributes(False, params),
             **get_server_attributes(api_endpoint),
         }
 
@@ -162,9 +224,11 @@ class MethodWrappers:
         prediction_service.GenerateContentResponse
         | prediction_service_v1beta1.GenerateContentResponse
     ):
-        with self._with_instrumentation(
-            instance, args, kwargs
-        ) as handle_response:
+        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            _instrumentation = self._with_default_instrumentation
+        else:
+            _instrumentation = self._with_new_instrumentation
+        with _instrumentation(instance, args, kwargs) as handle_response:
             response = wrapped(*args, **kwargs)
             handle_response(response)
             return response
@@ -186,9 +250,11 @@ class MethodWrappers:
         prediction_service.GenerateContentResponse
         | prediction_service_v1beta1.GenerateContentResponse
     ):
-        with self._with_instrumentation(
-            instance, args, kwargs
-        ) as handle_response:
+        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            _instrumentation = self._with_default_instrumentation
+        else:
+            _instrumentation = self._with_new_instrumentation
+        with _instrumentation(instance, args, kwargs) as handle_response:
             response = await wrapped(*args, **kwargs)
             handle_response(response)
             return response
