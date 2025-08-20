@@ -185,7 +185,7 @@ from __future__ import annotations
 import functools
 import logging
 import types
-from typing import Collection, Literal
+from typing import Any, Collection, Literal
 
 import fastapi
 from starlette.applications import Starlette
@@ -361,33 +361,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         self._original_fastapi = fastapi.FastAPI
-        _InstrumentedFastAPI._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedFastAPI._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedFastAPI._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedFastAPI._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
-        _InstrumentedFastAPI._http_capture_headers_server_request = kwargs.get(
-            "http_capture_headers_server_request"
-        )
-        _InstrumentedFastAPI._http_capture_headers_server_response = (
-            kwargs.get("http_capture_headers_server_response")
-        )
-        _InstrumentedFastAPI._http_capture_headers_sanitize_fields = (
-            kwargs.get("http_capture_headers_sanitize_fields")
-        )
-        _InstrumentedFastAPI._excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
-        _InstrumentedFastAPI._exclude_spans = kwargs.get("exclude_spans")
+        _InstrumentedFastAPI._instrument_kwargs = kwargs
         fastapi.FastAPI = _InstrumentedFastAPI
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
@@ -395,34 +374,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedFastAPI(fastapi.FastAPI):
-    _tracer_provider = None
-    _meter_provider = None
-    _excluded_urls = None
-    _server_request_hook: ServerRequestHook = None
-    _client_request_hook: ClientRequestHook = None
-    _client_response_hook: ClientResponseHook = None
-    _http_capture_headers_server_request: list[str] | None = None
-    _http_capture_headers_server_response: list[str] | None = None
-    _http_capture_headers_sanitize_fields: list[str] | None = None
-    _exclude_spans: list[Literal["receive", "send"]] | None = None
+    _instrument_kwargs: dict[str, Any] = {}
 
-    _instrumented_fastapi_apps = set()
+    _instrumented_fastapi_apps: set[fastapi.FastAPI] = set()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         FastAPIInstrumentor.instrument_app(
-            self,
-            server_request_hook=self._server_request_hook,
-            client_request_hook=self._client_request_hook,
-            client_response_hook=self._client_response_hook,
-            tracer_provider=self._tracer_provider,
-            meter_provider=self._meter_provider,
-            excluded_urls=self._excluded_urls,
-            http_capture_headers_server_request=self._http_capture_headers_server_request,
-            http_capture_headers_server_response=self._http_capture_headers_server_response,
-            http_capture_headers_sanitize_fields=self._http_capture_headers_sanitize_fields,
-            exclude_spans=self._exclude_spans,
+            self, **_InstrumentedFastAPI._instrument_kwargs
         )
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
