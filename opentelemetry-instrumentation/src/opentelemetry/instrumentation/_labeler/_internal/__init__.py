@@ -24,11 +24,7 @@ _labeler_context: contextvars.ContextVar[Optional["Labeler"]] = (
 
 class Labeler:
     """
-    Labeler can be used by instrumented code or distro to add custom attributes
-    to the metrics recorded by those OpenTelemetry instrumentations reading it.
-
-    Labeler accumulates custom attributes for OpenTelemetry metrics for the
-    current request in context.
+    Stores custom attributes for the current request in context.
 
     This feature is experimental and unstable.
     """
@@ -142,13 +138,11 @@ def enhance_metric_attributes(
     max_attr_value_length: int = 100,
 ) -> Dict[str, Any]:
     """
-    This function combines base_attributes with custom attributes
-    from the current labeler.
-
-    Custom attributes are skipped if they would override base_attributes,
-    exceed max_custom_attrs number, or are not simple types (str, int, float,
-    bool). If custom attributes have string values exceeding the
-    max_attr_value_length, then they are truncated.
+    Combines base_attributes with custom attributes from the current labeler,
+    returning a new dictionary of attributes. Custom attributes are skipped
+    if they would override base_attributes, exceed max_custom_attrs number,
+    or are not simple types (str, int, float, bool). If custom attributes
+    have string values exceeding the max_attr_value_length, then they are truncated.
 
     Args:
         base_attributes: The base attributes for the metric

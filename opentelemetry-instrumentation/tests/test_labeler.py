@@ -82,8 +82,11 @@ class TestLabeler(unittest.TestCase):
         num_operations = 100
 
         def worker(thread_id):
-            for i in range(num_operations):
-                labeler.add(f"thread_{thread_id}_key_{i}", f"value_{i}")
+            for i_operation in range(num_operations):
+                labeler.add(
+                    f"thread_{thread_id}_key_{i_operation}",
+                    f"value_{i_operation}",
+                )
 
         # Start multiple threads
         threads = []
@@ -158,11 +161,14 @@ class TestLabelerContext(unittest.TestCase):
         results = {}
 
         # Run in different contextvars contexts
-        for i in range(3):
+        for i_operation in range(3):
             ctx = contextvars.copy_context()
-            ctx.run(context_worker, i, results)
+            ctx.run(context_worker, i_operation, results)
 
         # Each context should have its own labeler with its own values
-        for i in range(3):
-            expected = {"context_id": i, "value": f"context_{i}"}
-            self.assertEqual(results[i], expected)
+        for i_operation in range(3):
+            expected = {
+                "context_id": i_operation,
+                "value": f"context_{i_operation}",
+            }
+            self.assertEqual(results[i_operation], expected)
