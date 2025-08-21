@@ -323,9 +323,7 @@ def _convert_response_to_output_messages(
 
 
 def _convert_content_to_message(content: content.Content) -> dict:
-    message = {}
-    message["role"] = content.role
-    message["parts"] = []
+    message = {"role": content.role, "parts": []}
     for idx, part in enumerate(content.parts):
         if "function_response" in part:
             part = part.function_response
@@ -353,7 +351,7 @@ def _convert_content_to_message(content: content.Content) -> dict:
             part = part.text
         else:
             message["parts"].append(
-                type(part).to_dict(part, including_default_value_fields=False)
+                type(part).to_dict(part, always_print_fields_with_no_presence=False)
             )
             message["parts"][-1]["type"] = type(part)
     return message
@@ -422,7 +420,7 @@ def _parts_to_any_value(
     return [
         cast(
             "dict[str, AnyValue]",
-            type(part).to_dict(part, including_default_value_fields=False),  # type: ignore[reportUnknownMemberType]
+            type(part).to_dict(part, always_print_fields_with_no_presence=False),  # type: ignore[reportUnknownMemberType]
         )
         for part in parts
     ]

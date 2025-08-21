@@ -11,7 +11,6 @@ from vertexai.generative_models import (
 from vertexai.preview.generative_models import (
     GenerativeModel as PreviewGenerativeModel,
 )
-
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
     InMemoryLogExporter,
@@ -35,7 +34,12 @@ def test_generate_content(
     generate_content(
         model,
         [
-            Content(role="user", parts=[Part.from_text("Say this is a test")]),
+            Content(
+                role="user",
+                parts=[
+                    Part.from_text("Say this is a test"),
+                ],
+            ),
         ],
     )
 
