@@ -150,7 +150,7 @@ class MethodWrappers:
                     )
                 self.event_logger.emit(
                     create_operation_details_event(
-                        api_endpoint = api_endpoint,
+                        api_endpoint=api_endpoint,
                         params=params,
                         capture_content=self.capture_content,
                         response=response,
@@ -225,13 +225,30 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            _instrumentation = self._with_default_instrumentation
+            with self._with_default_instrumentation(
+                instance, args, kwargs
+            ) as handle_response:
+                response = wrapped(*args, **kwargs)
+                handle_response(response)
+                return response
         else:
-            _instrumentation = self._with_new_instrumentation
-        with _instrumentation(instance, args, kwargs) as handle_response:
-            response = wrapped(*args, **kwargs)
-            handle_response(response)
-            return response
+            with self._with_new_instrumentation(
+                instance, args, kwargs
+            ) as handle_response:
+                try:
+                    response = wrapped(*args, **kwargs)
+                except Exception as e:
+                    self.event_logger.emit(
+                        create_operation_details_event(
+                            params=_extract_params(*args, **kwargs),
+                            response=None,
+                            capture_content=self.capture_content,
+                            api_endpoint=instance.api_endpoint,
+                        )
+                    )
+                    raise e
+                handle_response(response)
+                return response
 
     async def agenerate_content(
         self,
@@ -251,10 +268,27 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            _instrumentation = self._with_default_instrumentation
+            with self._with_default_instrumentation(
+                instance, args, kwargs
+            ) as handle_response:
+                response = await wrapped(*args, **kwargs)
+                handle_response(response)
+                return response
         else:
-            _instrumentation = self._with_new_instrumentation
-        with _instrumentation(instance, args, kwargs) as handle_response:
-            response = await wrapped(*args, **kwargs)
-            handle_response(response)
-            return response
+            with self._with_new_instrumentation(
+                instance, args, kwargs
+            ) as handle_response:
+                try:
+                    response = await wrapped(*args, **kwargs)
+                except Exception as e:
+                    self.event_logger.emit(
+                        create_operation_details_event(
+                            params=_extract_params(*args, **kwargs),
+                            response=None,
+                            capture_content=self.capture_content,
+                            api_endpoint=instance.api_endpoint,
+                        )
+                    )
+                    raise e
+                handle_response(response)
+                return response

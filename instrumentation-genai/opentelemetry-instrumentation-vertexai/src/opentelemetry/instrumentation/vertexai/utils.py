@@ -129,6 +129,8 @@ def get_genai_request_attributes(
             generation_config.temperature
         )
     if "top_p" in generation_config:
+        # There is also a top_k parameter ( The maximum number of tokens to consider when sampling.),
+        # but no semconv yet exists for it.
         attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] = (
             generation_config.top_p
         )
@@ -144,14 +146,28 @@ def get_genai_request_attributes(
         attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
             generation_config.frequency_penalty
         )
-    if "seed" in generation_config and use_latest_semconvs:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-            generation_config.seed
-        )
     if "stop_sequences" in generation_config:
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
         )
+    if use_latest_semconvs:
+        if "seed" in generation_config:
+            attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+                generation_config.seed
+            )
+        if "candidate_count" in generation_config:
+            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+                generation_config.candidate_count
+            )
+        if "response_mime_type" in generation_config:
+            if generation_config.response_mime_type == "text/plain":
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
+            elif generation_config.response_mime_type == "application/json":
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
+            else:
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                    generation_config.response_mime_type
+                )
 
     return attributes
 
@@ -164,8 +180,6 @@ def get_genai_response_attributes(
         _map_finish_reason(candidate.finish_reason)
         for candidate in response.candidates
     ]
-    # TODO: add gen_ai.response.id once available in the python client
-    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3246
     return {
         GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
         GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
@@ -262,7 +276,8 @@ def create_operation_details_event(
     *,
     api_endpoint: str,
     response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse,
+    | prediction_service_v1beta1.GenerateContentResponse
+    | None,
     params: GenerateContentParams,
     capture_content: bool,
 ) -> Event:
@@ -270,6 +285,7 @@ def create_operation_details_event(
     attributes: dict[str, AnyValue] = {
         **get_genai_request_attributes(True, params),
         **get_server_attributes(api_endpoint),
+        **(get_genai_response_attributes(response) if response else {}),
     }
     event.attributes = attributes
     if not capture_content:
@@ -287,7 +303,7 @@ def create_operation_details_event(
         attributes["gen_ai.input.messages"] = [
             _convert_content_to_message(content) for content in params.contents
         ]
-    if response.candidates:
+    if response and response.candidates:
         attributes["gen_ai.output.messages"] = (
             _convert_response_to_output_messages(response)
         )
@@ -310,13 +326,13 @@ def _convert_content_to_message(content: content.Content) -> dict:
     message = {}
     message["role"] = content.role
     message["parts"] = []
-    for part in content.parts:
+    for idx, part in enumerate(content.parts):
         if "function_response" in part:
             part = part.function_response
             message["parts"].append(
                 {
                     "type": "tool_call_response",
-                    "id": part.id,
+                    "id": f"{part.name}_{idx}",
                     "response": json_format.MessageToDict(part._pb.response),
                 }
             )
@@ -325,9 +341,8 @@ def _convert_content_to_message(content: content.Content) -> dict:
             message["parts"].append(
                 {
                     "type": "tool_call",
-                    "id": part.id,
+                    "id": f"{part.name}_{idx}",
                     "name": part.name,
-                    # TODO: support partial_args/streaming  here?
                     "response": json_format.MessageToDict(
                         part._pb.args,
                     ),

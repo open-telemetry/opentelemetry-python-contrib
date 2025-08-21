@@ -10,7 +10,6 @@ from typing import (
     Generator,
     Mapping,
     MutableMapping,
-    Optional,
     Protocol,
     TypeVar,
 )
@@ -33,6 +32,7 @@ from vertexai.generative_models import (
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.instrumentation.vertexai.utils import (
@@ -122,6 +122,8 @@ def vertexai_init(vcr: VCR) -> None:
 def instrument_no_content(
     tracer_provider, event_logger_provider, meter_provider, request
 ):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
     )
@@ -129,6 +131,8 @@ def instrument_no_content(
         os.environ.update(
             {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
         )
+    else:
+        os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
 
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
@@ -150,6 +154,8 @@ def instrument_no_content(
 def instrument_with_content(
     tracer_provider, event_logger_provider, meter_provider, request
 ):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
@@ -157,6 +163,8 @@ def instrument_with_content(
         os.environ.update(
             {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
         )
+    else:
+        os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -304,7 +312,6 @@ class GenerateContentFixture(Protocol):
 def fixture_generate_content(
     request: pytest.FixtureRequest,
     vcr: VCR,
-    cassette_name: Optional[str] = None,
 ) -> Generator[GenerateContentFixture, None, None]:
     """This fixture parameterizes tests that use it to test calling both
     GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
@@ -322,6 +329,6 @@ def fixture_generate_content(
         return model.generate_content(*args, **kwargs)
 
     with vcr.use_cassette(
-        cassette_name or request.node.originalname, allow_playback_repeats=True
+        request.node.originalname, allow_playback_repeats=True
     ):
         yield wrapper
