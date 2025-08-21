@@ -17,6 +17,7 @@
 import unittest
 from contextlib import ExitStack
 from timeit import default_timer
+from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
 import fastapi
@@ -46,6 +47,7 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -1019,43 +1021,44 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
 
 
 class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
-    _server_request_hook = None
-    _client_request_hook = None
-    _client_response_hook = None
-
-    def server_request_hook(self, span, scope):
-        if self._server_request_hook is not None:
-            self._server_request_hook(span, scope)
-
-    def client_request_hook(self, receive_span, scope, message):
-        if self._client_request_hook is not None:
-            self._client_request_hook(receive_span, scope, message)
-
-    def client_response_hook(self, send_span, scope, message):
-        if self._client_response_hook is not None:
-            self._client_response_hook(send_span, scope, message)
-
-    def test_hooks(self):
-        def server_request_hook(span, scope):
+    def _create_app(self):
+        def server_request_hook(span: trace.Span, scope: dict[str, Any]):
             span.update_name("name from server hook")
 
-        def client_request_hook(receive_span, scope, message):
+        def client_request_hook(
+            receive_span: trace.Span,
+            scope: dict[str, Any],
+            message: dict[str, Any],
+        ):
             receive_span.update_name("name from client hook")
             receive_span.set_attribute("attr-from-request-hook", "set")
 
-        def client_response_hook(send_span, scope, message):
+        def client_response_hook(
+            send_span: trace.Span,
+            scope: dict[str, Any],
+            message: dict[str, Any],
+        ):
             send_span.update_name("name from response hook")
             send_span.set_attribute("attr-from-response-hook", "value")
 
-        self._server_request_hook = server_request_hook
-        self._client_request_hook = client_request_hook
-        self._client_response_hook = client_response_hook
+        self._instrumentor.instrument(
+            server_request_hook=server_request_hook,
+            client_request_hook=client_request_hook,
+            client_response_hook=client_response_hook,
+        )
 
+        app = self._create_fastapi_app()
+
+        return app
+
+    def test_hooks(self):
         self._client.get("/foobar")
-        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
-        self.assertEqual(
-            len(spans), 3
-        )  # 1 server span and 2 response spans (response start and body)
+
+        spans = cast(
+            list[ReadableSpan],
+            self.sorted_spans(self.memory_exporter.get_finished_spans()),
+        )
+        self.assertEqual(len(spans), 3)
 
         server_span = spans[2]
         self.assertEqual(server_span.name, "name from server hook")
