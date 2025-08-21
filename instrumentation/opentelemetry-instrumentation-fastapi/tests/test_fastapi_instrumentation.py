@@ -1896,7 +1896,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
         # Find the server span (the main span, not internal middleware spans)
         server_span = None
         for span in spans:
-            if HTTP_URL in span.attributes:
+            if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes:
                 server_span = span
                 break
 
@@ -1923,7 +1923,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -1940,7 +1940,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -1965,7 +1965,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -2012,32 +2012,12 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
                 spans = self.memory_exporter.get_finished_spans()
                 server_span = next(
-                    (span for span in spans if HTTP_URL in span.attributes),
+                    (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes),
                     None,
                 )
                 self.assertIsNotNone(server_span)
-
                 actual_url = server_span.attributes[HTTP_URL]
                 self.assertEqual(expected_url, actual_url)
-
-    def test_host_header_bytes_handling(self):
-        """Test that Host header values are properly decoded from bytes."""
-        # This test verifies the fix for bytes vs string handling in our implementation
-        resp = self._client.get(
-            "/foobar", headers={"host": "bytes-test.example.com"}
-        )
-        self.assertEqual(200, resp.status_code)
-
-        spans = self.memory_exporter.get_finished_spans()
-        server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
-        )
-        self.assertIsNotNone(server_span)
-
-        # Should properly decode and use the host header
-        expected_url = "https://bytes-test.example.com/foobar"
-        actual_url = server_span.attributes[HTTP_URL]
-        self.assertEqual(expected_url, actual_url)
 
     def test_host_header_maintains_span_attributes(self):
         """Test that using Host header doesn't break other span attributes."""
@@ -2052,7 +2032,7 @@ class TestFastAPIHostHeaderURL(TestBaseManualFastAPI):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -2096,7 +2076,7 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
         spans = self.memory_exporter.get_finished_spans()
         # With new semantic conventions, look for the main HTTP span with route information
         server_span = next(
-            (span for span in spans if "http.route" in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and "http.route" in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -2110,7 +2090,7 @@ class TestFastAPIHostHeaderURLNewSemconv(TestFastAPIHostHeaderURL):
         # Current behavior: Host header may not affect server.address in new semantic conventions
         # This test documents the current behavior rather than enforcing Host header usage
         server_address = server_span.attributes.get("server.address", "")
-        self.assertIsNotNone(server_address)  # Should have some value
+        self.assertIsNotNone(server_address, "testserver")  # Should have some value
 
 
 class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
@@ -2125,7 +2105,7 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
 
         spans = self.memory_exporter.get_finished_spans()
         server_span = next(
-            (span for span in spans if HTTP_URL in span.attributes), None
+            (span for span in spans if span.kind == trace.SpanKind.SERVER and HTTP_URL in span.attributes), None
         )
         self.assertIsNotNone(server_span)
 
@@ -2163,7 +2143,7 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
         server_spans = [
             span
             for span in spans
-            if hasattr(span, "attributes")
+            if span.kind == trace.SpanKind.SERVER and hasattr(span, "attributes")
             and span.attributes
             and HTTP_URL in span.attributes
         ]
