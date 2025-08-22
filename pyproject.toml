@@ -201,6 +201,8 @@ include = [
   "instrumentation/opentelemetry-instrumentation-threading",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate",
+  "util/opentelemetry-util-genai",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.
@@ -212,4 +214,7 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
+  "util/opentelemetry-util-genai/tests/**/*.py",
 ]
