@@ -238,12 +238,13 @@ class MethodWrappers:
                 try:
                     response = wrapped(*args, **kwargs)
                 except Exception as e:
+                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
                     self.event_logger.emit(
                         create_operation_details_event(
                             params=_extract_params(*args, **kwargs),
                             response=None,
                             capture_content=self.capture_content,
-                            api_endpoint=instance.api_endpoint,
+                            api_endpoint=api_endpoint,
                         )
                     )
                     raise e
@@ -281,12 +282,13 @@ class MethodWrappers:
                 try:
                     response = await wrapped(*args, **kwargs)
                 except Exception as e:
+                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
                     self.event_logger.emit(
                         create_operation_details_event(
                             params=_extract_params(*args, **kwargs),
                             response=None,
                             capture_content=self.capture_content,
-                            api_endpoint=instance.api_endpoint,
+                            api_endpoint=api_endpoint,
                         )
                     )
                     raise e

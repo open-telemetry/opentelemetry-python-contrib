@@ -11,6 +11,7 @@ from vertexai.generative_models import (
 from vertexai.preview.generative_models import (
     GenerativeModel as PreviewGenerativeModel,
 )
+
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
     InMemoryLogExporter,
