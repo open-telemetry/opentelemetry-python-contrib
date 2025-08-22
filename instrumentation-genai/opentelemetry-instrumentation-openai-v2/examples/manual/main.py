@@ -46,9 +46,6 @@ metrics.set_meter_provider(MeterProvider(
     ]
 ))
 
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-HTTPXClientInstrumentor().instrument()
-
 # instrument OpenAI
 OpenAIInstrumentor().instrument()
 
