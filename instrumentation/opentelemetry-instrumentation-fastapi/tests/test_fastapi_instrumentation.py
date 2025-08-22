@@ -21,7 +21,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.testclient import TestClient
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
@@ -38,9 +38,7 @@ from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
-from opentelemetry.instrumentation.dependencies import (
-    DependencyConflict,
-)
+from opentelemetry.instrumentation.dependencies import DependencyConflict
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -59,6 +57,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_PORT,
 )
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_TYPE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -70,6 +71,7 @@ from opentelemetry.semconv.attributes.network_attributes import (
 from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -1877,3 +1879,138 @@ class TestNonRecordingSpanWithCustomHeaders(TestBase):
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
+
+
+class TestTraceableExceptionHandling(TestBase):
+    """Tests to ensure FastAPI exception handlers are only executed once and with a valid context"""
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = fastapi.FastAPI()
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(
+            self.app, exclude_spans=["receive", "send"]
+        )
+        self.client = TestClient(self.app)
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.executed = 0
+        self.request_trace_id = None
+        self.error_trace_id = None
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_error_handler_context(self):
+        """OTEL tracing contexts must be available during error handler
+        execution, and handlers must only be executed once"""
+
+        status_code = 501
+
+        @self.app.exception_handler(Exception)
+        async def _(*_):
+            self.error_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+            self.executed += 1
+            return PlainTextResponse("", status_code)
+
+        @self.app.get("/foobar")
+        async def _():
+            self.request_trace_id = (
+                trace.get_current_span().get_span_context().trace_id
+            )
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except UnhandledException:
+            pass
+
+        self.assertIsNotNone(self.request_trace_id)
+        self.assertEqual(self.request_trace_id, self.error_trace_id)
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /foobar")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), status_code)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
+        self.assertEqual(self.executed, 1)
+
+    def test_exception_span_recording(self):
+        """Exceptions are always recorded in the active span"""
+
+        @self.app.get("/foobar")
+        async def _():
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except UnhandledException:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /foobar")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
+
+    def test_middleware_exceptions(self):
+        """Exceptions from user middlewares are recorded in the active span"""
+
+        @self.app.get("/foobar")
+        async def _():
+            return PlainTextResponse("Hello World")
+
+        @self.app.middleware("http")
+        async def _(*_):
+            raise UnhandledException("Test Exception")
+
+        try:
+            self.client.get(
+                "/foobar",
+            )
+        except UnhandledException:
+            pass
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /foobar")
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 500)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        assert event.attributes is not None
+        self.assertEqual(
+            event.attributes.get(EXCEPTION_TYPE),
+            f"{__name__}.UnhandledException",
+        )
