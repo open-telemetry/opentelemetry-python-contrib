@@ -1,4 +1,5 @@
 # pylint: disable=W0223,R0201
+import asyncio
 import time
 
 import tornado.web
@@ -106,6 +107,13 @@ class CustomResponseHeaderHandler(tornado.web.RequestHandler):
         self.set_status(200)
 
 
+class SlowHandler(tornado.web.RequestHandler):
+    async def get(self):
+        with self.application.tracer.start_as_current_span("slow"):
+            duration = float(self.get_argument("duration", "1.0"))
+            await asyncio.sleep(duration)
+
+
 class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
     def get(self):
         raise tornado.web.HTTPError(403)
@@ -133,6 +141,7 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
         ]
     )
