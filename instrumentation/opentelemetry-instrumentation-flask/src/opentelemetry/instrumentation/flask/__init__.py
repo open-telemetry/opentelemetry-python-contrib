@@ -380,11 +380,6 @@ def _rewrapped_app(
                 sem_conv_opt_in_mode,
             )
         )
-        # Enhance attributes with any custom labeler attributes
-        active_requests_count_attrs = enhance_metric_attributes(
-            active_requests_count_attrs
-        )
-
         active_requests_counter.add(1, active_requests_count_attrs)
         request_route = None
 
