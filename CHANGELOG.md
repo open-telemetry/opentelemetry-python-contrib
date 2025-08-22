@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation`, `opentelemetry-instrumentation-flask`: Add Labeler utility. Add FlaskInstrumentor support of custom attributes merging for HTTP duration metrics.
+  ([#3689](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3689))
+
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
