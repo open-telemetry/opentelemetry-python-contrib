@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
   ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
+- `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
+  ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
