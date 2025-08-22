@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-lines
+
 """
 Instrument to report system (CPU, memory, network) and
 process (CPU, memory, garbage collection) metrics. By default, the
