@@ -17,8 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
+  ([#3679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3679))
 - `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
   ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
+
+### Added
+
+- `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
+  ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
@@ -120,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 - Drop support for Python 3.8, bump baseline to Python 3.9.
-([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
+  ([#3399](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3399))
 
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
