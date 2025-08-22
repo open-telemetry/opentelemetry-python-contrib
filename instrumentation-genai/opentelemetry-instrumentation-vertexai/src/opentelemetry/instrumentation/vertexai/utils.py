@@ -94,13 +94,13 @@ MessagePart = Union[TextPart, ToolCall, ToolCallResponse, Any]
 
 
 @dataclass()
-class InputMessage(Any):
+class InputMessage:
     role: str
     parts: list[MessagePart]
 
 
 @dataclass()
-class OutputMessage(Any):
+class OutputMessage:
     role: str
     parts: list[MessagePart]
     finish_reason: Union[str, FinishReason]
