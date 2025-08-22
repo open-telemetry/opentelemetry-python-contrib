@@ -98,7 +98,7 @@ Usage
 Custom Metrics Attributes using Labeler
 ***************************************
 The Flask instrumentation reads from a Labeler utility that supports adding custom attributes
-to the HTTP metrics recorded by the instrumentation.
+to the HTTP request duration metrics recorded by the instrumentation.
 
 .. code-block:: python
 
