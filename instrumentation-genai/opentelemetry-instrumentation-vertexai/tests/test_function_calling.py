@@ -113,7 +113,6 @@ def test_function_call_choice(
             "gen_ai.response.finish_reasons": ("stop",),
             "gen_ai.usage.input_tokens": 74,
             "gen_ai.usage.output_tokens": 16,
-            "gen_ai.system_instructions": ({"type": "text", "content": ""},),
             "gen_ai.input.messages": (
                 {
                     "role": "user",
@@ -131,15 +130,15 @@ def test_function_call_choice(
                     "parts": (
                         {
                             "type": "tool_call",
-                            "id": "get_current_weather_0",
+                            "arguments": {"location": "New Delhi"},
                             "name": "get_current_weather",
-                            "response": {"location": "New Delhi"},
+                            "id": "get_current_weather_0",
                         },
                         {
                             "type": "tool_call",
-                            "id": "get_current_weather_1",
+                            "arguments": {"location": "San Francisco"},
                             "name": "get_current_weather",
-                            "response": {"location": "San Francisco"},
+                            "id": "get_current_weather_1",
                         },
                     ),
                     "finish_reason": "stop",
@@ -320,7 +319,6 @@ def test_tool_events(
             "gen_ai.response.finish_reasons": ("stop",),
             "gen_ai.usage.input_tokens": 128,
             "gen_ai.usage.output_tokens": 26,
-            "gen_ai.system_instructions": ({"type": "text", "content": ""},),
             "gen_ai.input.messages": (
                 {
                     "role": "user",
@@ -336,15 +334,15 @@ def test_tool_events(
                     "parts": (
                         {
                             "type": "tool_call",
-                            "id": "get_current_weather_0",
+                            "arguments": {"location": "New Delhi"},
                             "name": "get_current_weather",
-                            "response": {"location": "New Delhi"},
+                            "id": "get_current_weather_0",
                         },
                         {
                             "type": "tool_call",
-                            "id": "get_current_weather_1",
+                            "arguments": {"location": "San Francisco"},
                             "name": "get_current_weather",
-                            "response": {"location": "San Francisco"},
+                            "id": "get_current_weather_1",
                         },
                     ),
                 },
@@ -353,17 +351,17 @@ def test_tool_events(
                     "parts": (
                         {
                             "type": "tool_call_response",
-                            "id": "get_current_weather_0",
                             "response": {
                                 "content": '{"temperature": 35, "unit": "C"}'
                             },
+                            "id": "get_current_weather_0",
                         },
                         {
                             "type": "tool_call_response",
-                            "id": "get_current_weather_1",
                             "response": {
                                 "content": '{"temperature": 25, "unit": "C"}'
                             },
+                            "id": "get_current_weather_1",
                         },
                     ),
                 },

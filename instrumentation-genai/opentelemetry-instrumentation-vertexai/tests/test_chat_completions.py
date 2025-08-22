@@ -106,7 +106,6 @@ def test_generate_content(
             "gen_ai.response.finish_reasons": ("stop",),
             "gen_ai.usage.input_tokens": 5,
             "gen_ai.usage.output_tokens": 5,
-            "gen_ai.system_instructions": ({"type": "text", "content": ""},),
             "gen_ai.input.messages": (
                 {
                     "role": "user",
@@ -334,7 +333,6 @@ def test_generate_content_invalid_role(
             "gen_ai.request.model": "gemini-2.5-pro",
             "server.address": "us-central1-aiplatform.googleapis.com",
             "server.port": 443,
-            "gen_ai.system_instructions": ({"type": "text", "content": ""},),
             "gen_ai.input.messages": (
                 {
                     "role": "invalid_role",

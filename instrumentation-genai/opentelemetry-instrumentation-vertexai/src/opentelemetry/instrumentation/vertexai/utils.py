@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
@@ -342,12 +342,13 @@ def create_operation_details_event(
         ]
     if params.contents:
         attributes["gen_ai.input.messages"] = [
-            _convert_content_to_message(content) for content in params.contents
+            asdict(_convert_content_to_message(content))
+            for content in params.contents
         ]
     if response and response.candidates:
-        attributes["gen_ai.output.messages"] = (
-            _convert_response_to_output_messages(response)
-        )
+        attributes["gen_ai.output.messages"] = [
+            asdict(x) for x in _convert_response_to_output_messages(response)
+        ]
     return event
 
 
@@ -358,8 +359,13 @@ def _convert_response_to_output_messages(
     output_messages: list[OutputMessage] = []
     for candidate in response.candidates:
         message = _convert_content_to_message(candidate.content)
-        message.finish_reason = _map_finish_reason(candidate.finish_reason)
-        output_messages.append(message)
+        output_messages.append(
+            OutputMessage(
+                finish_reason=_map_finish_reason(candidate.finish_reason),
+                role=message.role,
+                parts=message.parts,
+            )
+        )
     return output_messages
 
 
