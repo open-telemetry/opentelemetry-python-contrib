@@ -79,6 +79,39 @@ Usage (Web.py)
         )
         server.start()
 
+Custom Metrics Attributes using Labeler
+***************************************
+The WSGI instrumentation reads from a Labeler utility that supports adding custom attributes
+to the HTTP duration metrics recorded by the instrumentation.
+
+
+.. code-block:: python
+
+    from flask import Flask
+    from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
+
+    app = Flask(__name__)
+    app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
+
+    @app.route("/user/<user_id>")
+    def user_profile(user_id):
+        # Get the labeler for the current request
+        labeler = get_labeler()
+        # Add custom attributes to WSGI instrumentation metrics
+        labeler.add("user_id", user_id)
+        labeler.add("user_type", "registered")
+        # Or, add multiple attributes at once
+        labeler.add_attributes({
+            "feature_flag": "new_ui",
+            "experiment_group": "control"
+        })
+        return f"User profile for {user_id}"
+
+    if __name__ == "__main__":
+        app.run(debug=True)
+
+
 Configuration
 -------------
 
@@ -223,6 +256,7 @@ from timeit import default_timer
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._labeler import enhance_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
@@ -712,12 +746,20 @@ class OpenTelemetryMiddleware:
                 duration_attrs_old = _parse_duration_attrs(
                     req_attrs, _StabilityMode.DEFAULT
                 )
+                # Enhance attributes with any custom labeler attributes
+                duration_attrs_old = enhance_metric_attributes(
+                    duration_attrs_old
+                )
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self.duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
                     req_attrs, _StabilityMode.HTTP
+                )
+                # Enhance attributes with any custom labeler attributes
+                duration_attrs_new = enhance_metric_attributes(
+                    duration_attrs_new
                 )
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
