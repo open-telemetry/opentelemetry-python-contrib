@@ -1,5 +1,7 @@
 from django.http import HttpResponse
 
+from opentelemetry.instrumentation._labeler import get_labeler
+
 
 def traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
@@ -26,6 +28,13 @@ def excluded_noarg2(request):  # pylint: disable=unused-argument
 
 
 def route_span_name(request, *args, **kwargs):  # pylint: disable=unused-argument
+    return HttpResponse()
+
+
+def route_span_name_custom_attributes(request, *args, **kwargs):  # pylint: disable=unused-argument
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add_attributes({"endpoint_type": "test", "feature_flag": True})
     return HttpResponse()
 
 
