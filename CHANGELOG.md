@@ -11,10 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
-- `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
-
 ### Fixed
 
 - `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
@@ -26,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
+- `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics
+  ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
+
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
