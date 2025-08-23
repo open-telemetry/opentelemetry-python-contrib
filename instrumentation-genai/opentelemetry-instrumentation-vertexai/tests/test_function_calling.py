@@ -43,7 +43,7 @@ def test_function_call_choice(
     # Emits user and choice events
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
+    user_log, choice_log = logs
     assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
@@ -110,7 +110,7 @@ def test_function_call_choice_no_content(
     # Emits user and choice events
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
+    user_log, choice_log = logs
     assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
@@ -169,9 +169,7 @@ def test_tool_events(
     # Emits user, assistant, two tool, and choice events
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    user_log, assistant_log, tool_log1, tool_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
+    user_log, assistant_log, tool_log1, tool_log2, choice_log = logs
     assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
@@ -271,9 +269,7 @@ def test_tool_events_no_content(
     # Emits user, assistant, two tool, and choice events
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 5
-    user_log, assistant_log, tool_log1, tool_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
+    user_log, assistant_log, tool_log1, tool_log2, choice_log = logs
     assert user_log.attributes == {
         "gen_ai.system": "vertex_ai",
         "event.name": "gen_ai.user.message",
