@@ -232,6 +232,12 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+
+Custom Metrics Attributes using Labeler
+***************************************
+The Django instrumentation reads from a Labeler utility that supports adding custom attributes to the HTTP duration metrics recorded by the instrumentation.
+
+
 API
 ---
 
