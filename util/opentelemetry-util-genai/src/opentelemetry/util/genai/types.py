@@ -14,7 +14,7 @@
 
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from .data import ChatGeneration, Message
@@ -29,9 +29,9 @@ class LLMInvocation:
     run_id: UUID
     parent_run_id: Optional[UUID] = None
     start_time: float = field(default_factory=time.time)
-    end_time: float = None
+    end_time: Optional[float] = None
     messages: List[Message] = field(default_factory=list)
     chat_generations: List[ChatGeneration] = field(default_factory=list)
-    attributes: dict = field(default_factory=dict)
+    attributes: Dict[str, Any] = field(default_factory=dict)
     span_id: int = 0
     trace_id: int = 0

@@ -34,6 +34,7 @@ from opentelemetry.trace import (
     use_span,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.types import Attributes
 
 from .data import Error
 from .instruments import Instruments
@@ -59,8 +60,11 @@ def _get_property_value(obj, property_name) -> object:
 
 
 def _message_to_event(message, system, framework) -> Optional[Event]:
+    # TODO: Convert to logs.
     content = _get_property_value(message, "content")
     if content:
+        # update this to event.gen_ai.client.inference.operation.details: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md
+
         message_type = _get_property_value(message, "type")
         message_type = "user" if message_type == "human" else message_type
         body = {"content": content}
@@ -80,6 +84,7 @@ def _message_to_event(message, system, framework) -> Optional[Event]:
 def _chat_generation_to_event(
     chat_generation, index, system, framework
 ) -> Optional[Event]:
+    # TODO: Convert to logs.
     if chat_generation.content:
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
@@ -478,14 +483,23 @@ class SpanMetricEmitter(BaseEmitter):
                     GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens
                 )
 
+            message_parts: List[Attributes] = []
             for index, message in enumerate(invocation.messages):
-                content = message.content
-                span.set_attribute(f"gen_ai.prompt.{index}.content", content)
-                span.set_attribute(f"gen_ai.prompt.{index}.role", message.type)
+                message_parts.append(message._to_part_dict())
+
+            if len(message_parts) > 0:
+                span.set_attribute("gen_ai.input.messages", message_parts)
+
+            # for index, message in enumerate(invocation.messages):
+            #     content = message.content
+            #     # Set these attributes to upcoming semconv: https://github.com/open-telemetry/semantic-conventions/pull/2179
+            #     span.set_attribute(f"gen_ai.input.messages.{index}.content", [content._to_part_dict()])
+            #     span.set_attribute(f"gen_ai.input.messages.{index}.role", message.type)
 
             for index, chat_generation in enumerate(
                 invocation.chat_generations
             ):
+                # Set these attributes to upcoming semconv: https://github.com/open-telemetry/semantic-conventions/pull/2179
                 span.set_attribute(
                     f"gen_ai.completion.{index}.content",
                     chat_generation.content,

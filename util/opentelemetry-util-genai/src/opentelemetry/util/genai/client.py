@@ -42,7 +42,7 @@ class TelemetryClient:
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_36_0.value,
         )
 
         meter_provider = kwargs.get("meter_provider")
@@ -50,7 +50,7 @@ class TelemetryClient:
             __name__,
             __version__,
             meter_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_36_0.value,
         )
 
         event_logger_provider = kwargs.get("event_logger_provider")
@@ -58,7 +58,7 @@ class TelemetryClient:
             __name__,
             __version__,
             event_logger_provider=event_logger_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_36_0.value,
         )
 
         self._emitter = (
