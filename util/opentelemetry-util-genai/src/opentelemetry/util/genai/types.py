@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Literal, Optional, Union
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from .data import ChatGeneration, Message
 
 
 class ContentCapturingMode(Enum):
@@ -68,4 +71,12 @@ class OutputMessage:
     role: str
     parts: list[MessagePart]
     finish_reason: Union[str, FinishReason]
-
+    run_id: UUID
+    parent_run_id: Optional[UUID] = None
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    messages: List[Message] = field(default_factory=list)
+    chat_generations: List[ChatGeneration] = field(default_factory=list)
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    span_id: int = 0
+    trace_id: int = 0

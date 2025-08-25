@@ -6,6 +6,24 @@ The GenAI Utils package will include boilerplate and helpers to standardize inst
 This package will provide APIs and decorators to minimize the work needed to instrument genai libraries, 
 while providing standardization for generating both types of otel, "spans and metrics" and "spans, metrics and events"
 
+This package provides these span attributes.
+-> gen_ai.operation.name: Str(chat)
+-> gen_ai.system: Str(ChatOpenAI)
+-> gen_ai.request.model: Str(gpt-3.5-turbo)
+-> gen_ai.request.top_p: Double(0.9)
+-> gen_ai.request.frequency_penalty: Double(0.5)
+-> gen_ai.request.presence_penalty: Double(0.5)
+-> gen_ai.request.stop_sequences: Slice(["\n","Human:","AI:"])
+-> gen_ai.request.seed: Int(100)
+-> gen_ai.request.max_tokens: Int(100)
+-> gen_ai.provider.name: Str(openai)
+-> gen_ai.request.temperature: Double(0.1)
+-> gen_ai.response.finish_reasons: Slice(["stop"])
+-> gen_ai.response.model: Str(gpt-3.5-turbo-0125)
+-> gen_ai.response.id: Str(chatcmpl-Bz8yrvPnydD9pObv625n2CGBPHS13)
+-> gen_ai.usage.input_tokens: Int(24)
+-> gen_ai.usage.output_tokens: Int(7)
+
 Installation
 ------------
 
