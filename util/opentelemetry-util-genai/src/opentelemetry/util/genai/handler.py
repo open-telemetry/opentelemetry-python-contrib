@@ -14,7 +14,7 @@
 
 import time
 from threading import Lock
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from opentelemetry._events import get_event_logger
@@ -30,13 +30,13 @@ from .types import LLMInvocation
 from .version import __version__
 
 
-class TelemetryClient:
+class TelemetryHandler:
     """
-    High-level client managing GenAI invocation lifecycles and emitting
+    High-level handler managing GenAI invocation lifecycles and emitting
     them as spans, metrics, and events.
     """
 
-    def __init__(self, emitter_type_full: bool = True, **kwargs):
+    def __init__(self, emitter_type_full: bool = True, **kwargs: Any):
         tracer_provider = kwargs.get("tracer_provider")
         self._tracer = get_tracer(
             __name__,
@@ -79,8 +79,8 @@ class TelemetryClient:
         prompts: List[Message],
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
-        **attributes,
-    ):
+        **attributes: Any,
+    ) -> None:
         invocation = LLMInvocation(
             messages=prompts,
             run_id=run_id,
@@ -95,7 +95,7 @@ class TelemetryClient:
         self,
         run_id: UUID,
         chat_generations: List[ChatGeneration],
-        **attributes,
+        **attributes: Any,
     ) -> LLMInvocation:
         with self._lock:
             invocation = self._llm_registry.pop(run_id)
@@ -106,7 +106,7 @@ class TelemetryClient:
         return invocation
 
     def fail_llm(
-        self, run_id: UUID, error: Error, **attributes
+        self, run_id: UUID, error: Error, **attributes: Any
     ) -> LLMInvocation:
         with self._lock:
             invocation = self._llm_registry.pop(run_id)
@@ -117,18 +117,18 @@ class TelemetryClient:
 
 
 # Singleton accessor
-_default_client: TelemetryClient | None = None
+_default_handler: Optional[TelemetryHandler] = None
 
 
-def get_telemetry_client(
-    emitter_type_full: bool = True, **kwargs
-) -> TelemetryClient:
-    global _default_client
-    if _default_client is None:
-        _default_client = TelemetryClient(
+def get_telemetry_handler(
+    emitter_type_full: bool = True, **kwargs: Any
+) -> TelemetryHandler:
+    global _default_handler
+    if _default_handler is None:
+        _default_handler = TelemetryHandler(
             emitter_type_full=emitter_type_full, **kwargs
         )
-    return _default_client
+    return _default_handler
 
 
 # Module‐level convenience functions
@@ -136,9 +136,9 @@ def llm_start(
     prompts: List[Message],
     run_id: UUID,
     parent_run_id: Optional[UUID] = None,
-    **attributes,
-):
-    return get_telemetry_client().start_llm(
+    **attributes: Any,
+) -> None:
+    return get_telemetry_handler().start_llm(
         prompts=prompts,
         run_id=run_id,
         parent_run_id=parent_run_id,
@@ -147,14 +147,14 @@ def llm_start(
 
 
 def llm_stop(
-    run_id: UUID, chat_generations: List[ChatGeneration], **attributes
+    run_id: UUID, chat_generations: List[ChatGeneration], **attributes: Any
 ) -> LLMInvocation:
-    return get_telemetry_client().stop_llm(
+    return get_telemetry_handler().stop_llm(
         run_id=run_id, chat_generations=chat_generations, **attributes
     )
 
 
-def llm_fail(run_id: UUID, error: Error, **attributes) -> LLMInvocation:
-    return get_telemetry_client().fail_llm(
+def llm_fail(run_id: UUID, error: Error, **attributes: Any) -> LLMInvocation:
+    return get_telemetry_handler().fail_llm(
         run_id=run_id, error=error, **attributes
     )

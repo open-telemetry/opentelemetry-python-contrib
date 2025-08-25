@@ -70,8 +70,9 @@ def _message_to_event(message, system, framework) -> Optional[Event]:
         body = {"content": content}
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            "gen_ai.provider.name": system,  # Added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
             "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,
+            GenAI.GEN_AI_SYSTEM: system,  # Deprecated: Removed in 1.37
         }
 
         return Event(
@@ -88,8 +89,9 @@ def _chat_generation_to_event(
     if chat_generation.content:
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            "gen_ai.provider.name": system,  # added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
             "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,
+            GenAI.GEN_AI_SYSTEM: system,  # Deprecated: removed in 1.37
         }
 
         message = {
@@ -121,7 +123,7 @@ def _get_metric_attributes(
         "gen_ai.framework": framework,
     }
     if system:
-        attributes[GenAI.GEN_AI_SYSTEM] = system
+        attributes["gen_ai.provider.name"] = system
     if operation_name:
         attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
     if request_model:
@@ -243,7 +245,11 @@ class SpanMetricEventEmitter(BaseEmitter):
                 span.set_attribute("gen_ai.framework", framework)
 
             if system is not None:
-                span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+                span.set_attribute(
+                    GenAI.GEN_AI_SYSTEM, system
+                )  # Deprecated: use "gen_ai.provider.name"
+                # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+                span.set_attribute("gen_ai.provider.name", system)
 
             finish_reasons = []
             for index, chat_generation in enumerate(
@@ -450,7 +456,11 @@ class SpanMetricEmitter(BaseEmitter):
                 span.set_attribute(
                     "gen_ai.framework", invocation.attributes.get("framework")
                 )
-            span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+            span.set_attribute(
+                GenAI.GEN_AI_SYSTEM, system
+            )  # Deprecated: use "gen_ai.provider.name"
+            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            span.set_attribute("gen_ai.provider.name", system)
 
             finish_reasons = []
             for index, chat_generation in enumerate(
