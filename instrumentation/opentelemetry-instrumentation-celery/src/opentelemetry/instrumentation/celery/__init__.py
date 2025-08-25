@@ -76,7 +76,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 if VERSION >= (4, 0, 1):
@@ -128,7 +130,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url="https://opentelemetry.io/schemas/1.35.0",
         )
 
         meter_provider = kwargs.get("meter_provider")
@@ -136,7 +138,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url="https://opentelemetry.io/schemas/1.35.0",
         )
 
         self.create_celery_metrics(meter)
