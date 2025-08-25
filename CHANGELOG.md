@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
+  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
 - `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
   ([#3679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3679))
 - `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
@@ -22,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
+- `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics
+  ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
+- `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
+  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 - `opentelemetry-instrumentation`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-django`: Add Labeler utility. Add FlaskInstrumentor, DjangoInstrumentor, WsgiInstrumentor support of custom attributes merging for HTTP duration metrics.
   ([#3689](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3689))
 
