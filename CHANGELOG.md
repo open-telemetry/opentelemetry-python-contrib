@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics
   ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
-
+- `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
+  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
