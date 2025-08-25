@@ -1609,8 +1609,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-processor-baggage -- -ra
 
-  py39-test-opamp-client_ubuntu-latest:
-    name: opamp-client 3.9 Ubuntu
+  py39-test-opamp-client-latest_ubuntu-latest:
+    name: opamp-client-latest 3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1626,10 +1626,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-opamp-client -- -ra
+        run: tox -e py39-test-opamp-client-latest -- -ra
 
-  py310-test-opamp-client_ubuntu-latest:
-    name: opamp-client 3.10 Ubuntu
+  py39-test-opamp-client-lowest_ubuntu-latest:
+    name: opamp-client-lowest 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-opamp-client-lowest -- -ra
+
+  py310-test-opamp-client-latest_ubuntu-latest:
+    name: opamp-client-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1645,10 +1664,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-opamp-client -- -ra
+        run: tox -e py310-test-opamp-client-latest -- -ra
 
-  py311-test-opamp-client_ubuntu-latest:
-    name: opamp-client 3.11 Ubuntu
+  py310-test-opamp-client-lowest_ubuntu-latest:
+    name: opamp-client-lowest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-opamp-client-lowest -- -ra
+
+  py311-test-opamp-client-latest_ubuntu-latest:
+    name: opamp-client-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1664,10 +1702,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-opamp-client -- -ra
+        run: tox -e py311-test-opamp-client-latest -- -ra
 
-  py312-test-opamp-client_ubuntu-latest:
-    name: opamp-client 3.12 Ubuntu
+  py311-test-opamp-client-lowest_ubuntu-latest:
+    name: opamp-client-lowest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-opamp-client-lowest -- -ra
+
+  py312-test-opamp-client-latest_ubuntu-latest:
+    name: opamp-client-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1683,10 +1740,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-opamp-client -- -ra
+        run: tox -e py312-test-opamp-client-latest -- -ra
 
-  py313-test-opamp-client_ubuntu-latest:
-    name: opamp-client 3.13 Ubuntu
+  py312-test-opamp-client-lowest_ubuntu-latest:
+    name: opamp-client-lowest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-opamp-client-lowest -- -ra
+
+  py313-test-opamp-client-latest_ubuntu-latest:
+    name: opamp-client-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1702,4 +1778,23 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-opamp-client -- -ra
+        run: tox -e py313-test-opamp-client-latest -- -ra
+
+  py313-test-opamp-client-lowest_ubuntu-latest:
+    name: opamp-client-lowest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-opamp-client-lowest -- -ra
