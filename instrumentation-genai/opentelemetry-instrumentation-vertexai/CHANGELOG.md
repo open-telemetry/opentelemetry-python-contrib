@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Start making changes to implement the big semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
+Now only a single event (`gen_ai.client.inference.operation.details`) is used to capture Chat History. These changes will be opt-in,
+users will need to set the environment variable OTEL_SEMCONV_STABILITY_OPT_IN to `gen_ai_latest_experimental` to see them ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386)).
 - Implement uninstrument for `opentelemetry-instrumentation-vertexai`
   ([#3328](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3328))
 - VertexAI support for async calling

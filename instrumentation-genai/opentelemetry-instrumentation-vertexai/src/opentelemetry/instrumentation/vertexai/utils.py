@@ -15,13 +15,17 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
+    Any,
     Iterable,
+    Literal,
     Mapping,
+    Optional,
     Sequence,
+    Union,
     cast,
 )
 from urllib.parse import urlparse
@@ -66,6 +70,43 @@ _MODEL = "model"
 
 
 @dataclass(frozen=True)
+class ToolCall:
+    type: Literal["tool_call"]
+    arguments: Any
+    name: str
+    id: Optional[str]
+
+
+@dataclass(frozen=True)
+class ToolCallResponse:
+    type: Literal["tool_call_response"]
+    response: Any
+    id: Optional[str]
+
+
+@dataclass(frozen=True)
+class TextPart:
+    type: Literal["text"]
+    content: str
+
+
+MessagePart = Union[TextPart, ToolCall, ToolCallResponse, Any]
+
+
+@dataclass()
+class InputMessage:
+    role: str
+    parts: list[MessagePart]
+
+
+@dataclass()
+class OutputMessage:
+    role: str
+    parts: list[MessagePart]
+    finish_reason: Union[str, FinishReason]
+
+
+@dataclass(frozen=True)
 class GenerateContentParams:
     model: str
     contents: (
@@ -104,6 +145,7 @@ def get_server_attributes(
 
 
 def get_genai_request_attributes(
+    use_latest_semconvs: bool,
     params: GenerateContentParams,
     operation_name: GenAIAttributes.GenAiOperationNameValues = GenAIAttributes.GenAiOperationNameValues.CHAT,
 ):
@@ -111,9 +153,12 @@ def get_genai_request_attributes(
     generation_config = params.generation_config
     attributes: dict[str, AttributeValue] = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.VERTEX_AI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: model,
     }
+    if not use_latest_semconvs:
+        attributes[GenAIAttributes.GEN_AI_SYSTEM] = (
+            GenAIAttributes.GenAiSystemValues.VERTEX_AI.value
+        )
 
     if not generation_config:
         return attributes
@@ -125,6 +170,8 @@ def get_genai_request_attributes(
             generation_config.temperature
         )
     if "top_p" in generation_config:
+        # There is also a top_k parameter ( The maximum number of tokens to consider when sampling.),
+        # but no semconv yet exists for it.
         attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] = (
             generation_config.top_p
         )
@@ -140,16 +187,28 @@ def get_genai_request_attributes(
         attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
             generation_config.frequency_penalty
         )
-    # Uncomment once GEN_AI_REQUEST_SEED is released in 1.30
-    # https://github.com/open-telemetry/semantic-conventions/pull/1710
-    # if "seed" in generation_config:
-    #     attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-    #         generation_config.seed
-    #     )
     if "stop_sequences" in generation_config:
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
         )
+    if use_latest_semconvs:
+        if "seed" in generation_config:
+            attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+                generation_config.seed
+            )
+        if "candidate_count" in generation_config:
+            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+                generation_config.candidate_count
+            )
+        if "response_mime_type" in generation_config:
+            if generation_config.response_mime_type == "text/plain":
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
+            elif generation_config.response_mime_type == "application/json":
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
+            else:
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                    generation_config.response_mime_type
+                )
 
     return attributes
 
@@ -162,8 +221,6 @@ def get_genai_response_attributes(
         _map_finish_reason(candidate.finish_reason)
         for candidate in response.candidates
     ]
-    # TODO: add gen_ai.response.id once available in the python client
-    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3246
     return {
         GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
         GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
@@ -240,7 +297,7 @@ def request_to_events(
                 id_=f"{function_response.name}_{idx}",
                 role=content.role,
                 content=json_format.MessageToDict(
-                    function_response._pb.response
+                    function_response._pb.response  # type: ignore[reportUnknownMemberType]
                 )
                 if capture_content
                 else None,
@@ -254,6 +311,100 @@ def request_to_events(
             capture_content=capture_content, parts=content.parts
         )
         yield user_event(role=content.role, content=request_content)
+
+
+def create_operation_details_event(
+    *,
+    api_endpoint: str,
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse
+    | None,
+    params: GenerateContentParams,
+    capture_content: bool,
+) -> Event:
+    event = Event(name="gen_ai.client.inference.operation.details")
+    attributes: dict[str, AnyValue] = {
+        **get_genai_request_attributes(True, params),
+        **get_server_attributes(api_endpoint),
+        **(get_genai_response_attributes(response) if response else {}),
+    }
+    event.attributes = attributes
+    if not capture_content:
+        return event
+    if params.system_instruction:
+        attributes["gen_ai.system_instructions"] = [
+            {
+                "type": "text",
+                "content": "\n".join(
+                    part.text for part in params.system_instruction.parts
+                ),
+            }
+        ]
+    if params.contents:
+        attributes["gen_ai.input.messages"] = [
+            asdict(_convert_content_to_message(content))
+            for content in params.contents
+        ]
+    if response and response.candidates:
+        attributes["gen_ai.output.messages"] = [
+            asdict(x) for x in _convert_response_to_output_messages(response)
+        ]
+    return event
+
+
+def _convert_response_to_output_messages(
+    response: prediction_service.GenerateContentResponse
+    | prediction_service_v1beta1.GenerateContentResponse,
+) -> list[OutputMessage]:
+    output_messages: list[OutputMessage] = []
+    for candidate in response.candidates:
+        message = _convert_content_to_message(candidate.content)
+        output_messages.append(
+            OutputMessage(
+                finish_reason=_map_finish_reason(candidate.finish_reason),
+                role=message.role,
+                parts=message.parts,
+            )
+        )
+    return output_messages
+
+
+def _convert_content_to_message(
+    content: content.Content | content_v1beta1.Content,
+) -> InputMessage:
+    parts: MessagePart = []
+    message = InputMessage(role=content.role, parts=parts)
+    for idx, part in enumerate(content.parts):
+        if "function_response" in part:
+            part = part.function_response
+            parts.append(
+                ToolCallResponse(
+                    type="tool_call_response",
+                    id=f"{part.name}_{idx}",
+                    response=json_format.MessageToDict(part._pb.response),  # type: ignore[reportUnknownMemberType]
+                )
+            )
+        elif "function_call" in part:
+            part = part.function_call
+            parts.append(
+                ToolCall(
+                    type="tool_call",
+                    id=f"{part.name}_{idx}",
+                    name=part.name,
+                    arguments=json_format.MessageToDict(
+                        part._pb.args,  # type: ignore[reportUnknownMemberType]
+                    ),
+                )
+            )
+        elif "text" in part:
+            parts.append(TextPart(type="text", content=part.text))
+        else:
+            dict_part = type(part).to_dict(  # type: ignore[reportUnknownMemberType]
+                part, always_print_fields_with_no_presence=False
+            )
+            dict_part["type"] = type(part)
+            parts.append(dict_part)
+    return message
 
 
 def response_to_events(
@@ -300,7 +451,7 @@ def _extract_tool_calls(
             function=ChoiceToolCall.Function(
                 name=part.function_call.name,
                 arguments=json_format.MessageToDict(
-                    part.function_call._pb.args
+                    part.function_call._pb.args  # type: ignore[reportUnknownMemberType]
                 )
                 if capture_content
                 else None,
@@ -319,7 +470,9 @@ def _parts_to_any_value(
     return [
         cast(
             "dict[str, AnyValue]",
-            type(part).to_dict(part, including_default_value_fields=False),  # type: ignore[reportUnknownMemberType]
+            type(part).to_dict(  # type: ignore[reportUnknownMemberType]
+                part, always_print_fields_with_no_presence=False
+            ),
         )
         for part in parts
     ]
