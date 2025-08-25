@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-_instruments = ("confluent-kafka >= 1.8.2, <= 2.11.0",)
+__version__ = "0.1b0.dev"

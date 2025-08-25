@@ -179,7 +179,8 @@ def set_ip_on_next_http_connection(span: Span):
         try:
             yield
         finally:
-            context.detach(token)
+            if token:
+                context.detach(token)
     else:
         spans = state["need_ip"]
         spans.append(span)
