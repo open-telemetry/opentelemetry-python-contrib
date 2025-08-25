@@ -68,7 +68,7 @@ uuid-utils==0.11.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   opentelemetry-opamp-client
-vcrpy==6.0.2 ; python_full_version >= '3.10' and platform_python_implementation != 'PyPy'
+vcrpy==7.0.0 ; python_full_version >= '3.10' and platform_python_implementation != 'PyPy'
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   pytest-vcr
