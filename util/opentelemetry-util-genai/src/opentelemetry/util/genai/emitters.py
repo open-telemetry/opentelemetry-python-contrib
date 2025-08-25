@@ -18,6 +18,7 @@ from uuid import UUID
 
 from opentelemetry import trace
 from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.context import Context, get_current
 from opentelemetry.metrics import Meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -59,20 +60,19 @@ def _get_property_value(obj, property_name) -> object:
     return getattr(obj, property_name, None)
 
 
-def _message_to_event(message, system, framework) -> Optional[Event]:
-    # TODO: Convert to logs.
+def _message_to_event(message, provider_name, framework) -> Optional[Event]:
     content = _get_property_value(message, "content")
+    # TODO: check if content is not None and should_collect_content()
     if content:
         # update this to event.gen_ai.client.inference.operation.details: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md
-
         message_type = _get_property_value(message, "type")
         message_type = "user" if message_type == "human" else message_type
         body = {"content": content}
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.provider.name": system,  # Added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
+            "gen_ai.provider.name": provider_name,  # Added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
             "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,  # Deprecated: Removed in 1.37
+            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: Removed in 1.37
         }
 
         return Event(
@@ -82,16 +82,37 @@ def _message_to_event(message, system, framework) -> Optional[Event]:
         )
 
 
+def _message_to_log_record(
+    message, provider_name, framework
+) -> Optional[LogRecord]:
+    content = _get_property_value(message, "content")
+    # check if content is not None and should_collect_content()
+    message_type = _get_property_value(message, "type")
+    body = {"content": content}
+
+    attributes = {
+        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+        "gen_ai.framework": framework,
+        "gen_ai.provider.name": provider_name,
+        GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: use "gen_ai.provider.name"
+    }
+
+    return LogRecord(
+        event_name=f"gen_ai.{message_type}.message",
+        attributes=attributes,
+        body=body or None,
+    )
+
+
 def _chat_generation_to_event(
-    chat_generation, index, system, framework
+    chat_generation, index, provider_name, framework
 ) -> Optional[Event]:
-    # TODO: Convert to logs.
     if chat_generation.content:
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.provider.name": system,  # added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
+            "gen_ai.provider.name": provider_name,  # added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
             "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: system,  # Deprecated: removed in 1.37
+            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: removed in 1.37
         }
 
         message = {
@@ -106,6 +127,34 @@ def _chat_generation_to_event(
 
         return Event(
             name="gen_ai.choice",
+            attributes=attributes,
+            body=body or None,
+        )
+
+
+def _chat_generation_to_log_record(
+    chat_generation, index, prefix, provider_name, framework
+) -> Optional[LogRecord]:
+    if chat_generation:
+        attributes = {
+            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+            "gen_ai.framework": framework,
+            "gen_ai.provider.name": provider_name,
+            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: removed in 1.37
+        }
+
+        message = {
+            "content": chat_generation.content,
+            "type": chat_generation.type,
+        }
+        body = {
+            "index": index,
+            "finish_reason": chat_generation.finish_reason or "error",
+            "message": message,
+        }
+
+        return LogRecord(
+            event_name="gen_ai.choice",
             attributes=attributes,
             body=body or None,
         )
@@ -204,7 +253,7 @@ class SpanMetricEventEmitter(BaseEmitter):
             self._event_logger.emit(
                 _message_to_event(
                     message=message,
-                    system=system,
+                    provider_name=system,
                     framework=invocation.attributes.get("framework"),
                 )
             )
