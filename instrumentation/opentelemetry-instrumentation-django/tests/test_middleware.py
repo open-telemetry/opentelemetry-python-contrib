@@ -1087,7 +1087,7 @@ class TestMiddleware(WsgiTestBase):
         }
         start = default_timer()
         for _ in range(3):
-            response = Client().get("/span_name/1234/")
+            response = Client().get("/span_name_custom_attrs/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = max(default_timer() - start, 0)
         duration = max(round(duration_s * 1000), 0)
