@@ -6,7 +6,7 @@ from yarl import URL
 AIOPIKA_VERSION_INFO = tuple(int(v) for v in aiopika_version.split("."))
 MESSAGE_ID = "meesage_id"
 CORRELATION_ID = "correlation_id"
-MESSAGING_SYSTEM = "rabbitmq"
+MESSAGING_SYSTEM_VALUE = "rabbitmq"
 EXCHANGE_NAME = "exchange_name"
 QUEUE_NAME = "queue_name"
 ROUTING_KEY = "routing_key"
