@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-confluent-kafka` Add suppression logic to confluent-kafka
+  ([#1960](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1960))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
@@ -702,6 +706,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1976))
 - Do not collect `system.network.connections` by default on macOS which was causing exceptions in metrics collection.
   ([#2008](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2008))
+  
 
 ## Version 1.20.0/0.41b0 (2023-09-01)
 
