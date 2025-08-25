@@ -129,11 +129,6 @@ from opentelemetry.instrumentation.requests.constants import (
     TEST_PATTERNS,
 )
 from opentelemetry.instrumentation.requests.package import _instruments
-from opentelemetry.instrumentation.requests.semconv import (
-    ATTR_USER_AGENT_SYNTHETIC_TYPE,
-    USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
-    USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
-)
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
     is_http_instrumentation_enabled,
@@ -141,6 +136,10 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+    UserAgentSyntheticTypeValues,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
@@ -175,8 +174,8 @@ def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
         user_agent: The user agent string to analyze
 
     Returns:
-        USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST if user agent contains any pattern from TEST_PATTERNS
-        USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT if user agent contains any pattern from BOT_PATTERNS
+        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
+        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
         None otherwise
 
     Note: Test patterns take priority over bot patterns.
@@ -187,9 +186,9 @@ def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
     user_agent_lower = user_agent.lower()
 
     if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
-        return USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST
+        return UserAgentSyntheticTypeValues.TEST.value
     if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
-        return USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT
+        return UserAgentSyntheticTypeValues.BOT.value
 
     return None
 
@@ -286,7 +285,7 @@ def _instrument(
         user_agent = headers.get("User-Agent")
         synthetic_type = _detect_synthetic_user_agent(user_agent)
         if synthetic_type:
-            span_attributes[ATTR_USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+            span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
         metric_labels = {}
         _set_http_method(

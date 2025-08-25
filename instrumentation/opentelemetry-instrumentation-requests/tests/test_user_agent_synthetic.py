@@ -16,10 +16,9 @@ import httpretty
 import requests
 
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.requests.semconv import (
-    ATTR_USER_AGENT_SYNTHETIC_TYPE,
-    USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
-    USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+    UserAgentSyntheticTypeValues,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -56,8 +55,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.BOT.value,
         )
 
     def test_user_agent_bot_bingbot(self):
@@ -69,8 +68,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.BOT.value,
         )
 
     def test_user_agent_test_alwayson(self):
@@ -80,8 +79,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.TEST.value,
         )
 
     def test_user_agent_case_insensitive(self):
@@ -91,8 +90,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.BOT.value,
         )
 
         self.memory_exporter.clear()
@@ -102,8 +101,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.TEST.value,
         )
 
     def test_user_agent_normal_browser(self):
@@ -114,14 +113,14 @@ class TestUserAgentSynthetic(TestBase):
         requests.get(self.URL, headers=headers, timeout=5)
 
         span = self.assert_span()
-        self.assertNotIn(ATTR_USER_AGENT_SYNTHETIC_TYPE, span.attributes)
+        self.assertNotIn(USER_AGENT_SYNTHETIC_TYPE, span.attributes)
 
     def test_no_user_agent_header(self):
         """Test that requests without user agent don't get synthetic type"""
         requests.get(self.URL, timeout=5)
 
         span = self.assert_span()
-        self.assertNotIn(ATTR_USER_AGENT_SYNTHETIC_TYPE, span.attributes)
+        self.assertNotIn(USER_AGENT_SYNTHETIC_TYPE, span.attributes)
 
     def test_empty_user_agent_header(self):
         """Test that empty user agent doesn't get synthetic type"""
@@ -129,7 +128,7 @@ class TestUserAgentSynthetic(TestBase):
         requests.get(self.URL, headers=headers, timeout=5)
 
         span = self.assert_span()
-        self.assertNotIn(ATTR_USER_AGENT_SYNTHETIC_TYPE, span.attributes)
+        self.assertNotIn(USER_AGENT_SYNTHETIC_TYPE, span.attributes)
 
     def test_user_agent_substring_match(self):
         """Test that substrings are detected correctly"""
@@ -139,8 +138,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_BOT,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.BOT.value,
         )
 
         self.memory_exporter.clear()
@@ -151,8 +150,8 @@ class TestUserAgentSynthetic(TestBase):
 
         span = self.assert_span()
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.TEST.value,
         )
 
     def test_user_agent_priority_alwayson_over_bot(self):
@@ -163,6 +162,6 @@ class TestUserAgentSynthetic(TestBase):
         span = self.assert_span()
         # alwayson should be checked first and return 'test'
         self.assertEqual(
-            span.attributes.get(ATTR_USER_AGENT_SYNTHETIC_TYPE),
-            USER_AGENT_SYNTHETIC_TYPE_VALUE_TEST,
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.TEST.value,
         )
