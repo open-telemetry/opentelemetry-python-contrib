@@ -24,8 +24,12 @@ from opentelemetry._opamp.exceptions import (
     OpAMPRemoteConfigParseException,
 )
 from opentelemetry._opamp.proto import opamp_pb2
-from opentelemetry._opamp.proto.anyvalue_pb2 import AnyValue as PB2AnyValue
-from opentelemetry._opamp.proto.anyvalue_pb2 import KeyValue as PB2KeyValue
+from opentelemetry._opamp.proto.anyvalue_pb2 import (
+    AnyValue as PB2AnyValue,  # pylint: disable=no-name-in-module
+)
+from opentelemetry._opamp.proto.anyvalue_pb2 import (
+    KeyValue as PB2KeyValue,  # pylint: disable=no-name-in-module
+)
 from opentelemetry._opamp.version import __version__
 
 
