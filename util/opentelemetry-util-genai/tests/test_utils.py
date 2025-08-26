@@ -8,7 +8,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.util.genai.client import (
+from opentelemetry.util.genai.handler import (
     llm_start,
     llm_stop,
 )

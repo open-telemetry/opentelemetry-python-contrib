@@ -18,6 +18,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from opentelemetry._events import get_event_logger
+from opentelemetry._logs import get_logger
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
@@ -61,18 +62,34 @@ class TelemetryHandler:
             schema_url=Schemas.V1_36_0.value,
         )
 
+        logger_provider = kwargs.get("logger_provider")
+        self._logger = get_logger(
+            __name__,
+            __version__,
+            logger_provider=logger_provider,
+            schema_url=Schemas.V1_36_0.value,
+        )
+
         self._emitter = (
             SpanMetricEventEmitter(
                 tracer=self._tracer,
                 meter=self._meter,
-                event_logger=self._event_logger,
+                logger=self._logger,
+                capture_content=self._should_collect_content(),
             )
             if emitter_type_full
-            else SpanMetricEmitter(tracer=self._tracer, meter=self._meter)
+            else SpanMetricEmitter(
+                tracer=self._tracer,
+                meter=self._meter,
+                capture_content=self._should_collect_content(),
+            )
         )
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
         self._lock = Lock()
+
+    def _should_collect_content(self) -> bool:
+        return True  # Placeholder for future config
 
     def start_llm(
         self,

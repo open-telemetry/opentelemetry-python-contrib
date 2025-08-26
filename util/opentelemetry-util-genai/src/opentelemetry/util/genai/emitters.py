@@ -17,8 +17,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from opentelemetry import trace
-from opentelemetry._events import Event
-from opentelemetry._logs import LogRecord
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, get_current
 from opentelemetry.metrics import Meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -37,7 +36,7 @@ from opentelemetry.trace import (
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import Attributes
 
-from .data import Error
+from .data import ChatGeneration, Error, Message
 from .instruments import Instruments
 from .types import LLMInvocation
 
@@ -49,7 +48,6 @@ class _SpanState:
     start_time: float
     request_model: Optional[str] = None
     system: Optional[str] = None
-    db_system: Optional[str] = None
     children: List[UUID] = field(default_factory=list)
 
 
@@ -60,93 +58,54 @@ def _get_property_value(obj, property_name) -> object:
     return getattr(obj, property_name, None)
 
 
-def _message_to_event(message, provider_name, framework) -> Optional[Event]:
-    content = _get_property_value(message, "content")
-    # TODO: check if content is not None and should_collect_content()
-    if content:
-        # update this to event.gen_ai.client.inference.operation.details: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md
-        message_type = _get_property_value(message, "type")
-        message_type = "user" if message_type == "human" else message_type
-        body = {"content": content}
-        attributes = {
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.provider.name": provider_name,  # Added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
-            "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: Removed in 1.37
-        }
-
-        return Event(
-            name=f"gen_ai.{message_type}.message",
-            attributes=attributes,
-            body=body or None,
-        )
-
-
 def _message_to_log_record(
-    message, provider_name, framework
+    message: Message, provider_name, framework, capture_content: bool
 ) -> Optional[LogRecord]:
     content = _get_property_value(message, "content")
-    # check if content is not None and should_collect_content()
     message_type = _get_property_value(message, "type")
-    body = {"content": content}
+
+    body = {}
+    if content and capture_content:
+        body = {"type": message_type, "content": content}
 
     attributes = {
         # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
         "gen_ai.framework": framework,
+        # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
         "gen_ai.provider.name": provider_name,
-        GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: use "gen_ai.provider.name"
     }
 
+    if capture_content:
+        attributes["gen_ai.input.messages"] = [message._to_part_dict()]
+
     return LogRecord(
-        event_name=f"gen_ai.{message_type}.message",
+        event_name="gen_ai.client.inference.operation.details",
         attributes=attributes,
         body=body or None,
     )
 
 
-def _chat_generation_to_event(
-    chat_generation, index, provider_name, framework
-) -> Optional[Event]:
-    if chat_generation.content:
-        attributes = {
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.provider.name": provider_name,  # added in 1.37 - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-provider-name
-            "gen_ai.framework": framework,
-            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: removed in 1.37
-        }
-
-        message = {
-            "content": chat_generation.content,
-            "type": chat_generation.type,
-        }
-        body = {
-            "index": index,
-            "finish_reason": chat_generation.finish_reason or "error",
-            "message": message,
-        }
-
-        return Event(
-            name="gen_ai.choice",
-            attributes=attributes,
-            body=body or None,
-        )
-
-
 def _chat_generation_to_log_record(
-    chat_generation, index, prefix, provider_name, framework
+    chat_generation: ChatGeneration,
+    index,
+    provider_name,
+    framework,
+    capture_content: bool,
 ) -> Optional[LogRecord]:
     if chat_generation:
         attributes = {
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             "gen_ai.framework": framework,
+            # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
             "gen_ai.provider.name": provider_name,
-            GenAI.GEN_AI_SYSTEM: provider_name,  # Deprecated: removed in 1.37
         }
 
         message = {
-            "content": chat_generation.content,
             "type": chat_generation.type,
         }
+        if capture_content and chat_generation.content:
+            message["content"] = chat_generation.content
+
         body = {
             "index": index,
             "finish_reason": chat_generation.finish_reason or "error",
@@ -204,13 +163,18 @@ class SpanMetricEventEmitter(BaseEmitter):
     """
 
     def __init__(
-        self, event_logger, tracer: Tracer = None, meter: Meter = None
+        self,
+        logger: Logger = None,
+        tracer: Tracer = None,
+        meter: Meter = None,
+        capture_content: bool = False,
     ):
         self._tracer = tracer or trace.get_tracer(__name__)
         instruments = Instruments(meter)
         self._duration_histogram = instruments.operation_duration_histogram
         self._token_histogram = instruments.token_usage_histogram
-        self._event_logger = event_logger
+        self._logger = logger
+        self._capture_content = capture_content
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
@@ -250,13 +214,25 @@ class SpanMetricEventEmitter(BaseEmitter):
 
         for message in invocation.messages:
             system = invocation.attributes.get("system")
-            self._event_logger.emit(
-                _message_to_event(
-                    message=message,
-                    provider_name=system,
-                    framework=invocation.attributes.get("framework"),
-                )
+            # Event API is deprecated, use structured logs instead
+            # event = _message_to_event(
+            #     message=message,
+            #     provider_name=system,
+            #     framework=invocation.attributes.get("framework"),
+            # )
+            # if event and self._event_logger:
+            #     self._event_logger.emit(
+            #         event
+            #     )
+
+            log = _message_to_log_record(
+                message=message,
+                provider_name=system,
+                framework=invocation.attributes.get("framework"),
+                capture_content=self._capture_content,
             )
+            if log and self._logger:
+                self._logger.emit(log)
 
     def emit(self, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
@@ -304,11 +280,24 @@ class SpanMetricEventEmitter(BaseEmitter):
             for index, chat_generation in enumerate(
                 invocation.chat_generations
             ):
-                self._event_logger.emit(
-                    _chat_generation_to_event(
-                        chat_generation, index, system, framework
-                    )
+                # Event API is deprecated. Use structured logs instead
+                # event = _chat_generation_to_event(
+                #         chat_generation, index, system, framework
+                #     )
+                # if event and self._event_logger:
+                #     self._event_logger.emit(
+                #         event
+                #     )
+
+                log = _chat_generation_to_log_record(
+                    chat_generation,
+                    index,
+                    system,
+                    framework,
+                    capture_content=self._capture_content,
                 )
+                if log and self._logger:
+                    self._logger.emit(log)
                 finish_reasons.append(chat_generation.finish_reason)
 
             if finish_reasons is not None and len(finish_reasons) > 0:
@@ -426,11 +415,17 @@ class SpanMetricEmitter(BaseEmitter):
     Emits only spans and metrics (no events).
     """
 
-    def __init__(self, tracer: Tracer = None, meter: Meter = None):
+    def __init__(
+        self,
+        tracer: Tracer = None,
+        meter: Meter = None,
+        capture_content: bool = False,
+    ):
         self._tracer = tracer or trace.get_tracer(__name__)
         instruments = Instruments(meter)
         self._duration_histogram = instruments.operation_duration_histogram
         self._token_histogram = instruments.token_usage_histogram
+        self._capture_content = capture_content
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
@@ -502,21 +497,19 @@ class SpanMetricEmitter(BaseEmitter):
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             framework = invocation.attributes.get("framework")
             if framework is not None:
-                span.set_attribute(
-                    "gen_ai.framework", invocation.attributes.get("framework")
-                )
+                span.set_attribute("gen_ai.framework", framework)
             span.set_attribute(
                 GenAI.GEN_AI_SYSTEM, system
             )  # Deprecated: use "gen_ai.provider.name"
             # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
             span.set_attribute("gen_ai.provider.name", system)
 
-            finish_reasons = []
+            finish_reasons: list[str] = []
             for index, chat_generation in enumerate(
                 invocation.chat_generations
             ):
                 finish_reasons.append(chat_generation.finish_reason)
-            if finish_reasons is not None and len(finish_reasons) > 0:
+            if finish_reasons and len(finish_reasons) > 0:
                 span.set_attribute(
                     GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
                 )
