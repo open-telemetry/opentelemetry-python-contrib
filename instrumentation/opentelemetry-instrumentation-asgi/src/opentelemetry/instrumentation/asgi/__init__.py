@@ -253,7 +253,10 @@ from typing import Any, Awaitable, Callable, DefaultDict, Tuple
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation._labeler import enhance_metric_attributes
+from opentelemetry.instrumentation._labeler import (
+    enhance_metric_attributes,
+    get_labeler,
+)
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
@@ -735,6 +738,9 @@ class OpenTelemetryMiddleware:
             receive: An awaitable callable yielding dictionaries
             send: An awaitable callable taking a single dictionary as argument.
         """
+        # Required to create new instance for custom attributes in async context
+        _ = get_labeler()
+
         start = default_timer()
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
