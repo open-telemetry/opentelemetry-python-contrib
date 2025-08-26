@@ -47,7 +47,10 @@ from wrapt import wrap_function_wrapper
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
-from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
+from opentelemetry.instrumentation.openai_v2.utils import (
+    is_content_enabled,
+    is_latest_experimental_enabled,
+)
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
@@ -94,7 +97,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                is_content_enabled(),
+                is_latest_experimental_enabled(),
             ),
         )
 
@@ -102,7 +109,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                is_content_enabled(),
+                is_latest_experimental_enabled(),
             ),
         )
 
