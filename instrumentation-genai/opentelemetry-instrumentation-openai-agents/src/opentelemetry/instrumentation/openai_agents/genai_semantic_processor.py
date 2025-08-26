@@ -1,633 +1,679 @@
-"""GenAI semantic processor for OpenAI Agents SDK traces.
-
-Provides attribute, event, and metric mapping from OpenAI Agents internal
-tracing objects to OpenTelemetry GenAI semantic conventions (draft).
 """
+GenAI Semantic Convention Trace Processor
+
+This module implements a custom trace processor that enriches spans with OpenTelemetry GenAI 
+semantic conventions attributes following the OpenInference processor pattern. It adds 
+standardized attributes for generative AI operations using iterator-based attribute extraction.
+
+References:
+- OpenTelemetry GenAI Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/
+- OpenInference Pattern: https://github.com/Arize-ai/openinference
+"""
+
 from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterator, Optional, Iterable
+from typing import TYPE_CHECKING, Any, Iterator, Optional
 
-from .utils import (
-    is_content_enabled,
-    is_tool_definitions_enabled,
-    is_tool_io_enabled,
-    is_metrics_enabled,
-    get_max_value_length,
+from opentelemetry._events import Event
+from opentelemetry.context import attach, detach
+from opentelemetry.trace import Span as OtelSpan
+from opentelemetry.trace import (
+    Status,
+    StatusCode,
+    Tracer,
+    set_span_in_context,
 )
+from opentelemetry.util.types import AttributeValue
+from agents.tracing import Span, Trace, TracingProcessor
+from agents.tracing.span_data import (
+    AgentSpanData,
+    FunctionSpanData,
+    GenerationSpanData,
+    GuardrailSpanData,
+    HandoffSpanData,
+    ResponseSpanData,
+    TranscriptionSpanData,
+    SpeechSpanData,
+)
+from openai.types.responses import ResponseOutputMessage, ResponseFunctionToolCall
+
+if TYPE_CHECKING:
+    from typing_extensions import assert_never
+
+# GenAI Semantic Convention Constants
+GEN_AI_SYSTEM = "gen_ai.system"
+GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
+GEN_AI_REQUEST_MODEL = "gen_ai.request.model"
+GEN_AI_REQUEST_TEMPERATURE = "gen_ai.request.temperature"
+GEN_AI_REQUEST_TOP_P = "gen_ai.request.top_p" 
+GEN_AI_REQUEST_TOP_K = "gen_ai.request.top_k"
+GEN_AI_REQUEST_MAX_TOKENS = "gen_ai.request.max_tokens"
+GEN_AI_REQUEST_PRESENCE_PENALTY = "gen_ai.request.presence_penalty"
+GEN_AI_REQUEST_FREQUENCY_PENALTY = "gen_ai.request.frequency_penalty"
+GEN_AI_USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
+GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+GEN_AI_USAGE_TOTAL_TOKENS = "gen_ai.usage.total_tokens"
+GEN_AI_PROMPT = "gen_ai.prompt"
+GEN_AI_COMPLETION = "gen_ai.completion"
+GEN_AI_RESPONSE_ID = "gen_ai.response.id"
+GEN_AI_AGENT_NAME = "gen_ai.agent.name"
+GEN_AI_TOOL_NAME = "gen_ai.tool.name"
+GEN_AI_TOOL_INPUT = "gen_ai.tool.input" 
+GEN_AI_TOOL_OUTPUT = "gen_ai.tool.output"
+GEN_AI_HANDOFF_FROM_AGENT = "gen_ai.handoff.from_agent"
+GEN_AI_HANDOFF_TO_AGENT = "gen_ai.handoff.to_agent"
+GEN_AI_GUARDRAIL_NAME = "gen_ai.guardrail.name"
+GEN_AI_GUARDRAIL_TRIGGERED = "gen_ai.guardrail.triggered"
 
 logger = logging.getLogger(__name__)
 
-try:  # pragma: no cover
-    from opentelemetry.trace import (
-        Tracer,
-        Span as OtelSpan,
-        Status,
-        StatusCode,
-        set_span_in_context,
+def _get_function_span_event(span: Span[Any], otel_span: OtelSpan) -> Event:
+    """
+    Create an OpenTelemetry event for a function span.
+    
+    Args:
+        span: The span to create the event for
+        otel_span: The OpenTelemetry span context
+    
+    Returns:
+        An OpenTelemetry Event with function call details
+    """
+    span_data = span.span_data
+    if not isinstance(span_data, FunctionSpanData):
+        assert_never(span_data)  # Ensure type safety
+    
+    input_event = Event(
+        name='gen_ai.assistant.message',
+        attributes={
+            "gen_ai.system": "openai",
+        },
+        body={
+                'role': 'assistant',
+                'tool_calls': [
+                    {
+                        # 'id': span_data.call_id,
+                        'type': 'function',
+                            'function': {
+                                'name': span_data.name,
+                                'arguments': span_data.input,
+                            }
+                        }
+                    ]
+                },
+        span_id=otel_span.context.span_id if otel_span else None,
+        trace_id=otel_span.context.trace_id if otel_span else None,
     )
-    from opentelemetry.context import attach, detach
-    from opentelemetry._events import Event
-    from opentelemetry.metrics import get_meter
-except Exception:  # pragma: no cover
-    Tracer = OtelSpan = object  # type: ignore
-    Status = StatusCode = object  # type: ignore
-    def set_span_in_context(span):  # type: ignore
-        return {}
 
-    def attach(ctx):  # type: ignore
-        return ctx
+    output_event =  Event(
+        name='gen_ai.tool.message',
+        attributes={
+            "gen_ai.system": "openai",
+        },
+        body={
+            'content': span_data.output,
+            # 'id': span_data.call_id,
+            'role': 'function',
+        },
+        span_id=otel_span.context.span_id if otel_span else None,
+        trace_id=otel_span.context.trace_id if otel_span else None,
+    )
 
-    def detach(token):  # type: ignore
-        return None
+    return [input_event, output_event]
 
-    class Event:  # type: ignore
-        def __init__(self, *a, **k):
-            pass
+def _get_response_span_event(span, otel_span):
+    span_data = span.span_data
+    input = span_data.input if isinstance(span_data, ResponseSpanData) else None
+    output = span_data.response.output if isinstance(span_data, ResponseSpanData) else None
 
-    def get_meter(name):  # type: ignore
-        class _H:
-            def record(self, *a, **k):
-                pass
+    input_events = []
+    output_events = []
 
-        class _M:
-            def create_histogram(self, *a, **k):
-                return _H()
+    for message in input:
+        message_type = message.get("type", "message") # Default to "message" if type is not specified
+        if message_type == "message":
+            input_events.append(
+                Event(
+                    name=f'gen_ai.{message_type}.message',
+                    attributes={
+                        "gen_ai.system": "openai",
+                    },
+                    body=message,
+                    span_id=otel_span.context.span_id if otel_span else None,
+                    trace_id=otel_span.context.trace_id if otel_span else None,
+                )
+            )
+        
+        elif message_type == "function_call_output":
+            input_events.append(
+                Event(
+                    name=f'gen_ai.tool.message',
+                    attributes={
+                        "gen_ai.system": "openai",
+                    },
+                    body={
+                        'role': 'tool',
+                        'content': message.get("output", ""), # type: ignore
+                    },
+                    span_id=otel_span.context.span_id if otel_span else None, # type: ignore
+                    trace_id=otel_span.context.trace_id if otel_span else None, # type: ignore
+                )
+            )
+        elif message_type == "function_call":
+            input_events.append( # type: ignore
+                Event(
+                    name=f'gen_ai.assistant.message',
+                    attributes={
+                        "gen_ai.system": "openai",
+                    },
+                    body={
+                        'role': 'assistant',
+                        'tool_calls': [
+                            {
+                                'id': message.get("call_id"), # type: ignore
+                                'type': 'function',
+                                'function': {
+                                    'name': message.get("name"),
+                                    'arguments': message.get("arguments"),
+                                }
+                            }
+                        ]
+                    },
+                    span_id=otel_span.context.span_id if otel_span else None, # type: ignore
+                    trace_id=otel_span.context.trace_id if otel_span else None,
+                )
+            )
 
-        return _M()
+    for output_message in output:
+        if isinstance(output_message, ResponseOutputMessage):
+                output_events.append( # type: ignore
+                    Event(
+                        name='gen_ai.choice',
+                        attributes={
+                            "gen_ai.system": "openai",
+                        },
+                        body={
+                            'role': output_message.role,
+                            'message': {
+                                'content': span_data.response.output_text # type: ignore
+                            }
+                        },
+                        span_id=otel_span.context.span_id if otel_span else None, # type: ignore
+                        trace_id=otel_span.context.trace_id if otel_span else None, # type: ignore
+                    )
+                )
 
-PROVIDER_NAME = "gen_ai.provider.name"
-OPERATION_NAME = "gen_ai.operation.name"
-REQUEST_MODEL = "gen_ai.request.model"
-REQUEST_MAX_TOKENS = "gen_ai.request.max_tokens"
-REQUEST_TEMPERATURE = "gen_ai.request.temperature"
-REQUEST_TOP_P = "gen_ai.request.top_p"
-REQUEST_TOP_K = "gen_ai.request.top_k"
-REQUEST_PRESENCE_PENALTY = "gen_ai.request.presence_penalty"
-REQUEST_FREQUENCY_PENALTY = "gen_ai.request.frequency_penalty"
-REQUEST_STOP_SEQUENCES = "gen_ai.request.stop_sequences"
-REQUEST_SEED = "gen_ai.request.seed"
-REQUEST_CHOICE_COUNT = "gen_ai.request.choice.count"
-REQUEST_ENCODING_FORMATS = "gen_ai.request.encoding_formats"
-OUTPUT_TYPE = "gen_ai.output.type"
-RESPONSE_ID = "gen_ai.response.id"
-RESPONSE_MODEL = "gen_ai.response.model"
-RESPONSE_FINISH_REASONS = "gen_ai.response.finish_reasons"
-USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
-USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
-CONVERSATION_ID = "gen_ai.conversation.id"
-AGENT_ID = "gen_ai.agent.id"
-AGENT_NAME = "gen_ai.agent.name"
-AGENT_DESCRIPTION = "gen_ai.agent.description"
-TOOL_NAME = "gen_ai.tool.name"
-TOOL_CALL_ID = "gen_ai.tool.call.id"
-TOOL_DESCRIPTION = "gen_ai.tool.description"
-TOOL_TYPE = "gen_ai.tool.type"
-TOOL_CALL_ARGS = "gen_ai.tool.call.arguments"
-TOOL_CALL_RESULT = "gen_ai.tool.call.result"
-TOOL_DEFINITIONS = "gen_ai.tool.definitions"
-INPUT_MESSAGES = "gen_ai.input.messages"
-OUTPUT_MESSAGES = "gen_ai.output.messages"
-ORCHESTRATOR_AGENT_DEFS = "gen_ai.orchestrator.agent_definitions"
-DATA_SOURCE_ID = "gen_ai.data_source.id"
-ERROR_TYPE = "error.type"
-SERVER_ADDRESS = "server.address"
-SERVER_PORT = "server.port"
-OPENAI_REQUEST_SERVICE_TIER = "openai.request.service_tier"
-OPENAI_RESPONSE_SERVICE_TIER = "openai.response.service_tier"
-OPENAI_RESPONSE_SYSTEM_FINGERPRINT = "openai.response.system_fingerprint"
-TOKEN_TYPE = "gen_ai.token.type"
-TOKEN_TYPE_INPUT = "input"
-TOKEN_TYPE_OUTPUT = "output"
+        if isinstance(output_message, ResponseFunctionToolCall):
+            output_events.append( # type: ignore
+                Event(
+                    name=f'gen_ai.assistant.message',
+                    attributes={
+                        "gen_ai.system": "openai",
+                    },
+                    body={
+                        'role': 'assistant',
+                        'tool_calls': [
+                            {
+                                'id': output_message.call_id,
+                                'type': 'function',
+                                'function': {
+                                    'name': output_message.name,
+                                    'arguments': output_message.arguments,
+                                }
+                            }
+                        ]
+                    },
+                    span_id=otel_span.context.span_id if otel_span else None, # type: ignore
+                    trace_id=otel_span.context.trace_id if otel_span else None, # type: ignore
+                )
+            )
+            
+    
+    return input_events + output_events # type: ignore
 
-
-def _first(seq: Iterable[Any], default: Any = None) -> Any:
-    for item in seq:
-        return item
-    return default
-
-
-def _truncate(value: Any) -> Any:
-    max_len = get_max_value_length()
+def safe_json_dumps(obj: Any) -> str:
+    """Safely convert an object to JSON string, following OpenInference pattern."""
     try:
-        s = json.dumps(value, ensure_ascii=False)
-        if len(s) <= max_len:
-            return value
-        return s[: max_len - 3] + "..."
-    except Exception:  # pragma: no cover
-        return value
+        return json.dumps(obj, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return str(obj)
 
 
-def _extract_server_info(client: Any) -> tuple[Optional[str], Optional[int]]:
-    base = getattr(client, "base_url", None) or getattr(client, "_base_url", None)
-    if not base:
-        return None, None
-    try:
-        from urllib.parse import urlparse
-        p = urlparse(str(base))
-        host = p.hostname
-        port = p.port
-        if port == 443:
-            port = None
-        return host, port
-    except Exception:  # pragma: no cover
-        return None, None
+def _as_utc_nano(dt: datetime) -> int:
+    """Convert datetime to UTC nanoseconds timestamp."""
+    return int(dt.astimezone(timezone.utc).timestamp() * 1_000_000_000)
 
 
-def _service_tier_from_request(data: Any) -> Optional[str]:
-    tier = getattr(data, "service_tier", None)
-    if tier and tier != "auto":
-        return tier
-    cfg = getattr(data, "model_config", None) or {}
-    tier = cfg.get("service_tier")
-    if tier and tier != "auto":
-        return tier
-    return None
+def _get_span_status(span: Span[Any]) -> Status:
+    """Get OpenTelemetry span status from agent span."""
+    if error := getattr(span, "error", None):
+        return Status(
+            status_code=StatusCode.ERROR,
+            description=f"{error.get('message', '')}: {error.get('data', '')}"
+        )
+    return Status(StatusCode.OK)
 
 
-class GenAISemanticProcessor:  # pragma: no cover
-    def __init__(
-        self,
-        tracer: Optional[Tracer] = None,
-        event_logger: Optional[Any] = None,
-        include_sensitive_data: bool = False,
-        provider_value: str = "openai",
-    ) -> None:
+class GenAISemanticProcessor(TracingProcessor):
+    """
+    A trace processor that enriches spans with OpenTelemetry GenAI semantic convention attributes.
+    
+    This processor follows the OpenInference pattern using iterator-based attribute extraction
+    to add standardized attributes to spans for generative AI operations. It processes different 
+    span types and adds appropriate GenAI attributes based on the span's operation type.
+    
+    Supported span types:
+    - GenerationSpanData: LLM model calls (gen_ai.operation.name = "chat" or "text_completion")
+    - AgentSpanData: Agent operations (gen_ai.operation.name = "invoke_agent")
+    - FunctionSpanData: Tool execution (gen_ai.operation.name = "execute_tool")
+    - ResponseSpanData: Response tracking (gen_ai.operation.name = "response")
+    - TranscriptionSpanData: Speech-to-text (gen_ai.operation.name = "transcription")
+    - SpeechSpanData: Text-to-speech (gen_ai.operation.name = "speech_generation")
+    - GuardrailSpanData: Safety/validation operations (gen_ai.operation.name = "guardrail_check")
+    - HandoffSpanData: Agent handoff operations (gen_ai.operation.name = "agent_handoff")
+    """
+
+    def __init__(self, tracer: Optional[Tracer] = None, event_logger: Optional[Any] = None, 
+                 system_name: str = "openai", include_sensitive_data: bool = True):
+        """
+        Initialize the GenAI semantic processor following OpenInference pattern.
+        
+        Args:
+            tracer: OpenTelemetry tracer for creating spans (optional)
+            event_logger: Event logger for logging GenAI events (optional)
+            system_name: The GenAI system identifier (default: "openai")
+            include_sensitive_data: Whether to include input/output data in attributes
+        """
         self._tracer = tracer
         self._event_logger = event_logger
-        self._capture_content = include_sensitive_data or is_content_enabled()
-        self._provider_value = provider_value
-        self._root_spans: Dict[str, OtelSpan] = {}
-        self._spans: Dict[str, OtelSpan] = {}
-        self._ctx_tokens: Dict[str, object] = {}
-        self._meter = get_meter(__name__) if is_metrics_enabled() else None
-        self._op_duration = None
-        self._token_hist = None
-        # Active flag allows graceful deactivation when uninstrumenting
-        self._active = True
-        if self._meter:
-            try:  # pragma: no cover
-                self._op_duration = self._meter.create_histogram(
-                    name="gen_ai.operation.duration", unit="s",
-                    description="GenAI operation duration"
-                )
-                self._token_hist = self._meter.create_histogram(
-                    name="gen_ai.token.usage", unit="{token}",
-                    description="GenAI token usage counts"
-                )
-            except Exception:
-                self._meter = None
+        self.system_name = system_name
+        self.include_sensitive_data = include_sensitive_data
+        
+        # Track spans and contexts following OpenInference pattern
+        self._root_spans: dict[str, OtelSpan] = {}
+        self._otel_spans: dict[str, OtelSpan] = {}
+        self._tokens: dict[str, object] = {}
 
-    def on_trace_start(self, trace: Any) -> None:
-        if not self._tracer or not self._active:
-            return
-        try:
-            span = self._tracer.start_span(
-                name=getattr(trace, "name", "agent.root"),
-                attributes={PROVIDER_NAME: self._provider_value},
-            )
-            self._root_spans[getattr(trace, "trace_id", "")] = span
-        except Exception:  # pragma: no cover
-            logger.debug("trace start failed", exc_info=True)
-
-    def on_trace_end(self, trace: Any) -> None:
-        if not self._active:
-            return
-        rid = getattr(trace, "trace_id", "")
-        root = self._root_spans.pop(rid, None)
-        if root:
-            try:
-                root.set_status(Status(StatusCode.OK))  # type: ignore
-                root.end()  # type: ignore
-            except Exception:  # pragma: no cover
-                pass
-
-    def on_span_start(self, span: Any) -> None:
-        if not self._tracer or not self._active:
-            return
-        try:
-            parent_ctx = None
-            pid = getattr(span, "parent_id", None)
-            if pid and pid in self._spans:
-                parent_ctx = set_span_in_context(self._spans[pid])
-            elif not pid:
-                parent_ctx = set_span_in_context(
-                    self._root_spans.get(getattr(span, "trace_id", ""))
-                )
+    def on_trace_start(self, trace: Trace) -> None:
+        """Called when a trace is started. Create root OpenTelemetry span if tracer available."""
+        if self._tracer:
             otel_span = self._tracer.start_span(
-                name=self._derive_span_name(span),
-                context=parent_ctx,
-                attributes={PROVIDER_NAME: self._provider_value},
+                name=trace.name,
+                attributes={
+                    GEN_AI_SYSTEM: self.system_name,
+                },
             )
-            sid = getattr(span, "span_id", "")
-            self._spans[sid] = otel_span
-            token = attach(set_span_in_context(otel_span))
-            self._ctx_tokens[sid] = token
-            setattr(span, "_otel_start", datetime.now(timezone.utc))
-        except Exception:  # pragma: no cover
-            logger.debug("span start failed", exc_info=True)
+            self._root_spans[trace.trace_id] = otel_span
 
-    def on_span_end(self, span: Any) -> None:
-        if not self._active:
+    def on_trace_end(self, trace: Trace) -> None:
+        """Called when a trace is finished. End root span if exists."""
+        if root_span := self._root_spans.pop(trace.trace_id, None):
+            root_span.set_status(Status(StatusCode.OK))
+            root_span.end()
+        
+        # Clean up any remaining spans for this trace
+        self._cleanup_spans_for_trace(trace.trace_id)
+
+    def on_span_start(self, span: Span[Any]) -> None:
+        """Called when a span is started. Create OpenTelemetry span if tracer available."""
+        if not self._tracer or not span.started_at:
             return
-        sid = getattr(span, "span_id", None)
-        otel_span = self._spans.pop(sid, None)
-        token = self._ctx_tokens.pop(sid, None)
-        if token:
+            
+        # start_time = datetime.fromisoformat(span.started_at)
+        parent_span = (
+            self._otel_spans.get(span.parent_id)
+            if span.parent_id
+            else self._root_spans.get(span.trace_id)
+        )
+        context = set_span_in_context(parent_span) if parent_span else None
+        
+        otel_span = self._tracer.start_span(
+            name=self._get_span_name(span),
+            context=context,
+            # start_time=_as_utc_nano(start_time),
+            # start_time=span.started_at,
+            attributes={
+                GEN_AI_SYSTEM: self.system_name,
+            },
+        )
+        self._otel_spans[span.span_id] = otel_span
+        self._tokens[span.span_id] = attach(set_span_in_context(otel_span))
+
+    def on_span_end(self, span: Span[Any]) -> None:
+        """
+        Called when a span is finished. Enriches the span with GenAI semantic convention attributes.
+        
+        Args:
+            span: The finished span to enrich with GenAI attributes
+        """
+        # Detach context token if exists
+        if token := self._tokens.pop(span.span_id, None):
+            detach(token)  # type: ignore[arg-type]
+            
+        # Get the OpenTelemetry span if it exists
+        if not (otel_span := self._otel_spans.pop(span.span_id, None)):
+            # If no OpenTelemetry span, just log the attributes for demonstration
             try:
-                detach(token)
-            except Exception:  # pragma: no cover
-                pass
-        if not otel_span:
+                attributes = dict(self._extract_genai_attributes(span))
+                
+                # Log to event logger if available
+                if self._event_logger:
+                    self._log_event_to_logger(span, attributes, otel_span) # type: ignore
+                
+                # Also log for debugging
+                for key, value in attributes.items():
+                    logger.debug(f"Setting GenAI attribute on span {span.span_id}: {key} = {value}")
+            except Exception as e:
+                logger.warning(f"Failed to enrich span {span.span_id} with GenAI attributes: {e}")
             return
+            
         try:
-            attrs = dict(self._extract_attributes(span))
-            for k, v in attrs.items():
-                if v is not None:
-                    otel_span.set_attribute(k, v)  # type: ignore
-            err = getattr(span, "error", None)
-            if err:
-                otel_span.set_status(  # type: ignore
-                    Status(
-                        StatusCode.ERROR,
-                        f"{err.get('message', '')}: {err.get('data', '')}",
-                    )
-                )
-                etype = err.get("type") or err.get("code")
-                if etype:
-                    otel_span.set_attribute(ERROR_TYPE, etype)  # type: ignore
-            else:
-                otel_span.set_status(Status(StatusCode.OK))  # type: ignore
-            self._emit_events(span, otel_span)
-            self._record_metrics(span, attrs, bool(err))
-        except Exception:  # pragma: no cover
-            logger.debug("span end processing failed", exc_info=True)
-        finally:
-            try:
-                otel_span.end()  # type: ignore
-            except Exception:  # pragma: no cover
-                pass
+            # Set attributes on the OpenTelemetry span and collect them for event logging
+            attributes = {}
+            for key, value in self._extract_genai_attributes(span):
+                otel_span.set_attribute(key, value)
+                attributes[key] = value
+                
+            # Log to event logger if available
+            if self._event_logger:
+                self._log_event_to_logger(span, attributes, otel_span)
+                
+            # Calculate end time if available
+            end_time: Optional[int] = None
+            if span.ended_at:
+                try:
+                    # end_time = _as_utc_nano(datetime.fromisoformat(span.ended_at))
+                    end_time = span.ended_at
+                except ValueError:
+                    pass
+                    
+            # Set span status and end the span
+            otel_span.set_status(status=_get_span_status(span))
+            # otel_span.end(end_time)
+            otel_span.end()
+            
+        except Exception as e:
+            logger.warning(f"Failed to enrich span {span.span_id} with GenAI attributes: {e}")
+            otel_span.set_status(Status(StatusCode.ERROR, str(e)))
+            otel_span.end()
 
     def shutdown(self) -> None:
-        self._active = False
-        for s in list(self._spans.values()):
-            try:
-                s.end()  # type: ignore
-            except Exception:
-                pass
-        for s in list(self._root_spans.values()):
-            try:
-                s.end()  # type: ignore
-            except Exception:
-                pass
-        self._spans.clear()
-        self._root_spans.clear()
-        self._ctx_tokens.clear()
+        """Called when the application stops. Clean up resources."""
+        # End any remaining spans
+        for span_id, otel_span in list(self._otel_spans.items()):
+            otel_span.set_status(Status(StatusCode.ERROR, "Application shutdown"))
+            otel_span.end()
+        
+        # End any remaining root spans
+        for trace_id, root_span in list(self._root_spans.items()):
+            root_span.set_status(Status(StatusCode.ERROR, "Application shutdown"))
+            root_span.end()
+            
+        # Clear all tracking dictionaries
+        self._otel_spans.clear()
+        self._root_spans.clear() 
+        self._tokens.clear()
 
-    # Backwards friendly alias
-    def deactivate(self) -> None:  # pragma: no cover
-        self.shutdown()
+    def force_flush(self) -> None:
+        """Force any pending operations to complete. No-op for this processor."""
+        pass
 
-    def _extract_attributes(self, span: Any) -> Iterator[tuple[str, Any]]:
-        data = getattr(span, "span_data", span)
-        op = self._operation_name(data)
-        if op:
-            yield OPERATION_NAME, op
-        for field, attr in [
-            ("model", REQUEST_MODEL),
-            ("max_tokens", REQUEST_MAX_TOKENS),
-            ("temperature", REQUEST_TEMPERATURE),
-            ("top_p", REQUEST_TOP_P),
-            ("top_k", REQUEST_TOP_K),
-            ("presence_penalty", REQUEST_PRESENCE_PENALTY),
-            ("frequency_penalty", REQUEST_FREQUENCY_PENALTY),
-            ("stop", REQUEST_STOP_SEQUENCES),
-            ("seed", REQUEST_SEED),
-            ("response_format", OUTPUT_TYPE),
-        ]:
-            val = getattr(data, field, None)
-            if val is not None:
-                if field == "response_format" and isinstance(val, dict):
-                    val = val.get("type")
-                yield attr, val
-        if hasattr(data, "encoding_formats") and getattr(data, "encoding_formats"):
-            yield REQUEST_ENCODING_FORMATS, getattr(data, "encoding_formats")
-        mc = getattr(data, "model_config", None) or {}
-        choice_count = (
-            getattr(data, "n", None)
-            or mc.get("n")
-            or mc.get("choice_count")
-        )
-        if choice_count and choice_count != 1:
-            yield REQUEST_CHOICE_COUNT, choice_count
-        st = _service_tier_from_request(data)
-        if st:
-            yield OPENAI_REQUEST_SERVICE_TIER, st
-        client = getattr(data, "client", None)
-        if client:
-            host, port = _extract_server_info(client)
-            if host:
-                yield SERVER_ADDRESS, host
-            if port:
-                yield SERVER_PORT, port
-        usage = getattr(data, "usage", None)
-        if usage:
-            in_t = getattr(usage, "prompt_tokens", None) or getattr(
-                usage, "input_tokens", None
-            )
-            out_t = getattr(usage, "completion_tokens", None) or getattr(
-                usage, "output_tokens", None
-            )
-            if in_t is not None:
-                yield USAGE_INPUT_TOKENS, in_t
-            if out_t is not None:
-                yield USAGE_OUTPUT_TOKENS, out_t
-        thread_id = getattr(data, "thread_id", None) or getattr(
-            data, "conversation_id", None
-        )
-        if thread_id:
-            yield CONVERSATION_ID, thread_id
-        if type(data).__name__ == "AgentSpanData" or hasattr(data, "agent_id"):
-            aid = getattr(data, "agent_id", None) or getattr(data, "id", None)
-            if aid:
-                yield AGENT_ID, aid
-            if getattr(data, "name", None):
-                yield AGENT_NAME, getattr(data, "name")
-            if getattr(data, "description", None):
-                yield AGENT_DESCRIPTION, getattr(data, "description")
-            if is_tool_definitions_enabled():
-                tools = getattr(data, "tools", None)
-                if tools:
-                    yield TOOL_DEFINITIONS, _truncate(tools)
-            agent_defs = getattr(data, "agent_definitions", None)
-            if agent_defs:
-                yield ORCHESTRATOR_AGENT_DEFS, _truncate(agent_defs)
-        if type(data).__name__ == "FunctionSpanData":
-            if getattr(data, "name", None):
-                yield TOOL_NAME, getattr(data, "name")
-            if getattr(data, "call_id", None):
-                yield TOOL_CALL_ID, getattr(data, "call_id")
-            if getattr(data, "tool_type", None):
-                yield TOOL_TYPE, getattr(data, "tool_type")
-            if getattr(data, "description", None):
-                yield TOOL_DESCRIPTION, getattr(data, "description")
-            if is_tool_io_enabled():
-                if getattr(data, "input", None) is not None:
-                    # Serialize tool arguments as JSON (primitive str attr)
-                    try:
-                        raw_args = getattr(data, "input")
-                        serialized_args = json.dumps(
-                            raw_args, ensure_ascii=False
-                        )
-                    except Exception:  # noqa: BLE001
-                        serialized_args = str(getattr(data, "input"))
-                    yield TOOL_CALL_ARGS, _truncate(serialized_args)
-                if getattr(data, "output", None) is not None:
-                    try:
-                        raw_res = getattr(data, "output")
-                        serialized_res = json.dumps(
-                            raw_res, ensure_ascii=False
-                        )
-                    except Exception:  # noqa: BLE001
-                        serialized_res = str(getattr(data, "output"))
-                    yield TOOL_CALL_RESULT, _truncate(serialized_res)
-        if type(data).__name__ == "ResponseSpanData":
-            resp = getattr(data, "response", None)
-            if resp is not None:
-                if getattr(resp, "id", None):
-                    yield RESPONSE_ID, getattr(resp, "id")
-                if getattr(resp, "model", None):
-                    yield RESPONSE_MODEL, getattr(resp, "model")
-                if getattr(resp, "service_tier", None):
-                    rst = getattr(resp, "service_tier")
-                    if rst and rst != "auto":
-                        yield OPENAI_RESPONSE_SERVICE_TIER, rst
-                if getattr(resp, "system_fingerprint", None):
-                    yield OPENAI_RESPONSE_SYSTEM_FINGERPRINT, getattr(
-                        resp, "system_fingerprint"
-                    )
-                usage2 = getattr(resp, "usage", None)
-                if usage2:
-                    if getattr(usage2, "prompt_tokens", None) is not None:
-                        yield USAGE_INPUT_TOKENS, getattr(
-                            usage2, "prompt_tokens"
-                        )
-                    if getattr(usage2, "completion_tokens", None) is not None:
-                        yield USAGE_OUTPUT_TOKENS, getattr(
-                            usage2, "completion_tokens"
-                        )
-                finish = self._finish_reasons(resp)
-                if finish:
-                    yield RESPONSE_FINISH_REASONS, finish
-        if self._capture_content and (
-            type(data).__name__ == "AgentSpanData" or hasattr(data, "agent_id")
-        ):
-            input_msgs = getattr(data, "input", None) or getattr(
-                data, "messages", None
-            )
-            if input_msgs:
-                try:
-                    yield INPUT_MESSAGES, _truncate(
-                        json.dumps(input_msgs, ensure_ascii=False)
-                    )
-                except Exception:  # noqa: BLE001
-                    yield INPUT_MESSAGES, _truncate(str(input_msgs))
-            output_msgs = getattr(data, "output", None)
-            if output_msgs:
-                try:
-                    yield OUTPUT_MESSAGES, _truncate(
-                        json.dumps(output_msgs, ensure_ascii=False)
-                    )
-                except Exception:  # noqa: BLE001
-                    yield OUTPUT_MESSAGES, _truncate(str(output_msgs))
-        if getattr(data, "data_source_id", None):
-            yield DATA_SOURCE_ID, getattr(data, "data_source_id")
+    def _extract_genai_attributes(self, span: Span[Any]) -> Iterator[tuple[str, AttributeValue]]:
+        """
+        Extract GenAI semantic convention attributes from a span using iterator pattern.
+        
+        Args:
+            span: The span to extract attributes from
+            
+        Yields:
+            Tuples of (attribute_key, attribute_value) for GenAI semantic conventions
+        """
+        span_data = span.span_data
+        
+        # Base attributes common to all GenAI operations
+        yield GEN_AI_SYSTEM, self.system_name
+        
+        # Process different span types using the OpenInference pattern
+        if isinstance(span_data, GenerationSpanData):
+            yield from self._get_attributes_from_generation_span_data(span_data)
+        elif isinstance(span_data, AgentSpanData):
+            yield from self._get_attributes_from_agent_span_data(span_data)
+        elif isinstance(span_data, FunctionSpanData):
+            yield from self._get_attributes_from_function_span_data(span_data)
+        elif isinstance(span_data, ResponseSpanData):
+            yield from self._get_attributes_from_response_span_data(span_data)
+        elif isinstance(span_data, TranscriptionSpanData):
+            yield from self._get_attributes_from_transcription_span_data(span_data)
+        elif isinstance(span_data, SpeechSpanData):
+            yield from self._get_attributes_from_speech_span_data(span_data)
+        elif isinstance(span_data, GuardrailSpanData):
+            yield from self._get_attributes_from_guardrail_span_data(span_data)
+        elif isinstance(span_data, HandoffSpanData):
+            yield from self._get_attributes_from_handoff_span_data(span_data)
 
-    def _operation_name(self, data: Any) -> Optional[str]:
-        cls = type(data).__name__
-    # Any object with 'agent_id' counts as AgentSpanData
-        if cls == "AgentSpanData" or hasattr(data, "agent_id"):
-            # Prefer explicit flag if provided by upstream
-            if getattr(data, "is_creation", False):
-                return "create_agent"
-            # Heuristic: no parent + description => creation
-            if not getattr(data, "parent_id", None) and getattr(
-                data, "description", None
-            ):
-                return "create_agent"
-            return "invoke_agent"
-        if cls == "FunctionSpanData":
-            return "execute_tool"
-        if cls == "ResponseSpanData":
-            return "chat"
-        if cls == "GenerationSpanData":
-            first = _first(getattr(data, "input", []) or [])
-            if isinstance(first, dict) and "role" in first:
-                return "chat"
-            return "chat"
-        if cls == "EmbeddingsSpanData":
-            return "embeddings"
-        if cls == "TranscriptionSpanData":
-            return "transcription"
-        if cls == "SpeechSpanData":
-            return "speech_generation"
-        if cls == "GuardrailSpanData":
-            return "guardrail_check"
-        if cls == "HandoffSpanData":
-            return "agent_handoff"
-        return None
+    def _get_attributes_from_generation_span_data(
+        self, span_data: GenerationSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a generation span using iterator pattern."""
+        
+        # Determine operation type based on the input/output format
+        if span_data.input and len(span_data.input) > 0:
+            # Check if it's a chat completion (messages) or text completion
+            first_input = span_data.input[0] if span_data.input else {}
+            if isinstance(first_input, dict) and 'role' in first_input:
+                yield GEN_AI_OPERATION_NAME, "chat"
+            else:
+                yield GEN_AI_OPERATION_NAME, "text_completion"
+        else:
+            yield GEN_AI_OPERATION_NAME, "chat"  # Default to chat
+        
+        # Model information
+        if span_data.model:
+            yield GEN_AI_REQUEST_MODEL, span_data.model
+        
+        # Usage information
+        if span_data.usage:
+            if "prompt_tokens" in span_data.usage:
+                yield GEN_AI_USAGE_INPUT_TOKENS, span_data.usage["prompt_tokens"]
+            elif "input_tokens" in span_data.usage:
+                yield GEN_AI_USAGE_INPUT_TOKENS, span_data.usage["input_tokens"]
+                
+            if "completion_tokens" in span_data.usage:
+                yield GEN_AI_USAGE_OUTPUT_TOKENS, span_data.usage["completion_tokens"]
+            elif "output_tokens" in span_data.usage:
+                yield GEN_AI_USAGE_OUTPUT_TOKENS, span_data.usage["output_tokens"]
+                
+            if "total_tokens" in span_data.usage:
+                yield GEN_AI_USAGE_TOTAL_TOKENS, span_data.usage["total_tokens"]
+        
+        # Model configuration parameters
+        if span_data.model_config:
+            for param, value in span_data.model_config.items():
+                if param in ["temperature", "top_p", "top_k", "max_tokens", "presence_penalty", "frequency_penalty"]:
+                    yield f"gen_ai.request.{param}", value
+        
+        # Input/output data (if sensitive data is allowed)
+        if self.include_sensitive_data:
+            if span_data.input:
+                yield GEN_AI_PROMPT, safe_json_dumps(span_data.input)
+            if span_data.output:
+                yield GEN_AI_COMPLETION, safe_json_dumps(span_data.output)
 
-    def _derive_span_name(self, span: Any) -> str:
-        data = getattr(span, "span_data", span)
-        op = self._operation_name(data) or "operation"
-        if op in ("invoke_agent", "create_agent") and getattr(data, "name", None):
-            return f"{op} {getattr(data, 'name')}"
-        if op == "execute_tool" and getattr(data, "name", None):
-            return f"execute_tool {getattr(data, 'name')}"
-        if getattr(data, "model", None):
-            return f"{op} {getattr(data, 'model')}"
-        return op
+    def _get_attributes_from_agent_span_data(
+        self, span_data: AgentSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from an agent span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "invoke_agent"
+        
+        # Agent information
+        if span_data.name:
+            yield GEN_AI_AGENT_NAME, span_data.name
 
-    def _emit_events(self, span: Any, otel_span: OtelSpan) -> None:
+    def _get_attributes_from_function_span_data(
+        self, span_data: FunctionSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a function span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "execute_tool"
+        
+        # Function/tool information
+        if span_data.name:
+            yield GEN_AI_TOOL_NAME, span_data.name
+            
+        # Input/output data (if sensitive data is allowed)
+        if self.include_sensitive_data:
+            if span_data.input is not None:
+                if isinstance(span_data.input, (dict, list)):
+                    yield GEN_AI_TOOL_INPUT, safe_json_dumps(span_data.input)
+                else:
+                    yield GEN_AI_TOOL_INPUT, str(span_data.input)
+            
+            if span_data.output is not None:
+                if isinstance(span_data.output, (dict, list)):
+                    yield GEN_AI_TOOL_OUTPUT, safe_json_dumps(span_data.output)
+                else:
+                    yield GEN_AI_TOOL_OUTPUT, str(span_data.output)
+
+    def _get_attributes_from_response_span_data(
+        self, span_data: ResponseSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a response span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "response"
+        
+        # Response information
+        if span_data.response:
+            if hasattr(span_data.response, 'id') and span_data.response.id:
+                yield GEN_AI_RESPONSE_ID, span_data.response.id
+            
+            # Model information from response
+            if hasattr(span_data.response, 'model') and span_data.response.model:
+                yield GEN_AI_REQUEST_MODEL, span_data.response.model
+            
+            # Usage information from response
+            if hasattr(span_data.response, 'usage') and span_data.response.usage:
+                usage = span_data.response.usage
+                if hasattr(usage, 'prompt_tokens') and usage.prompt_tokens is not None:
+                    yield GEN_AI_USAGE_INPUT_TOKENS, usage.prompt_tokens
+                if hasattr(usage, 'completion_tokens') and usage.completion_tokens is not None:
+                    yield GEN_AI_USAGE_OUTPUT_TOKENS, usage.completion_tokens
+                if hasattr(usage, 'total_tokens') and usage.total_tokens is not None:
+                    yield GEN_AI_USAGE_TOTAL_TOKENS, usage.total_tokens
+        
+        # Input data (if sensitive data is allowed)
+        if self.include_sensitive_data and span_data.input:
+            if isinstance(span_data.input, (dict, list)):
+                yield "gen_ai.response.input", safe_json_dumps(span_data.input)
+            else:
+                yield "gen_ai.response.input", str(span_data.input)
+
+    def _get_attributes_from_transcription_span_data(
+        self, span_data: TranscriptionSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a transcription span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "transcription"
+        
+        # Model information for transcription
+        if hasattr(span_data, 'model') and span_data.model:
+            yield GEN_AI_REQUEST_MODEL, span_data.model
+        
+        # Audio input information (without sensitive data)
+        if hasattr(span_data, 'format') and span_data.format:
+            yield "gen_ai.audio.input.format", span_data.format
+        
+        # Transcription output (if sensitive data is allowed)
+        if self.include_sensitive_data and hasattr(span_data, 'transcript') and span_data.transcript:
+            yield "gen_ai.transcription.text", span_data.transcript
+
+    def _get_attributes_from_speech_span_data(
+        self, span_data: SpeechSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a speech span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "speech_generation"
+        
+        # Model information for speech synthesis
+        if hasattr(span_data, 'model') and span_data.model:
+            yield GEN_AI_REQUEST_MODEL, span_data.model
+        
+        # Voice information
+        if hasattr(span_data, 'voice') and span_data.voice:
+            yield "gen_ai.speech.voice", span_data.voice
+        
+        # Audio output format
+        if hasattr(span_data, 'format') and span_data.format:
+            yield "gen_ai.audio.output.format", span_data.format
+        
+        # Input text (if sensitive data is allowed)
+        if self.include_sensitive_data and hasattr(span_data, 'input_text') and span_data.input_text:
+            yield "gen_ai.speech.input_text", span_data.input_text
+
+    def _get_attributes_from_guardrail_span_data(
+        self, span_data: GuardrailSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a guardrail span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "guardrail_check"
+        
+        # Add guardrail-specific information
+        if span_data.name:
+            yield GEN_AI_GUARDRAIL_NAME, span_data.name
+        
+        yield GEN_AI_GUARDRAIL_TRIGGERED, span_data.triggered
+
+    def _get_attributes_from_handoff_span_data(
+        self, span_data: HandoffSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a handoff span using iterator pattern."""
+        
+        yield GEN_AI_OPERATION_NAME, "agent_handoff"
+        
+        # Add handoff information
+        if span_data.from_agent:
+            yield GEN_AI_HANDOFF_FROM_AGENT, span_data.from_agent
+        
+        if span_data.to_agent:
+            yield GEN_AI_HANDOFF_TO_AGENT, span_data.to_agent
+
+    def _get_span_name(self, span: Span[Any]) -> str:
+        """Get a descriptive name for the span following OpenInference pattern."""
+        if hasattr(data := span.span_data, "name") and isinstance(name := data.name, str):
+            if isinstance(span.span_data, AgentSpanData) and name:
+                return f'invoke_agent {name}'
+            return name
+        if isinstance(span.span_data, HandoffSpanData) and span.span_data.to_agent:
+            return f"handoff to {span.span_data.to_agent}"
+        return type(span.span_data).__name__.replace("SpanData", "").lower()
+
+    def _cleanup_spans_for_trace(self, trace_id: str) -> None:
+        """Clean up any remaining spans for a trace to prevent memory leaks."""
+        spans_to_remove = [span_id for span_id in self._otel_spans.keys() if span_id.startswith(trace_id)]
+        for span_id in spans_to_remove:
+            if otel_span := self._otel_spans.pop(span_id, None):
+                otel_span.set_status(Status(StatusCode.ERROR, "Trace ended before span completion"))
+                otel_span.end()
+            self._tokens.pop(span_id, None)
+
+    def _log_event_to_logger(self, span: Span[Any], attributes: dict[str, AttributeValue], otel_span) -> None:
+        """Log GenAI event using the event logger if available."""
         if not self._event_logger:
             return
-        data = getattr(span, "span_data", span)
-        ctx = getattr(otel_span, "get_span_context", lambda: None)()
-        trace_id = getattr(ctx, "trace_id", 0)
-        span_id = getattr(ctx, "span_id", 0)
-        flags = getattr(ctx, "trace_flags", 0)
+        
         try:
-            evs: list[Event] = []
-            if type(data).__name__ == "FunctionSpanData" and is_tool_io_enabled():
-                evs.extend(self._function_events(data, trace_id, span_id, flags))
-            if type(data).__name__ == "ResponseSpanData" and self._capture_content:
-                evs.extend(self._response_events(data, trace_id, span_id, flags))
-            for e in evs:
-                self._event_logger.emit(e)
-        except Exception:  # pragma: no cover
-            logger.debug("event emission failed", exc_info=True)
+            events = None
+            if isinstance(span.span_data, ResponseSpanData):
+                events = _get_response_span_event(span, otel_span)
+                
+            if isinstance(span.span_data, FunctionSpanData):
+                events = _get_function_span_event(span, otel_span)
 
-    def _function_events(self, data: Any, trace_id: int, span_id: int, flags: int) -> list[Event]:
-        tool_call = {
-            "role": "assistant",
-            "tool_calls": [
-                {
-                    "id": getattr(data, "call_id", None),
-                    "type": "function",
-                    "function": {
-                        "name": getattr(data, "name", None),
-                        "arguments": getattr(data, "input", None),
-                    },
-                }
-            ],
-        }
-        tool_result = {"role": "tool", "content": getattr(data, "output", None)}
-        return [
-            Event(
-                name="gen_ai.assistant.message",
-                attributes={PROVIDER_NAME: self._provider_value},
-                body=tool_call,
-                trace_id=trace_id,
-                span_id=span_id,
-                trace_flags=flags,
-            ),
-            Event(
-                name="gen_ai.tool.message",
-                attributes={PROVIDER_NAME: self._provider_value},
-                body=tool_result,
-                trace_id=trace_id,
-                span_id=span_id,
-                trace_flags=flags,
-            ),
-        ]
+            if events:
+                for event in events:
+                        self._event_logger.emit(event)
 
-    def _response_events(self, data: Any, trace_id: int, span_id: int, flags: int) -> list[Event]:
-        input_msgs = getattr(data, "input", None) or []
-        resp = getattr(data, "response", None)
-        outputs = getattr(resp, "output", None) or []
-        evs: list[Event] = []
-        for msg in input_msgs:
-            role = msg.get("role", "user") if isinstance(msg, dict) else "user"
-            body = msg if isinstance(msg, dict) else {"content": msg}
-            evs.append(
-                Event(
-                    name=f"gen_ai.{role}.message",
-                    attributes={PROVIDER_NAME: self._provider_value},
-                    body=body,
-                    trace_id=trace_id,
-                    span_id=span_id,
-                    trace_flags=flags,
-                )
-            )
-        for choice in outputs:
-            body = {"message": choice if isinstance(choice, dict) else {"content": choice}}
-            evs.append(
-                Event(
-                    name="gen_ai.choice",
-                    attributes={PROVIDER_NAME: self._provider_value},
-                    body=body,
-                    trace_id=trace_id,
-                    span_id=span_id,
-                    trace_flags=flags,
-                )
-            )
-        return evs
-
-    def _finish_reasons(self, resp: Any) -> Optional[list[str]]:
-        fr = getattr(resp, "finish_reasons", None)
-        if fr:
-            return fr if isinstance(fr, list) else [fr]
-        choices = getattr(resp, "choices", None) or []
-        out: list[str] = []
-        for ch in choices:
-            reason = getattr(ch, "finish_reason", None) or getattr(ch, "finish_reasons", None)
-            if reason:
-                if isinstance(reason, list):
-                    out.extend(reason)
-                else:
-                    out.append(reason)
-        return out or None
-
-    def _record_metrics(self, span: Any, attrs: Dict[str, Any], is_error: bool) -> None:
-        if not self._meter:
-            return
-        start = getattr(span, "_otel_start", None)
-        if not start:
-            return
-        try:
-            duration = (datetime.now(timezone.utc) - start).total_seconds()
-        except Exception:  # pragma: no cover
-            return
-        metric_attrs: Dict[str, Any] = {PROVIDER_NAME: self._provider_value}
-        op = attrs.get(OPERATION_NAME)
-        if op:
-            metric_attrs[OPERATION_NAME] = op
-        model = attrs.get(REQUEST_MODEL)
-        if model:
-            metric_attrs[REQUEST_MODEL] = model
-        if is_error:
-            metric_attrs[ERROR_TYPE] = attrs.get(ERROR_TYPE, "error")
-        # Duration
-        try:
-            if self._op_duration:
-                self._op_duration.record(duration, metric_attrs)  # type: ignore
-        except Exception:  # pragma: no cover
-            logger.debug("record duration metric failed", exc_info=True)
-        # Token usage
-        if not self._token_hist:
-            return
-        in_tokens = attrs.get(USAGE_INPUT_TOKENS)
-        out_tokens = attrs.get(USAGE_OUTPUT_TOKENS)
-        try:
-            if in_tokens is not None:
-                a_in = dict(metric_attrs)
-                a_in[TOKEN_TYPE] = TOKEN_TYPE_INPUT
-                self._token_hist.record(in_tokens, a_in)  # type: ignore
-            if out_tokens is not None:
-                a_out = dict(metric_attrs)
-                a_out[TOKEN_TYPE] = TOKEN_TYPE_OUTPUT
-                self._token_hist.record(out_tokens, a_out)  # type: ignore
-        except Exception:  # pragma: no cover
-            logger.debug("record token metrics failed", exc_info=True)
+        except Exception as e:
+            logger.warning(f"Failed to log GenAI event for span {span.span_id}: {e}")

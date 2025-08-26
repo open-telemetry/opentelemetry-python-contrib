@@ -13,7 +13,7 @@ authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.30",
@@ -32,7 +33,6 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "openai >= 1.26.0",
-  "openai-agents >=0.1.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -46,7 +46,10 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/instrumentation/openai_agents/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/README.rst", "/LICENSE", "/CHANGELOG.md", "/tests"]
+include = [
+  "/src",
+  "/tests",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
