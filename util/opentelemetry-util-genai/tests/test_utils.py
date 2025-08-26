@@ -15,36 +15,37 @@
 import os
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
+import pytest
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
-from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
 )
-from opentelemetry.util.genai.utils import get_content_capturing_mode
 from opentelemetry.util.genai.client import (
     llm_start,
     ContentCapturingMode,
+    llm_stop,
+)
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
+from opentelemetry.util.genai.handler import (
+    llm_start,
     llm_stop,
 )
 from opentelemetry.util.genai.types import (
     ChatGeneration,
     Message,
 )
-
-
-from uuid import uuid4
-
-import pytest
+from opentelemetry.util.genai.utils import get_content_capturing_mode
 
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 
 
 def patch_env_vars(stability_mode, content_capturing):

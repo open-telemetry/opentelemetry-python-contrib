@@ -13,7 +13,7 @@ class Message:
         Ref: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-input-messages
         """
 
-        # Support tool_call and tool_call response
+        # TODO: Support tool_call and tool_call response
         return {
             "role": self.type,
             "parts": [
