@@ -20,7 +20,9 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    messaging_attributes as SpanAttributes,
+)
 from opentelemetry.trace import Span
 
 if TYPE_CHECKING:
@@ -92,7 +94,7 @@ def set_attributes_from_context(span, context):
 
             if routing_key is not None:
                 span.set_attribute(
-                    SpanAttributes.MESSAGING_DESTINATION, routing_key
+                    SpanAttributes.MESSAGING_DESTINATION_NAME, routing_key
                 )
 
             value = str(value)
@@ -101,14 +103,13 @@ def set_attributes_from_context(span, context):
             attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
 
         elif key == "correlation_id":
-            attribute_name = SpanAttributes.MESSAGING_CONVERSATION_ID
+            attribute_name = SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
 
         elif key == "routing_key":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION
+            attribute_name = SpanAttributes.MESSAGING_DESTINATION_NAME
 
         # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
         elif key == "declare":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
             for declare in value:
                 if declare.exchange.type == "direct":
                     value = "queue"
