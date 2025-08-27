@@ -14,12 +14,14 @@
 
 # pylint: disable=too-many-lines
 
+import logging
 import unittest
 from contextlib import ExitStack
 from timeit import default_timer
 from unittest.mock import Mock, call, patch
 
 import fastapi
+import pytest
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.testclient import TestClient
@@ -2014,3 +2016,38 @@ class TestTraceableExceptionHandling(TestBase):
             event.attributes.get(EXCEPTION_TYPE),
             f"{__name__}.UnhandledException",
         )
+
+
+class TestFastAPIFallback(TestBaseFastAPI):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
+
+    @staticmethod
+    def _create_fastapi_app():
+        app = TestBaseFastAPI._create_fastapi_app()
+
+        def build_middleware_stack():
+            return app.router
+
+        app.build_middleware_stack = build_middleware_stack
+        return app
+
+    def setUp(self):
+        super().setUp()
+        self.client = TestClient(self._app)
+
+    def test_no_instrumentation(self):
+        self.client.get(
+            "/foobar",
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        errors = [
+            record
+            for record in self._caplog.get_records("call")
+            if record.levelno >= logging.ERROR
+        ]
+        self.assertEqual(len(errors), 1)
