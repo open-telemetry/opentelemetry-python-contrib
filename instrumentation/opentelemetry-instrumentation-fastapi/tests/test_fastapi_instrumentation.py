@@ -2032,7 +2032,7 @@ class TestTraceableExceptionHandling(TestBase):
 
 class TestFastAPIFallback(TestBaseFastAPI):
     @pytest.fixture(autouse=True)
-    def inject_fixtures(self, caplog):
+    def _inject_fixtures(self, caplog):
         self._caplog = caplog
 
     @staticmethod
