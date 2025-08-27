@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
+from typing import Type
 
 
 @dataclass
@@ -49,4 +50,4 @@ class ChatGeneration:
 @dataclass
 class Error:
     message: str
-    type: type[BaseException]
+    type: Type[BaseException]
