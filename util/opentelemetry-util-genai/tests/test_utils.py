@@ -18,8 +18,8 @@ from opentelemetry.util.genai.types import (
 )
 
 
-@pytest.fixture
-def telemetry_setup():
+@pytest.fixture(name="span_exporter")
+def span_exporter_fixture():
     """Set up telemetry providers for testing"""
     # Set up in-memory span exporter to capture spans
     memory_exporter = InMemorySpanExporter()
@@ -37,8 +37,9 @@ def telemetry_setup():
     trace.set_tracer_provider(trace.NoOpTracerProvider())
 
 
+@pytest.mark.usefixtures("span_exporter")
 def test_llm_start_and_stop_creates_span(
-    telemetry_setup: InMemorySpanExporter,
+    request: pytest.FixtureRequest,
 ):
     run_id = uuid4()
     message = Message(content="hello world", type="Human", name="message name")
@@ -53,7 +54,8 @@ def test_llm_start_and_stop_creates_span(
     )
 
     # Get the spans that were created
-    spans = telemetry_setup.get_finished_spans()
+    exporter: InMemorySpanExporter = request.getfixturevalue("span_exporter")
+    spans = exporter.get_finished_spans()
 
     # Verify span was created
     assert len(spans) == 1
