@@ -13,7 +13,23 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import List, Literal, Optional, Type, TypedDict
+
+
+class TextPart(TypedDict):
+    type: Literal["text"]
+    content: str
+
+
+# Keep room for future parts without changing the return type
+# addition of tools can use Part = Union[TextPart, ToolPart]
+Part = TextPart
+
+
+class OtelMessage(TypedDict):
+    role: str
+    # role: Literal["user", "assistant", "system", "tool", "tool_message"] # TODO: check semconvs for allowed roles
+    parts: List[Part]
 
 
 @dataclass
@@ -22,7 +38,7 @@ class Message:
     type: str
     name: str
 
-    def _to_part_dict(self):
+    def _to_part_dict(self) -> OtelMessage:
         """Convert the message to a dictionary suitable for OpenTelemetry semconvs.
 
         Ref: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-input-messages
