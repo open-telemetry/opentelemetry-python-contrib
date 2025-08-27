@@ -74,8 +74,8 @@ class _SpanState:
 
 def _get_property_value(obj: Any, property_name: str) -> Any:
     if isinstance(obj, Mapping):
-        m = cast(Mapping[str, Any], obj)
-        return m.get(property_name, None)
+        mapping = cast(Mapping[str, Any], obj)
+        return mapping.get(property_name)
 
     return cast(Any, getattr(obj, property_name, None))
 

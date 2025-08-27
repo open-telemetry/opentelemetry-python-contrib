@@ -156,19 +156,21 @@ class TelemetryHandler:
         return invocation
 
 
-# Singleton accessor
-_default_handler: Optional[TelemetryHandler] = None
+# Singleton accessor (avoid global statement by storing on function attribute)
 
 
 def get_telemetry_handler(
     emitter_type_full: bool = True, **kwargs: Any
 ) -> TelemetryHandler:
-    global _default_handler
-    if _default_handler is None:
-        _default_handler = TelemetryHandler(
+    handler: Optional[TelemetryHandler] = getattr(
+        get_telemetry_handler, "_default_handler", None
+    )
+    if handler is None:
+        handler = TelemetryHandler(
             emitter_type_full=emitter_type_full, **kwargs
         )
-    return _default_handler
+        setattr(get_telemetry_handler, "_default_handler", handler)
+    return handler
 
 
 # Module‐level convenience functions
