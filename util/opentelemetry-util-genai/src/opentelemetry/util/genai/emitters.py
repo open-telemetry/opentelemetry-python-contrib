@@ -12,6 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Emitters for GenAI telemetry instrumentation.
+
+This module defines classes and utilities for mapping GenAI (Generative AI) invocations
+to OpenTelemetry spans, metrics, and events. Emitters manage the lifecycle of telemetry
+data for LLM (Large Language Model) operations, including success and error reporting.
+
+Classes:
+    BaseEmitter: Abstract base class for GenAI telemetry emitters.
+    SpanMetricEventEmitter: Emits spans, metrics, and events for full telemetry.
+    SpanMetricEmitter: Emits only spans and metrics (no events).
+
+Functions:
+    _get_property_value: Utility to extract property values from objects or dicts.
+    _message_to_log_record: Converts a GenAI message to an OpenTelemetry LogRecord.
+    _chat_generation_to_log_record: Converts a chat generation to a LogRecord.
+    _get_metric_attributes: Builds metric attributes for telemetry reporting.
+
+"""
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import UUID
@@ -214,17 +234,6 @@ class SpanMetricEventEmitter(BaseEmitter):
 
         for message in invocation.messages:
             system = invocation.attributes.get("system")
-            # Event API is deprecated, use structured logs instead
-            # event = _message_to_event(
-            #     message=message,
-            #     provider_name=system,
-            #     framework=invocation.attributes.get("framework"),
-            # )
-            # if event and self._event_logger:
-            #     self._event_logger.emit(
-            #         event
-            #     )
-
             log = _message_to_log_record(
                 message=message,
                 provider_name=system,
@@ -280,15 +289,6 @@ class SpanMetricEventEmitter(BaseEmitter):
             for index, chat_generation in enumerate(
                 invocation.chat_generations
             ):
-                # Event API is deprecated. Use structured logs instead
-                # event = _chat_generation_to_event(
-                #         chat_generation, index, system, framework
-                #     )
-                # if event and self._event_logger:
-                #     self._event_logger.emit(
-                #         event
-                #     )
-
                 log = _chat_generation_to_log_record(
                     chat_generation,
                     index,

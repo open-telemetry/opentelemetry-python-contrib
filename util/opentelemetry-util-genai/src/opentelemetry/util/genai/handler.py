@@ -12,6 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Telemetry handler for GenAI invocations.
+
+This module provides the `TelemetryHandler` class, which manages the lifecycle of
+GenAI (Generative AI) invocations and emits telemetry data as spans, metrics, and events.
+It supports starting, stopping, and failing LLM invocations,
+and provides module-level convenience functions for these operations.
+
+Classes:
+    TelemetryHandler: Manages GenAI invocation lifecycles and emits telemetry.
+
+Functions:
+    get_telemetry_handler: Returns a singleton TelemetryHandler instance.
+    llm_start: Starts a new LLM invocation.
+    llm_stop: Stops an LLM invocation and emits telemetry.
+    llm_fail: Marks an LLM invocation as failed and emits error telemetry.
+
+Usage:
+    Use the module-level functions (`llm_start`, `llm_stop`, `llm_fail`) to
+    instrument GenAI invocations for telemetry collection.
+"""
+
 import time
 from threading import Lock
 from typing import Any, List, Optional
