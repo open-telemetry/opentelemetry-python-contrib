@@ -16,6 +16,7 @@ Note: `.env <.env>`_ file configures additional environment variables:
 - ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures OpenAI instrumentation to capture prompt and completion contents on events.
 - ``OTEL_LOGS_EXPORTER=otlp`` to specify exporter type.
 
+TODO!
 Setup
 -----
 

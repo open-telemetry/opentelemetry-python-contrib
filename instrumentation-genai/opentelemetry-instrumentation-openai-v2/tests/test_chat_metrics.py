@@ -10,6 +10,11 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+from tests.test_utils import (
+    DEFAULT_MODEL,
+    USER_ONLY_EXPECTED_INPUT_MESSAGES,
+    USER_ONLY_PROMPT,
+)
 
 _DURATION_BUCKETS = (
     0.01,
@@ -103,11 +108,9 @@ def test_chat_completion_metrics(
 ):
     with vcr.use_cassette("test_chat_completion_metrics.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, stream=False
         )
 
         metrics = metric_reader.get_metrics_data().resource_metrics
@@ -186,11 +189,9 @@ async def test_async_chat_completion_metrics(
 ):
     with vcr.use_cassette("test_async_chat_completion_metrics.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         await async_openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, stream=False
         )
 
         metrics = metric_reader.get_metrics_data().resource_metrics

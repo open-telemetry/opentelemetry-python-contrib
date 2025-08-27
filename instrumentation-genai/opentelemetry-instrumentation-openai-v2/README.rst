@@ -82,6 +82,8 @@ Message content such as the contents of the prompt, completion, function argumen
 are not captured by default. To capture message content as log events, set the environment variable
 `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to `true`.
 
+TODO!
+
 Uninstrument
 ************
 

@@ -34,10 +34,16 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from tests.test_utils import (
+    DEFAULT_MODEL,
+    USER_ONLY_EXPECTED_INPUT_MESSAGES,
+    USER_ONLY_PROMPT,
+    WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
+    WEATHER_TOOL_PROMPT,
     assert_all_attributes,
     assert_completion_attributes,
     assert_log_parent,
     assert_messages_attribute,
+    format_simple_expected_output_message,
     get_current_weather_tool_definition,
 )
 
@@ -48,57 +54,47 @@ def test_chat_completion_with_content(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette("test_chat_completion_with_content.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         response = openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, stream=False
         )
 
         spans = span_exporter.get_finished_spans()
+        logs = log_exporter.get_finished_logs()
+        if content_mode == "event":
+            assert len(logs) == 1
+
         assert_completion_attributes(
-            spans[0], llm_model_value, response, latest_experimental_enabled
+            spans[0],
+            logs[0].log_record if content_mode == "event" else None,
+            DEFAULT_MODEL,
+            response,
+            latest_experimental_enabled,
         )
 
         if latest_experimental_enabled:
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"],
-                [
-                    {
-                        "role": "user",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": messages_value[0]["content"],
-                            }
-                        ],
-                    }
-                ],
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
             )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": response.choices[0].message.content,
-                            }
-                        ],
-                        "finish_reason": "stop",
-                    }
-                ],
+                signal.attributes["gen_ai.input.messages"],
+                USER_ONLY_EXPECTED_INPUT_MESSAGES,
+            )
+            assert_messages_attribute(
+                signal.attributes["gen_ai.output.messages"],
+                format_simple_expected_output_message(
+                    response.choices[0].message.content
+                ),
             )
         else:
-            logs = log_exporter.get_finished_logs()
             assert len(logs) == 2
 
-            user_message = {"content": messages_value[0]["content"]}
+            user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
             assert_message_in_logs(
                 logs[0], "gen_ai.user.message", user_message, spans[0]
             )
@@ -126,16 +122,18 @@ def test_chat_completion_no_content(
 ):
     with vcr.use_cassette("test_chat_completion_no_content.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         response = openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, stream=False
         )
 
         spans = span_exporter.get_finished_spans()
         assert_completion_attributes(
-            spans[0], llm_model_value, response, latest_experimental_enabled
+            spans[0],
+            None,
+            DEFAULT_MODEL,
+            response,
+            latest_experimental_enabled,
         )
 
         logs = log_exporter.get_finished_logs()
@@ -168,22 +166,21 @@ def test_chat_completion_bad_endpoint(
 ):
     with vcr.use_cassette("test_chat_completion_bad_endpoint.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         client = OpenAI(base_url="http://localhost:4242")
 
         with pytest.raises(APIConnectionError):
             client.chat.completions.create(
-                messages=messages_value,
-                model=llm_model_value,
+                messages=USER_ONLY_PROMPT,
+                model=DEFAULT_MODEL,
                 timeout=0.1,
             )
 
         spans = span_exporter.get_finished_spans()
         assert_all_attributes(
             spans[0],
-            llm_model_value,
+            None,
+            DEFAULT_MODEL,
             latest_experimental_enabled,
             server_address="localhost",
         )
@@ -226,18 +223,17 @@ def test_chat_completion_404(
     with vcr.use_cassette("test_chat_completion_404.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
         llm_model_value = "this-model-does-not-exist"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         with pytest.raises(NotFoundError):
             openai_client.chat.completions.create(
-                messages=messages_value,
+                messages=USER_ONLY_PROMPT,
                 model=llm_model_value,
             )
 
         spans = span_exporter.get_finished_spans()
 
         assert_all_attributes(
-            spans[0], llm_model_value, latest_experimental_enabled
+            spans[0], None, llm_model_value, latest_experimental_enabled
         )
         assert (
             "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
@@ -274,12 +270,10 @@ def test_chat_completion_extra_params(
 ):
     with vcr.use_cassette("test_chat_completion_extra_params.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         response = openai_client.chat.completions.create(
-            messages=messages_value,
-            model=llm_model_value,
+            messages=USER_ONLY_PROMPT,
+            model=DEFAULT_MODEL,
             seed=42,
             temperature=0.5,
             max_tokens=50,
@@ -290,7 +284,11 @@ def test_chat_completion_extra_params(
 
         spans = span_exporter.get_finished_spans()
         assert_completion_attributes(
-            spans[0], llm_model_value, response, latest_experimental_enabled
+            spans[0],
+            None,
+            DEFAULT_MODEL,
+            response,
+            latest_experimental_enabled,
         )
 
         request_seed_attr_key = (
@@ -329,52 +327,66 @@ def test_chat_completion_multiple_choices(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette("test_chat_completion_multiple_choices.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         response = openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, n=2, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, n=2, stream=False
         )
 
         spans = span_exporter.get_finished_spans()
+        logs = log_exporter.get_finished_logs()
+        if content_mode == "event":
+            assert len(logs) == 1
         assert_completion_attributes(
-            spans[0], llm_model_value, response, latest_experimental_enabled
+            spans[0],
+            logs[0].log_record if content_mode == "event" else None,
+            DEFAULT_MODEL,
+            response,
+            latest_experimental_enabled,
         )
         if latest_experimental_enabled:
+            expected_output_messages = [
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {
+                            "type": "text",
+                            "content": response.choices[0].message.content,
+                        }
+                    ],
+                    "finish_reason": "stop",
+                },
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {
+                            "type": "text",
+                            "content": response.choices[1].message.content,
+                        }
+                    ],
+                    "finish_reason": "stop",
+                },
+            ]
+
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
+            )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": response.choices[0].message.content,
-                            }
-                        ],
-                        "finish_reason": "stop",
-                    },
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": response.choices[1].message.content,
-                            }
-                        ],
-                        "finish_reason": "stop",
-                    },
-                ],
+                signal.attributes["gen_ai.input.messages"],
+                USER_ONLY_EXPECTED_INPUT_MESSAGES,
+            )
+            assert_messages_attribute(
+                signal.attributes["gen_ai.output.messages"],
+                expected_output_messages,
             )
         else:
-            logs = log_exporter.get_finished_logs()
             assert len(logs) == 3  # 1 user message + 2 choice messages
 
-            user_message = {"content": messages_value[0]["content"]}
+            user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
             assert_message_in_logs(
                 logs[0], "gen_ai.user.message", user_message, spans[0]
             )
@@ -410,6 +422,7 @@ def test_chat_completion_tool_calls_with_content(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette("test_chat_completion_tool_calls_with_content.yaml"):
@@ -418,6 +431,7 @@ def test_chat_completion_tool_calls_with_content(
             log_exporter,
             openai_client,
             True,
+            content_mode,
             is_latest_experimental_enabled(),
         )
 
@@ -436,6 +450,7 @@ def test_chat_completion_tool_calls_no_content(
             log_exporter,
             openai_client,
             False,
+            None,
             is_latest_experimental_enabled(),
         )
 
@@ -445,20 +460,13 @@ def chat_completion_tool_call(
     log_exporter,
     openai_client,
     expect_content,
+    content_mode,
     latest_experimental_enabled,
 ):
-    llm_model_value = "gpt-4o-mini"
-    messages_value = [
-        {"role": "system", "content": "You're a helpful assistant."},
-        {
-            "role": "user",
-            "content": "What's the weather in Seattle and San Francisco today?",
-        },
-    ]
-
+    messages_value = WEATHER_TOOL_PROMPT.copy()
     response_0 = openai_client.chat.completions.create(
         messages=messages_value,
-        model=llm_model_value,
+        model=DEFAULT_MODEL,
         tool_choice="auto",
         tools=[get_current_weather_tool_definition()],
     )
@@ -491,7 +499,7 @@ def chat_completion_tool_call(
     messages_value.append(tool_call_result_1)
 
     response_1 = openai_client.chat.completions.create(
-        messages=messages_value, model=llm_model_value
+        messages=messages_value, model=DEFAULT_MODEL
     )
 
     # sanity check
@@ -500,11 +508,24 @@ def chat_completion_tool_call(
     # validate both calls
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 2
+
+    logs = log_exporter.get_finished_logs()
+    if content_mode == "event":
+        assert len(logs) == 2
+
     assert_completion_attributes(
-        spans[0], llm_model_value, response_0, latest_experimental_enabled
+        spans[0],
+        logs[0].log_record if content_mode == "event" else None,
+        DEFAULT_MODEL,
+        response_0,
+        latest_experimental_enabled,
     )
     assert_completion_attributes(
-        spans[1], llm_model_value, response_1, latest_experimental_enabled
+        spans[1],
+        logs[1].log_record if content_mode == "event" else None,
+        DEFAULT_MODEL,
+        response_1,
+        latest_experimental_enabled,
     )
 
     if latest_experimental_enabled:
@@ -512,28 +533,12 @@ def chat_completion_tool_call(
             pass
         else:
             # first call
-            first_input = [
-                {
-                    "role": "system",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "content": messages_value[0]["content"],
-                        }
-                    ],
-                },
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "content": messages_value[1]["content"],
-                        }
-                    ],
-                },
-            ]
+            signal_0 = (
+                logs[0].log_record if content_mode == "event" else spans[0]
+            )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"], first_input
+                signal_0.attributes["gen_ai.input.messages"],
+                WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
             )
 
             first_output = [
@@ -560,14 +565,15 @@ def chat_completion_tool_call(
                     "finish_reason": "tool_calls",
                 }
             ]
+
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"], first_output
+                signal_0.attributes["gen_ai.output.messages"], first_output
             )
 
             # second call
             del first_output[0]["finish_reason"]
             second_input = []
-            second_input += first_input
+            second_input += WEATHER_TOOL_EXPECTED_INPUT_MESSAGES.copy()
             second_input += first_output
             second_input += [
                 {
@@ -596,30 +602,20 @@ def chat_completion_tool_call(
                 },
             ]
 
+            signal_1 = (
+                logs[1].log_record if content_mode == "event" else spans[1]
+            )
             assert_messages_attribute(
-                spans[1].attributes["gen_ai.input.messages"], second_input
+                signal_1.attributes["gen_ai.input.messages"], second_input
             )
 
             assert_messages_attribute(
-                spans[1].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": response_1.choices[
-                                    0
-                                ].message.content,
-                            },
-                        ],
-                        "finish_reason": "stop",
-                    }
-                ],
+                signal_1.attributes["gen_ai.output.messages"],
+                format_simple_expected_output_message(
+                    response_1.choices[0].message.content
+                ),
             )
     else:
-        logs = log_exporter.get_finished_logs()
-
         assert len(logs) == 9  # 3 logs for first completion, 6 for second
 
         # call one
@@ -752,16 +748,16 @@ def test_chat_completion_streaming(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette("test_chat_completion_streaming.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
         llm_model_value = "gpt-4"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         kwargs = {
             "model": llm_model_value,
-            "messages": messages_value,
+            "messages": USER_ONLY_PROMPT,
             "stream": True,
             "stream_options": {"include_usage": True},
         }
@@ -782,8 +778,13 @@ def test_chat_completion_streaming(
                 response_stream_id = chunk.id
 
         spans = span_exporter.get_finished_spans()
+        logs = log_exporter.get_finished_logs()
+        if content_mode == "events":
+            assert len(logs) == 1
+
         assert_all_attributes(
             spans[0],
+            logs[0].log_record if content_mode == "event" else None,
             llm_model_value,
             latest_experimental_enabled,
             response_stream_id,
@@ -792,34 +793,18 @@ def test_chat_completion_streaming(
             response_stream_usage.completion_tokens,
         )
         if latest_experimental_enabled:
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"],
-                [
-                    {
-                        "role": "user",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": messages_value[0]["content"],
-                            }
-                        ],
-                    }
-                ],
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
             )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {"type": "text", "content": response_stream_result}
-                        ],
-                        "finish_reason": "stop",
-                    }
-                ],
+                signal.attributes["gen_ai.input.messages"],
+                USER_ONLY_EXPECTED_INPUT_MESSAGES,
+            )
+            assert_messages_attribute(
+                signal.attributes["gen_ai.output.messages"],
+                format_simple_expected_output_message(response_stream_result),
             )
         else:
-            logs = log_exporter.get_finished_logs()
             assert len(logs) == 2
 
             user_message = {"content": "Say this is a test"}
@@ -846,16 +831,16 @@ def test_chat_completion_streaming_not_complete(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette("test_chat_completion_streaming_not_complete.yaml"):
         latest_experimental_enabled = is_latest_experimental_enabled()
         llm_model_value = "gpt-4"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         kwargs = {
             "model": llm_model_value,
-            "messages": messages_value,
+            "messages": USER_ONLY_PROMPT,
             "stream": True,
         }
 
@@ -877,42 +862,32 @@ def test_chat_completion_streaming_not_complete(
 
         response.close()
         spans = span_exporter.get_finished_spans()
+        logs = log_exporter.get_finished_logs()
+        if content_mode == "events":
+            assert len(logs) == 1
         assert_all_attributes(
             spans[0],
+            logs[0].log_record if content_mode == "event" else None,
             llm_model_value,
             latest_experimental_enabled,
             response_stream_id,
             response_stream_model,
         )
         if latest_experimental_enabled:
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"],
-                [
-                    {
-                        "role": "user",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": messages_value[0]["content"],
-                            }
-                        ],
-                    }
-                ],
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
             )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {"type": "text", "content": response_stream_result}
-                        ],
-                        "finish_reason": "error",
-                    }
-                ],
+                signal.attributes["gen_ai.input.messages"],
+                USER_ONLY_EXPECTED_INPUT_MESSAGES,
+            )
+            assert_messages_attribute(
+                signal.attributes["gen_ai.output.messages"],
+                format_simple_expected_output_message(
+                    response_stream_result, finish_reason="error"
+                ),
             )
         else:
-            logs = log_exporter.get_finished_logs()
             assert len(logs) == 2
 
             user_message = {"content": "Say this is a test"}
@@ -939,24 +914,16 @@ def test_chat_completion_multiple_choices_streaming(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette(
         "test_chat_completion_multiple_choices_streaming.yaml"
     ):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [
-            {"role": "system", "content": "You're a helpful assistant."},
-            {
-                "role": "user",
-                "content": "What's the weather in Seattle and San Francisco today?",
-            },
-        ]
-
         response_0 = openai_client.chat.completions.create(
-            messages=messages_value,
-            model=llm_model_value,
+            messages=WEATHER_TOOL_PROMPT,
+            model=DEFAULT_MODEL,
             n=2,
             stream=True,
             stream_options={"include_usage": True},
@@ -984,9 +951,13 @@ def test_chat_completion_multiple_choices_streaming(
         assert "stop" == finish_reasons[0]
 
         spans = span_exporter.get_finished_spans()
+        logs = log_exporter.get_finished_logs()
+        if content_mode == "events":
+            assert len(logs) == 1
         assert_all_attributes(
             spans[0],
-            llm_model_value,
+            logs[0].log_record if content_mode == "event" else None,
+            DEFAULT_MODEL,
             latest_experimental_enabled,
             response_stream_id,
             response_stream_model,
@@ -994,59 +965,43 @@ def test_chat_completion_multiple_choices_streaming(
             response_stream_usage.completion_tokens,
         )
         if latest_experimental_enabled:
-            assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"],
-                [
-                    {
-                        "role": "system",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": messages_value[0]["content"],
-                            }
-                        ],
-                    },
-                    {
-                        "role": "user",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": messages_value[1]["content"],
-                            }
-                        ],
-                    },
-                ],
+            expected_output_messages = [
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {
+                            "type": "text",
+                            "content": "".join(response_stream_result[0]),
+                        }
+                    ],
+                    "finish_reason": "stop",
+                },
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {
+                            "type": "text",
+                            "content": "".join(response_stream_result[1]),
+                        }
+                    ],
+                    "finish_reason": "stop",
+                },
+            ]
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
             )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"],
-                [
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": "".join(response_stream_result[0]),
-                            }
-                        ],
-                        "finish_reason": "stop",
-                    },
-                    {
-                        "role": "assistant",
-                        "parts": [
-                            {
-                                "type": "text",
-                                "content": "".join(response_stream_result[1]),
-                            }
-                        ],
-                        "finish_reason": "stop",
-                    },
-                ],
+                signal.attributes["gen_ai.input.messages"],
+                WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
+            )
+            assert_messages_attribute(
+                signal.attributes["gen_ai.output.messages"],
+                expected_output_messages,
             )
         else:
-            logs = log_exporter.get_finished_logs()
             assert len(logs) == 4
 
-            system_message = {"content": messages_value[0]["content"]}
+            system_message = {"content": WEATHER_TOOL_PROMPT[0]["content"]}
             assert_message_in_logs(
                 logs[0], "gen_ai.system.message", system_message, spans[0]
             )
@@ -1089,6 +1044,7 @@ def test_chat_completion_multiple_tools_streaming_with_content(
     log_exporter,
     openai_client,
     instrument_with_content,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette(
@@ -1099,6 +1055,7 @@ def test_chat_completion_multiple_tools_streaming_with_content(
             log_exporter,
             openai_client,
             True,
+            content_mode,
             is_latest_experimental_enabled(),
         )
 
@@ -1119,6 +1076,7 @@ def test_chat_completion_multiple_tools_streaming_no_content(
             log_exporter,
             openai_client,
             False,
+            None,
             is_latest_experimental_enabled(),
         )
 
@@ -1129,30 +1087,49 @@ def test_chat_completion_with_content_span_unsampled(
     log_exporter,
     openai_client,
     instrument_with_content_unsampled,
+    content_mode,
     vcr,
 ):
     with vcr.use_cassette(
         "test_chat_completion_with_content_span_unsampled.yaml"
     ):
         latest_experimental_enabled = is_latest_experimental_enabled()
-        llm_model_value = "gpt-4o-mini"
-        messages_value = [{"role": "user", "content": "Say this is a test"}]
 
         response = openai_client.chat.completions.create(
-            messages=messages_value, model=llm_model_value, stream=False
+            messages=USER_ONLY_PROMPT, model=DEFAULT_MODEL, stream=False
         )
 
         spans = span_exporter.get_finished_spans()
         assert len(spans) == 0
 
         logs = log_exporter.get_finished_logs()
+        if content_mode == "event":
+            assert len(logs) == 1
+
+        assert_completion_attributes(
+            None,
+            logs[0].log_record if content_mode == "event" else None,
+            DEFAULT_MODEL,
+            response,
+            latest_experimental_enabled,
+        )
+
         if latest_experimental_enabled:
-            assert len(logs) == 0
-            # TODO: check event
+            if content_mode == "event":
+                assert_messages_attribute(
+                    logs[0].log_record.attributes["gen_ai.input.messages"],
+                    USER_ONLY_EXPECTED_INPUT_MESSAGES,
+                )
+                assert_messages_attribute(
+                    logs[0].log_record.attributes["gen_ai.output.messages"],
+                    format_simple_expected_output_message(
+                        response.choices[0].message.content
+                    ),
+                )
         else:
             assert len(logs) == 2
 
-            user_message = {"content": messages_value[0]["content"]}
+            user_message = {"content": USER_ONLY_PROMPT[0]["content"]}
             assert_message_in_logs(
                 logs[0], "gen_ai.user.message", user_message, None
             )
@@ -1186,20 +1163,12 @@ def chat_completion_multiple_tools_streaming(
     log_exporter,
     openai_client,
     expect_content,
+    content_mode,
     latest_experimental_enabled,
 ):
-    llm_model_value = "gpt-4o-mini"
-    messages_value = [
-        {"role": "system", "content": "You're a helpful assistant."},
-        {
-            "role": "user",
-            "content": "What's the weather in Seattle and San Francisco today?",
-        },
-    ]
-
     response = openai_client.chat.completions.create(
-        messages=messages_value,
-        model=llm_model_value,
+        messages=WEATHER_TOOL_PROMPT,
+        model=DEFAULT_MODEL,
         tool_choice="auto",
         tools=[get_current_weather_tool_definition()],
         stream=True,
@@ -1235,9 +1204,14 @@ def chat_completion_multiple_tools_streaming(
     assert "tool_calls" == finish_reason
 
     spans = span_exporter.get_finished_spans()
+    logs = log_exporter.get_finished_logs()
+    if content_mode == "event":
+        assert len(logs) == 1
+
     assert_all_attributes(
         spans[0],
-        llm_model_value,
+        logs[0].log_record if content_mode == "event" else None,
+        DEFAULT_MODEL,
         latest_experimental_enabled,
         response_stream_id,
         response_stream_model,
@@ -1248,28 +1222,11 @@ def chat_completion_multiple_tools_streaming(
     if latest_experimental_enabled:
         if expect_content:
             # first call
-            first_input = [
-                {
-                    "role": "system",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "content": messages_value[0]["content"],
-                        }
-                    ],
-                },
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "content": messages_value[1]["content"],
-                        }
-                    ],
-                },
-            ]
+            signal = (
+                logs[0].log_record if content_mode == "event" else spans[0]
+            )
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.input.messages"], first_input
+                signal.attributes["gen_ai.input.messages"], WEATHER_TOOL_EXPECTED_INPUT_MESSAGES
             )
 
             first_output = [
@@ -1293,14 +1250,13 @@ def chat_completion_multiple_tools_streaming(
                 }
             ]
             assert_messages_attribute(
-                spans[0].attributes["gen_ai.output.messages"], first_output
+                signal.attributes["gen_ai.output.messages"], first_output
             )
     else:
-        logs = log_exporter.get_finished_logs()
         assert len(logs) == 3
 
         system_message = (
-            {"content": messages_value[0]["content"]}
+            {"content": WEATHER_TOOL_PROMPT[0]["content"]}
             if expect_content
             else None
         )

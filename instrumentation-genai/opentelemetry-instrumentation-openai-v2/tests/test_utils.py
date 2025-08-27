@@ -1,15 +1,62 @@
 import json
 from typing import Optional
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
-    server_attributes as ServerAttributes,
-)
 
 from openai.resources.chat.completions import ChatCompletion
 
+from opentelemetry.sdk._logs import LogRecord
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
+)
+
+DEFAULT_MODEL = "gpt-4o-mini"
+USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
+USER_ONLY_EXPECTED_INPUT_MESSAGES = [
+    {
+        "role": "user",
+        "parts": [
+            {
+                "type": "text",
+                "content": USER_ONLY_PROMPT[0]["content"],
+            }
+        ],
+    }
+]
+WEATHER_TOOL_PROMPT = [
+    {"role": "system", "content": "You're a helpful assistant."},
+    {
+        "role": "user",
+        "content": "What's the weather in Seattle and San Francisco today?",
+    },
+]
+WEATHER_TOOL_EXPECTED_INPUT_MESSAGES = [
+    {
+        "role": "system",
+        "parts": [
+            {
+                "type": "text",
+                "content": WEATHER_TOOL_PROMPT[0]["content"],
+            }
+        ],
+    },
+    {
+        "role": "user",
+        "parts": [
+            {
+                "type": "text",
+                "content": WEATHER_TOOL_PROMPT[1]["content"],
+            }
+        ],
+    },
+]
+
+
 def assert_all_attributes(
     span: ReadableSpan,
+    details_event: LogRecord,
     request_model: str,
     latest_experimental_enabled: bool,
     response_id: str = None,
@@ -19,53 +66,153 @@ def assert_all_attributes(
     operation_name: str = "chat",
     server_address: str = "api.openai.com",
 ):
-    assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    provider_name_attr_name = "gen_ai.provider.name" if latest_experimental_enabled else GenAIAttributes.GEN_AI_SYSTEM    
-    assert (
-        GenAIAttributes.GenAiSystemValues.OPENAI.value
-        == span.attributes[provider_name_attr_name]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
-    if response_model:
+    if span:
+        assert span.name == f"{operation_name} {request_model}"
+    if details_event:
         assert (
-            response_model
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
+            "gen_ai.client.inference.operation.details"
+            == details_event.attributes["event.name"]
         )
+
+    if span:
+        assert (
+            operation_name
+            == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        )
+    if details_event:
+        assert (
+            operation_name
+            == details_event.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        )
+
+    provider_name_attr_name = (
+        "gen_ai.provider.name"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_SYSTEM
+    )
+    if span:
+        assert (
+            GenAIAttributes.GenAiSystemValues.OPENAI.value
+            == span.attributes[provider_name_attr_name]
+        )
+    if details_event:
+        assert (
+            GenAIAttributes.GenAiSystemValues.OPENAI.value
+            == details_event.attributes[provider_name_attr_name]
+        )
+
+    if span:
+        assert (
+            request_model
+            == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        )
+    if details_event:
+        assert (
+            request_model
+            == details_event.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        )
+
+    if response_model:
+        if span:
+            assert (
+                response_model
+                == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
+            )
+        if details_event:
+            assert (
+                response_model
+                == details_event.attributes[
+                    GenAIAttributes.GEN_AI_RESPONSE_MODEL
+                ]
+            )
     else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
+        if span:
+            assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
+        if details_event:
+            assert (
+                GenAIAttributes.GEN_AI_RESPONSE_MODEL
+                not in details_event.attributes
+            )
 
     if response_id:
-        assert (
-            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-        )
+        if span:
+            assert (
+                response_id
+                == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
+            )
+        if details_event:
+            assert (
+                response_id
+                == details_event.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
+            )
     else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
+        if span:
+            assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
+        if details_event:
+            assert (
+                GenAIAttributes.GEN_AI_RESPONSE_MODEL
+                not in details_event.attributes
+            )
 
     if input_tokens:
-        assert (
-            input_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        )
+        if span:
+            assert (
+                input_tokens
+                == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+            )
+        if details_event:
+            assert (
+                input_tokens
+                == details_event.attributes[
+                    GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+                ]
+            )
     else:
-        assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
+        if span:
+            assert (
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+                not in span.attributes
+            )
+        if details_event:
+            assert (
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+                not in details_event.attributes
+            )
 
     if output_tokens:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
+        if span:
+            assert (
+                output_tokens
+                == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+            )
+        if details_event:
+            assert (
+                output_tokens
+                == details_event.attributes[
+                    GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS
+                ]
+            )
     else:
-        assert (
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
-        )
+        if span:
+            assert (
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS
+                not in span.attributes
+            )
+        if details_event:
+            assert (
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS
+                not in details_event.attributes
+            )
 
-    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+    if span:
+        assert (
+            server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+        )
+    if details_event:
+        assert (
+            server_address
+            == details_event.attributes[ServerAttributes.SERVER_ADDRESS]
+        )
 
 
 def assert_log_parent(log, span):
@@ -97,6 +244,7 @@ def get_current_weather_tool_definition():
         },
     }
 
+
 def remove_none_values(body):
     result = {}
     for key, value in body.items():
@@ -113,6 +261,7 @@ def remove_none_values(body):
 
 def assert_completion_attributes(
     span: ReadableSpan,
+    details_event: LogRecord,
     request_model: str,
     response: ChatCompletion,
     latest_experimental_enabled: bool,
@@ -121,6 +270,7 @@ def assert_completion_attributes(
 ):
     return assert_all_attributes(
         span,
+        details_event,
         request_model,
         latest_experimental_enabled,
         response.id,
@@ -131,5 +281,23 @@ def assert_completion_attributes(
         server_address,
     )
 
+
 def assert_messages_attribute(actual, expected):
     assert json.loads(actual) == expected
+
+
+def format_simple_expected_output_message(
+    content: str, finish_reason: str = "stop"
+):
+    return [
+        {
+            "role": "assistant",
+            "parts": [
+                {
+                    "type": "text",
+                    "content": content,
+                }
+            ],
+            "finish_reason": finish_reason,
+        }
+    ]
