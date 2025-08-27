@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Type
+from typing import Optional, Type
 
 
 @dataclass
@@ -44,7 +44,7 @@ class Message:
 class ChatGeneration:
     content: str
     type: str
-    finish_reason: str = None
+    finish_reason: Optional[str] = None
 
 
 @dataclass

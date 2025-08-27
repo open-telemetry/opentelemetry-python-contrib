@@ -33,7 +33,7 @@ Functions:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from uuid import UUID
 
 from opentelemetry import trace
@@ -71,15 +71,18 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-def _get_property_value(obj, property_name) -> object:
+def _get_property_value(obj: Any, property_name: str) -> Any:
     if isinstance(obj, dict):
-        return obj.get(property_name, None)
+        return cast(Any, obj.get(property_name, None))
 
-    return getattr(obj, property_name, None)
+    return cast(Any, getattr(obj, property_name, None))
 
 
 def _message_to_log_record(
-    message: Message, provider_name, framework, capture_content: bool
+    message: Message,
+    provider_name: Optional[str],
+    framework: Optional[str],
+    capture_content: bool,
 ) -> Optional[LogRecord]:
     content = _get_property_value(message, "content")
     message_type = _get_property_value(message, "type")
@@ -88,7 +91,7 @@ def _message_to_log_record(
     if content and capture_content:
         body = {"type": message_type, "content": content}
 
-    attributes = {
+    attributes: Dict[str, Any] = {
         # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
         "gen_ai.framework": framework,
         # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
@@ -107,9 +110,9 @@ def _message_to_log_record(
 
 def _chat_generation_to_log_record(
     chat_generation: ChatGeneration,
-    index,
-    provider_name,
-    framework,
+    index: int,
+    provider_name: Optional[str],
+    framework: Optional[str],
     capture_content: bool,
 ) -> Optional[LogRecord]:
     if not chat_generation:
