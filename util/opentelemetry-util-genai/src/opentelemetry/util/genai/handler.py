@@ -110,7 +110,8 @@ class TelemetryHandler:
         self._llm_registry: dict[UUID, LLMInvocation] = {}
         self._lock = Lock()
 
-    def _should_collect_content(self) -> bool:
+    @staticmethod
+    def _should_collect_content() -> bool:
         return True  # Placeholder for future config
 
     def start_llm(

@@ -112,31 +112,32 @@ def _chat_generation_to_log_record(
     framework,
     capture_content: bool,
 ) -> Optional[LogRecord]:
-    if chat_generation:
-        attributes = {
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            "gen_ai.framework": framework,
-            # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
-            "gen_ai.provider.name": provider_name,
-        }
+    if not chat_generation:
+        return None
+    attributes = {
+        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
+        "gen_ai.framework": framework,
+        # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
+        "gen_ai.provider.name": provider_name,
+    }
 
-        message = {
-            "type": chat_generation.type,
-        }
-        if capture_content and chat_generation.content:
-            message["content"] = chat_generation.content
+    message = {
+        "type": chat_generation.type,
+    }
+    if capture_content and chat_generation.content:
+        message["content"] = chat_generation.content
 
-        body = {
-            "index": index,
-            "finish_reason": chat_generation.finish_reason or "error",
-            "message": message,
-        }
+    body = {
+        "index": index,
+        "finish_reason": chat_generation.finish_reason or "error",
+        "message": message,
+    }
 
-        return LogRecord(
-            event_name="gen_ai.choice",
-            attributes=attributes,
-            body=body or None,
-        )
+    return LogRecord(
+        event_name="gen_ai.choice",
+        attributes=attributes,
+        body=body or None,
+    )
 
 
 def _get_metric_attributes(
