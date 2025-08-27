@@ -17,6 +17,7 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
+import logging
 from os import environ
 from typing import Any, List, Mapping, Optional, Union
 from urllib.parse import urlparse
@@ -43,13 +44,28 @@ OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
 # TODO: reuse common code
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
+logger = logging.getLogger(__name__)
 
-def is_content_enabled() -> bool:
+class ContentCapturingMode(str, Enum):
+    SPAN = "span"
+    EVENT = "event"
+    NONE = "none"
+    
+def get_content_mode(latest_experimental_enabled: bool) -> ContentCapturingMode:
     capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "none"
+    ).lower()
 
-    return capture_content.lower() == "true"
+    if latest_experimental_enabled:
+        try:
+            return ContentCapturingMode(capture_content)
+        except ValueError as ex:
+            logger.warning("Error when parsing `%s` environment variable: {%s}", OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, str(ex))
+            return ContentCapturingMode.NONE
+     
+    else:
+        # back-compat
+        return ContentCapturingMode.EVENT if capture_content == "true" else ContentCapturingMode.NONE
 
 
 def is_latest_experimental_enabled() -> bool:
@@ -61,7 +77,7 @@ def is_latest_experimental_enabled() -> bool:
     )
 
 
-def extract_tool_calls_old(item, capture_content):
+def extract_tool_calls_old(item, content_mode: ContentCapturingMode):
     tool_calls = get_property_value(item, "tool_calls")
     if tool_calls is None:
         return None
@@ -86,7 +102,7 @@ def extract_tool_calls_old(item, capture_content):
                 tool_call_dict["function"]["name"] = name
 
             arguments = get_property_value(func, "arguments")
-            if capture_content and arguments:
+            if content_mode == ContentCapturingMode.EVENT and arguments:
                 if isinstance(arguments, str):
                     arguments = arguments.replace("\n", "")
                 tool_call_dict["function"]["arguments"] = arguments
@@ -150,13 +166,14 @@ def get_property_value(obj, property_name):
 
 def record_input_messages(
     messages,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
     latest_experimental_enabled: bool,
     span: Span,
     event_logger: EventLogger,
 ):
     if latest_experimental_enabled:
-        if not capture_content:
+        if (content_mode == ContentCapturingMode.NONE or 
+            (content_mode == ContentCapturingMode.SPAN and not span.is_recording())):
             return
 
         chat_messages = []
@@ -186,19 +203,17 @@ def record_input_messages(
                     chat_message.parts.append(TextPart(content=content))
                     # continue?
 
-        # TODO: config between spans and events
-        # also if spans and span is not recording, let's not do it all
-        if span.is_recording():
+        if span.is_recording() and content_mode == ContentCapturingMode.SPAN:
             span.set_attribute(
                 "gen_ai.input.messages",
                 json.dumps(
                     chat_messages, ensure_ascii=False, cls=DataclassEncoder
                 ),
             )
-
+        # TODO: events
     else:
         for message in messages:
-            event_logger.emit(_message_to_event(message, capture_content))
+            event_logger.emit(_message_to_event(message, content_mode))
 
 
 def _is_text_part(content: Any) -> bool:
@@ -210,13 +225,14 @@ def _is_text_part(content: Any) -> bool:
 
 def record_output_messages(
     choices,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
     latest_experimental_enabled: bool,
     span: Span,
     event_logger: EventLogger,
 ):
     if latest_experimental_enabled:
-        if not capture_content:
+        if (content_mode == ContentCapturingMode.NONE or 
+           (content_mode == ContentCapturingMode.SPAN and not span.is_recording())):
             return
 
         output_messages = []
@@ -239,22 +255,21 @@ def record_output_messages(
                 if _is_text_part(content):
                     message.parts.append(TextPart(content=content))
 
-        # TODO: config between spans and events
-        # also if spans and span is not recording, let's not do it all
-        if span.is_recording():
+
+        if span.is_recording() and content_mode == ContentCapturingMode.SPAN:
             span.set_attribute(
                 "gen_ai.output.messages",
                 json.dumps(
                     output_messages, ensure_ascii=False, cls=DataclassEncoder
                 ),
             )
-
+        # TODO: events
     else:
         for choice in choices:
-            event_logger.emit(_choice_to_event(choice, capture_content))
+            event_logger.emit(_choice_to_event(choice, content_mode))
 
 
-def _message_to_event(message, capture_content):
+def _message_to_event(message, content_mode: ContentCapturingMode):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -262,10 +277,10 @@ def _message_to_event(message, capture_content):
     content = get_property_value(message, "content")
 
     body = {}
-    if capture_content and content:
+    if content_mode == ContentCapturingMode.EVENT and content:
         body["content"] = content
     if role == "assistant":
-        tool_calls = extract_tool_calls_old(message, capture_content)
+        tool_calls = extract_tool_calls_old(message, content_mode)
         if tool_calls:
             body = {"tool_calls": tool_calls}
     elif role == "tool":
@@ -280,7 +295,7 @@ def _message_to_event(message, capture_content):
     )
 
 
-def _choice_to_event(choice, capture_content):
+def _choice_to_event(choice, content_mode: ContentCapturingMode):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -298,11 +313,11 @@ def _choice_to_event(choice, capture_content):
                 else None
             )
         }
-        tool_calls = extract_tool_calls_old(choice.message, capture_content)
+        tool_calls = extract_tool_calls_old(choice.message, content_mode)
         if tool_calls:
             message["tool_calls"] = tool_calls
         content = get_property_value(choice.message, "content")
-        if capture_content and content:
+        if content_mode == ContentCapturingMode.EVENT and content:
             message["content"] = content
         body["message"] = message
 
@@ -376,7 +391,7 @@ def get_llm_request_attributes(
             ) is not None:
                 if response_format_type == "text":
                     attributes[output_type_attr_key] = (
-                        "text"  # TODO there should be an enum
+                        "text"  # TODO there should be an enum in semconv package
                     )
                 elif (
                     response_format_type == "json_schema"
@@ -385,7 +400,6 @@ def get_llm_request_attributes(
                     attributes[output_type_attr_key] = "json"
                 else:
                     # should never happen with chat completion API
-                    # TODO: internal log
                     pass
         else:
             # should never happen with chat completion API

@@ -118,7 +118,7 @@ def instrument_no_content(
     latest_experimental_enabled,
 ):
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "none"}
     )
 
     os.environ.update(
@@ -150,7 +150,7 @@ def instrument_with_content(
     latest_experimental_enabled,
 ):
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span" if latest_experimental_enabled else "True"}
     )
 
     os.environ.update(
@@ -181,7 +181,7 @@ def instrument_with_content_unsampled(
     latest_experimental_enabled,
 ):
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span" if latest_experimental_enabled else "True"}
     )
 
     os.environ.update(

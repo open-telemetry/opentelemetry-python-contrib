@@ -31,6 +31,7 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 from .instruments import Instruments
 from .utils import (
     DataclassEncoder,
+    ContentCapturingMode,
     OutputMessage,
     TextPart,
     ToolCallRequestPart,
@@ -47,7 +48,7 @@ def chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
     latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
@@ -71,7 +72,7 @@ def chat_completions_create(
         ) as span:
             record_input_messages(
                 kwargs.get("messages", []),
-                capture_content,
+                content_mode,
                 latest_experimental_enabled,
                 span,
                 event_logger,
@@ -87,7 +88,7 @@ def chat_completions_create(
                         result,
                         span,
                         event_logger,
-                        capture_content,
+                        content_mode,
                         latest_experimental_enabled,
                     )
 
@@ -97,7 +98,7 @@ def chat_completions_create(
                     )
                 record_output_messages(
                     getattr(result, "choices", []),
-                    capture_content,
+                    content_mode,
                     latest_experimental_enabled,
                     span,
                     event_logger,
@@ -128,7 +129,7 @@ def async_chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
     latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
@@ -152,7 +153,7 @@ def async_chat_completions_create(
         ) as span:
             record_input_messages(
                 kwargs.get("messages", []),
-                capture_content,
+                content_mode,
                 latest_experimental_enabled,
                 span,
                 event_logger,
@@ -168,7 +169,7 @@ def async_chat_completions_create(
                         result,
                         span,
                         event_logger,
-                        capture_content,
+                        content_mode,
                         latest_experimental_enabled,
                     )
 
@@ -178,7 +179,7 @@ def async_chat_completions_create(
                     )
                 record_output_messages(
                     getattr(result, "choices", []),
-                    capture_content,
+                    content_mode,
                     latest_experimental_enabled,
                     span,
                     event_logger,
@@ -380,14 +381,14 @@ class StreamWrapper:
         stream: Stream,
         span: Span,
         event_logger: EventLogger,
-        capture_content: bool,
+        content_mode: ContentCapturingMode,
         latest_experimental_enabled: bool,
     ):
         self.stream = stream
         self.span = span
         self.choice_buffers = []
         self._span_started = False
-        self.capture_content = capture_content
+        self.content_mode = content_mode
         self.latest_experimental_enabled = latest_experimental_enabled
 
         self.event_logger = event_logger
@@ -443,7 +444,8 @@ class StreamWrapper:
                 )
 
             if self.latest_experimental_enabled:
-                if not self.capture_content:
+                if (self.content_mode == ContentCapturingMode.NONE or 
+                    (self.content_mode == ContentCapturingMode.SPAN and not self.span.is_recording())):
                     pass
                 else:
                     output_messages = []
@@ -454,7 +456,7 @@ class StreamWrapper:
                         )
                         output_messages.append(message)
 
-                        if self.capture_content and choice.text_content:
+                        if choice.text_content:
                             message.parts.append(
                                 TextPart(content="".join(choice.text_content))
                             )
@@ -472,9 +474,8 @@ class StreamWrapper:
                                         part.arguments = arguments
 
                                 message.parts.append(part)
-                    # TODO: config between spans and events
-                    # also if spans and span is not recording, let's not do it all
-                    if self.span.is_recording():
+                   
+                    if self.span.is_recording() and self.content_mode == ContentCapturingMode.SPAN:
                         self.span.set_attribute(
                             "gen_ai.output.messages",
                             json.dumps(
@@ -483,16 +484,17 @@ class StreamWrapper:
                                 cls=DataclassEncoder,
                             ),
                         )
+                    # TODO: event
             else:
                 for idx, choice in enumerate(self.choice_buffers):
                     message = {"role": "assistant"}
-                    if self.capture_content and choice.text_content:
+                    if self.content_mode == ContentCapturingMode.EVENT and choice.text_content:
                         message["content"] = "".join(choice.text_content)
                     if choice.tool_calls_buffers:
                         tool_calls = []
                         for tool_call in choice.tool_calls_buffers:
                             function = {"name": tool_call.function_name}
-                            if self.capture_content:
+                            if self.content_mode == ContentCapturingMode.EVENT:
                                 function["arguments"] = "".join(
                                     tool_call.arguments
                                 )
