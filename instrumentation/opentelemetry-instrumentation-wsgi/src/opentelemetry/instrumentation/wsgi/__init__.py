@@ -81,35 +81,48 @@ Usage (Web.py)
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The WSGI instrumentation reads from a Labeler utility that supports adding custom attributes
-to the HTTP duration metrics recorded by the instrumentation.
-
+The WSGI instrumentation reads from a labeler utility that supports adding custom attributes
+to HTTP duration metrics at record time.
 
 .. code-block:: python
 
-    from flask import Flask
+    import web
+    from cheroot import wsgi
+
     from opentelemetry.instrumentation._labeler import get_labeler
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
-    app = Flask(__name__)
-    app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
+    urls = (
+        '/', 'index',
+        '/users/(.+)/', 'user_profile'
+    )
 
-    @app.route("/user/<user_id>")
-    def user_profile(user_id):
-        # Get the labeler for the current request
-        labeler = get_labeler()
-        # Add custom attributes to WSGI instrumentation metrics
-        labeler.add("user_id", user_id)
-        labeler.add("user_type", "registered")
-        # Or, add multiple attributes at once
-        labeler.add_attributes({
-            "feature_flag": "new_ui",
-            "experiment_group": "control"
-        })
-        return f"User profile for {user_id}"
+    class user_profile:
+        def GET(self, user_id):
+            # Get the labeler for the current request
+            labeler = get_labeler()
+
+            # Add custom attributes to WSGI instrumentation metrics
+            labeler.add("user_id", user_id)
+            labeler.add("user_type", "registered")
+
+            # Or, add multiple attributes at once
+            labeler.add_attributes({
+                "feature_flag": "new_ui",
+                "experiment_group": "control"
+            })
+            return f"User profile for {user_id}"
 
     if __name__ == "__main__":
-        app.run(debug=True)
+        app = web.application(urls, globals())
+        func = app.wsgifunc()
+
+        func = OpenTelemetryMiddleware(func)
+
+        server = wsgi.WSGIServer(
+            ("localhost", 5100), func, server_name="localhost"
+        )
+        server.start()
 
 
 Configuration
