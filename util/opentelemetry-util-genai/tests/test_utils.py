@@ -122,9 +122,9 @@ def telemetry_setup():
     trace.set_tracer_provider(trace.NoOpTracerProvider())
 
 
-def test_llm_start_and_stop_creates_span(telemetry_setup):
-    memory_exporter = telemetry_setup
-
+def test_llm_start_and_stop_creates_span(
+    telemetry_setup: InMemorySpanExporter,
+):
     run_id = uuid4()
     message = Message(content="hello world", type="Human", name="message name")
     chat_generation = ChatGeneration(content="hello back", type="AI")
@@ -138,7 +138,7 @@ def test_llm_start_and_stop_creates_span(telemetry_setup):
     )
 
     # Get the spans that were created
-    spans = memory_exporter.get_finished_spans()
+    spans = telemetry_setup.get_finished_spans()
 
     # Verify span was created
     assert len(spans) == 1
