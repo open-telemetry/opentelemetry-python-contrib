@@ -306,13 +306,14 @@ class FastAPIInstrumentor(BaseInstrumentor):
                             await self.app(scope, receive, send)
                         except Exception as exc:  # pylint: disable=broad-exception-caught
                             span = get_current_span()
-                            span.record_exception(exc)
-                            span.set_status(
-                                Status(
-                                    status_code=StatusCode.ERROR,
-                                    description=f"{type(exc).__name__}: {exc}",
+                            if span.is_recording():
+                                span.record_exception(exc)
+                                span.set_status(
+                                    Status(
+                                        status_code=StatusCode.ERROR,
+                                        description=f"{type(exc).__name__}: {exc}",
+                                    )
                                 )
-                            )
                             raise
 
                 # For every possible use case of error handling, exception
