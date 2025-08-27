@@ -235,7 +235,12 @@ Note:
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The Django instrumentation reads from a Labeler utility that supports adding custom attributes to the HTTP duration metrics recorded by the instrumentation.
+The Django instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
+
 
 .. code:: python
 
@@ -245,7 +250,7 @@ The Django instrumentation reads from a Labeler utility that supports adding cus
 
     DjangoInstrumentor().instrument()
 
-    # For urlpattern `/user/<user_id>/` mapped elsewhere
+    # Note: urlpattern `/users/<user_id>/` mapped elsewhere
     def my_user_view(request, user_id):
         # Get the labeler for the current request
         labeler = get_labeler()

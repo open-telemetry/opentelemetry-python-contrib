@@ -206,8 +206,12 @@ Note:
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The ASGI instrumentation reads from a Labeler utility that supports adding custom attributes
-to the HTTP duration metrics recorded by the instrumentation.
+The ASGI instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
+
 
 .. code-block:: python
 
@@ -220,18 +224,21 @@ to the HTTP duration metrics recorded by the instrumentation.
     app = Quart(__name__)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
 
-    @app.route("/user/<user_id>")
+    @app.route("/users/<user_id>/")
     async def user_profile(user_id):
         # Get the labeler for the current request
         labeler = get_labeler()
+
         # Add custom attributes to ASGI instrumentation metrics
         labeler.add("user_id", user_id)
         labeler.add("user_type", "registered")
+
         # Or, add multiple attributes at once
         labeler.add_attributes({
             "feature_flag": "new_ui",
             "experiment_group": "control"
         })
+
         return f"User profile for {user_id}"
 
     if __name__ == "__main__":

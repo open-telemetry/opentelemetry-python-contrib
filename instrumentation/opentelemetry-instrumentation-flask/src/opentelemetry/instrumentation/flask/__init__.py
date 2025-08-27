@@ -97,19 +97,24 @@ Usage
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The Flask instrumentation reads from a Labeler utility that supports adding custom attributes
-to the HTTP request duration metrics recorded by the instrumentation.
+The Flask instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
+
 
 .. code-block:: python
 
     from flask import Flask
-    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
     from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
     app = Flask(__name__)
     FlaskInstrumentor().instrument_app(app)
 
-    @app.route("/user/<user_id>")
+    @app.route("/users/<user_id>/")
     def user_profile(user_id):
         # Get the labeler for the current request
         labeler = get_labeler()

@@ -81,8 +81,11 @@ Usage (Web.py)
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The WSGI instrumentation reads from a labeler utility that supports adding custom attributes
-to HTTP duration metrics at record time.
+The WSGI instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
 
 .. code-block:: python
 

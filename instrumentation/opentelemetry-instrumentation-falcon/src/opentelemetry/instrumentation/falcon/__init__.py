@@ -182,35 +182,41 @@ Note:
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The Falcon instrumentation reads from a Labeler utility that supports adding custom attributes
-to the HTTP duration metrics recorded by the instrumentation.
+The Falcon instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
 
 
 .. code-block:: python
 
     import falcon
+
     from opentelemetry.instrumentation._labeler import get_labeler
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     FalconInstrumentor().instrument()
-
     app = falcon.App()
 
     class UserProfileResource:
         def on_get(self, req, resp, user_id):
             # Get the labeler for the current request
             labeler = get_labeler()
+
             # Add custom attributes to Falcon instrumentation metrics
             labeler.add("user_id", user_id)
             labeler.add("user_type", "registered")
+
             # Or, add multiple attributes at once
             labeler.add_attributes({
                 "feature_flag": "new_ui",
                 "experiment_group": "control"
             })
+
             resp.text = f'User profile for {user_id}'
 
-    app.add_route('/user/{user_id}', UserProfileResource())
+    app.add_route('/users/{user_id}/', UserProfileResource())
 
 API
 ---
