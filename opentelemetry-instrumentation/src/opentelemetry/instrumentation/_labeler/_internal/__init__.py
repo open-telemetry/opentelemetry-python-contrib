@@ -41,11 +41,6 @@ class Labeler:
             key: The attribute key
             value: The attribute value (must be a primitive type)
         """
-        if not isinstance(value, (str, int, float, bool)):
-            raise ValueError(
-                f"Attribute value must be str, int, float, or bool, got {type(value)}"
-            )
-
         with self._lock:
             self._attributes[key] = value
 
@@ -58,12 +53,6 @@ class Labeler:
         Args:
             attributes: Dictionary of attributes to add
         """
-        for key, value in attributes.items():
-            if not isinstance(value, (str, int, float, bool)):
-                raise ValueError(
-                    f"Attribute value for '{key}' must be str, int, float, or bool, got {type(value)}"
-                )
-
         with self._lock:
             self._attributes.update(attributes)
 
@@ -140,9 +129,9 @@ def enhance_metric_attributes(
     """
     Combines base_attributes with custom attributes from the current labeler,
     returning a new dictionary of attributes. Custom attributes are skipped
-    if they would override base_attributes, exceed max_custom_attrs number,
-    or are not simple types (str, int, float, bool). If custom attributes
-    have string values exceeding the max_attr_value_length, then they are truncated.
+    if they would override base_attributes, or exceed max_custom_attrs number.
+    If custom attributes have string values exceeding the max_attr_value_length,
+    then they are truncated.
 
     Args:
         base_attributes: The base attributes for the metric
@@ -151,7 +140,8 @@ def enhance_metric_attributes(
         max_attr_value_length: Maximum length for string attribute values
 
     Returns:
-        Dictionary combining base and custom attributes
+        Dictionary combining base and custom attributes. If no custom attributes,
+        returns a copy of the original base attributes.
     """
     if not include_custom:
         return base_attributes.copy()
@@ -172,8 +162,7 @@ def enhance_metric_attributes(
         if isinstance(value, str) and len(value) > max_attr_value_length:
             value = value[:max_attr_value_length]
 
-        if isinstance(value, (str, int, float, bool)):
-            enhanced_attributes[key] = value
-            added_count += 1
+        enhanced_attributes[key] = value
+        added_count += 1
 
     return enhanced_attributes

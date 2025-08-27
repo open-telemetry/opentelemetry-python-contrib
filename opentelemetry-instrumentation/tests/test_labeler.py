@@ -61,18 +61,6 @@ class TestLabeler(unittest.TestCase):
         attributes = labeler.get_attributes()
         self.assertEqual(attributes, attrs)
 
-    def test_invalid_attribute_types(self):
-        labeler = Labeler()
-
-        with self.assertRaises(ValueError):
-            labeler.add("key", [1, 2, 3])
-
-        with self.assertRaises(ValueError):
-            labeler.add("key", {"nested": "dict"})
-
-        with self.assertRaises(ValueError):
-            labeler.add_attributes({"key": None})
-
     def test_overwrite_attribute(self):
         labeler = Labeler()
         labeler.add("key1", "original")
