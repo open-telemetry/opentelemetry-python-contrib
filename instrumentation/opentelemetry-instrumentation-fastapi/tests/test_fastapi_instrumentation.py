@@ -2030,10 +2030,11 @@ class TestTraceableExceptionHandling(TestBase):
         )
 
 
+# pylint: disable=attribute-defined-outside-init
 class TestFastAPIFallback(TestBaseFastAPI):
     @pytest.fixture(autouse=True)
-    def _inject_fixtures(self, caplog):
-        self._caplog = caplog
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog
 
     @staticmethod
     def _create_fastapi_app():
@@ -2059,7 +2060,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
 
         errors = [
             record
-            for record in self._caplog.get_records("call")
+            for record in self.caplog.get_records("call")
             if record.levelno >= logging.ERROR
         ]
         self.assertEqual(len(errors), 1)
