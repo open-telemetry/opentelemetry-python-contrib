@@ -168,6 +168,134 @@ def _get_metric_attributes(
     return attributes
 
 
+# ----------------------
+# Helper utilities (module-private) to reduce complexity in emitters
+# ----------------------
+
+
+def _set_initial_span_attributes(
+    span: Span,
+    request_model: Optional[str],
+    system: Optional[str],
+    framework: Optional[str],
+) -> None:
+    span.set_attribute(
+        GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
+    )
+    if request_model:
+        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
+    if framework is not None:
+        span.set_attribute("gen_ai.framework", framework)
+    if system is not None:
+        # Deprecated: use "gen_ai.provider.name"
+        span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
+        span.set_attribute("gen_ai.provider.name", system)
+
+
+def _set_response_and_usage_attributes(
+    span: Span,
+    response_model: Optional[str],
+    response_id: Optional[str],
+    prompt_tokens: Optional[AttributeValue],
+    completion_tokens: Optional[AttributeValue],
+) -> None:
+    if response_model is not None:
+        span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
+    if response_id is not None:
+        span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
+    if isinstance(prompt_tokens, (int, float)):
+        span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
+    if isinstance(completion_tokens, (int, float)):
+        span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
+
+
+def _emit_chat_generation_logs(
+    logger: Optional[Logger],
+    generations: List[ChatGeneration],
+    provider_name: Optional[str],
+    framework: Optional[str],
+    capture_content: bool,
+) -> List[str]:
+    finish_reasons: List[str] = []
+    for index, chat_generation in enumerate(generations):
+        log = _chat_generation_to_log_record(
+            chat_generation,
+            index,
+            provider_name,
+            framework,
+            capture_content=capture_content,
+        )
+        if log and logger:
+            logger.emit(log)
+        if chat_generation.finish_reason is not None:
+            finish_reasons.append(chat_generation.finish_reason)
+    return finish_reasons
+
+
+def _collect_finish_reasons(generations: List[ChatGeneration]) -> List[str]:
+    finish_reasons: List[str] = []
+    for gen in generations:
+        if gen.finish_reason is not None:
+            finish_reasons.append(gen.finish_reason)
+    return finish_reasons
+
+
+def _maybe_set_input_messages(
+    span: Span, messages: List[Message], capture: bool
+) -> None:
+    if not capture:
+        return
+    message_parts: List[OtelMessage] = []
+    for message in messages:
+        message_parts.append(message._to_part_dict())
+    if message_parts:
+        span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
+
+
+def _set_chat_generation_attrs(
+    span: Span, generations: List[ChatGeneration]
+) -> None:
+    for index, chat_generation in enumerate(generations):
+        # Upcoming semconv fields
+        span.set_attribute(
+            f"gen_ai.completion.{index}.content", chat_generation.content
+        )
+        span.set_attribute(
+            f"gen_ai.completion.{index}.role", chat_generation.type
+        )
+
+
+def _record_token_metrics(
+    token_histogram,
+    prompt_tokens: Optional[AttributeValue],
+    completion_tokens: Optional[AttributeValue],
+    metric_attributes: Dict[str, AttributeValue],
+) -> None:
+    prompt_attrs: Dict[str, AttributeValue] = {
+        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
+    }
+    prompt_attrs.update(metric_attributes)
+    if isinstance(prompt_tokens, (int, float)):
+        token_histogram.record(prompt_tokens, attributes=prompt_attrs)
+
+    completion_attrs: Dict[str, AttributeValue] = {
+        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.COMPLETION.value
+    }
+    completion_attrs.update(metric_attributes)
+    if isinstance(completion_tokens, (int, float)):
+        token_histogram.record(completion_tokens, attributes=completion_attrs)
+
+
+def _record_duration(
+    duration_histogram,
+    invocation: LLMInvocation,
+    metric_attributes: Dict[str, AttributeValue],
+) -> None:
+    if invocation.end_time is not None:
+        elapsed: float = invocation.end_time - invocation.start_time
+        duration_histogram.record(elapsed, attributes=metric_attributes)
+
+
 class BaseEmitter:
     """
     Abstract base for emitters mapping GenAI types -> OpenTelemetry.
@@ -258,10 +386,7 @@ class SpanMetricEventEmitter(BaseEmitter):
             parent_run_id=invocation.parent_run_id,
         )
 
-        with use_span(
-            span,
-            end_on_exit=False,
-        ) as span:
+        with use_span(span, end_on_exit=False) as span:
             request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
                 span=span,
@@ -272,67 +397,34 @@ class SpanMetricEventEmitter(BaseEmitter):
             )
             self.spans[invocation.run_id] = span_state
 
-            span.set_attribute(
-                GenAI.GEN_AI_OPERATION_NAME,
-                GenAI.GenAiOperationNameValues.CHAT.value,
+            framework = invocation.attributes.get("framework")
+            _set_initial_span_attributes(
+                span, request_model, system, framework
             )
 
-            if request_model:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            framework = invocation.attributes.get("framework")
-            if framework is not None:
-                span.set_attribute("gen_ai.framework", framework)
-
-            if system is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_SYSTEM, system
-                )  # Deprecated: use "gen_ai.provider.name"
-                # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-                span.set_attribute("gen_ai.provider.name", system)
-
-            finish_reasons: List[str] = []
-            for index, chat_generation in enumerate(
-                invocation.chat_generations
-            ):
-                log = _chat_generation_to_log_record(
-                    chat_generation,
-                    index,
-                    system,
-                    framework,
-                    capture_content=self._capture_content,
-                )
-                if log and self._logger:
-                    self._logger.emit(log)
-                if chat_generation.finish_reason is not None:
-                    finish_reasons.append(chat_generation.finish_reason)
-
+            finish_reasons = _emit_chat_generation_logs(
+                self._logger,
+                invocation.chat_generations,
+                system,
+                framework,
+                self._capture_content,
+            )
             if finish_reasons:
                 span.set_attribute(
                     GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
                 )
 
             response_model = invocation.attributes.get("response_model_name")
-            if response_model is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
-
             response_id = invocation.attributes.get("response_id")
-            if response_id is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
-
-            # usage
             prompt_tokens = invocation.attributes.get("input_tokens")
-            if isinstance(prompt_tokens, (int, float)):
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens
-                )
-
             completion_tokens = invocation.attributes.get("output_tokens")
-            if isinstance(completion_tokens, (int, float)):
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens
-                )
+            _set_response_and_usage_attributes(
+                span,
+                response_model,
+                response_id,
+                prompt_tokens,
+                completion_tokens,
+            )
 
             metric_attributes = _get_metric_attributes(
                 request_model,
@@ -341,35 +433,17 @@ class SpanMetricEventEmitter(BaseEmitter):
                 system,
                 framework,
             )
+            _record_token_metrics(
+                self._token_histogram,
+                prompt_tokens,
+                completion_tokens,
+                metric_attributes,
+            )
 
-            # Record token usage metrics
-            prompt_tokens_attributes: Dict[str, AttributeValue] = {
-                GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value,
-            }
-            prompt_tokens_attributes.update(metric_attributes)
-            if isinstance(prompt_tokens, (int, float)):
-                self._token_histogram.record(
-                    prompt_tokens, attributes=prompt_tokens_attributes
-                )
-
-            completion_tokens_attributes: Dict[str, AttributeValue] = {
-                GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.COMPLETION.value
-            }
-            completion_tokens_attributes.update(metric_attributes)
-            if isinstance(completion_tokens, (int, float)):
-                self._token_histogram.record(
-                    completion_tokens, attributes=completion_tokens_attributes
-                )
-
-            # End the LLM span
             self._end_span(invocation.run_id)
-
-            # Record overall duration metric
-            if invocation.end_time is not None:
-                elapsed: float = invocation.end_time - invocation.start_time
-                self._duration_histogram.record(
-                    elapsed, attributes=metric_attributes
-                )
+            _record_duration(
+                self._duration_histogram, invocation, metric_attributes
+            )
 
     def error(self, error: Error, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
@@ -484,10 +558,7 @@ class SpanMetricEmitter(BaseEmitter):
             parent_run_id=invocation.parent_run_id,
         )
 
-        with use_span(
-            span,
-            end_on_exit=False,
-        ) as span:
+        with use_span(span, end_on_exit=False) as span:
             request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
                 span=span,
@@ -498,80 +569,35 @@ class SpanMetricEmitter(BaseEmitter):
             )
             self.spans[invocation.run_id] = span_state
 
-            span.set_attribute(
-                GenAI.GEN_AI_OPERATION_NAME,
-                GenAI.GenAiOperationNameValues.CHAT.value,
+            framework = invocation.attributes.get("framework")
+            _set_initial_span_attributes(
+                span, request_model, system, framework
             )
 
-            if request_model is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-
-            # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-            framework = invocation.attributes.get("framework")
-            if framework is not None:
-                span.set_attribute("gen_ai.framework", framework)
-            if system is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_SYSTEM, system
-                )  # Deprecated: use "gen_ai.provider.name"
-                # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-                span.set_attribute("gen_ai.provider.name", system)
-
-            finish_reasons: List[str] = []
-            for index, chat_generation in enumerate(
+            finish_reasons = _collect_finish_reasons(
                 invocation.chat_generations
-            ):
-                if chat_generation.finish_reason is not None:
-                    finish_reasons.append(chat_generation.finish_reason)
-            if finish_reasons and len(finish_reasons) > 0:
+            )
+            if finish_reasons:
                 span.set_attribute(
                     GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
                 )
 
             response_model = invocation.attributes.get("response_model_name")
-            if response_model is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
-
             response_id = invocation.attributes.get("response_id")
-            if response_id is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
-
-            # usage
             prompt_tokens = invocation.attributes.get("input_tokens")
-            if isinstance(prompt_tokens, (int, float)):
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens
-                )
-
             completion_tokens = invocation.attributes.get("output_tokens")
-            if isinstance(completion_tokens, (int, float)):
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens
-                )
+            _set_response_and_usage_attributes(
+                span,
+                response_model,
+                response_id,
+                prompt_tokens,
+                completion_tokens,
+            )
 
-            if self._capture_content:
-                message_parts: List[OtelMessage] = []
-                for index, message in enumerate(invocation.messages):
-                    # ref: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-input-messages
-                    # when recording prompt messages, use a json encoded string if structured form is not available.
-                    message_parts.append(message._to_part_dict())
-
-                if len(message_parts) > 0:
-                    span.set_attribute(
-                        "gen_ai.input.messages", json.dumps(message_parts)
-                    )
-
-            for index, chat_generation in enumerate(
-                invocation.chat_generations
-            ):
-                # Set these attributes to upcoming semconv: https://github.com/open-telemetry/semantic-conventions/pull/2179
-                span.set_attribute(
-                    f"gen_ai.completion.{index}.content",
-                    chat_generation.content,
-                )
-                span.set_attribute(
-                    f"gen_ai.completion.{index}.role", chat_generation.type
-                )
+            _maybe_set_input_messages(
+                span, invocation.messages, self._capture_content
+            )
+            _set_chat_generation_attrs(span, invocation.chat_generations)
 
             metric_attributes = _get_metric_attributes(
                 request_model,
@@ -580,35 +606,17 @@ class SpanMetricEmitter(BaseEmitter):
                 system,
                 framework,
             )
+            _record_token_metrics(
+                self._token_histogram,
+                prompt_tokens,
+                completion_tokens,
+                metric_attributes,
+            )
 
-            # Record token usage metrics
-            prompt_tokens_attributes: Dict[str, AttributeValue] = {
-                GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
-            }
-            prompt_tokens_attributes.update(metric_attributes)
-            if isinstance(prompt_tokens, (int, float)):
-                self._token_histogram.record(
-                    prompt_tokens, attributes=prompt_tokens_attributes
-                )
-
-            completion_tokens_attributes: Dict[str, AttributeValue] = {
-                GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.COMPLETION.value
-            }
-            completion_tokens_attributes.update(metric_attributes)
-            if isinstance(completion_tokens, (int, float)):
-                self._token_histogram.record(
-                    completion_tokens, attributes=completion_tokens_attributes
-                )
-
-            # End the LLM span
             self._end_span(invocation.run_id)
-
-            # Record overall duration metric
-            if invocation.end_time is not None:
-                elapsed: float = invocation.end_time - invocation.start_time
-                self._duration_histogram.record(
-                    elapsed, attributes=metric_attributes
-                )
+            _record_duration(
+                self._duration_histogram, invocation, metric_attributes
+            )
 
     def error(self, error: Error, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
