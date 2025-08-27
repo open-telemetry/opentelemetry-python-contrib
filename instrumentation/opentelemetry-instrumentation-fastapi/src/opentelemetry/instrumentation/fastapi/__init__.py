@@ -186,6 +186,7 @@ import functools
 import logging
 import types
 from typing import Collection, Literal
+from weakref import WeakSet as _WeakSet
 
 import fastapi
 from starlette.applications import Starlette
@@ -415,6 +416,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
+        # Remove the app from the set of instrumented apps to avoid calling uninstrument twice
+        # if the instrumentation is later disabled or such
+        # Use discard to avoid KeyError if already GC'ed
+        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(app)
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -445,7 +451,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
-        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
+        # Create a copy of the set to avoid RuntimeError during iteration
+        instances_to_uninstrument = list(
+            _InstrumentedFastAPI._instrumented_fastapi_apps
+        )
+        for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
         fastapi.FastAPI = self._original_fastapi
@@ -463,7 +473,8 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
     _http_capture_headers_sanitize_fields: list[str] | None = None
     _exclude_spans: list[Literal["receive", "send"]] | None = None
 
-    _instrumented_fastapi_apps = set()
+    # Track instrumented app instances using weak references to avoid GC leaks
+    _instrumented_fastapi_apps = _WeakSet()
     _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def __init__(self, *args, **kwargs):
@@ -482,10 +493,6 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
             exclude_spans=self._exclude_spans,
         )
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
-
-    def __del__(self):
-        if self in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
 def _get_route_details(scope):

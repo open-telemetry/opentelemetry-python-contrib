@@ -12,5 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from unittest import TestCase
 
-_instruments = ("confluent-kafka >= 1.8.2, <= 2.11.0",)
+TEST_DIR = os.path.dirname(os.path.realpath(__file__))
+DATA_DIR = os.path.join(TEST_DIR, "data")
+
+CLIENT_ID = "12345678901234567890abcd"
+
+
+# pylint: disable=no-member
+class TestSamplingRuleApplier(TestCase):
+    pass

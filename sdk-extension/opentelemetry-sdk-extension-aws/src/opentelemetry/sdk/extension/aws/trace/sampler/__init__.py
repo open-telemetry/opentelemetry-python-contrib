@@ -12,5 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler.aws_xray_remote_sampler import (
+    _AwsXRayRemoteSampler,
+)
 
-_instruments = ("confluent-kafka >= 1.8.2, <= 2.11.0",)
+__all__ = ["_AwsXRayRemoteSampler"]
