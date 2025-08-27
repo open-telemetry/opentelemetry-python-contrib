@@ -40,7 +40,7 @@ from uuid import UUID
 from opentelemetry import trace
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, get_current
-from opentelemetry.metrics import Meter, get_meter
+from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -266,7 +266,7 @@ def _set_chat_generation_attrs(
 
 
 def _record_token_metrics(
-    token_histogram,
+    token_histogram: Histogram,
     prompt_tokens: Optional[AttributeValue],
     completion_tokens: Optional[AttributeValue],
     metric_attributes: Dict[str, AttributeValue],
@@ -287,7 +287,7 @@ def _record_token_metrics(
 
 
 def _record_duration(
-    duration_histogram,
+    duration_histogram: Histogram,
     invocation: LLMInvocation,
     metric_attributes: Dict[str, AttributeValue],
 ) -> None:
