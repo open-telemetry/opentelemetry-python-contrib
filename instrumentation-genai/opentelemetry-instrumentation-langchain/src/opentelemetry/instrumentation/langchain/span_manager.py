@@ -70,7 +70,7 @@ class _SpanManager:
 
         return span
 
-    def create_llm_span(
+    def create_chat_span(
         self,
         run_id: UUID,
         parent_run_id: Optional[UUID],

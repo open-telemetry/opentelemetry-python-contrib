@@ -14,6 +14,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
+
 @pytest.fixture(scope="function", name="llm_model")
 def fixture_llm_model():
     llm = ChatOpenAI(
@@ -27,6 +28,7 @@ def fixture_llm_model():
         seed=100,
     )
     yield llm
+
 
 @pytest.fixture(scope="function", name="span_exporter")
 def fixture_span_exporter():

@@ -2,7 +2,6 @@ from typing import Optional
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -10,10 +9,7 @@ from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 # span_exporter, start_instrumentation, llm_model are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
-def test_langchain_call(
-    span_exporter, start_instrumentation, llm_model
-):
-
+def test_langchain_call(span_exporter, start_instrumentation, llm_model):
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
