@@ -152,7 +152,6 @@ class TestStarletteManualInstrumentation(TestBase):
         ]
 
         for span in spans_with_http_attributes:
-            print(span.name, span.attributes)
             self.assertEqual("/home", span.attributes[HTTP_TARGET])
             self.assertEqual(
                 "http://testserver2/home",
