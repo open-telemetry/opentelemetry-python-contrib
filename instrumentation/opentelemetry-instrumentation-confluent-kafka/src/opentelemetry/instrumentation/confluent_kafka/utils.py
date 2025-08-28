@@ -82,7 +82,8 @@ _kafka_getter = KafkaContextGetter()
 
 
 def _end_current_consume_span(instance):
-    context.detach(instance._current_context_token)
+    if instance._current_context_token:
+        context.detach(instance._current_context_token)
     instance._current_context_token = None
     instance._current_consume_span.end()
     instance._current_consume_span = None

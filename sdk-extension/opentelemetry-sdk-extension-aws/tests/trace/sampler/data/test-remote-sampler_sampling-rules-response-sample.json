@@ -1,0 +1,45 @@
+{
+    "NextToken": null,
+    "SamplingRuleRecords": [
+        {
+            "CreatedAt": 1.676038494E9,
+            "ModifiedAt": 1.676038494E9,
+            "SamplingRule": {
+                "Attributes": {},
+                "FixedRate": 1.0,
+                "HTTPMethod": "*",
+                "Host": "*",
+                "Priority": 10000,
+                "ReservoirSize": 0,
+                "ResourceARN": "*",
+                "RuleARN": "arn:aws:xray:us-east-1:999999999999:sampling-rule/Default",
+                "RuleName": "Default",
+                "ServiceName": "*",
+                "ServiceType": "*",
+                "URLPath": "*",
+                "Version": 1
+            }
+        },
+        {
+            "CreatedAt": 1.67799933E9,
+            "ModifiedAt": 1.67799933E9,
+            "SamplingRule": {
+                "Attributes": {
+                    "abc": "1234"
+                },
+                "FixedRate": 0,
+                "HTTPMethod": "*",
+                "Host": "*",
+                "Priority": 20,
+                "ReservoirSize": 0,
+                "ResourceARN": "*",
+                "RuleARN": "arn:aws:xray:us-east-1:999999999999:sampling-rule/test",
+                "RuleName": "test",
+                "ServiceName": "*",
+                "ServiceType": "*",
+                "URLPath": "*",
+                "Version": 1
+            }
+        }
+    ]
+}
