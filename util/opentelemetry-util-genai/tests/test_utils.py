@@ -71,7 +71,8 @@ def test_llm_start_and_stop_creates_span(
     # Add more attribute checks as needed
 
     # Verify span timing
-    assert span.start_time > 0
+    assert span.start_time is not None
+    assert span.end_time is not None
     assert span.end_time > span.start_time
 
     # Verify invocation data

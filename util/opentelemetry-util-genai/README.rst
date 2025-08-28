@@ -1,5 +1,5 @@
 OpenTelemetry Util for GenAI
-=======================
+============================
 
 
 The GenAI Utils package will include boilerplate and helpers to standardize instrumentation for Generative AI. 
@@ -7,15 +7,36 @@ This package will provide APIs and decorators to minimize the work needed to ins
 while providing standardization for generating both types of otel, "spans and metrics" and "spans, metrics and events"
 
 This package provides these span attributes.
--> gen_ai.operation.name: Str(chat)
 -> gen_ai.provider.name: Str(openai)
--> gen_ai.system: Str(ChatOpenAI)
+-> gen_ai.operation.name: Str(chat)
+-> gen_ai.framework: Str(langchain)
+-> gen_ai.system: Str(openai) # deprecated
 -> gen_ai.request.model: Str(gpt-3.5-turbo)
 -> gen_ai.response.finish_reasons: Slice(["stop"])
 -> gen_ai.response.model: Str(gpt-3.5-turbo-0125)
 -> gen_ai.response.id: Str(chatcmpl-Bz8yrvPnydD9pObv625n2CGBPHS13)
 -> gen_ai.usage.input_tokens: Int(24)
 -> gen_ai.usage.output_tokens: Int(7)
+-> gen_ai.input.messages: Str("[{\"role\": \"user\", \"content\": \"hello world\"}]")
+
+
+This package also provides these metric attributes.
+Token Usage Metrics:
+-> gen_ai.provider.name: Str(openai)
+-> gen_ai.operation.name: Str(chat)
+-> gen_ai.framework: Str(langchain)
+-> gen_ai.request.model: Str(gpt-3.5-turbo)
+-> gen_ai.response.model: Str(gpt-3.5-turbo-0125)
+-> gen_ai.usage.input_tokens: Int(24)
+-> gen_ai.usage.output_tokens: Int(7)
+-> gen_ai.token.type: Str(input|output)
+
+Duration Metrics:
+-> gen_ai.provider.name: Str(openai)
+-> gen_ai.operation.name: Str(chat)
+-> gen_ai.framework: Str(langchain)
+-> gen_ai.request.model: Str(gpt-3.5-turbo)
+-> gen_ai.response.model: Str(gpt-3.5-turbo-0125)
 
 Installation
 ------------
