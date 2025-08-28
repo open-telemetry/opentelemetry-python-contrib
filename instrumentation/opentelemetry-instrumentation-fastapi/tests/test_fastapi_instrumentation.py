@@ -2064,3 +2064,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
             if record.levelno >= logging.ERROR
         ]
         self.assertEqual(len(errors), 1)
+        self.assertEqual(
+            errors[0].getMessage(),
+            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.routing.APIRouter'>",
+        )

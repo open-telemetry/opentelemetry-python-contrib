@@ -334,7 +334,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 ):
                     # Oops, something changed about how Starlette creates middleware stacks
                     _logger.error(
-                        "Cannot instrument FastAPI as the expected middleware stack has changed"
+                        "Skipping FastAPI instrumentation due to unexpected middleware stack: expected %s, got %s",
+                        ServerErrorMiddleware.__name__,
+                        type(inner_server_error_middleware),
                     )
                     return inner_server_error_middleware
 
