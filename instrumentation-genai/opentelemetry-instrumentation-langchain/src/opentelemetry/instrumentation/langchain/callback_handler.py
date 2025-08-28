@@ -46,7 +46,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def on_chat_model_start(
         self,
         serialized: dict[str, Any],
-        messages: List[List[BaseMessage]],  # type: ignore
+        messages: list[list[BaseMessage]],  # type: ignore
         *,
         run_id: UUID,
         tags: list[str] | None,
