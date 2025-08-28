@@ -8,28 +8,18 @@ from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 
-# span_exporter, chatOpenAI_client, start_instrumentation are coming from fixtures defined in conftest.py
+# span_exporter, start_instrumentation, llm_model are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
 def test_langchain_call(
-    span_exporter, chatOpenAI_client, start_instrumentation
+    span_exporter, start_instrumentation, llm_model
 ):
-    llm = ChatOpenAI(
-        model="gpt-3.5-turbo",
-        temperature=0.1,
-        max_tokens=100,
-        top_p=0.9,
-        frequency_penalty=0.5,
-        presence_penalty=0.5,
-        stop_sequences=["\n", "Human:", "AI:"],
-        seed=100,
-    )
 
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    response = llm.invoke(messages)
+    response = llm_model.invoke(messages)
     assert response.content == "The capital of France is Paris."
 
     # verify spans

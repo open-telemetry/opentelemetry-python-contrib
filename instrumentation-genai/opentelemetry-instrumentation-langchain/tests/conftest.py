@@ -14,6 +14,19 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
+@pytest.fixture(scope="function", name="llm_model")
+def fixture_llm_model():
+    llm = ChatOpenAI(
+        model="gpt-3.5-turbo",
+        temperature=0.1,
+        max_tokens=100,
+        top_p=0.9,
+        frequency_penalty=0.5,
+        presence_penalty=0.5,
+        stop_sequences=["\n", "Human:", "AI:"],
+        seed=100,
+    )
+    yield llm
 
 @pytest.fixture(scope="function", name="span_exporter")
 def fixture_span_exporter():
@@ -45,11 +58,6 @@ def start_instrumentation(
 def environment():
     if not os.getenv("OPENAI_API_KEY"):
         os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
-
-
-@pytest.fixture
-def chatOpenAI_client():
-    return ChatOpenAI()
 
 
 @pytest.fixture(scope="module")
