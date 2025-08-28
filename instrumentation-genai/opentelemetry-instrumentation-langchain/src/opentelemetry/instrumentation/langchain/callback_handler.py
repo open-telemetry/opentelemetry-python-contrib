@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
@@ -43,13 +45,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def on_chat_model_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         messages: List[List[BaseMessage]],  # type: ignore
         *,
         run_id: UUID,
-        tags: Optional[List[str]] = None,
-        parent_run_id: Optional[UUID] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        tags: list[str] | None,
+        parent_run_id: UUID | None,
+        metadata: dict[str, Any] | None,
         **kwargs: Any,
     ) -> None:
         invocation_params = kwargs.get("invocation_params")
@@ -91,7 +93,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
             provider = metadata.get("ls_provider")
             if provider is not None:
-                # TODO: add to semantic conventions
                 span.set_attribute("gen_ai.provider.name", provider)
             temperature = metadata.get("ls_temperature")
             if temperature is not None:
@@ -104,7 +105,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         response: LLMResult,  # type: ignore
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None,
         **kwargs: Any,
     ) -> None:
         span = self.span_manager.get_span(run_id)
@@ -113,7 +114,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             # If the span does not exist, we cannot set attributes or end it
             return
 
-        finish_reasons: List[str] = []
+        finish_reasons: list[str] = []
         for generation in getattr(response, "generations", []):  # type: ignore
             for chat_generation in generation:
                 generation_info = getattr(
@@ -166,7 +167,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         error: BaseException,
         *,
         run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        parent_run_id: UUID | None,
         **kwargs: Any,
     ) -> None:
         self.span_manager.handle_error(error, run_id)
