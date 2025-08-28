@@ -74,13 +74,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0", # TODO: Schemas.V1_37_0.value,
         )
         event_logger_provider = kwargs.get("event_logger_provider")
         event_logger = get_event_logger(
             __name__,
             "",
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0",  # TODO: Schemas.V1_37_0.value,
             event_logger_provider=event_logger_provider,
         )
         meter_provider = kwargs.get("meter_provider")
@@ -88,7 +88,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             meter_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0",  # TODO: Schemas.V1_37_0.value,
         )
 
         instruments = Instruments(self._meter)
