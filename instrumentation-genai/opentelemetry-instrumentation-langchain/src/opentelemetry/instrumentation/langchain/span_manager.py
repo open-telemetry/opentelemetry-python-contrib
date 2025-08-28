@@ -86,7 +86,8 @@ class _SpanManager:
             GenAI.GEN_AI_OPERATION_NAME,
             GenAI.GenAiOperationNameValues.CHAT.value,
         )
-        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
+        if request_model:
+            span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
 
         return span
 
