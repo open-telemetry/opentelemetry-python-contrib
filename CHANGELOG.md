@@ -18,11 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-asgi`: Make all user hooks failsafe and record exceptions in hooks.
   ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
-  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
+  ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688))
 - `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
   ([#3679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3679))
 - `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
   ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
+- Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
+  ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
 
 ### Added
 
