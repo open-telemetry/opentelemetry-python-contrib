@@ -162,7 +162,7 @@ _server_active_requests_count_attrs_new = [
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 
-class _OpenTelemetryStabilitySignalType:
+class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
     DATABASE = "database"
     GEN_AI = "gen_ai"
