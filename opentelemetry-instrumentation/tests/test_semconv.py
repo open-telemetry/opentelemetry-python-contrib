@@ -54,6 +54,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
             ),
             _StabilityMode.DEFAULT,
         )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.DEFAULT,
+        )
 
     @stability_mode("http")
     def test_http_stable_mode(self):
@@ -89,6 +95,15 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.DATABASE
             ),
             _StabilityMode.DATABASE_DUP,
+        )
+
+    @stability_mode("gen_ai_latest_experimental")
+    def test_genai_latest_experimental(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.GEN_AI_LATEST,
         )
 
     @stability_mode("database,http")
