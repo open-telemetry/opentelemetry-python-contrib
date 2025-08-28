@@ -42,7 +42,5 @@ def get_content_capturing_mode() -> ContentCapturingMode:
         return ContentCapturingMode[envvar.upper()]
     except KeyError:
         raise RuntimeError(
-            "{} is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of {}".format(
-                envvar, ", ".join([e.name for e in ContentCapturingMode])
-            )
+            f"{envvar} is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of {', '.join(e.name for e in ContentCapturingMode)}"
         )
