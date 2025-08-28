@@ -162,7 +162,7 @@ _server_active_requests_count_attrs_new = [
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 
-class _OpenTelemetryStabilitySignalType(Enum):
+class _OpenTelemetryStabilitySignalType:
     HTTP = "http"
     DATABASE = "database"
     GEN_AI = "gen_ai"
@@ -213,6 +213,12 @@ class _OpenTelemetrySemanticConventionStability:
             opt_in_list = [s.strip() for s in opt_in.split(",")]
 
             cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.HTTP
+            ] = cls._filter_mode(
+                opt_in_list, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP
+            )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                 _OpenTelemetryStabilitySignalType.GEN_AI
             ] = cls._filter_mode(
                 opt_in_list,
@@ -227,7 +233,7 @@ class _OpenTelemetrySemanticConventionStability:
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
-
+            print(cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING)
             cls._initialized = True
 
     @staticmethod
