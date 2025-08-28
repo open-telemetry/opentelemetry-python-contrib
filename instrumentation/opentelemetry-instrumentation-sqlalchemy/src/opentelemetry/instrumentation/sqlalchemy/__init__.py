@@ -50,6 +50,8 @@ Usage
         engine=engine.sync_engine
     )
 
+Configuration
+-------------
 
 SQLCOMMENTER
 ****************************************
