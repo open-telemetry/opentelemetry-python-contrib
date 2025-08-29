@@ -234,6 +234,7 @@ class TestBaseFastAPI(TestBase):
             raise UnhandledException("This is an unhandled exception")
 
         app.mount("/sub", app=sub_app)
+        app.host("testserver2", sub_app)
 
         return app
 
@@ -309,6 +310,26 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             "https://testserver:443/sub/home",
             span.attributes[HTTP_URL],
         )
+
+    def test_host_fastapi_call(self):
+        client = TestClient(self._app, base_url="https://testserver2")
+        client.get("/")
+        spans = self.memory_exporter.get_finished_spans()
+
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        self.assertEqual(1, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual("/", span.attributes[HTTP_TARGET])
+            self.assertEqual(
+                "https://testserver2:443/",
+                span.attributes[HTTP_URL],
+            )
 
 
 class TestBaseAutoFastAPI(TestBaseFastAPI):
