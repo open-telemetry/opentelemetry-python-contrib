@@ -233,7 +233,6 @@ class _OpenTelemetrySemanticConventionStability:
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
-            print(cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING)
             cls._initialized = True
 
     @staticmethod
