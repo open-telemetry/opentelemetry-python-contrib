@@ -34,7 +34,7 @@ def get_content_capturing_mode() -> ContentCapturingMode:
         == _StabilityMode.DEFAULT
     ):
         raise RuntimeError(
-            "This function should never be called when StabilityMode is default.."
+            "This function should never be called when StabilityMode is default."
         )
     if not envvar:
         return ContentCapturingMode.NO_CONTENT
