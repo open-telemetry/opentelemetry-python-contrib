@@ -20,6 +20,18 @@ Python Database API Specification v2.0.
 Usage
 -----
 
+The DB-API instrumentor and its utilities provide common, core functionality for
+database framework or object relation mapper (ORM) instrumentations. Users will
+typically instrument database client code with those framework/ORM-specific
+instrumentations, instead of directly using this DB-API integration. See full list
+at `instrumentation`_.
+
+.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
+
+If an instrumentation for your needs does not exist, then DB-API integration can
+be used directly as follows.
+
+
 .. code-block:: python
 
     import mysql.connector
@@ -32,6 +44,37 @@ Usage
     trace_integration(mysql.connector, "connect", "mysql")
     # Ex: pyodbc
     trace_integration(pyodbc, "Connection", "odbc")
+
+
+Configuration
+-------------
+
+SQLCOMMENTER
+************
+You can optionally configure DB-API instrumentation to enable sqlcommenter which
+enriches the query with contextual information. Queries made after setting up
+trace integration with sqlcommenter enabled will have configurable key-value pairs
+appended to them, e.g. ``"select * from auth_users; /*metrics=value*/"``. For
+more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
+
+.. code:: python
+
+    import mysql.connector
+    import pyodbc
+
+    from opentelemetry.instrumentation.dbapi import trace_integration
+
+
+    # Ex: mysql.connector
+    trace_integration(
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+    )
 
 API
 ---
