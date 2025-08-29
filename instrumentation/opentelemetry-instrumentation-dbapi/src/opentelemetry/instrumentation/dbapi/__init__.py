@@ -47,7 +47,7 @@ be used directly as follows.
     # Example: pyodbc
     trace_integration(pyodbc, "Connection", "odbc")
 
-    # Or, directly call wrap_connect for more configurability
+    # Or, directly call wrap_connect for more configurability.
     wrap_connect(__name__, mysql.connector, "connect", "mysql")
     wrap_connect(__name__, pyodbc, "Connection", "odbc")
 
@@ -57,7 +57,14 @@ Configuration
 
 SQLCOMMENTER
 ************
-You can optionally configure DB-API instrumentation to enable sqlcommenter which
+sqlcommenter is supported by several database client framework/ORM-specific
+instrumentors. See their respective docs for how to opt into this feature at
+`instrumentation`_. There is no need to opt in at the DB-API level unless setting up
+its integration directly.
+
+.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
+
+If using DB-API instrumentation directly, you can optionally enable sqlcommenter which
 enriches the query with contextual information. Queries made after setting up
 trace integration with sqlcommenter enabled will have configurable key-value pairs
 appended to them, e.g. ``"select * from auth_users; /*metrics=value*/"``. This
@@ -74,7 +81,7 @@ records are enabled. For more information, see:
     from opentelemetry.instrumentation.dbapi import wrap_connect
 
 
-    # Opts into sqlcomment for MySQL trace integration
+    # Opts into sqlcomment for MySQL trace integration.
     wrap_connect(
         __name__,
         mysql.connector,
@@ -86,7 +93,17 @@ records are enabled. For more information, see:
 
 SQLCommenter Configurations
 ***************************
-When using ``wrap_connect`` for DB-API trace integration, the key-value pairs appended to the query can be configured using ``commenter_options``. When sqlcommenter is enabled, all available KVs/tags calculated by default. ``commenter_options`` supports opting out of specific KVs.
+sqlcommenter is supported by several database client framework/ORM-specific
+instrumentors. See their respective docs for how to configure this feature at
+`instrumentation`_. There is no need to configure at the DB-API level unless setting up
+its integration directly.
+
+.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
+
+If using DB-API instrumentation directly, the key-value pairs appended to the query
+can be configured using ``commenter_options``. When sqlcommenter is enabled, all
+available KVs/tags are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
 
 .. code:: python
 
@@ -95,8 +112,8 @@ When using ``wrap_connect`` for DB-API trace integration, the key-value pairs ap
     from opentelemetry.instrumentation.dbapi import wrap_connect
 
 
-    # Opts into sqlcomment for MySQL trace integration
-    # Opts out of tags for libpq_version
+    # Opts into sqlcomment for MySQL trace integration.
+    # Opts out of tags for libpq_version, db_driver.
     wrap_connect(
         __name__,
         mysql.connector,
