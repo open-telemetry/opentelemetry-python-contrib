@@ -37,13 +37,19 @@ be used directly as follows.
     import mysql.connector
     import pyodbc
 
-    from opentelemetry.instrumentation.dbapi import trace_integration
-
+    from opentelemetry.instrumentation.dbapi import (
+        trace_integration,
+        wrap_connect,
+    )
 
     # Ex: mysql.connector
     trace_integration(mysql.connector, "connect", "mysql")
     # Ex: pyodbc
     trace_integration(pyodbc, "Connection", "odbc")
+
+    # Or, directly call wrap_connect for more configurability
+    wrap_connect(__name__, mysql.connector, "connect", "mysql")
+    wrap_connect(__name__, pyodbc, "Connection", "odbc")
 
 
 Configuration
@@ -65,11 +71,12 @@ more information, see:
     import mysql.connector
     import pyodbc
 
-    from opentelemetry.instrumentation.dbapi import trace_integration
+    from opentelemetry.instrumentation.dbapi import wrap_connect
 
 
     # Ex: mysql.connector
-    trace_integration(
+    wrap_connect(
+        __name__,
         mysql.connector,
         "connect",
         "mysql",
