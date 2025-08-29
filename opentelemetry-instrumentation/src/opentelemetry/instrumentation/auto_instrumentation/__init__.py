@@ -150,8 +150,8 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
 
                 getattr(monkey, gevent_patch)()
             except ImportError:
-                _logger.error(
-                    "Requested to monkey patch with gevent but gevent is not available"
+                _logger.exception(
+                    "Failed to monkey patch with gevent because gevent is not available"
                 )
                 if not swallow_exceptions:
                     raise
