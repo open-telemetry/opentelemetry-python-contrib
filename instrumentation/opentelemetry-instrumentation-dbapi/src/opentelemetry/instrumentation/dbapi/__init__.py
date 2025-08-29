@@ -149,6 +149,39 @@ The following options can be configured through ``commenter_options``:
 | ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
+SQLComment in span attribute
+****************************
+sqlcommenter is supported by several Python database client framework/ORM-specific
+instrumentors. See their respective docs for how to opt into this feature at
+`instrumentation`_. There is no need to opt in at the DB-API level unless setting up
+its integration directly.
+
+.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
+
+If using DB-API instrumentation directly and sqlcommenter is enabled, you can opt into
+the inclusion of sqlcomment in the query span ``db.statement`` attribute for your needs.
+If ``commenter_options`` have been set, the span attribute comment will also be configured
+by this setting.
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+
 API
 ---
 """
