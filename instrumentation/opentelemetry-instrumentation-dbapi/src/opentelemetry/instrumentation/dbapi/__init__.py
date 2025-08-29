@@ -131,26 +131,23 @@ Available commenter options
 
 The following options can be configured through ``commenter_options``:
 
-#. ``db_driver`` - Database driver name with version.
-   Example: ``mysql.connector=2.2.9``
-
-#. ``dbapi_threadsafety`` - DB-API's threadsafety value.
-   Example: ``dbapi_threadsafety=2``
-
-#. ``dbapi_level`` - DB-API's API level.
-   Example: ``dbapi_level=2.0``
-
-#. ``driver_paramstyle`` - DB-API's paramstyle for SQL statement parameters.
-   Example: ``driver_paramstyle='pyformat'``
-
-#. ``libpq_version`` - PostgreSQL's libpq version (checked for PostgreSQL only).
-   Example: ``libpq_version=140001``
-
-#. ``mysql_client_version`` - MySQL client version (checked for MySQL only).
-   Example: ``mysql_client_version='123'``
-
-#. ``opentelemetry_values`` - OpenTelemetry context values.
-   Example: ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'``
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version.                        | ``mysql.connector=2.2.9``                                                 |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API's threadsafety value.                              | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API's API level.                                       | ``dbapi_level=2.0``                                                       |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API's paramstyle for SQL statement parameters.         | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``libpq_version``         | PostgreSQL's libpq version (checked for PostgreSQL only). | ``libpq_version=140001``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``mysql_client_version``  | MySQL client version (checked for MySQL only).            | ``mysql_client_version='123'``                                            |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
 API
 ---
