@@ -63,7 +63,7 @@ class TestVersion(unittest.TestCase):
         self,
     ):  # pylint: disable=no-self-use
         _OpenTelemetrySemanticConventionStability._initialized = False
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ValueError):
             get_content_capturing_mode()
 
     @patch_env_vars("gen_ai_latest_experimental", "INVALID_VALUE")
