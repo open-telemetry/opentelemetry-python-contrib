@@ -136,13 +136,13 @@ The following options can be configured through ``commenter_options``:
 +===========================+===========================================================+===========================================================================+
 | ``db_driver``             | Database driver name with version.                        | ``mysql.connector=2.2.9``                                                 |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_threadsafety``    | DB-API's threadsafety value.                              | ``dbapi_threadsafety=2``                                                  |
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_level``           | DB-API's API level.                                       | ``dbapi_level=2.0``                                                       |
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level=2.0``                                                       |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``driver_paramstyle``     | DB-API's paramstyle for SQL statement parameters.         | ``driver_paramstyle='pyformat'``                                          |
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``libpq_version``         | PostgreSQL's libpq version (checked for PostgreSQL only). | ``libpq_version=140001``                                                  |
+| ``libpq_version``         | PostgreSQL libpq version (checked for PostgreSQL only).   | ``libpq_version=140001``                                                  |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 | ``mysql_client_version``  | MySQL client version (checked for MySQL only).            | ``mysql_client_version='123'``                                            |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
