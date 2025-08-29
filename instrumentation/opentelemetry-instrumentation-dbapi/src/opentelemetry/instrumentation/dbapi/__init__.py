@@ -42,9 +42,9 @@ be used directly as follows.
         wrap_connect,
     )
 
-    # Ex: mysql.connector
+    # Example: mysql.connector
     trace_integration(mysql.connector, "connect", "mysql")
-    # Ex: pyodbc
+    # Example: pyodbc
     trace_integration(pyodbc, "Connection", "odbc")
 
     # Or, directly call wrap_connect for more configurability
@@ -60,8 +60,9 @@ SQLCOMMENTER
 You can optionally configure DB-API instrumentation to enable sqlcommenter which
 enriches the query with contextual information. Queries made after setting up
 trace integration with sqlcommenter enabled will have configurable key-value pairs
-appended to them, e.g. ``"select * from auth_users; /*metrics=value*/"``. For
-more information, see:
+appended to them, e.g. ``"select * from auth_users; /*metrics=value*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
 
 * `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
@@ -69,12 +70,11 @@ more information, see:
 .. code:: python
 
     import mysql.connector
-    import pyodbc
 
     from opentelemetry.instrumentation.dbapi import wrap_connect
 
 
-    # Ex: mysql.connector
+    # Opts into sqlcomment for MySQL trace integration
     wrap_connect(
         __name__,
         mysql.connector,
@@ -82,6 +82,58 @@ more information, see:
         "mysql",
         enable_commenter=True,
     )
+
+
+SQLCommenter Configurations
+***************************
+When using ``wrap_connect`` for DB-API trace integration, the key-value pairs appended to the query can be configured using ``commenter_options``. When sqlcommenter is enabled, all available KVs/tags calculated by default. ``commenter_options`` supports opting out of specific KVs.
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration
+    # Opts out of tags for libpq_version
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+        commenter_options={
+            "libpq_version": False,
+            "db_driver": False,
+        }
+    )
+
+Available commenter options
+###########################
+
+The following options can be configured through ``commenter_options``:
+
+#. ``db_driver`` - Database driver name with version.
+   Example: ``mysql.connector=2.2.9``
+
+#. ``dbapi_threadsafety`` - DB-API's threadsafety value.
+   Example: ``dbapi_threadsafety=2``
+
+#. ``dbapi_level`` - DB-API's API level.
+   Example: ``dbapi_level=2.0``
+
+#. ``driver_paramstyle`` - DB-API's paramstyle for SQL statement parameters.
+   Example: ``driver_paramstyle='pyformat'``
+
+#. ``libpq_version`` - PostgreSQL's libpq version (checked for PostgreSQL only).
+   Example: ``libpq_version=140001``
+
+#. ``mysql_client_version`` - MySQL client version (checked for MySQL only).
+   Example: ``mysql_client_version='123'``
+
+#. ``opentelemetry_values`` - OpenTelemetry context values.
+   Example: ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'``
 
 API
 ---
