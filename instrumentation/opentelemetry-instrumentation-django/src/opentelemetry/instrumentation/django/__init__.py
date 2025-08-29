@@ -232,6 +232,40 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+
+Custom Metrics Attributes using Labeler
+***************************************
+The Django instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP duration metrics at record time. The custom attributes are
+stored only within the context of an instrumented request or operation. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
+
+
+.. code:: python
+
+    from django.http import HttpResponse
+    from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+
+    DjangoInstrumentor().instrument()
+
+    # Note: urlpattern `/users/<user_id>/` mapped elsewhere
+    def my_user_view(request, user_id):
+        # Get the labeler for the current request
+        labeler = get_labeler()
+
+        # Add custom attributes to Flask instrumentation metrics
+        labeler.add("user_id", user_id)
+        labeler.add("user_type", "registered")
+
+        # Or, add multiple attributes at once
+        labeler.add_attributes({
+            "feature_flag": "new_ui",
+            "experiment_group": "control"
+        })
+        return HttpResponse("Done!")
+
 API
 ---
 
