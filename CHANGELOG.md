@@ -19,10 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
   ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
-- `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
+- `opentelemetry-instrumentation-tornado`: Fix server (request) duration metric calculation
   ([#3679](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3679))
+- `opentelemetry-instrumentation-tornado`: Fix to properly skip all server telemetry when URL excluded.
+  ([#3680](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3680))
 - `opentelemetry-instrumentation`: Avoid calls to `context.detach` with `None` token.
   ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
+- `opentelemetry-instrumentation-starlette`/`opentelemetry-instrumentation-fastapi`: Fixes a crash when host-based routing is used
+  ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - `opentelemetry-instrumentation-dbapi`: Adds sqlcommenter to documentation.
   ([#3720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3720))
 
@@ -34,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
 - `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
+- `opentelemetry-instrumentation`: add support for  `OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH` to inform opentelemetry-instrument about gevent monkeypatching
+  ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
