@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
 - `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
+- `opentelemetry-instrumentation-psycopg` Add missing parameter `capture_parameters` to instrumentor.
+  ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
