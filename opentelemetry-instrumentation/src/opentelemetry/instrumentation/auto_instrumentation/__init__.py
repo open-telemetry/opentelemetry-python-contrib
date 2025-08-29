@@ -26,6 +26,9 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_distro,
     _load_instrumentors,
 )
+from opentelemetry.instrumentation.environment_variables import (
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
+)
 from opentelemetry.instrumentation.utils import _python_path_without_directory
 from opentelemetry.instrumentation.version import __version__
 from opentelemetry.util._importlib_metadata import entry_points
@@ -134,14 +137,14 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
 
     # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
     # opentelemetry operator
-    gevent_patch_env_variable_name = (
-        "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH"
+    gevent_patch: str | None = environ.get(
+        OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
     )
-    gevent_patch: str | None = environ.get(gevent_patch_env_variable_name)
     if gevent_patch is not None:
         if gevent_patch != "patch_all":
             _logger.error(
-                "%s values must be `patch_all`", gevent_patch_env_variable_name
+                "%s value must be `patch_all`",
+                OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
             )
         else:
             try:

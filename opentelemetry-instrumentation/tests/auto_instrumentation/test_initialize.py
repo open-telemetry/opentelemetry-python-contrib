@@ -84,7 +84,7 @@ class TestInitialize(TestCase):
         # pylint:disable=no-self-use
         auto_instrumentation.initialize()
         logger_mock.error.assert_called_once_with(
-            "%s values must be `patch_all`",
+            "%s value must be `patch_all`",
             "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH",
         )
 
