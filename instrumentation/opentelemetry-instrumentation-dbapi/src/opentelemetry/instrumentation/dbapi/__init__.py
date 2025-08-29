@@ -55,9 +55,9 @@ be used directly as follows.
 Configuration
 -------------
 
-SQLCOMMENTER
+SQLCommenter
 ************
-sqlcommenter is supported by several database client framework/ORM-specific
+sqlcommenter is supported by several Python database client framework/ORM-specific
 instrumentors. See their respective docs for how to opt into this feature at
 `instrumentation`_. There is no need to opt in at the DB-API level unless setting up
 its integration directly.
@@ -67,7 +67,7 @@ its integration directly.
 If using DB-API instrumentation directly, you can optionally enable sqlcommenter which
 enriches the query with contextual information. Queries made after setting up
 trace integration with sqlcommenter enabled will have configurable key-value pairs
-appended to them, e.g. ``"select * from auth_users; /*metrics=value*/"``. This
+appended to them, e.g. ``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
@@ -91,9 +91,9 @@ records are enabled. For more information, see:
     )
 
 
-SQLCommenter Configurations
-***************************
-sqlcommenter is supported by several database client framework/ORM-specific
+SQLComment customization
+************************
+sqlcommenter is supported by several Python database client framework/ORM-specific
 instrumentors. See their respective docs for how to configure this feature at
 `instrumentation`_. There is no need to configure at the DB-API level unless setting up
 its integration directly.
@@ -129,7 +129,7 @@ of specific KVs.
 Available commenter options
 ###########################
 
-The following options can be configured through ``commenter_options``:
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 | Commenter Option          | Description                                               | Example                                                                   |
