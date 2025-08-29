@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-fastapi`: Fix middleware ordering to cover all exception handling use cases.
+  ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
+- `opentelemetry-instrumentation-asgi`: Make all user hooks failsafe and record exceptions in hooks.
+  ([#3664](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3664))
 - `opentelemetry-instrumentation-fastapi`: Fix memory leak in `uninstrument_app()` by properly removing apps from the tracking set
   ([#3688](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3688)
 - `opentelemetry-instrumentation-tornado` Fix server (request) duration metric calculation
