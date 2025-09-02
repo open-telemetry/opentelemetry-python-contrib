@@ -23,6 +23,7 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
+from django.core.handlers.wsgi import WSGIRequest
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -1018,6 +1019,84 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     def tearDownClass(cls):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
+
+    @staticmethod
+    def _format_request_objects_in_headers(attributes):
+        for key, value_list in list(attributes.items()):
+            new_values = []
+            for value in value_list:
+                if hasattr(value, '__class__'):
+                    if value.__class__.__name__ in ('HttpRequest', 'WSGIRequest'):
+                        try:
+                            method = getattr(value, 'method', 'UNKNOWN')
+                            path = getattr(value, 'path', 'UNKNOWN')
+                            new_values.append(f"HttpRequest({method} {path})")
+                        except (AttributeError, ValueError, TypeError):
+                            new_values.append("HttpRequest(...)")
+                    else:
+                        new_values.append(value)
+                else:
+                    new_values.append(value)
+            attributes[key] = new_values
+        return attributes
+
+    def test_wsgi_request_in_header_is_properly_formatted(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.method = "GET"
+        mock_wsgi_request.path = "/test/path"
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        input_attributes = {"http.request.header.test_wsgirequest_header": [mock_wsgi_request]}
+        expected_attributes = {"http.request.header.test_wsgirequest_header": ["HttpRequest(GET /test/path)"]}
+
+        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(input_attributes)
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_wsgi_request_handles_extraction_error(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        type(mock_wsgi_request).method = property(lambda self: (_ for _ in ()).throw(ValueError("Test error")))
+
+        input_attributes = {"http.request.header.test_wsgirequest_header": [mock_wsgi_request]}
+        expected_attributes = {"http.request.header.test_wsgirequest_header": ["HttpRequest(...)"]}
+
+        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(input_attributes)
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_handles_http_request_as_well(self):
+        mock_http_request = Mock(spec=HttpRequest)
+        mock_http_request.method = "POST"
+        mock_http_request.path = "/api/data"
+        mock_http_request.__class__.__name__ = "HttpRequest"
+
+        input_attributes = {"http.request.header.test_httprequest_header": [mock_http_request]}
+        expected_attributes = {"http.request.header.test_httprequest_header": ["HttpRequest(POST /api/data)"]}
+
+        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(input_attributes)
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_regular_header_values_are_preserved(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.method = "GET"
+        mock_wsgi_request.path = "/test/path"
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        input_attributes = {
+            "http.request.header.test_wsgirequest_header": [mock_wsgi_request],
+            "http.request.header.test_regular_header": ["regular-value"]
+        }
+        expected_attributes = {
+            "http.request.header.test_wsgirequest_header": ["HttpRequest(GET /test/path)"],
+            "http.request.header.test_regular_header": ["regular-value"]
+        }
+
+        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(input_attributes)
+
+        self.assertEqual(formatted_attributes, expected_attributes)
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
