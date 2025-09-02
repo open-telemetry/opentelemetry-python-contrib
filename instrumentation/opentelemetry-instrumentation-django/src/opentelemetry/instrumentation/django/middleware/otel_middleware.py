@@ -180,11 +180,14 @@ class _DjangoMiddleware(MiddlewareMixin):
         for key, value_list in list(attributes.items()):
             new_values = []
             for value in value_list:
-                if hasattr(value, '__class__'):
-                    if value.__class__.__name__ in ('HttpRequest', 'WSGIRequest'):
+                if hasattr(value, "__class__"):
+                    if value.__class__.__name__ in (
+                        "HttpRequest",
+                        "WSGIRequest",
+                    ):
                         try:
-                            method = getattr(value, 'method', 'UNKNOWN')
-                            path = getattr(value, 'path', 'UNKNOWN')
+                            method = getattr(value, "method", "UNKNOWN")
+                            path = getattr(value, "path", "UNKNOWN")
                             new_values.append(f"HttpRequest({method} {path})")
                         except (AttributeError, ValueError, TypeError):
                             new_values.append("HttpRequest(...)")
@@ -307,7 +310,11 @@ class _DjangoMiddleware(MiddlewareMixin):
                         wsgi_collect_custom_request_headers_attributes(carrier)
                     )
                     # Process custom attributes to handle WSGIRequest objects
-                    custom_attributes = self._format_request_objects_in_headers(custom_attributes)
+                    custom_attributes = (
+                        self._format_request_objects_in_headers(
+                            custom_attributes
+                        )
+                    )
 
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)
