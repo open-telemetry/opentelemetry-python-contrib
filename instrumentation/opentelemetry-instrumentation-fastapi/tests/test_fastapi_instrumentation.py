@@ -307,12 +307,12 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
-            "https://testserver:443/sub/home",
+            "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
 
     def test_host_fastapi_call(self):
-        client = TestClient(self._app, base_url="https://testserver2")
+        client = TestClient(self._app, base_url="https://testserver2:443")
         client.get("/")
         spans = self.memory_exporter.get_finished_spans()
 
@@ -327,7 +327,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/", span.attributes[HTTP_TARGET])
             self.assertEqual(
-                "https://testserver2:443/",
+                "https://testserver2/",
                 span.attributes[HTTP_URL],
             )
 
@@ -385,7 +385,7 @@ class TestBaseAutoFastAPI(TestBaseFastAPI):
         for span in spans_with_http_attributes:
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
         self.assertEqual(
-            "https://testserver:443/sub/home",
+            "https://testserver/sub/home",
             span.attributes[HTTP_URL],
         )
 
