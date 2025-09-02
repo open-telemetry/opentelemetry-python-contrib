@@ -65,7 +65,7 @@ from .types import LLMInvocation
 @dataclass
 class _SpanState:
     span: Span
-    span_context: Context
+    context: Context
     start_time: float
     request_model: Optional[str] = None
     system: Optional[str] = None
@@ -101,7 +101,7 @@ def _message_to_log_record(
     }
 
     if capture_content:
-        attributes["gen_ai.input.messages"] = [message._to_part_dict()]
+        attributes["gen_ai.input.messages"] = [message._to_semconv_dict()]
 
     return LogRecord(
         event_name="gen_ai.client.inference.operation.details",
@@ -247,7 +247,7 @@ def _maybe_set_input_messages(
         return
     message_parts: List[OtelMessage] = []
     for message in messages:
-        message_parts.append(message._to_part_dict())
+        message_parts.append(message._to_semconv_dict())
     if message_parts:
         span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
 
@@ -390,7 +390,7 @@ class SpanMetricEventEmitter(BaseEmitter):
             request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
                 span=span,
-                span_context=get_current(),
+                context=get_current(),
                 request_model=request_model,
                 system=system,
                 start_time=invocation.start_time,
@@ -462,7 +462,7 @@ class SpanMetricEventEmitter(BaseEmitter):
 
             span_state = _SpanState(
                 span=span,
-                span_context=get_current(),
+                context=get_current(),
                 request_model=request_model,
                 system=system,
                 start_time=invocation.start_time,
@@ -562,7 +562,7 @@ class SpanMetricEmitter(BaseEmitter):
             request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
                 span=span,
-                span_context=get_current(),
+                context=get_current(),
                 request_model=request_model,
                 system=system,
                 start_time=invocation.start_time,
@@ -635,7 +635,7 @@ class SpanMetricEmitter(BaseEmitter):
 
             span_state = _SpanState(
                 span=span,
-                span_context=get_current(),
+                context=get_current(),
                 request_model=request_model,
                 system=system,
                 start_time=invocation.start_time,
