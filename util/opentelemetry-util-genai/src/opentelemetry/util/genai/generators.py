@@ -38,9 +38,10 @@ from typing import Any, Dict, List, Mapping, Optional, cast
 from uuid import UUID
 
 from opentelemetry import trace
-from opentelemetry._logs import Logger, LogRecord
+from opentelemetry._logs import Logger
 from opentelemetry.context import Context, get_current
 from opentelemetry.metrics import Histogram, Meter, get_meter
+from opentelemetry.sdk._logs._internal import LogRecord as SDKLogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -85,7 +86,14 @@ def _message_to_log_record(
     provider_name: Optional[str],
     framework: Optional[str],
     capture_content: bool,
-) -> Optional[LogRecord]:
+) -> Optional[SDKLogRecord]:
+    """Build an SDK LogRecord for an input message.
+
+    Returns an SDK-level LogRecord configured with:
+    - body: structured payload for the message (when capture_content is True)
+    - attributes: includes semconv fields and attributes["event.name"]
+    - event_name: mirrors the event name for SDK consumers
+    """
     content = _get_property_value(message, "content")
     message_type = _get_property_value(message, "type")
 
@@ -98,15 +106,17 @@ def _message_to_log_record(
         "gen_ai.framework": framework,
         # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
         "gen_ai.provider.name": provider_name,
+        # Prefer structured logs; include event name as an attribute.
+        "event.name": "gen_ai.client.inference.operation.details",
     }
 
     if capture_content:
         attributes["gen_ai.input.messages"] = [message._to_semconv_dict()]
 
-    return LogRecord(
-        event_name="gen_ai.client.inference.operation.details",
-        attributes=attributes,
+    return SDKLogRecord(
         body=body or None,
+        attributes=attributes,
+        event_name="gen_ai.client.inference.operation.details",
     )
 
 
@@ -116,7 +126,12 @@ def _chat_generation_to_log_record(
     provider_name: Optional[str],
     framework: Optional[str],
     capture_content: bool,
-) -> Optional[LogRecord]:
+) -> Optional[SDKLogRecord]:
+    """Build an SDK LogRecord for a chat generation (choice) item.
+
+    Sets both the SDK event_name and attributes["event.name"] to "gen_ai.choice",
+    and includes structured fields in body (index, finish_reason, message).
+    """
     if not chat_generation:
         return None
     attributes = {
@@ -124,6 +139,8 @@ def _chat_generation_to_log_record(
         "gen_ai.framework": framework,
         # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
         "gen_ai.provider.name": provider_name,
+        # Prefer structured logs; include event name as an attribute.
+        "event.name": "gen_ai.choice",
     }
 
     message = {
@@ -138,10 +155,10 @@ def _chat_generation_to_log_record(
         "message": message,
     }
 
-    return LogRecord(
-        event_name="gen_ai.choice",
-        attributes=attributes,
+    return SDKLogRecord(
         body=body or None,
+        attributes=attributes,
+        event_name="gen_ai.choice",
     )
 
 
@@ -376,6 +393,7 @@ class SpanMetricEventGenerator(BaseTelemetryGenerator):
                 capture_content=self._capture_content,
             )
             if log and self._logger:
+                # _message_to_log_record returns an SDKLogRecord
                 self._logger.emit(log)
 
     def finish(self, invocation: LLMInvocation):

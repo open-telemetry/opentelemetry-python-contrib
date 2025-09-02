@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+
 import os
 import unittest
 from unittest.mock import patch
@@ -21,6 +23,11 @@ import pytest
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -36,6 +43,7 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.util.genai.handler import (
+    TelemetryHandler,
     llm_start,
     llm_stop,
 )
@@ -164,3 +172,64 @@ def test_llm_start_and_stop_creates_span(
     assert invocation.run_id == run_id
     assert invocation.attributes.get("custom_attr") == "value"
     assert invocation.attributes.get("extra") == "info"
+
+
+def test_structured_logs_emitted():
+    # Configure in-memory log exporter and provider
+    log_exporter = InMemoryLogExporter()
+    logger_provider = LoggerProvider()
+    logger_provider.add_log_record_processor(
+        SimpleLogRecordProcessor(log_exporter)
+    )
+
+    # Build a dedicated TelemetryHandler using our logger provider
+    handler = TelemetryHandler(
+        emitter_type_full=True,
+        logger_provider=logger_provider,
+    )
+
+    run_id = uuid4()
+    message = Message(content="hello world", type="user", name="msg")
+    generation = ChatGeneration(
+        content="hello back",
+        type="assistant",
+        finish_reason="stop",
+    )
+
+    # Start and stop via the handler (emits logs at start and finish)
+    handler.start_llm(
+        [message], run_id=run_id, system="test-system", framework="pytest"
+    )
+    handler.stop_llm(run_id, chat_generations=[generation])
+
+    # Collect logs
+    logs = log_exporter.get_finished_logs()
+    # Expect one input-detail log and one choice log
+    assert len(logs) == 2
+    records = [ld.log_record for ld in logs]
+
+    # Assert the first record contains structured details for the input message
+    # Note: order of records is exporter-specific; sort by event.name for stability
+    records_by_event = {
+        rec.attributes.get("event.name"): rec for rec in records
+    }
+
+    input_rec = records_by_event["gen_ai.client.inference.operation.details"]
+    assert input_rec.attributes.get("gen_ai.provider.name") == "test-system"
+    assert input_rec.attributes.get("gen_ai.framework") == "pytest"
+    assert input_rec.body == {
+        "type": "user",
+        "content": "hello world",
+    }
+
+    choice_rec = records_by_event["gen_ai.choice"]
+    assert choice_rec.attributes.get("gen_ai.provider.name") == "test-system"
+    assert choice_rec.attributes.get("gen_ai.framework") == "pytest"
+    assert choice_rec.body == {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "type": "assistant",
+            "content": "hello back",
+        },
+    }
