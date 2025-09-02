@@ -38,7 +38,7 @@ class Message:
     type: str
     name: str
 
-    def _to_part_dict(self) -> OtelMessage:
+    def _to_semconv_dict(self) -> OtelMessage:
         """Convert the message to a dictionary suitable for OpenTelemetry semconvs.
 
         Ref: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/gen-ai.md#gen-ai-input-messages
