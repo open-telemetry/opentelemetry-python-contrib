@@ -20,7 +20,6 @@ from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
@@ -55,7 +54,7 @@ class TestInstrumentedQueueAioRmq7(TestCase):
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
         MESSAGING_OPERATION: "receive",
     }
 
@@ -95,7 +94,7 @@ class TestInstrumentedQueueAioRmq8(TestCase):
         NET_PEER_NAME: SERVER_HOST,
         NET_PEER_PORT: SERVER_PORT,
         MESSAGING_MESSAGE_ID: MESSAGE_ID,
-        MESSAGING_MESSAGE_CONVERSATION_ID: CORRELATION_ID,
+        SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
         MESSAGING_OPERATION: "receive",
     }
 
