@@ -17,7 +17,6 @@ from aio_pika.abc import AbstractChannel, AbstractMessage
 
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_MESSAGE_CONVERSATION_ID,
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
@@ -83,7 +82,7 @@ class SpanBuilder:
         if properties.message_id:
             self._attributes[MESSAGING_MESSAGE_ID] = properties.message_id
         if properties.correlation_id:
-            self._attributes[MESSAGING_MESSAGE_CONVERSATION_ID] = (
+            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = (
                 properties.correlation_id
             )
 
