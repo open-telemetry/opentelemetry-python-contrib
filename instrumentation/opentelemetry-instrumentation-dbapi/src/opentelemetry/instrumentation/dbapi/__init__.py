@@ -62,8 +62,6 @@ instrumentors. See their respective docs for how to opt into this feature at
 `instrumentation`_. There is no need to opt in at the DB-API level unless setting up
 its integration directly.
 
-.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
-
 If using DB-API instrumentation directly, you can optionally enable sqlcommenter which
 enriches the query with contextual information. Queries made after setting up
 trace integration with sqlcommenter enabled will have configurable key-value pairs
@@ -97,8 +95,6 @@ sqlcommenter is supported by several Python database client framework/ORM-specif
 instrumentors. See their respective docs for how to configure this feature at
 `instrumentation`_. There is no need to configure at the DB-API level unless setting up
 its integration directly.
-
-.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
 
 If using DB-API instrumentation directly, the key-value pairs appended to the query
 can be configured using ``commenter_options``. When sqlcommenter is enabled, all
@@ -155,8 +151,6 @@ sqlcommenter is supported by several Python database client framework/ORM-specif
 instrumentors. See their respective docs for how to opt into this feature at
 `instrumentation`_. There is no need to opt in at the DB-API level unless setting up
 its integration directly.
-
-.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
 
 If using DB-API instrumentation directly and sqlcommenter is enabled, you can opt into
 the inclusion of sqlcomment in the query span ``db.statement`` attribute for your needs.
