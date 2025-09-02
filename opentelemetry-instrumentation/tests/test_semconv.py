@@ -103,7 +103,7 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.GEN_AI
             ),
-            _StabilityMode.GEN_AI_LATEST,
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         )
 
     @stability_mode("database,http")
