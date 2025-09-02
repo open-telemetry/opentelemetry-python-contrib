@@ -296,24 +296,24 @@ def _record_duration(
         duration_histogram.record(elapsed, attributes=metric_attributes)
 
 
-class BaseEmitter:
+class BaseTelemetryGenerator:
     """
     Abstract base for emitters mapping GenAI types -> OpenTelemetry.
     """
 
-    def init(self, invocation: LLMInvocation) -> None:
+    def start(self, invocation: LLMInvocation) -> None:
         raise NotImplementedError
 
-    def emit(self, invocation: LLMInvocation) -> None:
+    def finish(self, invocation: LLMInvocation) -> None:
         raise NotImplementedError
 
     def error(self, error: Error, invocation: LLMInvocation) -> None:
         raise NotImplementedError
 
 
-class SpanMetricEventEmitter(BaseEmitter):
+class SpanMetricEventGenerator(BaseTelemetryGenerator):
     """
-    Emits spans, metrics and events for a full telemetry picture.
+    Generates spans, metrics and events for a full telemetry picture.
     """
 
     def __init__(
@@ -358,7 +358,7 @@ class SpanMetricEventEmitter(BaseEmitter):
                 child_state.span.end()
         state.span.end()
 
-    def init(self, invocation: LLMInvocation):
+    def start(self, invocation: LLMInvocation):
         if (
             invocation.parent_run_id is not None
             and invocation.parent_run_id in self.spans
@@ -378,7 +378,7 @@ class SpanMetricEventEmitter(BaseEmitter):
             if log and self._logger:
                 self._logger.emit(log)
 
-    def emit(self, invocation: LLMInvocation):
+    def finish(self, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
         span = self._start_span(
             name=f"{system}.chat",
@@ -496,9 +496,9 @@ class SpanMetricEventEmitter(BaseEmitter):
                 )
 
 
-class SpanMetricEmitter(BaseEmitter):
+class SpanMetricGenerator(BaseTelemetryGenerator):
     """
-    Emits only spans and metrics (no events).
+    Generates only spans and metrics (no events).
     """
 
     def __init__(
@@ -541,7 +541,7 @@ class SpanMetricEmitter(BaseEmitter):
                 child_state.span.end()
         state.span.end()
 
-    def init(self, invocation: LLMInvocation):
+    def start(self, invocation: LLMInvocation):
         if (
             invocation.parent_run_id is not None
             and invocation.parent_run_id in self.spans
@@ -550,7 +550,7 @@ class SpanMetricEmitter(BaseEmitter):
                 invocation.run_id
             )
 
-    def emit(self, invocation: LLMInvocation):
+    def finish(self, invocation: LLMInvocation):
         system = invocation.attributes.get("system")
         span = self._start_span(
             name=f"{system}.chat",

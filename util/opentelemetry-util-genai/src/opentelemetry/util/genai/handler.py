@@ -46,7 +46,7 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .data import ChatGeneration, Error, Message
-from .emitters import SpanMetricEmitter, SpanMetricEventEmitter
+from .generators import SpanMetricEventGenerator, SpanMetricGenerator
 from .types import LLMInvocation
 
 # TODO: Get the tool version for emitting spans, use GenAI Utils for now
@@ -92,15 +92,15 @@ class TelemetryHandler:
             schema_url=Schemas.V1_36_0.value,
         )
 
-        self._emitter = (
-            SpanMetricEventEmitter(
+        self._generator = (
+            SpanMetricEventGenerator(
                 tracer=self._tracer,
                 meter=self._meter,
                 logger=self._logger,
                 capture_content=self._should_collect_content(),
             )
             if emitter_type_full
-            else SpanMetricEmitter(
+            else SpanMetricGenerator(
                 tracer=self._tracer,
                 meter=self._meter,
                 capture_content=self._should_collect_content(),
@@ -129,7 +129,7 @@ class TelemetryHandler:
         )
         with self._lock:
             self._llm_registry[invocation.run_id] = invocation
-        self._emitter.init(invocation)
+        self._generator.start(invocation)
 
     def stop_llm(
         self,
@@ -142,7 +142,7 @@ class TelemetryHandler:
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         invocation.attributes.update(attributes)
-        self._emitter.emit(invocation)
+        self._generator.finish(invocation)
         return invocation
 
     def fail_llm(
@@ -152,11 +152,8 @@ class TelemetryHandler:
             invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.attributes.update(**attributes)
-        self._emitter.error(error, invocation)
+        self._generator.error(error, invocation)
         return invocation
-
-
-# Singleton accessor (avoid global statement by storing on function attribute)
 
 
 def get_telemetry_handler(
