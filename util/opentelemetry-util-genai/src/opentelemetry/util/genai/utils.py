@@ -45,6 +45,8 @@ def get_content_capturing_mode() -> ContentCapturingMode:
         return ContentCapturingMode[envvar.upper()]
     except KeyError:
         logger.warning(
-            f"{envvar} is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of {', '.join(e.name for e in ContentCapturingMode)}. Defaulting to `NO_COTENT`"
+            "%s is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of %s. Defaulting to `NO_COTENT`.",
+            envvar,
+            ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
