@@ -67,7 +67,7 @@ class TestVersion(unittest.TestCase):
             get_content_capturing_mode()
 
     @patch_env_vars("gen_ai_latest_experimental", "INVALID_VALUE")
-    def test_get_content_caputring_mode_raises_exception_on_invalid_envvar(
+    def test_get_content_capturing_mode_raises_exception_on_invalid_envvar(
         self,
     ):  # pylint: disable=no-self-use
         with self.assertRaises(RuntimeError):
