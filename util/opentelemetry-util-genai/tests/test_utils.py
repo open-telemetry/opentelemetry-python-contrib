@@ -24,10 +24,10 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
-from opentelemetry.util.genai.utils import get_content_capturing_mode
+from opentelemetry.util.genai.utils import get_content_capturing_mode, logger
 
 
-def patch_env_vars(stability_mode, content_capturing):
+def patch_env_vars(*, stability_mode, content_capturing):
     def decorator(test_case):
         @patch.dict(
             os.environ,
@@ -49,7 +49,7 @@ def patch_env_vars(stability_mode, content_capturing):
 
 class TestVersion(unittest.TestCase):
     @patch_env_vars("gen_ai_latest_experimental", "SPAN_ONLY")
-    def test_get_content_caputring_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
+    def test_get_content_capturing_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
         _OpenTelemetrySemanticConventionStability._initialized = False
         assert get_content_capturing_mode() == ContentCapturingMode.SPAN_ONLY
 
@@ -70,5 +70,9 @@ class TestVersion(unittest.TestCase):
     def test_get_content_caputring_mode_raises_exception_on_invalid_envvar(
         self,
     ):  # pylint: disable=no-self-use
-        with self.assertRaises(RuntimeError):
-            get_content_capturing_mode()
+        with self.assertLogs(logger, level="WARNING") as cm:
+            assert (
+                get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
+            )
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn("INVALID_VALUE is not a valid option for ", cm.output[0])

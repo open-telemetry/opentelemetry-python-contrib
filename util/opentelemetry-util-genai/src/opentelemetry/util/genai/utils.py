@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 
 from opentelemetry.instrumentation._semconv import (
@@ -23,6 +24,8 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
+
+logger = logging.getLogger(__name__)
 
 
 def get_content_capturing_mode() -> ContentCapturingMode:
@@ -41,6 +44,7 @@ def get_content_capturing_mode() -> ContentCapturingMode:
     try:
         return ContentCapturingMode[envvar.upper()]
     except KeyError:
-        raise RuntimeError(
-            f"{envvar} is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of {', '.join(e.name for e in ContentCapturingMode)}"
+        logger.warning(
+            f"{envvar} is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of {', '.join(e.name for e in ContentCapturingMode)}. Defaulting to `NO_COTENT`"
         )
+        return ContentCapturingMode.NO_CONTENT
