@@ -20,7 +20,6 @@ from timeit import default_timer
 from typing import Callable
 
 from django import VERSION as django_version
-from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
@@ -182,7 +181,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             new_values = []
             for value in value_list:
                 if hasattr(value, "__class__"):
-                    if isinstance(value, (HttpRequest, WSGIRequest)):
+                    if isinstance(value, HttpRequest):
                         try:
                             method = getattr(value, "method", "UNKNOWN")
                             request_path = getattr(value, "path", "UNKNOWN")
