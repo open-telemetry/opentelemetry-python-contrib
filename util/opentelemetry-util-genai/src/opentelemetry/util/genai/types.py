@@ -19,7 +19,7 @@ from typing import Any, Literal, Optional, Union
 
 @dataclass()
 class ToolCall:
-    type: Literal["tool_call"]
+    type: Literal["tool_call"] = "tool_call"
     arguments: Any
     name: str
     id: Optional[str]
@@ -27,7 +27,7 @@ class ToolCall:
 
 @dataclass()
 class ToolCallResponse:
-    type: Literal["tool_call_response"]
+    type: Literal["tool_call_response"] = "tool_call_response"
     response: Any
     id: Optional[str]
 
@@ -39,7 +39,7 @@ FinishReason = Literal[
 
 @dataclass()
 class Text:
-    type: Literal["text"]
+    type: Literal["text"] = "text"
     content: str
 
 
