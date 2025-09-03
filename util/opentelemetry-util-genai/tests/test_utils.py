@@ -49,7 +49,7 @@ def patch_env_vars(*, stability_mode, content_capturing):
 
 class TestVersion(unittest.TestCase):
     @patch_env_vars("gen_ai_latest_experimental", "SPAN_ONLY")
-    def test_get_content_caputring_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
+    def test_get_content_capturing_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
         _OpenTelemetrySemanticConventionStability._initialized = False
         assert get_content_capturing_mode() == ContentCapturingMode.SPAN_ONLY
 
