@@ -1035,8 +1035,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             ]
         }
 
-        formatted_attributes =_DjangoMiddleware.format_request_objects_in_headers(
-            input_attributes
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
         )
 
         self.assertEqual(formatted_attributes, expected_attributes)
@@ -1056,8 +1058,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_wsgirequest_header": ["HttpRequest(...)"]
         }
 
-        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
-            input_attributes
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
         )
 
         self.assertEqual(formatted_attributes, expected_attributes)
@@ -1077,8 +1081,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             ]
         }
 
-        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
-            input_attributes
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
         )
 
         self.assertEqual(formatted_attributes, expected_attributes)
@@ -1100,8 +1106,10 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_regular_header": ["regular-value"],
         }
 
-        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
-            input_attributes
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
         )
 
         self.assertEqual(formatted_attributes, expected_attributes)
