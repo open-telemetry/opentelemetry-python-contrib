@@ -106,7 +106,7 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         )
 
-    @stability_mode("database,http")
+    @stability_mode("database,http,gen_ai_latest_experimental")
     def test_multiple_stability_database_http_modes(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -119,6 +119,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.HTTP
             ),
             _StabilityMode.HTTP,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         )
 
     @stability_mode("database,http/dup")
