@@ -1020,31 +1020,6 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
 
-    @staticmethod
-    def _format_request_objects_in_headers(attributes):
-        for key, value_list in list(attributes.items()):
-            new_values = []
-            for value in value_list:
-                if hasattr(value, "__class__"):
-                    if value.__class__.__name__ in (
-                        "HttpRequest",
-                        "WSGIRequest",
-                    ):
-                        try:
-                            method = getattr(value, "method", "UNKNOWN")
-                            request_path = getattr(value, "path", "UNKNOWN")
-                            new_values.append(
-                                f"HttpRequest({method} {request_path})"
-                            )
-                        except (AttributeError, ValueError, TypeError):
-                            new_values.append("HttpRequest(...)")
-                    else:
-                        new_values.append(value)
-                else:
-                    new_values.append(value)
-            attributes[key] = new_values
-        return attributes
-
     def test_wsgi_request_in_header_is_properly_formatted(self):
         mock_wsgi_request = Mock(spec=WSGIRequest)
         mock_wsgi_request.method = "GET"
@@ -1060,7 +1035,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             ]
         }
 
-        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(
+        formatted_attributes =_DjangoMiddleware.format_request_objects_in_headers(
             input_attributes
         )
 
@@ -1081,7 +1056,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_wsgirequest_header": ["HttpRequest(...)"]
         }
 
-        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(
+        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
             input_attributes
         )
 
@@ -1102,7 +1077,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             ]
         }
 
-        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(
+        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
             input_attributes
         )
 
@@ -1125,7 +1100,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_regular_header": ["regular-value"],
         }
 
-        formatted_attributes = TestMiddlewareWsgiWithCustomHeaders._format_request_objects_in_headers(
+        formatted_attributes = _DjangoMiddleware.format_request_objects_in_headers(
             input_attributes
         )
 

@@ -21,6 +21,7 @@ from typing import Callable
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
+from django.core.handlers.wsgi import WSGIRequest
 
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
@@ -176,19 +177,16 @@ class _DjangoMiddleware(MiddlewareMixin):
     )
     
     @staticmethod
-    def _format_request_objects_in_headers(attributes):
+    def format_request_objects_in_headers(attributes):
         for key, value_list in list(attributes.items()):
             new_values = []
             for value in value_list:
                 if hasattr(value, "__class__"):
-                    if value.__class__.__name__ in (
-                        "HttpRequest",
-                        "WSGIRequest",
-                    ):
+                    if isinstance(value, (HttpRequest, WSGIRequest)):
                         try:
                             method = getattr(value, "method", "UNKNOWN")
-                            path = getattr(value, "path", "UNKNOWN")
-                            new_values.append(f"HttpRequest({method} {path})")
+                            request_path = getattr(value, "path", "UNKNOWN")
+                            new_values.append(f"HttpRequest({method} {request_path})")
                         except (AttributeError, ValueError, TypeError):
                             new_values.append("HttpRequest(...)")
                     else:
@@ -311,7 +309,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                     )
                     # Process custom attributes to handle WSGIRequest objects
                     custom_attributes = (
-                        self._format_request_objects_in_headers(
+                        self.format_request_objects_in_headers(
                             custom_attributes
                         )
                     )
