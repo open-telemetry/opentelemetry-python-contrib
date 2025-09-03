@@ -59,7 +59,7 @@ class TestVersion(unittest.TestCase):
         assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
     @patch_env_vars("default", "True")
-    def test_get_content_caputring_mode_raises_exception_when_semconv_stability_default(
+    def test_get_content_capturing_mode_raises_exception_when_semconv_stability_default(
         self,
     ):  # pylint: disable=no-self-use
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -67,7 +67,7 @@ class TestVersion(unittest.TestCase):
             get_content_capturing_mode()
 
     @patch_env_vars("gen_ai_latest_experimental", "INVALID_VALUE")
-    def test_get_content_caputring_mode_raises_exception_on_invalid_envvar(
+    def test_get_content_capturing_mode_raises_exception_on_invalid_envvar(
         self,
     ):  # pylint: disable=no-self-use
         with self.assertLogs(logger, level="WARNING") as cm:
