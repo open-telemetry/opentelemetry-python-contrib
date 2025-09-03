@@ -24,10 +24,10 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
-from opentelemetry.util.genai.utils import get_content_capturing_mode, logger
+from opentelemetry.util.genai.utils import get_content_capturing_mode
 
 
-def patch_env_vars(*, stability_mode, content_capturing):
+def patch_env_vars(stability_mode, content_capturing):
     def decorator(test_case):
         @patch.dict(
             os.environ,
@@ -48,29 +48,34 @@ def patch_env_vars(*, stability_mode, content_capturing):
 
 
 class TestVersion(unittest.TestCase):
-    @patch_env_vars("gen_ai_latest_experimental", "SPAN_ONLY")
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
     def test_get_content_capturing_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
-        _OpenTelemetrySemanticConventionStability._initialized = False
         assert get_content_capturing_mode() == ContentCapturingMode.SPAN_ONLY
 
-    @patch_env_vars("gen_ai_latest_experimental", "")
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental", content_capturing=""
+    )
     def test_empty_content_capturing_envvar(self):  # pylint: disable=no-self-use
-        _OpenTelemetrySemanticConventionStability._initialized = False
         assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
-    @patch_env_vars("default", "True")
+    @patch_env_vars(stability_mode="default", content_capturing="True")
     def test_get_content_capturing_mode_raises_exception_when_semconv_stability_default(
         self,
     ):  # pylint: disable=no-self-use
-        _OpenTelemetrySemanticConventionStability._initialized = False
         with self.assertRaises(ValueError):
             get_content_capturing_mode()
 
-    @patch_env_vars("gen_ai_latest_experimental", "INVALID_VALUE")
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="INVALID_VALUE",
+    )
     def test_get_content_capturing_mode_raises_exception_on_invalid_envvar(
         self,
     ):  # pylint: disable=no-self-use
-        with self.assertLogs(logger, level="WARNING") as cm:
+        with self.assertLogs(level="WARNING") as cm:
             assert (
                 get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
             )
