@@ -115,10 +115,7 @@ def assert_openai_completion_attributes(
 def assert_bedrock_completion_attributes(
     span: ReadableSpan, response: Optional
 ):
-    assert (
-        span.name
-        == "chat us.amazon.nova-lite-v1:0"
-    )
+    assert span.name == "chat us.amazon.nova-lite-v1:0"
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
     assert (
         span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]

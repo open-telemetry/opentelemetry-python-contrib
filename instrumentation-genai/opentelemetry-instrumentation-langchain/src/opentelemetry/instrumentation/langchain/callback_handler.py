@@ -67,9 +67,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             if (model := kwargs.get(model_tag)) is not None:
                 request_model = model
                 break
-            elif (
-                model := (params or {}).get(model_tag)
-            ) is not None:
+            elif (model := (params or {}).get(model_tag)) is not None:
                 request_model = model
                 break
             elif (model := (metadata or {}).get(model_tag)) is not None:
