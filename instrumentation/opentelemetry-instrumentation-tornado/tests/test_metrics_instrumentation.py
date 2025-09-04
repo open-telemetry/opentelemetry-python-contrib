@@ -252,3 +252,16 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
+
+    def test_exclude_lists(self):
+        def test_excluded(path):
+            self.fetch(path)
+
+            # Verify no server metrics written (only client ones should exist)
+            metrics = self.get_sorted_metrics()
+            for metric in metrics:
+                self.assertTrue("http.server" not in metric.name, metric)
+            self.assertEqual(len(metrics), 3, metrics)
+
+        test_excluded("/healthz")
+        test_excluded("/ping")
