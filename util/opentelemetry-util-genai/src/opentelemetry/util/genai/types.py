@@ -31,17 +31,17 @@ class ContentCapturingMode(Enum):
 
 @dataclass()
 class ToolCall:
-    type: Literal["tool_call"] = "tool_call"
     arguments: Any
     name: str
     id: Optional[str]
+    type: Literal["tool_call"] = "tool_call"
 
 
 @dataclass()
 class ToolCallResponse:
-    type: Literal["tool_call_response"] = "tool_call_response"
     response: Any
     id: Optional[str]
+    type: Literal["tool_call_response"] = "tool_call_response"
 
 
 FinishReason = Literal[
@@ -51,8 +51,8 @@ FinishReason = Literal[
 
 @dataclass()
 class Text:
-    type: Literal["text"] = "text"
     content: str
+    type: Literal["text"] = "text"
 
 
 MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
