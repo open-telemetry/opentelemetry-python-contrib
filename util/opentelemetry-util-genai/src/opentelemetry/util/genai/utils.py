@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_content_capturing_mode() -> ContentCapturingMode:
+    """This function should not be called when GEN_AI stability mode is set to DEFAULT.
+
+    When the GEN_AI stability mode is DEFAULT this function will raise a ValueError -- see the code below."""
     envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
     if (
         _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -45,8 +48,9 @@ def get_content_capturing_mode() -> ContentCapturingMode:
         return ContentCapturingMode[envvar.upper()]
     except KeyError:
         logger.warning(
-            "%s is not a valid option for `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable. Must be one of %s. Defaulting to `NO_COTENT`.",
+            "%s is not a valid option for `%s` environment variable. Must be one of %s. Defaulting to `NO_CONTENT`.",
             envvar,
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
             ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
