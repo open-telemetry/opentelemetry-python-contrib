@@ -54,43 +54,66 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         metadata: dict[str, Any] | None,
         **kwargs: Any,
     ) -> None:
-        invocation_params = kwargs.get("invocation_params")
-        request_model = (
-            invocation_params.get("model_name") if invocation_params else ""
-        )
-        span = self.span_manager.create_llm_span(
+        if "invocation_params" in kwargs:
+            params = (
+                kwargs["invocation_params"].get("params")
+                or kwargs["invocation_params"]
+            )
+        else:
+            params = kwargs
+
+        request_model = "unknown"
+        for model_tag in ("model", "model_id", "model_name", "ls_model_name"):
+            if (model := kwargs.get(model_tag)) is not None:
+                request_model = model
+                break
+            elif (
+                model := (params or {}).get(model_tag)
+            ) is not None:
+                request_model = model
+                break
+            elif (model := (metadata or {}).get(model_tag)) is not None:
+                request_model = model
+                break
+
+        span = self.span_manager.create_chat_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
             request_model=request_model,
         )
 
-        if invocation_params is not None:
-            top_p = invocation_params.get("top_p")
+        if params is not None:
+            top_p = params.get("top_p")
             if top_p is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
-            frequency_penalty = invocation_params.get("frequency_penalty")
+            frequency_penalty = params.get("frequency_penalty")
             if frequency_penalty is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
                 )
-            presence_penalty = invocation_params.get("presence_penalty")
+            presence_penalty = params.get("presence_penalty")
             if presence_penalty is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
                 )
-            stop_sequences = invocation_params.get("stop")
+            stop_sequences = params.get("stop")
             if stop_sequences is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
                 )
-            seed = invocation_params.get("seed")
+            seed = params.get("seed")
             if seed is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
-
-        if metadata is not None:
-            max_tokens = metadata.get("ls_max_tokens")
+            temperature = params.get("temperature")
+            if temperature is not None:
+                span.set_attribute(
+                    GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                )
+            max_tokens = params.get("max_completion_tokens")
             if max_tokens is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+
+        if metadata is not None:
             provider = metadata.get("ls_provider")
             if provider is not None:
                 span.set_attribute("gen_ai.provider.name", provider)
@@ -99,6 +122,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
+            max_tokens = metadata.get("ls_max_tokens")
+            if max_tokens is not None:
+                span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
 
     def on_llm_end(
         self,
@@ -124,6 +150,35 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     finish_reason = generation_info.get("finish_reason")
                     if finish_reason is not None:
                         finish_reasons.append(str(finish_reason) or "error")
+                if chat_generation.message:
+                    if (
+                        generation_info is None
+                        and chat_generation.message.response_metadata
+                    ):
+                        finish_reason = (
+                            chat_generation.message.response_metadata.get(
+                                "stopReason"
+                            )
+                        )
+                        if finish_reason is not None and span.is_recording():
+                            finish_reasons.append(finish_reason or "error")
+                    if chat_generation.message.usage_metadata:
+                        input_tokens = (
+                            chat_generation.message.usage_metadata.get(
+                                "input_tokens", 0
+                            )
+                        )
+                        output_tokens = (
+                            chat_generation.message.usage_metadata.get(
+                                "output_tokens", 0
+                            )
+                        )
+                        span.set_attribute(
+                            GenAI.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+                        )
+                        span.set_attribute(
+                            GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+                        )
 
         span.set_attribute(
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
@@ -142,22 +197,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             response_id = llm_output.get("id")
             if response_id is not None:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, str(response_id))
-
-            # usage
-            usage = llm_output.get("usage") or llm_output.get("token_usage")
-            if usage:
-                prompt_tokens = usage.get("prompt_tokens", 0)
-                completion_tokens = usage.get("completion_tokens", 0)
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_INPUT_TOKENS,
-                    int(prompt_tokens) if prompt_tokens is not None else 0,
-                )
-                span.set_attribute(
-                    GenAI.GEN_AI_USAGE_OUTPUT_TOKENS,
-                    int(completion_tokens)
-                    if completion_tokens is not None
-                    else 0,
-                )
 
         # End the LLM span
         self.span_manager.end_span(run_id)
