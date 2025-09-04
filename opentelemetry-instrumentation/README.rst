@@ -104,7 +104,13 @@ check `here <https://opentelemetry-python.readthedocs.io/en/stable/index.html#in
 * ``OTEL_PYTHON_DISABLED_INSTRUMENTATIONS``
 
 If set by the user, opentelemetry-instrument will read this environment variable to disable specific instrumentations.
-e.g OTEL_PYTHON_DISABLED_INSTRUMENTATIONS = "requests,django"
+e.g OTEL_PYTHON_DISABLED_INSTRUMENTATIONS="requests,django"
+
+* ``OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH``
+
+If set by the user to `patch_all` , opentelemetry instrument will call the gevent monkeypatching method ``patch_all``.
+This is considered experimental but can be useful to instrument gevent applications.
+e.g OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH=patch_all
 
 
 Examples
