@@ -12,24 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OTEL_PYTHON_DISABLED_INSTRUMENTATIONS = "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"
-"""
-.. envvar:: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
-"""
-
-OTEL_PYTHON_DISTRO = "OTEL_PYTHON_DISTRO"
-"""
-.. envvar:: OTEL_PYTHON_DISTRO
-"""
-
-OTEL_PYTHON_CONFIGURATOR = "OTEL_PYTHON_CONFIGURATOR"
-"""
-.. envvar:: OTEL_PYTHON_CONFIGURATOR
-"""
-
-OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH = (
-    "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH"
+# pylint: disable=no-name-in-module
+from opentelemetry.sdk.extension.aws.trace.sampler.aws_xray_remote_sampler import (
+    _AwsXRayRemoteSampler,
 )
-"""
-.. envvar:: OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
-"""
+
+__all__ = ["_AwsXRayRemoteSampler"]

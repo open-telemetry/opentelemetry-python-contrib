@@ -12,24 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OTEL_PYTHON_DISABLED_INSTRUMENTATIONS = "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS"
-"""
-.. envvar:: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
-"""
+import os
+from unittest import TestCase
 
-OTEL_PYTHON_DISTRO = "OTEL_PYTHON_DISTRO"
-"""
-.. envvar:: OTEL_PYTHON_DISTRO
-"""
+TEST_DIR = os.path.dirname(os.path.realpath(__file__))
+DATA_DIR = os.path.join(TEST_DIR, "data")
 
-OTEL_PYTHON_CONFIGURATOR = "OTEL_PYTHON_CONFIGURATOR"
-"""
-.. envvar:: OTEL_PYTHON_CONFIGURATOR
-"""
+CLIENT_ID = "12345678901234567890abcd"
 
-OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH = (
-    "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH"
-)
-"""
-.. envvar:: OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
-"""
+
+# pylint: disable=no-member
+class TestSamplingRuleApplier(TestCase):
+    pass
