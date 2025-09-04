@@ -96,10 +96,9 @@ class _SpanManager:
         for child_id in state.children:
             child_state = self.spans.get(child_id)
             if child_state:
-                # Always end child spans as OpenTelemetry spans don't expose end_time directly
                 child_state.span.end()
-            # Always end the span as OpenTelemetry spans don't expose end_time directly
         state.span.end()
+        del self.spans[run_id]
 
     def get_span(self, run_id: UUID) -> Optional[Span]:
         state = self.spans.get(run_id)

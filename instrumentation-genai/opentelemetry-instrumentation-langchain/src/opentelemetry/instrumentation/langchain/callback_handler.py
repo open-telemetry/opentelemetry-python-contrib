@@ -63,11 +63,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             params = kwargs
 
         request_model = "unknown"
-        for model_tag in ("model", "model_id", "model_name", "ls_model_name"):
-            if (model := kwargs.get(model_tag)) is not None:
-                request_model = model
-                break
-            elif (model := (params or {}).get(model_tag)) is not None:
+        for model_tag in (
+            "model_name",  # ChatOpenAI
+            "model_id",  # ChatBedrock
+        ):
+            if (model := (params or {}).get(model_tag)) is not None:
                 request_model = model
                 break
             elif (model := (metadata or {}).get(model_tag)) is not None:
@@ -102,11 +102,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             seed = params.get("seed")
             if seed is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+            # ChatOpenAI
             temperature = params.get("temperature")
             if temperature is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
+            # ChatOpenAI
             max_tokens = params.get("max_completion_tokens")
             if max_tokens is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
@@ -115,18 +117,20 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             provider = metadata.get("ls_provider")
             if provider is not None:
                 span.set_attribute("gen_ai.provider.name", provider)
+            # ChatBedrock
             temperature = metadata.get("ls_temperature")
             if temperature is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
+            # ChatBedrock
             max_tokens = metadata.get("ls_max_tokens")
             if max_tokens is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
 
     def on_llm_end(
         self,
-        response: LLMResult,  # type: ignore
+        response: LLMResult,
         *,
         run_id: UUID,
         parent_run_id: UUID | None,
@@ -145,9 +149,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     chat_generation, "generation_info", None
                 )
                 if generation_info is not None:
-                    finish_reason = generation_info.get("finish_reason")
+                    finish_reason = generation_info.get(
+                        "finish_reason", "unknown"
+                    )
                     if finish_reason is not None:
-                        finish_reasons.append(str(finish_reason) or "error")
+                        finish_reasons.append(str(finish_reason))
                 if chat_generation.message:
                     if (
                         generation_info is None
@@ -155,11 +161,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     ):
                         finish_reason = (
                             chat_generation.message.response_metadata.get(
-                                "stopReason"
+                                "stopReason", "unknown"
                             )
                         )
-                        if finish_reason is not None and span.is_recording():
-                            finish_reasons.append(finish_reason or "error")
+                        if finish_reason is not None:
+                            finish_reasons.append(str(finish_reason))
                     if chat_generation.message.usage_metadata:
                         input_tokens = (
                             chat_generation.message.usage_metadata.get(
