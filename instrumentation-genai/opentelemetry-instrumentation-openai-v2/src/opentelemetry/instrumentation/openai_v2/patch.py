@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
+import json
 from timeit import default_timer
-from typing import Optional
+from typing import List, Optional
 
 from openai import Stream
 
@@ -29,12 +30,18 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 
 from .instruments import Instruments
 from .utils import (
-    choice_to_event,
+    ContentCapturingMode,
+    DataclassEncoder,
+    OutputMessage,
+    TextPart,
+    ToolCallRequestPart,
+    create_details_event_attributes,
     get_llm_request_attributes,
-    handle_span_exception,
     is_streaming,
-    message_to_event,
-    set_span_attribute,
+    record_exception,
+    record_input_messages,
+    record_output_messages,
+    set_attribute,
 )
 
 
@@ -42,12 +49,23 @@ def chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
+    latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {
+            **get_llm_request_attributes(
+                kwargs,
+                instance,
+                GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+                latest_experimental_enabled,
+            )
+        }
+        details_event_attributes = create_details_event_attributes(
+            span_attributes, latest_experimental_enabled, content_mode
+        )
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
@@ -56,8 +74,14 @@ def chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
+            record_input_messages(
+                kwargs.get("messages", []),
+                content_mode,
+                latest_experimental_enabled,
+                span,
+                details_event_attributes,
+                event_logger,
+            )
 
             start = default_timer()
             result = None
@@ -66,22 +90,48 @@ def chat_completions_create(
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        result, span, event_logger, capture_content
+                        result,
+                        span,
+                        details_event_attributes,
+                        event_logger,
+                        content_mode,
+                        latest_experimental_enabled,
                     )
 
-                if span.is_recording():
-                    _set_response_attributes(
-                        span, result, event_logger, capture_content
+                _set_response_attributes(
+                    span,
+                    details_event_attributes,
+                    result,
+                    latest_experimental_enabled,
+                )
+                record_output_messages(
+                    getattr(result, "choices", []),
+                    content_mode,
+                    latest_experimental_enabled,
+                    span,
+                    details_event_attributes,
+                    event_logger,
+                )
+
+                if details_event_attributes:
+                    event_logger.emit(
+                        Event(
+                            name="gen_ai.client.inference.operation.details",
+                            attributes=details_event_attributes,
+                            trace_id=span.get_span_context().trace_id,
+                            span_id=span.get_span_context().span_id,
+                            trace_flags=span.get_span_context().trace_flags,
+                        )
                     )
-                for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
                 return result
 
             except Exception as error:
                 error_type = type(error).__qualname__
-                handle_span_exception(span, error)
+                record_exception(
+                    span, details_event_attributes, error, event_logger
+                )
                 raise
             finally:
                 duration = max((default_timer() - start), 0)
@@ -91,6 +141,7 @@ def chat_completions_create(
                     result,
                     span_attributes,
                     error_type,
+                    latest_experimental_enabled,
                 )
 
     return traced_method
@@ -100,12 +151,24 @@ def async_chat_completions_create(
     tracer: Tracer,
     event_logger: EventLogger,
     instruments: Instruments,
-    capture_content: bool,
+    content_mode: ContentCapturingMode,
+    latest_experimental_enabled: bool,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {
+            **get_llm_request_attributes(
+                kwargs,
+                instance,
+                GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+                latest_experimental_enabled,
+            )
+        }
+
+        details_event_attributes = create_details_event_attributes(
+            span_attributes, latest_experimental_enabled, content_mode
+        )
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
@@ -114,8 +177,14 @@ def async_chat_completions_create(
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
+            record_input_messages(
+                kwargs.get("messages", []),
+                content_mode,
+                latest_experimental_enabled,
+                span,
+                details_event_attributes,
+                event_logger,
+            )
 
             start = default_timer()
             result = None
@@ -124,22 +193,47 @@ def async_chat_completions_create(
                 result = await wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        result, span, event_logger, capture_content
+                        result,
+                        span,
+                        details_event_attributes,
+                        event_logger,
+                        content_mode,
+                        latest_experimental_enabled,
                     )
 
-                if span.is_recording():
-                    _set_response_attributes(
-                        span, result, event_logger, capture_content
-                    )
-                for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
+                _set_response_attributes(
+                    span,
+                    details_event_attributes,
+                    result,
+                    latest_experimental_enabled,
+                )
+                record_output_messages(
+                    getattr(result, "choices", []),
+                    content_mode,
+                    latest_experimental_enabled,
+                    span,
+                    details_event_attributes,
+                    event_logger,
+                )
 
+                if details_event_attributes:
+                    event_logger.emit(
+                        Event(
+                            name="gen_ai.client.inference.operation.details",
+                            attributes=details_event_attributes,
+                            trace_id=span.get_span_context().trace_id,
+                            span_id=span.get_span_context().span_id,
+                            trace_flags=span.get_span_context().trace_flags,
+                        )
+                    )
                 span.end()
                 return result
 
             except Exception as error:
                 error_type = type(error).__qualname__
-                handle_span_exception(span, error)
+                record_exception(
+                    span, details_event_attributes, error, event_logger
+                )
                 raise
             finally:
                 duration = max((default_timer() - start), 0)
@@ -149,6 +243,7 @@ def async_chat_completions_create(
                     result,
                     span_attributes,
                     error_type,
+                    latest_experimental_enabled,
                 )
 
     return traced_method
@@ -160,10 +255,16 @@ def _record_metrics(
     result,
     span_attributes: dict,
     error_type: Optional[str],
+    latest_experimental_enabled: bool,
 ):
+    provider_name_attr_name = (
+        "gen_ai.provider.name"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_SYSTEM
+    )
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        provider_name_attr_name: GenAIAttributes.GenAiSystemValues.OPENAI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
             GenAIAttributes.GEN_AI_REQUEST_MODEL
         ],
@@ -175,13 +276,21 @@ def _record_metrics(
     if result and getattr(result, "model", None):
         common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
 
+    service_tier_attr_key = (
+        "openai.response.service_tier"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+    )
     if result and getattr(result, "service_tier", None):
-        common_attributes[
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-        ] = result.service_tier
+        common_attributes[service_tier_attr_key] = result.service_tier
 
+    system_fingerprint_attr_key = (
+        "openai.response.system_fingerprint"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT
+    )
     if result and getattr(result, "system_fingerprint", None):
-        common_attributes["gen_ai.openai.response.system_fingerprint"] = (
+        common_attributes[system_fingerprint_attr_key] = (
             result.system_fingerprint
         )
 
@@ -221,42 +330,63 @@ def _record_metrics(
 
 
 def _set_response_attributes(
-    span, result, event_logger: EventLogger, capture_content: bool
+    span, details_event_attributes, result, latest_experimental_enabled: bool
 ):
-    set_span_attribute(
-        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
+    if not span.is_recording() and details_event_attributes is None:
+        return
+
+    set_attribute(
+        span,
+        details_event_attributes,
+        GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+        result.model,
     )
 
+    # finish reasons
     if getattr(result, "choices", None):
         finish_reasons = []
         for choice in result.choices:
             finish_reasons.append(choice.finish_reason or "error")
 
-        set_span_attribute(
+        set_attribute(
             span,
+            details_event_attributes,
             GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
             finish_reasons,
         )
 
     if getattr(result, "id", None):
-        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
-
-    if getattr(result, "service_tier", None):
-        set_span_attribute(
+        set_attribute(
             span,
-            GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            details_event_attributes,
+            GenAIAttributes.GEN_AI_RESPONSE_ID,
+            result.id,
+        )
+
+    service_tier_attr_key = (
+        "openai.response.service_tier"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+    )
+    if getattr(result, "service_tier", None):
+        set_attribute(
+            span,
+            details_event_attributes,
+            service_tier_attr_key,
             result.service_tier,
         )
 
     # Get the usage
     if getattr(result, "usage", None):
-        set_span_attribute(
+        set_attribute(
             span,
+            details_event_attributes,
             GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
             result.usage.prompt_tokens,
         )
-        set_span_attribute(
+        set_attribute(
             span,
+            details_event_attributes,
             GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             result.usage.completion_tokens,
         )
@@ -300,6 +430,7 @@ class ChoiceBuffer:
 
 class StreamWrapper:
     span: Span
+    details_event_attributes: Optional[dict]
     response_id: Optional[str] = None
     response_model: Optional[str] = None
     service_tier: Optional[str] = None
@@ -311,14 +442,18 @@ class StreamWrapper:
         self,
         stream: Stream,
         span: Span,
+        details_event_attributes: dict,
         event_logger: EventLogger,
-        capture_content: bool,
+        content_mode: ContentCapturingMode,
+        latest_experimental_enabled: bool,
     ):
         self.stream = stream
         self.span = span
+        self.details_event_attributes = details_event_attributes
         self.choice_buffers = []
         self._span_started = False
-        self.capture_content = capture_content
+        self.content_mode = content_mode
+        self.latest_experimental_enabled = latest_experimental_enabled
 
         self.event_logger = event_logger
         self.setup()
@@ -329,89 +464,172 @@ class StreamWrapper:
 
     def cleanup(self):
         if self._span_started:
-            if self.span.is_recording():
+            if self.span.is_recording() or self.details_event_attributes:
                 if self.response_model:
-                    set_span_attribute(
+                    set_attribute(
                         self.span,
+                        self.details_event_attributes,
                         GenAIAttributes.GEN_AI_RESPONSE_MODEL,
                         self.response_model,
                     )
 
                 if self.response_id:
-                    set_span_attribute(
+                    set_attribute(
                         self.span,
+                        self.details_event_attributes,
                         GenAIAttributes.GEN_AI_RESPONSE_ID,
                         self.response_id,
                     )
 
-                set_span_attribute(
+                set_attribute(
                     self.span,
+                    self.details_event_attributes,
                     GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
                     self.prompt_tokens,
                 )
-                set_span_attribute(
+                set_attribute(
                     self.span,
+                    self.details_event_attributes,
                     GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
                     self.completion_tokens,
                 )
 
-                set_span_attribute(
+                service_tier_attr_key = (
+                    "openai.response.service_tier"
+                    if self.latest_experimental_enabled
+                    else GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+                )
+                set_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+                    self.details_event_attributes,
+                    service_tier_attr_key,
                     self.service_tier,
                 )
 
-                set_span_attribute(
+                set_attribute(
                     self.span,
+                    self.details_event_attributes,
                     GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
                     self.finish_reasons,
                 )
 
-            for idx, choice in enumerate(self.choice_buffers):
-                message = {"role": "assistant"}
-                if self.capture_content and choice.text_content:
-                    message["content"] = "".join(choice.text_content)
-                if choice.tool_calls_buffers:
-                    tool_calls = []
-                    for tool_call in choice.tool_calls_buffers:
-                        function = {"name": tool_call.function_name}
-                        if self.capture_content:
-                            function["arguments"] = "".join(
-                                tool_call.arguments
-                            )
-                        tool_call_dict = {
-                            "id": tool_call.tool_call_id,
-                            "type": "function",
-                            "function": function,
-                        }
-                        tool_calls.append(tool_call_dict)
-                    message["tool_calls"] = tool_calls
+            if self.latest_experimental_enabled:
+                if (
+                    self.content_mode == ContentCapturingMode.SPAN
+                    and self.span.is_recording()
+                ):
+                    output_messages = self._prepare_output_messages()
 
-                body = {
-                    "index": idx,
-                    "finish_reason": choice.finish_reason or "error",
-                    "message": message,
-                }
-
-                event_attributes = {
-                    GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-                }
-
-                # this span is not current, so we need to manually set the context on event
-                span_ctx = self.span.get_span_context()
-                self.event_logger.emit(
-                    Event(
-                        name="gen_ai.choice",
-                        attributes=event_attributes,
-                        body=body,
-                        trace_id=span_ctx.trace_id,
-                        span_id=span_ctx.span_id,
-                        trace_flags=span_ctx.trace_flags,
+                    self.span.set_attribute(
+                        "gen_ai.output.messages",
+                        json.dumps(
+                            output_messages,
+                            ensure_ascii=False,
+                            cls=DataclassEncoder,
+                        ),
                     )
-                )
+                # TODO: once logger.enabled is supported, we should use it to optimize
+                # and, when enabled, can record event even when content is disabled
+                if (
+                    self.content_mode == ContentCapturingMode.EVENT
+                    and self.details_event_attributes is not None
+                ):
+                    output_messages = self._prepare_output_messages()
+                    self.details_event_attributes["gen_ai.output.messages"] = (
+                        json.dumps(
+                            output_messages,
+                            ensure_ascii=False,
+                            cls=DataclassEncoder,
+                        )
+                    )
+
+                    self.event_logger.emit(
+                        Event(
+                            name="gen_ai.client.inference.operation.details",
+                            attributes=self.details_event_attributes,
+                            trace_id=self.span.get_span_context().trace_id,
+                            span_id=self.span.get_span_context().span_id,
+                            trace_flags=self.span.get_span_context().trace_flags,
+                        )
+                    )
+            else:
+                for idx, choice in enumerate(self.choice_buffers):
+                    message = {"role": "assistant"}
+                    if (
+                        self.content_mode == ContentCapturingMode.EVENT
+                        and choice.text_content
+                    ):
+                        message["content"] = "".join(choice.text_content)
+                    if choice.tool_calls_buffers:
+                        tool_calls = []
+                        for tool_call in choice.tool_calls_buffers:
+                            function = {"name": tool_call.function_name}
+                            if self.content_mode == ContentCapturingMode.EVENT:
+                                function["arguments"] = "".join(
+                                    tool_call.arguments
+                                )
+                            tool_call_dict = {
+                                "id": tool_call.tool_call_id,
+                                "type": "function",
+                                "function": function,
+                            }
+                            tool_calls.append(tool_call_dict)
+                        message["tool_calls"] = tool_calls
+
+                    body = {
+                        "index": idx,
+                        "finish_reason": choice.finish_reason or "error",
+                        "message": message,
+                    }
+
+                    event_attributes = {
+                        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+                    }
+
+                    # this span is not current, so we need to manually set the context on event
+                    span_ctx = self.span.get_span_context()
+                    self.event_logger.emit(
+                        Event(
+                            name="gen_ai.choice",
+                            attributes=event_attributes,
+                            body=body,
+                            trace_id=span_ctx.trace_id,
+                            span_id=span_ctx.span_id,
+                            trace_flags=span_ctx.trace_flags,
+                        )
+                    )
 
             self.span.end()
             self._span_started = False
+
+    def _prepare_output_messages(self) -> List[OutputMessage]:
+        output_messages = []
+        for choice in self.choice_buffers:
+            message = OutputMessage(
+                finish_reason=choice.finish_reason or "error",
+                role="assistant",
+            )
+            output_messages.append(message)
+
+            if choice.text_content:
+                message.parts.append(
+                    TextPart(content="".join(choice.text_content))
+                )
+            if choice.tool_calls_buffers:
+                for tool_call in choice.tool_calls_buffers:
+                    part = ToolCallRequestPart(
+                        name=tool_call.function_name,
+                        id=tool_call.tool_call_id,
+                    )
+                    arguments = "".join(tool_call.arguments)
+                    if arguments:
+                        try:
+                            part.arguments = json.loads(arguments)
+                        except json.JSONDecodeError:
+                            part.arguments = arguments
+
+                    message.parts.append(part)
+        return output_messages
 
     def __enter__(self):
         self.setup()
@@ -420,7 +638,12 @@ class StreamWrapper:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             if exc_type is not None:
-                handle_span_exception(self.span, exc_val)
+                record_exception(
+                    self.span,
+                    self.details_event_attributes,
+                    exc_val,
+                    self.event_logger,
+                )
         finally:
             self.cleanup()
         return False  # Propagate the exception
@@ -432,7 +655,12 @@ class StreamWrapper:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         try:
             if exc_type is not None:
-                handle_span_exception(self.span, exc_val)
+                record_exception(
+                    self.span,
+                    self.details_event_attributes,
+                    exc_val,
+                    self.event_logger,
+                )
         finally:
             self.cleanup()
         return False  # Propagate the exception
@@ -456,7 +684,12 @@ class StreamWrapper:
             self.cleanup()
             raise
         except Exception as error:
-            handle_span_exception(self.span, error)
+            record_exception(
+                self.span,
+                self.details_event_attributes,
+                error,
+                self.event_logger,
+            )
             self.cleanup()
             raise
 
@@ -469,7 +702,12 @@ class StreamWrapper:
             self.cleanup()
             raise
         except Exception as error:
-            handle_span_exception(self.span, error)
+            record_exception(
+                self.span,
+                self.details_event_attributes,
+                error,
+                self.event_logger,
+            )
             self.cleanup()
             raise
 
