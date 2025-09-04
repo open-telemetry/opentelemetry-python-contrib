@@ -109,14 +109,14 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: BaseCallbackHandler,
+        instance: BaseCallbackHandler,  # type: ignore
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):
         wrapped(*args, **kwargs)
         # Ensure our OTel callback is present if not already.
-        for handler in instance.inheritable_handlers:
+        for handler in instance.inheritable_handlers:  # type: ignore
             if isinstance(handler, type(self._otel_handler)):
                 break
         else:
-            instance.add_handler(self._otel_handler, inherit=True)
+            instance.add_handler(self._otel_handler, inherit=True)  # type: ignore
