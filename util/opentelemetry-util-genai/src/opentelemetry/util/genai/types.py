@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Literal, Optional, Union
 
 
 class ContentCapturingMode(Enum):
@@ -24,3 +27,45 @@ class ContentCapturingMode(Enum):
     EVENT_ONLY = 2
     # Capture content in both spans and events.
     SPAN_AND_EVENT = 3
+
+
+@dataclass()
+class ToolCall:
+    type: Literal["tool_call"] = "tool_call"
+    arguments: Any
+    name: str
+    id: Optional[str]
+
+
+@dataclass()
+class ToolCallResponse:
+    type: Literal["tool_call_response"] = "tool_call_response"
+    response: Any
+    id: Optional[str]
+
+
+FinishReason = Literal[
+    "content_filter", "error", "length", "stop", "tool_calls"
+]
+
+
+@dataclass()
+class Text:
+    type: Literal["text"] = "text"
+    content: str
+
+
+MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
+
+
+@dataclass()
+class InputMessage:
+    role: str
+    parts: list[MessagePart]
+
+
+@dataclass()
+class OutputMessage:
+    role: str
+    parts: list[MessagePart]
+    finish_reason: Union[str, FinishReason]
