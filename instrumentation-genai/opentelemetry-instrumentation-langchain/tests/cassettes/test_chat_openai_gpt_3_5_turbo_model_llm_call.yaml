@@ -42,7 +42,7 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.98.0
+      - OpenAI/Python 1.105.0
       x-stainless-arch:
       - arm64
       x-stainless-async:
@@ -52,7 +52,9 @@ interactions:
       x-stainless-os:
       - MacOS
       x-stainless-package-version:
-      - 1.98.0
+      - 1.105.0
+      x-stainless-raw-response:
+      - 'true'
       x-stainless-retry-count:
       - '0'
       x-stainless-runtime:
@@ -65,9 +67,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-BzXyZbwSwCmuSOKwRx7tnsia3V9lH",
+          "id": "chatcmpl-CBmRYRvfmoAG6EmqDOH4IwkfN02MJ",
           "object": "chat.completion",
-          "created": 1754008311,
+          "created": 1756923860,
           "model": "gpt-3.5-turbo-0125",
           "choices": [
             {
@@ -102,13 +104,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 96813c201ae62f46-LAX
+      - 9797488a68f42b63-LAX
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Fri, 01 Aug 2025 00:31:51 GMT
+      - Wed, 03 Sep 2025 18:24:21 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -128,29 +130,27 @@ interactions:
       - '822'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '189'
+      - '783'
       openai-project:
-      - proj_GLiYlAc06hF0Fm06IMReZLy4
+      - proj_3o0Aqh32nPiGbrex8BJtPTCm
       openai-version:
       - '2020-10-01'
-      x-envoy-decorator-operation:
-      - router.openai.svc.cluster.local:5004/*
       x-envoy-upstream-service-time:
-      - '211'
+      - '787'
       x-ratelimit-limit-requests:
-      - '10000'
+      - '5000'
       x-ratelimit-limit-tokens:
-      - '200000'
+      - '2000000'
       x-ratelimit-remaining-requests:
-      - '9999'
+      - '4999'
       x-ratelimit-remaining-tokens:
-      - '199982'
+      - '1999982'
       x-ratelimit-reset-requests:
-      - 8.64s
+      - 12ms
       x-ratelimit-reset-tokens:
-      - 5ms
+      - 0s
       x-request-id:
-      - 8a5db9a5-6103-41d4-baf3-813be646bae4
+      - req_c1bd8705b06b4e9180a5d8340e44785c
     status:
       code: 200
       message: OK
