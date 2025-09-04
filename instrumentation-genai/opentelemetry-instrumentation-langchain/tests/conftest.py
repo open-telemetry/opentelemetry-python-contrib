@@ -34,7 +34,7 @@ def fixture_chat_openai_gpt_3_5_turbo_model():
 
 @pytest.fixture(scope="function", name="us_amazon_nova_lite_v1_0")
 def fixture_us_amazon_nova_lite_v1_0():
-    llm_model_value = "arn:aws:bedrock:us-west-2:906383545488:inference-profile/us.amazon.nova-lite-v1:0"
+    llm_model_value = "us.amazon.nova-lite-v1:0"
     llm = ChatBedrock(
         model_id=llm_model_value,
         client=boto3.client(

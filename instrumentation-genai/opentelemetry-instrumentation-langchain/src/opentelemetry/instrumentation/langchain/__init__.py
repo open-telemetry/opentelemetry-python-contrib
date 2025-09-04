@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Langchain instrumentation supporting `ChatOpenAI`, it can be enabled by
+Langchain instrumentation supporting `ChatOpenAI` and `ChatBedrock`, it can be enabled by
 using ``LangChainInstrumentor``.
 
 Usage
@@ -38,6 +38,7 @@ API
 
 from typing import Any, Callable, Collection, Optional
 
+from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from wrapt import wrap_function_wrapper  # type: ignore
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -108,7 +109,7 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: Any,
+        instance: BaseCallbackHandler,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):

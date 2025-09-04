@@ -30,15 +30,16 @@ interactions:
         YXBwbGljYXRpb24vanNvbg==
       User-Agent:
       - !!binary |
-        Qm90bzMvMS40MC4yMiBtZC9Cb3RvY29yZSMxLjQwLjIyIHVhLzIuMSBvcy9tYWNvcyMyNC42LjAg
-        bWQvYXJjaCNhcm02NCBsYW5nL3B5dGhvbiMzLjEzLjUgbWQvcHlpbXBsI0NQeXRob24gbS9aLGIs
-        RCBjZmcvcmV0cnktbW9kZSNsZWdhY3kgQm90b2NvcmUvMS40MC4yMg==
+        Qm90bzMvMS40MC4yNCBtZC9Cb3RvY29yZSMxLjQwLjI0IHVhLzIuMSBvcy9tYWNvcyMyNC42LjAg
+        bWQvYXJjaCNhcm02NCBsYW5nL3B5dGhvbiMzLjEzLjUgbWQvcHlpbXBsI0NQeXRob24gbS9iLFos
+        RCBjZmcvcmV0cnktbW9kZSNsZWdhY3kgQm90b2NvcmUvMS40MC4yNCB4LWNsaWVudC1mcmFtZXdv
+        cms6bGFuZ2NoYWluLWF3cw==
       X-Amz-Date:
       - !!binary |
-        MjAyNTA5MDRUMDIyNzM4Wg==
+        MjAyNTA5MDRUMjAwMDU4Wg==
       amz-sdk-invocation-id:
       - !!binary |
-        MTMwMjBiMWUtZDhkOC00NTNkLWI1ZjYtY2U5Yjk5ZWQ4Zjg4
+        MGQ5MTVjMDUtNzM3YS00OTQwLWIzM2ItMzYwMGIzZGIzYzMy
       amz-sdk-request:
       - !!binary |
         YXR0ZW1wdD0x
@@ -51,7 +52,7 @@ interactions:
       string: |-
         {
           "metrics": {
-            "latencyMs": 435
+            "latencyMs": 416
           },
           "output": {
             "message": {
@@ -78,11 +79,11 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 04 Sep 2025 02:27:38 GMT
+      - Thu, 04 Sep 2025 20:00:58 GMT
       Set-Cookie: test_set_cookie
       openai-organization: test_openai_org_id
       x-amzn-RequestId:
-      - 38e8f9b0-89f9-4d78-8da4-bba3948f1889
+      - 9fd6d377-fc60-4b28-ab3b-a5c723b218c2
     status:
       code: 200
       message: OK
