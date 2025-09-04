@@ -3,8 +3,10 @@
 import json
 import os
 
+import boto3
 import pytest
 import yaml
+from langchain_aws import ChatBedrock
 from langchain_openai import ChatOpenAI
 
 from opentelemetry.instrumentation.langchain import LangChainInstrumentor
@@ -15,8 +17,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 
-@pytest.fixture(scope="function", name="llm_model")
-def fixture_llm_model():
+@pytest.fixture(scope="function", name="chat_openai_gpt_3_5_turbo_model")
+def fixture_chat_openai_gpt_3_5_turbo_model():
     llm = ChatOpenAI(
         model="gpt-3.5-turbo",
         temperature=0.1,
@@ -26,6 +28,25 @@ def fixture_llm_model():
         presence_penalty=0.5,
         stop_sequences=["\n", "Human:", "AI:"],
         seed=100,
+    )
+    yield llm
+
+
+@pytest.fixture(scope="function", name="us_amazon_nova_lite_v1_0")
+def fixture_us_amazon_nova_lite_v1_0():
+    llm_model_value = "arn:aws:bedrock:us-west-2:906383545488:inference-profile/us.amazon.nova-lite-v1:0"
+    llm = ChatBedrock(
+        model_id=llm_model_value,
+        client=boto3.client(
+            "bedrock-runtime",
+            aws_access_key_id="test_key",
+            aws_secret_access_key="test_secret",
+            region_name="us-west-2",
+            aws_account_id="test_account",
+        ),
+        provider="amazon",
+        temperature=0.1,
+        max_tokens=100,
     )
     yield llm
 
