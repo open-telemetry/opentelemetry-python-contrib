@@ -27,7 +27,16 @@ from opentelemetry.instrumentation.botocore.extensions.lmbd import (
     _LambdaExtension,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.faas_attributes import (
+    FAAS_INVOKED_NAME,
+    FAAS_INVOKED_PROVIDER,
+    FAAS_INVOKED_REGION,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import Span
@@ -73,22 +82,16 @@ class TestLambdaExtension(TestBase):
         self.assertEqual(1, len(spans))
 
         span = spans[0]
-        self.assertEqual(operation, span.attributes[SpanAttributes.RPC_METHOD])
-        self.assertEqual("Lambda", span.attributes[SpanAttributes.RPC_SERVICE])
-        self.assertEqual("aws-api", span.attributes[SpanAttributes.RPC_SYSTEM])
+        self.assertEqual(operation, span.attributes[RPC_METHOD])
+        self.assertEqual("Lambda", span.attributes[RPC_SERVICE])
+        self.assertEqual("aws-api", span.attributes[RPC_SYSTEM])
         return span
 
     def assert_invoke_span(self, function_name: str) -> Span:
         span = self.assert_span("Invoke")
-        self.assertEqual(
-            "aws", span.attributes[SpanAttributes.FAAS_INVOKED_PROVIDER]
-        )
-        self.assertEqual(
-            self.region, span.attributes[SpanAttributes.FAAS_INVOKED_REGION]
-        )
-        self.assertEqual(
-            function_name, span.attributes[SpanAttributes.FAAS_INVOKED_NAME]
-        )
+        self.assertEqual("aws", span.attributes[FAAS_INVOKED_PROVIDER])
+        self.assertEqual(self.region, span.attributes[FAAS_INVOKED_REGION])
+        self.assertEqual(function_name, span.attributes[FAAS_INVOKED_NAME])
         return span
 
     @staticmethod
@@ -182,6 +185,4 @@ class TestLambdaExtension(TestBase):
                 attributes = {}
                 extension.extract_attributes(attributes)
 
-                self.assertEqual(
-                    function_name, attributes[SpanAttributes.FAAS_INVOKED_NAME]
-                )
+                self.assertEqual(function_name, attributes[FAAS_INVOKED_NAME])
