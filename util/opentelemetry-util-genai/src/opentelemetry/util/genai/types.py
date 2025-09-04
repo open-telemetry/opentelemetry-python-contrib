@@ -14,22 +14,34 @@
 
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Literal, Optional, Union
+
+
+class ContentCapturingMode(Enum):
+    # Do not capture content (default).
+    NO_CONTENT = 0
+    # Only capture content in spans.
+    SPAN_ONLY = 1
+    # Only capture content in events.
+    EVENT_ONLY = 2
+    # Capture content in both spans and events.
+    SPAN_AND_EVENT = 3
 
 
 @dataclass()
 class ToolCall:
-    type: Literal["tool_call"] = "tool_call"
     arguments: Any
     name: str
     id: Optional[str]
+    type: Literal["tool_call"] = "tool_call"
 
 
 @dataclass()
 class ToolCallResponse:
-    type: Literal["tool_call_response"] = "tool_call_response"
     response: Any
     id: Optional[str]
+    type: Literal["tool_call_response"] = "tool_call_response"
 
 
 FinishReason = Literal[
@@ -39,8 +51,8 @@ FinishReason = Literal[
 
 @dataclass()
 class Text:
-    type: Literal["text"] = "text"
     content: str
+    type: Literal["text"] = "text"
 
 
 MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
