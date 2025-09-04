@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 - `opentelemetry-instrumentation`: add support for  `OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH` to inform opentelemetry-instrument about gevent monkeypatching
   ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
+- `opentelemetry-instrumentation`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-django`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-asgi`: Add Labeler utility. Add FalconInstrumentor, FlaskInstrumentor, DjangoInstrumentor, WsgiInstrumentor, AsgiInstrumentor support of custom attributes merging for HTTP duration metrics.
+  ([#3689](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3689))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
