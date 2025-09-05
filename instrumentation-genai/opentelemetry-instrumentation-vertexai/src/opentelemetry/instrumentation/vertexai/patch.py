@@ -20,12 +20,20 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Literal,
     MutableSequence,
+    Union,
+    cast,
+    overload,
 )
 
 from opentelemetry._events import EventLogger
+from opentelemetry.instrumentation._semconv import (
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
+    create_operation_details_event,
     get_genai_request_attributes,
     get_genai_response_attributes,
     get_server_attributes,
@@ -34,6 +42,7 @@ from opentelemetry.instrumentation.vertexai.utils import (
     response_to_events,
 )
 from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.util.genai.types import ContentCapturingMode
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.services.prediction_service import client
@@ -90,16 +99,51 @@ def _extract_params(
 
 
 class MethodWrappers:
+    @overload
     def __init__(
-        self, tracer: Tracer, event_logger: EventLogger, capture_content: bool
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: ContentCapturingMode,
+        sem_conv_opt_in_mode: Literal[
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ],
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: bool,
+        sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT],
+    ) -> None: ...
+
+    def __init__(
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: Union[bool, ContentCapturingMode],
+        sem_conv_opt_in_mode: Union[
+            Literal[_StabilityMode.DEFAULT],
+            Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+        ],
     ) -> None:
         self.tracer = tracer
         self.event_logger = event_logger
         self.capture_content = capture_content
+        self.sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
+    #   Deprecations:
+    #   - `gen_ai.system.message` event - use `gen_ai.system_instructions` or
+    #     `gen_ai.input.messages` attributes instead.
+    #   - `gen_ai.user.message`, `gen_ai.assistant.message`, `gen_ai.tool.message` events
+    #     (use `gen_ai.input.messages` attribute instead)
+    #   - `gen_ai.choice` event (use `gen_ai.output.messages` attribute instead)
     @contextmanager
-    def _with_instrumentation(
+    def _with_new_instrumentation(
         self,
+        capture_content: ContentCapturingMode,
         instance: client.PredictionServiceClient
         | client_v1beta1.PredictionServiceClient,
         args: Any,
@@ -108,7 +152,54 @@ class MethodWrappers:
         params = _extract_params(*args, **kwargs)
         api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
         span_attributes = {
-            **get_genai_request_attributes(params),
+            **get_genai_request_attributes(False, params),
+            **get_server_attributes(api_endpoint),
+        }
+
+        span_name = get_span_name(span_attributes)
+
+        with self.tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+        ) as span:
+
+            def handle_response(
+                response: prediction_service.GenerateContentResponse
+                | prediction_service_v1beta1.GenerateContentResponse,
+            ) -> None:
+                if span.is_recording():
+                    # When streaming, this is called multiple times so attributes would be
+                    # overwritten. In practice, it looks the API only returns the interesting
+                    # attributes on the last streamed response. However, I couldn't find
+                    # documentation for this and setting attributes shouldn't be too expensive.
+                    span.set_attributes(
+                        get_genai_response_attributes(response)
+                    )
+                self.event_logger.emit(
+                    create_operation_details_event(
+                        api_endpoint=api_endpoint,
+                        params=params,
+                        capture_content=capture_content,
+                        response=response,
+                    )
+                )
+
+            yield handle_response
+
+    @contextmanager
+    def _with_default_instrumentation(
+        self,
+        capture_content: bool,
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
+        args: Any,
+        kwargs: Any,
+    ):
+        params = _extract_params(*args, **kwargs)
+        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+        span_attributes = {
+            **get_genai_request_attributes(False, params),
             **get_server_attributes(api_endpoint),
         }
 
@@ -120,7 +211,7 @@ class MethodWrappers:
             attributes=span_attributes,
         ) as span:
             for event in request_to_events(
-                params=params, capture_content=self.capture_content
+                params=params, capture_content=capture_content
             ):
                 self.event_logger.emit(event)
 
@@ -141,7 +232,7 @@ class MethodWrappers:
                     )
 
                 for event in response_to_events(
-                    response=response, capture_content=self.capture_content
+                    response=response, capture_content=capture_content
                 ):
                     self.event_logger.emit(event)
 
@@ -162,12 +253,34 @@ class MethodWrappers:
         prediction_service.GenerateContentResponse
         | prediction_service_v1beta1.GenerateContentResponse
     ):
-        with self._with_instrumentation(
-            instance, args, kwargs
-        ) as handle_response:
-            response = wrapped(*args, **kwargs)
-            handle_response(response)
-            return response
+        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            capture_content_bool = cast(bool, self.capture_content)
+            with self._with_default_instrumentation(
+                capture_content_bool, instance, args, kwargs
+            ) as handle_response:
+                response = wrapped(*args, **kwargs)
+                handle_response(response)
+                return response
+        else:
+            capture_content = cast(ContentCapturingMode, self.capture_content)
+            with self._with_new_instrumentation(
+                capture_content, instance, args, kwargs
+            ) as handle_response:
+                try:
+                    response = wrapped(*args, **kwargs)
+                except Exception as e:
+                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+                    self.event_logger.emit(
+                        create_operation_details_event(
+                            params=_extract_params(*args, **kwargs),
+                            response=None,
+                            capture_content=capture_content,
+                            api_endpoint=api_endpoint,
+                        )
+                    )
+                    raise e
+                handle_response(response)
+                return response
 
     async def agenerate_content(
         self,
@@ -186,9 +299,31 @@ class MethodWrappers:
         prediction_service.GenerateContentResponse
         | prediction_service_v1beta1.GenerateContentResponse
     ):
-        with self._with_instrumentation(
-            instance, args, kwargs
-        ) as handle_response:
-            response = await wrapped(*args, **kwargs)
-            handle_response(response)
-            return response
+        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            capture_content_bool = cast(bool, self.capture_content)
+            with self._with_default_instrumentation(
+                capture_content_bool, instance, args, kwargs
+            ) as handle_response:
+                response = await wrapped(*args, **kwargs)
+                handle_response(response)
+                return response
+        else:
+            capture_content = cast(ContentCapturingMode, self.capture_content)
+            with self._with_new_instrumentation(
+                capture_content, instance, args, kwargs
+            ) as handle_response:
+                try:
+                    response = await wrapped(*args, **kwargs)
+                except Exception as e:
+                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+                    self.event_logger.emit(
+                        create_operation_details_event(
+                            params=_extract_params(*args, **kwargs),
+                            response=None,
+                            capture_content=capture_content,
+                            api_endpoint=api_endpoint,
+                        )
+                    )
+                    raise e
+                handle_response(response)
+                return response
