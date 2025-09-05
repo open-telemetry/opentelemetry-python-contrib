@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from opentelemetry.context import Context, get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -32,7 +31,6 @@ __all__ = ["_SpanManager"]
 @dataclass
 class _SpanState:
     span: Span
-    context: Context
     children: List[UUID] = field(default_factory=list)
 
 
@@ -44,6 +42,7 @@ class _SpanManager:
         self._tracer = tracer
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
+        # TODO: Use weak references or a TTL cache to avoid memory leaks in long-running processes. See #3735
         self.spans: Dict[UUID, _SpanState] = {}
 
     def _create_span(
@@ -64,8 +63,9 @@ class _SpanManager:
         else:
             # top-level or missing parent
             span = self._tracer.start_span(name=span_name, kind=kind)
+            set_span_in_context(span)
 
-        span_state = _SpanState(span=span, context=get_current())
+        span_state = _SpanState(span=span)
         self.spans[run_id] = span_state
 
         return span
