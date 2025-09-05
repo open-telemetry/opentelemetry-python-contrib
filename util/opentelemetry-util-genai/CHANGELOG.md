@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Repurpose the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable when GEN AI stability mode is set to `gen_ai_latest_experimental`,
+to take on an enum (`NO_CONTENT/SPAN_ONLY/EVENT_ONLY/SPAN_AND_EVENT`) instead of a boolean. Add a utility function to help parse this environment variable.
+
 ### Added
 
 - Generate Spans for LLM invocations
 - Generate Metrics for LLM invocations
 - Generate Logs for LLM invocations
 - Helper functions for starting and finishing LLM invocations
-
-
