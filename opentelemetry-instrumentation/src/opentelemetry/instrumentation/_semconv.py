@@ -174,7 +174,7 @@ class _StabilityMode(Enum):
     HTTP_DUP = "http/dup"
     DATABASE = "database"
     DATABASE_DUP = "database/dup"
-    GEN_AI_LATEST = "gen_ai_latest_experimental"
+    GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
 
 
 def _report_new(mode: _StabilityMode):
@@ -219,20 +219,20 @@ class _OpenTelemetrySemanticConventionStability:
             )
 
             cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.DEFAULT,
+                _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+            )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                 _OpenTelemetryStabilitySignalType.DATABASE
             ] = cls._filter_mode(
                 opt_in_list,
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
-            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
-                _OpenTelemetryStabilitySignalType.GEN_AI
-            ] = cls._filter_mode(
-                opt_in_list,
-                _StabilityMode.DEFAULT,
-                _StabilityMode.GEN_AI_LATEST,
-            )
-
             cls._initialized = True
 
     @staticmethod
