@@ -130,7 +130,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def on_llm_end(
         self,
-        response: LLMResult,  # type: ignore
+        response: LLMResult,  # type: ignore [reportUnknownParameterType]
         *,
         run_id: UUID,
         parent_run_id: UUID | None,
