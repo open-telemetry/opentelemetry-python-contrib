@@ -21,6 +21,9 @@ from botocore.awsrequest import AWSResponse
 from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.semconv._incubating.attributes.aws_attributes import (
+    AWS_SNS_TOPIC_ARN,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
@@ -151,6 +154,10 @@ class TestSnsExtension(TestBase):
         )
 
         span = self.assert_span(f"{self.topic_name} send")
+        self.assertEqual(
+            topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )
         self.assert_injected_span(message_attrs, span)
 
     def test_publish_batch_to_topic(self):
@@ -190,6 +197,10 @@ class TestSnsExtension(TestBase):
         )
         self.assertEqual(
             topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )
+        self.assertEqual(
+            topic_arn,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
         self.assertEqual(
@@ -199,3 +210,16 @@ class TestSnsExtension(TestBase):
 
         self.assert_injected_span(message1_attrs, span)
         self.assert_injected_span(message2_attrs, span)
+
+    @mock_aws
+    def test_create_topic_span(self):
+        _ = self.client.create_topic(Name=self.topic_name)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertEqual(SpanKind.CLIENT, span.kind)
+        self.assertEqual("SNS.CreateTopic", span.name)
+        self.assertEqual(
+            self.topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )
