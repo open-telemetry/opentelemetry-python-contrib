@@ -140,7 +140,6 @@ class MethodWrappers:
     #   - `gen_ai.user.message`, `gen_ai.assistant.message`, `gen_ai.tool.message` events
     #     (use `gen_ai.input.messages` attribute instead)
     #   - `gen_ai.choice` event (use `gen_ai.output.messages` attribute instead)
-
     @contextmanager
     def _with_new_instrumentation(
         self,
