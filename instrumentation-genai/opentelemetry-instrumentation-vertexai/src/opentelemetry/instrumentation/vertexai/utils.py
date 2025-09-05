@@ -21,24 +21,25 @@ from dataclasses import asdict, dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
-    Any,
     Iterable,
     Literal,
     Mapping,
-    Optional,
     Sequence,
     Union,
     cast,
+    overload,
 )
 from urllib.parse import urlparse
 
 from google.protobuf import json_format
 
 from opentelemetry._events import Event
+from opentelemetry.instrumentation._semconv import (
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.vertexai.events import (
     ChoiceMessage,
     ChoiceToolCall,
-    FinishReason,
     assistant_event,
     choice_event,
     system_event,
@@ -49,6 +50,17 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv.attributes import server_attributes
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    FinishReason,
+    InputMessage,
+    MessagePart,
+    OutputMessage,
+    Text,
+    ToolCall,
+    ToolCallResponse,
+)
+from opentelemetry.util.genai.utils import get_content_capturing_mode
 from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
@@ -69,43 +81,6 @@ if TYPE_CHECKING:
 
 
 _MODEL = "model"
-
-
-@dataclass(frozen=True)
-class ToolCall:
-    type: Literal["tool_call"]
-    arguments: Any
-    name: str
-    id: Optional[str]
-
-
-@dataclass(frozen=True)
-class ToolCallResponse:
-    type: Literal["tool_call_response"]
-    response: Any
-    id: Optional[str]
-
-
-@dataclass(frozen=True)
-class TextPart:
-    type: Literal["text"]
-    content: str
-
-
-MessagePart = Union[TextPart, ToolCall, ToolCallResponse, Any]
-
-
-@dataclass()
-class InputMessage:
-    role: str
-    parts: list[MessagePart]
-
-
-@dataclass()
-class OutputMessage:
-    role: str
-    parts: list[MessagePart]
-    finish_reason: Union[str, FinishReason]
 
 
 @dataclass(frozen=True)
@@ -245,12 +220,29 @@ OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
 )
 
 
-def is_content_enabled() -> bool:
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
+@overload
+def is_content_enabled(
+    mode: Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+) -> ContentCapturingMode: ...
 
-    return capture_content.lower() == "true"
+
+@overload
+def is_content_enabled(mode: Literal[_StabilityMode.DEFAULT]) -> bool: ...
+
+
+def is_content_enabled(
+    mode: Union[
+        Literal[_StabilityMode.DEFAULT],
+        Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+    ],
+) -> Union[bool, ContentCapturingMode]:
+    if mode == _StabilityMode.DEFAULT:
+        capture_content = environ.get(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+        )
+
+        return capture_content.lower() == "true"
+    return get_content_capturing_mode()
 
 
 def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
@@ -322,7 +314,7 @@ def create_operation_details_event(
     | prediction_service_v1beta1.GenerateContentResponse
     | None,
     params: GenerateContentParams,
-    capture_content: bool,
+    capture_content: ContentCapturingMode,
 ) -> Event:
     event = Event(name="gen_ai.client.inference.operation.details")
     attributes: dict[str, AnyValue] = {
@@ -331,7 +323,10 @@ def create_operation_details_event(
         **(get_genai_response_attributes(response) if response else {}),
     }
     event.attributes = attributes
-    if not capture_content:
+    if capture_content in {
+        ContentCapturingMode.NO_CONTENT,
+        ContentCapturingMode.SPAN_ONLY,
+    }:
         return event
     if params.system_instruction:
         attributes["gen_ai.system_instructions"] = [
@@ -381,7 +376,6 @@ def _convert_content_to_message(
             part = part.function_response
             parts.append(
                 ToolCallResponse(
-                    type="tool_call_response",
                     id=f"{part.name}_{idx}",
                     response=json_format.MessageToDict(part._pb.response),  # type: ignore[reportUnknownMemberType]
                 )
@@ -390,7 +384,6 @@ def _convert_content_to_message(
             part = part.function_call
             parts.append(
                 ToolCall(
-                    type="tool_call",
                     id=f"{part.name}_{idx}",
                     name=part.name,
                     arguments=json_format.MessageToDict(
@@ -399,7 +392,7 @@ def _convert_content_to_message(
                 )
             )
         elif "text" in part:
-            parts.append(TextPart(type="text", content=part.text))
+            parts.append(Text(content=part.text))
         else:
             dict_part = type(part).to_dict(  # type: ignore[reportUnknownMemberType]
                 part, always_print_fields_with_no_presence=False

@@ -20,7 +20,11 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Literal,
     MutableSequence,
+    Union,
+    cast,
+    overload,
 )
 
 from opentelemetry._events import EventLogger
@@ -38,6 +42,7 @@ from opentelemetry.instrumentation.vertexai.utils import (
     response_to_events,
 )
 from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.util.genai.types import ContentCapturingMode
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.services.prediction_service import client
@@ -94,12 +99,35 @@ def _extract_params(
 
 
 class MethodWrappers:
+    @overload
+    def __init__(
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: ContentCapturingMode,
+        sem_conv_opt_in_mode: Literal[
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ],
+    ) -> None: ...
+
+    @overload
     def __init__(
         self,
         tracer: Tracer,
         event_logger: EventLogger,
         capture_content: bool,
-        sem_conv_opt_in_mode: _StabilityMode,
+        sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT],
+    ) -> None: ...
+
+    def __init__(
+        self,
+        tracer: Tracer,
+        event_logger: EventLogger,
+        capture_content: Union[bool, ContentCapturingMode],
+        sem_conv_opt_in_mode: Union[
+            Literal[_StabilityMode.DEFAULT],
+            Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+        ],
     ) -> None:
         self.tracer = tracer
         self.event_logger = event_logger
@@ -116,6 +144,7 @@ class MethodWrappers:
     @contextmanager
     def _with_new_instrumentation(
         self,
+        capture_content: ContentCapturingMode,
         instance: client.PredictionServiceClient
         | client_v1beta1.PredictionServiceClient,
         args: Any,
@@ -152,7 +181,7 @@ class MethodWrappers:
                     create_operation_details_event(
                         api_endpoint=api_endpoint,
                         params=params,
-                        capture_content=self.capture_content,
+                        capture_content=capture_content,
                         response=response,
                     )
                 )
@@ -162,6 +191,7 @@ class MethodWrappers:
     @contextmanager
     def _with_default_instrumentation(
         self,
+        capture_content: bool,
         instance: client.PredictionServiceClient
         | client_v1beta1.PredictionServiceClient,
         args: Any,
@@ -182,7 +212,7 @@ class MethodWrappers:
             attributes=span_attributes,
         ) as span:
             for event in request_to_events(
-                params=params, capture_content=self.capture_content
+                params=params, capture_content=capture_content
             ):
                 self.event_logger.emit(event)
 
@@ -203,7 +233,7 @@ class MethodWrappers:
                     )
 
                 for event in response_to_events(
-                    response=response, capture_content=self.capture_content
+                    response=response, capture_content=capture_content
                 ):
                     self.event_logger.emit(event)
 
@@ -225,15 +255,17 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            capture_content_bool = cast(bool, self.capture_content)
             with self._with_default_instrumentation(
-                instance, args, kwargs
+                capture_content_bool, instance, args, kwargs
             ) as handle_response:
                 response = wrapped(*args, **kwargs)
                 handle_response(response)
                 return response
         else:
+            capture_content = cast(ContentCapturingMode, self.capture_content)
             with self._with_new_instrumentation(
-                instance, args, kwargs
+                capture_content, instance, args, kwargs
             ) as handle_response:
                 try:
                     response = wrapped(*args, **kwargs)
@@ -243,7 +275,7 @@ class MethodWrappers:
                         create_operation_details_event(
                             params=_extract_params(*args, **kwargs),
                             response=None,
-                            capture_content=self.capture_content,
+                            capture_content=capture_content,
                             api_endpoint=api_endpoint,
                         )
                     )
@@ -269,15 +301,17 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            capture_content_bool = cast(bool, self.capture_content)
             with self._with_default_instrumentation(
-                instance, args, kwargs
+                capture_content_bool, instance, args, kwargs
             ) as handle_response:
                 response = await wrapped(*args, **kwargs)
                 handle_response(response)
                 return response
         else:
+            capture_content = cast(ContentCapturingMode, self.capture_content)
             with self._with_new_instrumentation(
-                instance, args, kwargs
+                capture_content, instance, args, kwargs
             ) as handle_response:
                 try:
                     response = await wrapped(*args, **kwargs)
@@ -287,7 +321,7 @@ class MethodWrappers:
                         create_operation_details_event(
                             params=_extract_params(*args, **kwargs),
                             response=None,
-                            capture_content=self.capture_content,
+                            capture_content=capture_content,
                             api_endpoint=api_endpoint,
                         )
                     )
