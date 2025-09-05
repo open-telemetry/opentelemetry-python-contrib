@@ -86,9 +86,12 @@ def _message_to_log_record(
     - event_name: mirrors the event name for SDK consumers
     """
 
-    body = {}
-    if capture_content:
-        body = asdict(message)
+    body = asdict(message)
+    if not capture_content and body and body.get("parts"):
+        # TODO: use utils env check, flag off which content to capture
+        for part in body.get("parts"):
+            if part.get("content"):
+                part["content"] = ""
 
     attributes: Dict[str, Any] = {
         # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
@@ -100,7 +103,7 @@ def _message_to_log_record(
     }
 
     if capture_content:  # TODO: Use utils env check
-        attributes["gen_ai.input.messages"] = asdict(message)
+        attributes["gen_ai.input.messages"] = body
 
     return SDKLogRecord(
         body=body or None,

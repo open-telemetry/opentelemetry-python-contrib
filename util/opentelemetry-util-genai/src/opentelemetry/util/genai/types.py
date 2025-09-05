@@ -90,7 +90,6 @@ class LLMInvocation:
     trace_id: int = 0
 
 
-# TODO: Do we need this?
 @dataclass
 class Error:
     message: str
