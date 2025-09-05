@@ -19,7 +19,7 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from .data import ChatGeneration, Message
+from .data import ChatGeneration
 
 
 class ContentCapturingMode(Enum):
@@ -85,7 +85,7 @@ class LLMInvocation:
     parent_run_id: Optional[UUID] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
-    messages: List[Message] = field(default_factory=list)
+    messages: List[InputMessage] = field(default_factory=list)
     chat_generations: List[ChatGeneration] = field(default_factory=list)
     attributes: Dict[str, Any] = field(default_factory=dict)
     span_id: int = 0

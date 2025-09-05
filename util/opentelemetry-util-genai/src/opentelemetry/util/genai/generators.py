@@ -33,8 +33,8 @@ Functions:
 """
 
 import json
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, cast
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from opentelemetry import trace
@@ -58,9 +58,9 @@ from opentelemetry.trace import (
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
-from .data import ChatGeneration, Error, Message, OtelMessage
+from .data import ChatGeneration, Error
 from .instruments import Instruments
-from .types import LLMInvocation
+from .types import InputMessage, LLMInvocation
 
 
 @dataclass
@@ -73,16 +73,8 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-def _get_property_value(obj: Any, property_name: str) -> Any:
-    if isinstance(obj, Mapping):
-        mapping = cast(Mapping[str, Any], obj)
-        return mapping.get(property_name)
-
-    return cast(Any, getattr(obj, property_name, None))
-
-
 def _message_to_log_record(
-    message: Message,
+    message: InputMessage,
     provider_name: Optional[str],
     framework: Optional[str],
     capture_content: bool,
@@ -94,12 +86,10 @@ def _message_to_log_record(
     - attributes: includes semconv fields and attributes["event.name"]
     - event_name: mirrors the event name for SDK consumers
     """
-    content = _get_property_value(message, "content")
-    message_type = _get_property_value(message, "type")
 
     body = {}
-    if content and capture_content:
-        body = {"type": message_type, "content": content}
+    if capture_content:
+        body = asdict(message)
 
     attributes: Dict[str, Any] = {
         # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
@@ -110,8 +100,8 @@ def _message_to_log_record(
         "event.name": "gen_ai.client.inference.operation.details",
     }
 
-    if capture_content:
-        attributes["gen_ai.input.messages"] = [message._to_semconv_dict()]
+    if capture_content:  # TODO: Use utils env check
+        attributes["gen_ai.input.messages"] = asdict(message)
 
     return SDKLogRecord(
         body=body or None,
@@ -258,13 +248,13 @@ def _collect_finish_reasons(generations: List[ChatGeneration]) -> List[str]:
 
 
 def _maybe_set_input_messages(
-    span: Span, messages: List[Message], capture: bool
+    span: Span, messages: List[InputMessage], capture: bool
 ) -> None:
     if not capture:
         return
-    message_parts: List[OtelMessage] = []
-    for message in messages:
-        message_parts.append(message._to_semconv_dict())
+    message_parts: List[Dict[str, Any]] = [
+        asdict(message) for message in messages
+    ]
     if message_parts:
         span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
 

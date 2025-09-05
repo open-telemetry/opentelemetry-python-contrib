@@ -45,9 +45,9 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
-from .data import ChatGeneration, Error, Message
+from .data import ChatGeneration, Error
 from .generators import SpanMetricEventGenerator, SpanMetricGenerator
-from .types import LLMInvocation
+from .types import InputMessage, LLMInvocation
 
 # TODO: Get the tool version for emitting spans, use GenAI Utils for now
 from .version import __version__
@@ -112,11 +112,17 @@ class TelemetryHandler:
 
     @staticmethod
     def _should_collect_content() -> bool:
+        # TODO: Get the content capturing mode from the environment variable
+        # from .utils import get_content_capturing_mode
+        # from opentelemetry.instrumentation._semconv import (
+        #     OTEL_SEMCONV_STABILITY_OPT_IN,
+        #     _OpenTelemetrySemanticConventionStability,
+        # )
         return True  # Placeholder for future config
 
     def start_llm(
         self,
-        prompts: List[Message],
+        prompts: List[InputMessage],
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
         **attributes: Any,
@@ -172,7 +178,7 @@ def get_telemetry_handler(
 
 # Module‐level convenience functions
 def llm_start(
-    prompts: List[Message],
+    prompts: List[InputMessage],
     run_id: UUID,
     parent_run_id: Optional[UUID] = None,
     **attributes: Any,
