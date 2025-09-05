@@ -375,7 +375,9 @@ class SpanMetricEventGenerator(BaseTelemetryGenerator):
             child_state = self.spans.get(child_id)
             if child_state:
                 child_state.span.end()
+                # TODO: Clear our cache for child spans
         state.span.end()
+        # TODO: Clear our cache for parent span
 
     def start(self, invocation: LLMInvocation):
         if (
