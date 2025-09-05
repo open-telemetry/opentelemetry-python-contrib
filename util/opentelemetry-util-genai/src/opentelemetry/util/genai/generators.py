@@ -58,9 +58,8 @@ from opentelemetry.trace import (
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
-from .data import ChatGeneration, Error
 from .instruments import Instruments
-from .types import InputMessage, LLMInvocation
+from .types import Error, InputMessage, LLMInvocation, OutputMessage, Text
 
 
 @dataclass
@@ -111,7 +110,7 @@ def _message_to_log_record(
 
 
 def _chat_generation_to_log_record(
-    chat_generation: ChatGeneration,
+    chat_generation: OutputMessage,
     index: int,
     provider_name: Optional[str],
     framework: Optional[str],
@@ -133,11 +132,18 @@ def _chat_generation_to_log_record(
         "event.name": "gen_ai.choice",
     }
 
+    # Extract message content from parts (first Text part if available)
+    # TODO: use dataclass to dict
+    content: Optional[str] = None
+    for part in chat_generation.parts:
+        if isinstance(part, Text):
+            content = part.content
+            break
     message = {
-        "type": chat_generation.type,
+        "type": chat_generation.role,
     }
-    if capture_content and chat_generation.content:
-        message["content"] = chat_generation.content
+    if capture_content and content is not None:
+        message["content"] = content
 
     body = {
         "index": index,
@@ -218,7 +224,7 @@ def _set_response_and_usage_attributes(
 
 def _emit_chat_generation_logs(
     logger: Optional[Logger],
-    generations: List[ChatGeneration],
+    generations: List[OutputMessage],
     provider_name: Optional[str],
     framework: Optional[str],
     capture_content: bool,
@@ -234,16 +240,14 @@ def _emit_chat_generation_logs(
         )
         if log and logger:
             logger.emit(log)
-        if chat_generation.finish_reason is not None:
-            finish_reasons.append(chat_generation.finish_reason)
+        finish_reasons.append(chat_generation.finish_reason)
     return finish_reasons
 
 
-def _collect_finish_reasons(generations: List[ChatGeneration]) -> List[str]:
+def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     finish_reasons: List[str] = []
     for gen in generations:
-        if gen.finish_reason is not None:
-            finish_reasons.append(gen.finish_reason)
+        finish_reasons.append(gen.finish_reason)
     return finish_reasons
 
 
@@ -260,15 +264,20 @@ def _maybe_set_input_messages(
 
 
 def _set_chat_generation_attrs(
-    span: Span, generations: List[ChatGeneration]
+    span: Span, generations: List[OutputMessage]
 ) -> None:
     for index, chat_generation in enumerate(generations):
+        # Extract content
+        # TODO: use dataclass to dict - Handle multiple responses
+        content: Optional[str] = None
+        for part in chat_generation.parts:
+            if isinstance(part, Text):
+                content = part.content
+                break
         # Upcoming semconv fields
+        span.set_attribute(f"gen_ai.completion.{index}.content", content or "")
         span.set_attribute(
-            f"gen_ai.completion.{index}.content", chat_generation.content
-        )
-        span.set_attribute(
-            f"gen_ai.completion.{index}.role", chat_generation.type
+            f"gen_ai.completion.{index}.role", chat_generation.role
         )
 
 

@@ -45,9 +45,8 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
-from .data import ChatGeneration, Error
 from .generators import SpanMetricEventGenerator, SpanMetricGenerator
-from .types import InputMessage, LLMInvocation
+from .types import Error, InputMessage, LLMInvocation, OutputMessage
 
 # TODO: Get the tool version for emitting spans, use GenAI Utils for now
 from .version import __version__
@@ -140,7 +139,7 @@ class TelemetryHandler:
     def stop_llm(
         self,
         run_id: UUID,
-        chat_generations: List[ChatGeneration],
+        chat_generations: List[OutputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
         with self._lock:
@@ -192,7 +191,7 @@ def llm_start(
 
 
 def llm_stop(
-    run_id: UUID, chat_generations: List[ChatGeneration], **attributes: Any
+    run_id: UUID, chat_generations: List[OutputMessage], **attributes: Any
 ) -> LLMInvocation:
     return get_telemetry_handler().stop_llm(
         run_id=run_id, chat_generations=chat_generations, **attributes

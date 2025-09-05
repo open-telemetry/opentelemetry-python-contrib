@@ -16,10 +16,8 @@
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID
-
-from .data import ChatGeneration
 
 
 class ContentCapturingMode(Enum):
@@ -86,7 +84,14 @@ class LLMInvocation:
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     messages: List[InputMessage] = field(default_factory=list)
-    chat_generations: List[ChatGeneration] = field(default_factory=list)
+    chat_generations: List[OutputMessage] = field(default_factory=list)
     attributes: Dict[str, Any] = field(default_factory=dict)
     span_id: int = 0
     trace_id: int = 0
+
+
+# TODO: Do we need this?
+@dataclass
+class Error:
+    message: str
+    type: Type[BaseException]

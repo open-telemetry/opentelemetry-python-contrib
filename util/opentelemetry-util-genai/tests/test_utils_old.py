@@ -17,7 +17,11 @@ from opentelemetry.util.genai.handler import (
     llm_start,
     llm_stop,
 )
-from opentelemetry.util.genai.types import ChatGeneration, InputMessage, Text
+from opentelemetry.util.genai.types import (
+    InputMessage,
+    OutputMessage,
+    Text,
+)
 
 
 class TestTelemetryHandler(unittest.TestCase):
@@ -42,7 +46,9 @@ class TestTelemetryHandler(unittest.TestCase):
         message = InputMessage(
             role="Human", parts=[Text(content="hello world")]
         )
-        chat_generation = ChatGeneration(content="hello back", type="AI")
+        chat_generation = OutputMessage(
+            role="AI", parts=[Text(content="hello back")], finish_reason="stop"
+        )
 
         # Start and stop LLM invocation
         llm_start(
@@ -98,9 +104,9 @@ class TestTelemetryHandler(unittest.TestCase):
         message = InputMessage(
             role="user", parts=[Text(content="hello world")]
         )
-        generation = ChatGeneration(
-            content="hello back",
-            type="assistant",
+        generation = OutputMessage(
+            role="assistant",
+            parts=[Text(content="hello back")],
             finish_reason="stop",
         )
 
