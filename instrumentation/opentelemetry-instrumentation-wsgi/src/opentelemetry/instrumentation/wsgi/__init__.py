@@ -705,16 +705,13 @@ class OpenTelemetryMiddleware:
                     self._sem_conv_opt_in_mode,
                 )
                 iterable = self.wsgi(environ, start_response)
-                return _end_span_after_iterating(iterable, span, token)
+                return _iterate_and_close_with_span(iterable, span, token)
         except Exception as ex:
             if _report_new(self._sem_conv_opt_in_mode):
                 req_attrs[ERROR_TYPE] = type(ex).__qualname__
                 if span.is_recording():
                     span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
-            span.end()
-            if token is not None:
-                context.detach(token)
             raise
         finally:
             duration_s = default_timer() - start
@@ -733,13 +730,16 @@ class OpenTelemetryMiddleware:
                     max(duration_s, 0), duration_attrs_new
                 )
             self.active_requests_counter.add(-1, active_requests_count_attrs)
+            span.end()
+            if token is not None:
+                context.detach(token)
 
 
 # Put this in a subfunction to not delay the call to the wrapped
 # WSGI application (instrumentation should change the application
 # behavior as little as possible).
-def _end_span_after_iterating(
-    iterable: Iterable[T], span: trace.Span, token: object
+def _iterate_and_close_with_span(
+    iterable: Iterable[T], span: trace.Span
 ) -> Iterable[T]:
     try:
         with trace.use_span(span):
@@ -748,9 +748,6 @@ def _end_span_after_iterating(
         close = getattr(iterable, "close", None)
         if close:
             close()
-        span.end()
-        if token is not None:
-            context.detach(token)
 
 
 # TODO: inherit from opentelemetry.instrumentation.propagators.Setter
