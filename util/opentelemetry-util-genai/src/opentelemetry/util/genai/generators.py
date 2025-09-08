@@ -291,8 +291,9 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
             self.spans[invocation.run_id] = span_state
             yield span
 
+    @staticmethod
     def _apply_common_span_attributes(
-        self, span: Span, invocation: LLMInvocation
+        span: Span, invocation: LLMInvocation
     ) -> Tuple[
         Dict[str, AttributeValue],
         Optional[AttributeValue],
