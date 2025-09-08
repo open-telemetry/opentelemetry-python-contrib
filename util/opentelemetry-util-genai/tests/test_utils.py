@@ -104,10 +104,7 @@ class TestTelemetryHandler(unittest.TestCase):
         tracer_provider.add_span_processor(
             SimpleSpanProcessor(cls.span_exporter)
         )
-        try:
-            trace.set_tracer_provider(tracer_provider)
-        except Exception:  # pragma: no cover - defensive
-            pass
+        trace.set_tracer_provider(tracer_provider)
 
     def setUp(self):
         self.span_exporter = self.__class__.span_exporter
