@@ -45,7 +45,7 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
-from .generators import SpanMetricGenerator
+from .generators import SpanGenerator
 from .types import Error, InputMessage, LLMInvocation, OutputMessage
 from .version import __version__
 
@@ -90,10 +90,7 @@ class TelemetryHandler:
         )
 
         # TODO: trigger span+metric+event generation based on the full emitter flag
-        self._generator = SpanMetricGenerator(
-            tracer=self._tracer,
-            meter=self._meter,
-        )
+        self._generator = SpanGenerator(tracer=self._tracer)
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
         self._lock = Lock()

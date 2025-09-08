@@ -46,7 +46,6 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
 )
-from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -67,7 +66,6 @@ from opentelemetry.util.genai.utils import (
 )
 from opentelemetry.util.types import AttributeValue
 
-from .instruments import Instruments
 from .types import Error, InputMessage, LLMInvocation, OutputMessage
 
 
@@ -81,7 +79,7 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-def _get_metric_attributes(
+def _get_genai_attributes(
     request_model: Optional[str],
     response_model: Optional[str],
     operation_name: Optional[str],
@@ -202,37 +200,6 @@ def _maybe_set_span_output_messages(
         )
 
 
-def _record_token_metrics(
-    token_histogram: Histogram,
-    prompt_tokens: Optional[AttributeValue],
-    completion_tokens: Optional[AttributeValue],
-    metric_attributes: Dict[str, AttributeValue],
-) -> None:
-    prompt_attrs: Dict[str, AttributeValue] = {
-        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
-    }
-    prompt_attrs.update(metric_attributes)
-    if isinstance(prompt_tokens, (int, float)):
-        token_histogram.record(prompt_tokens, attributes=prompt_attrs)
-
-    completion_attrs: Dict[str, AttributeValue] = {
-        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.COMPLETION.value
-    }
-    completion_attrs.update(metric_attributes)
-    if isinstance(completion_tokens, (int, float)):
-        token_histogram.record(completion_tokens, attributes=completion_attrs)
-
-
-def _record_duration(
-    duration_histogram: Histogram,
-    invocation: LLMInvocation,
-    metric_attributes: Dict[str, AttributeValue],
-) -> None:
-    if invocation.end_time is not None:
-        elapsed: float = invocation.end_time - invocation.start_time
-        duration_histogram.record(elapsed, attributes=metric_attributes)
-
-
 class BaseTelemetryGenerator:
     """
     Abstract base for emitters mapping GenAI types -> OpenTelemetry.
@@ -248,21 +215,16 @@ class BaseTelemetryGenerator:
         raise NotImplementedError
 
 
-class SpanMetricGenerator(BaseTelemetryGenerator):
+class SpanGenerator(BaseTelemetryGenerator):
     """
-    Generates only spans and metrics (no events).
+    Generates only spans.
     """
 
     def __init__(
         self,
         tracer: Optional[Tracer] = None,
-        meter: Optional[Meter] = None,
     ):
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
-        _meter: Meter = meter or get_meter(__name__)
-        instruments = Instruments(_meter)
-        self._duration_histogram = instruments.operation_duration_histogram
-        self._token_histogram = instruments.token_usage_histogram
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
@@ -328,14 +290,10 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
     @staticmethod
     def _apply_common_span_attributes(
         span: Span, invocation: LLMInvocation
-    ) -> Tuple[
-        Dict[str, AttributeValue],
-        Optional[AttributeValue],
-        Optional[AttributeValue],
-    ]:
+    ) -> Tuple[Dict[str, AttributeValue]]:
         """Apply attributes shared by finish() and error() and compute metrics.
 
-        Returns (metric_attributes, prompt_tokens, completion_tokens).
+        Returns (genai_attributes).
         """
         request_model = invocation.attributes.get("request_model")
         system = invocation.attributes.get("system")
@@ -360,50 +318,33 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
             prompt_tokens,
             completion_tokens,
         )
-
-        metric_attributes = _get_metric_attributes(
+        genai_attributes = _get_genai_attributes(
             request_model,
             response_model,
             GenAI.GenAiOperationNameValues.CHAT.value,
             system,
             framework,
         )
-        return metric_attributes, prompt_tokens, completion_tokens
+        return (genai_attributes,)
 
-    def _finalize_invocation(
-        self,
-        invocation: LLMInvocation,
-        metric_attributes: Dict[str, AttributeValue],
-    ) -> None:
+    def _finalize_invocation(self, invocation: LLMInvocation) -> None:
         """End span(s) and record duration for the invocation."""
         self._end_span(invocation.run_id)
-        _record_duration(
-            self._duration_histogram, invocation, metric_attributes
-        )
 
     def finish(self, invocation: LLMInvocation):
         with self._span_for_invocation(invocation) as span:
-            metric_attributes, prompt_tokens, completion_tokens = (
-                self._apply_common_span_attributes(span, invocation)
-            )
+            _ = self._apply_common_span_attributes(
+                span, invocation
+            )  # return value to be used with metrics
             _maybe_set_span_input_messages(span, invocation.messages)
             _maybe_set_span_output_messages(span, invocation.chat_generations)
-            _record_token_metrics(
-                self._token_histogram,
-                prompt_tokens,
-                completion_tokens,
-                metric_attributes,
-            )
-        self._finalize_invocation(invocation, metric_attributes)
+        self._finalize_invocation(invocation)
 
     def error(self, error: Error, invocation: LLMInvocation):
         with self._span_for_invocation(invocation) as span:
-            metric_attributes, _, _ = self._apply_common_span_attributes(
-                span, invocation
-            )
             span.set_status(Status(StatusCode.ERROR, error.message))
             if span.is_recording():
                 span.set_attribute(
                     ErrorAttributes.ERROR_TYPE, error.type.__qualname__
                 )
-        self._finalize_invocation(invocation, metric_attributes)
+        self._finalize_invocation(invocation)

@@ -13,5 +13,4 @@ to take on an enum (`NO_CONTENT/SPAN_ONLY/EVENT_ONLY/SPAN_AND_EVENT`) instead of
 ### Added
 
 - Generate Spans for LLM invocations
-- Generate Metrics for LLM invocations
 - Helper functions for starting and finishing LLM invocations
