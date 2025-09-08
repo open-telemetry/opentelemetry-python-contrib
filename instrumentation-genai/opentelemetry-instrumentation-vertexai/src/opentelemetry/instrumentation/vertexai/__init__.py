@@ -128,22 +128,25 @@ class VertexAIInstrumentor(BaseInstrumentor):
         )
         if sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
             # Type checker now knows sem_conv_opt_in_mode is a Literal[_StabilityMode.DEFAULT]
-            content_enabled = is_content_enabled(sem_conv_opt_in_mode)
+            method_wrappers = MethodWrappers(
+                tracer,
+                event_logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
         elif sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
             # Type checker now knows it's the other literal
-            content_enabled = is_content_enabled(sem_conv_opt_in_mode)
+            method_wrappers = MethodWrappers(
+                tracer,
+                event_logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
         else:
             # Impossible to reach here, only 2 opt-in modes exist for GEN_AI.
             raise ValueError(
                 f"Sem Conv opt in mode {sem_conv_opt_in_mode} not supported."
             )
-
-        method_wrappers = MethodWrappers(
-            tracer,
-            event_logger,
-            content_enabled,
-            sem_conv_opt_in_mode,
-        )
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):
