@@ -122,7 +122,7 @@ class TestTelemetryHandler(unittest.TestCase):
         # Reset to default tracer provider
         trace.set_tracer_provider(trace.NoOpTracerProvider())
 
-    def test_llm_start_and_stop_creates_span(self):
+    def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
         run_id = uuid4()
         message = InputMessage(
             role="Human", parts=[Text(content="hello world")]
@@ -167,7 +167,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert invocation.attributes.get("custom_attr") == "value"
         assert invocation.attributes.get("extra") == "info"
 
-    def test_structured_logs_emitted(self):
+    def test_structured_logs_emitted(self):  # pylint: disable=no-self-use
         # Configure in-memory log exporter and provider
         log_exporter = InMemoryLogExporter()
         logger_provider = LoggerProvider()

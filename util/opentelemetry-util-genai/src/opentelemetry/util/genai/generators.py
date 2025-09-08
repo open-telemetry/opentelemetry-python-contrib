@@ -89,7 +89,7 @@ def _message_to_log_record(
     body = asdict(message)
     if not capture_content and body and body.get("parts"):
         # TODO: use utils env check, flag off which content to capture
-        for part in body.get("parts"):
+        for part in body.get("parts", []):
             if part.get("content"):
                 part["content"] = ""
 
