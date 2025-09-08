@@ -162,15 +162,15 @@ def _should_capture_content(mode: _CaptureTarget) -> bool:
 
     capture_mode = get_content_capturing_mode()
     if mode == _CaptureTarget.SPAN:
-        return (
-            capture_mode == ContentCapturingMode.SPAN_ONLY
-            or capture_mode == ContentCapturingMode.SPAN_AND_EVENT
+        return capture_mode in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
         )
 
     if mode == _CaptureTarget.EVENT:
-        return (
-            capture_mode == ContentCapturingMode.EVENT_ONLY
-            or capture_mode == ContentCapturingMode.SPAN_AND_EVENT
+        return capture_mode in (
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
         )
 
     return False
