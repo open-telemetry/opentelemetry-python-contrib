@@ -451,9 +451,7 @@ def get_host_port_url_tuple(scope):
         host_value = host_header[0]
         # Ensure host_value is a string, not bytes
         if isinstance(host_value, bytes):
-            host_value = _decode_header_item(
-                host_value
-            )
+            host_value = _decode_header_item(host_value)
 
         url_host = host_value
 
