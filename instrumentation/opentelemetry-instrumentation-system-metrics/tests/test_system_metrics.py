@@ -17,7 +17,8 @@
 import sys
 from collections import namedtuple
 from platform import python_implementation
-from unittest import mock, skipIf
+from tempfile import TemporaryDirectory
+from unittest import mock, skipIf, skipUnless
 
 from opentelemetry.instrumentation.system_metrics import (
     _DEFAULT_CONFIG,
@@ -414,6 +415,38 @@ class TestSystemMetrics(TestBase):
             _SystemMetricsResult({"state": "free"}, 2 / 3),
         ]
         self._test_metrics("system.swap.utilization", expected)
+
+    @skipUnless(sys.platform == "linux", "Linux only")
+    def test_system_swap_states_removed_when_vmstat_missing(self):
+        with (
+            self.assertLogs(level="WARNING") as logwatcher,
+            TemporaryDirectory() as tmpdir,
+            mock.patch(
+                target="psutil.PROCFS_PATH",
+                new=tmpdir,
+                create=True,
+            ),
+        ):
+            runtime_config = {
+                "system.swap.usage": ["free", "sin", "sout", "used"],
+                "system.swap.utilization": ["free", "sin", "sout", "used"],
+            }
+
+            runtime_metrics = SystemMetricsInstrumentor(config=runtime_config)
+            runtime_metrics.instrument()
+
+            self.assertEqual(
+                first=len(logwatcher.records),
+                second=1,
+            )
+            self.assertListEqual(
+                list1=runtime_metrics._config["system.swap.usage"],
+                list2=["free", "used"],
+            )
+            self.assertListEqual(
+                list1=runtime_metrics._config["system.swap.utilization"],
+                list2=["free", "used"],
+            )
 
     @mock.patch("psutil.disk_io_counters")
     def test_system_disk_io(self, mock_disk_io_counters):
