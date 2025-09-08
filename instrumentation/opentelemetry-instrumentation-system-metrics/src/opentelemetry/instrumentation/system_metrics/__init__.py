@@ -99,6 +99,7 @@ import logging
 import os
 import sys
 import threading
+from copy import deepcopy
 from platform import python_implementation
 from typing import Any, Collection, Iterable
 
@@ -161,10 +162,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
-        if config is None:
-            self._config = _DEFAULT_CONFIG
-        else:
-            self._config = config
+
+        self._config = deepcopy(_DEFAULT_CONFIG if config is None else config)
         self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
