@@ -39,9 +39,6 @@ from threading import Lock
 from typing import Any, List, Optional
 from uuid import UUID
 
-from opentelemetry._events import get_event_logger
-from opentelemetry._logs import get_logger
-from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
@@ -62,30 +59,6 @@ class TelemetryHandler:
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_36_0.value,
-        )
-
-        meter_provider = kwargs.get("meter_provider")
-        self._meter = get_meter(
-            __name__,
-            __version__,
-            meter_provider,
-            schema_url=Schemas.V1_36_0.value,
-        )
-
-        event_logger_provider = kwargs.get("event_logger_provider")
-        self._event_logger = get_event_logger(
-            __name__,
-            __version__,
-            event_logger_provider=event_logger_provider,
-            schema_url=Schemas.V1_36_0.value,
-        )
-
-        logger_provider = kwargs.get("logger_provider")
-        self._logger = get_logger(
-            __name__,
-            __version__,
-            logger_provider=logger_provider,
             schema_url=Schemas.V1_36_0.value,
         )
 

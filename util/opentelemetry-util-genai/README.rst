@@ -6,6 +6,10 @@ The GenAI Utils package will include boilerplate and helpers to standardize inst
 This package will provide APIs and decorators to minimize the work needed to instrument genai libraries, 
 while providing standardization for generating both types of otel, "spans and metrics" and "spans, metrics and events"
 
+This package relies on environment variables to configure capturing of message content. 
+By default, message content will not be captured.
+Set the environment variable `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to `SPAN_ONLY` or `SPAN_AND_EVENT` to capture message content in spans.
+
 This package provides these span attributes.
 -> gen_ai.provider.name: Str(openai)
 -> gen_ai.operation.name: Str(chat)
