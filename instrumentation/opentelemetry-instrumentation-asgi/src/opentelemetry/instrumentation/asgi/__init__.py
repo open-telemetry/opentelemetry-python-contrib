@@ -453,7 +453,7 @@ def get_host_port_url_tuple(scope):
         if isinstance(host_value, bytes):
             host_value = _decode_header_item(
                 host_value
-            )  # use existing function
+            )
 
         url_host = host_value
 

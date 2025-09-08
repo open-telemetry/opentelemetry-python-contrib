@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
+- `opentelemetry-instrumentation-asgi` Fixed issue where FastAPI reports IP instead of URL.
+  ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 
 ### Added
 
@@ -48,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
 ### Fixed
+
 - `opentelemetry-instrumentation`: Fix dependency conflict detection when instrumented packages are not installed by moving check back to before instrumentors are loaded. Add "instruments-any" feature for instrumentations that target multiple packages.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - infra(ci): Fix git pull failures in core contrib test
