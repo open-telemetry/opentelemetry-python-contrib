@@ -10,8 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
-- `opentelemetry-instrumentation-asgi` Fixed issue where FastAPI reports IP instead of URL.
-  ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 
 ### Fixed
 
@@ -31,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
+- `opentelemetry-instrumentation-asgi` Fixed issue where FastAPI reports IP instead of URL.
+  ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 
 ### Added
 
