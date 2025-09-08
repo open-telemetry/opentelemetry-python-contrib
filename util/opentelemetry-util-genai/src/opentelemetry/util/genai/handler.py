@@ -89,25 +89,14 @@ class TelemetryHandler:
             schema_url=Schemas.V1_36_0.value,
         )
 
-        # TODO: trigger span+metric+event generation based on the content capturing mode
+        # TODO: trigger span+metric+event generation based on the full emitter flag
         self._generator = SpanMetricGenerator(
             tracer=self._tracer,
             meter=self._meter,
-            capture_content=self._should_collect_content(),
         )
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
         self._lock = Lock()
-
-    @staticmethod
-    def _should_collect_content() -> bool:
-        # TODO: Get the content capturing mode from the environment variable
-        # from .utils import get_content_capturing_mode
-        # from opentelemetry.instrumentation._semconv import (
-        #     OTEL_SEMCONV_STABILITY_OPT_IN,
-        #     _OpenTelemetrySemanticConventionStability,
-        # )
-        return True  # Placeholder for future config
 
     def start_llm(
         self,

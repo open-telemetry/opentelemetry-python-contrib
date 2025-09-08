@@ -40,6 +40,11 @@ from uuid import UUID
 
 from opentelemetry import trace
 from opentelemetry.context import Context, get_current
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -55,6 +60,10 @@ from opentelemetry.trace import (
     use_span,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.utils import (
+    ContentCapturingMode,
+    get_content_capturing_mode,
+)
 from opentelemetry.util.types import AttributeValue
 
 from .instruments import Instruments
@@ -79,11 +88,10 @@ def _get_metric_attributes(
     framework: Optional[str],
 ) -> Dict[str, AttributeValue]:
     attributes: Dict[str, AttributeValue] = {}
-    # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
     if framework is not None:
         attributes["gen_ai.framework"] = framework
     if system:
-        attributes["gen_ai.provider.name"] = system
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = system
     if operation_name:
         attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
     if request_model:
@@ -108,9 +116,8 @@ def _set_initial_span_attributes(
     if framework is not None:
         span.set_attribute("gen_ai.framework", framework)
     if system is not None:
-        # Deprecated: use "gen_ai.provider.name"
-        span.set_attribute(GenAI.GEN_AI_SYSTEM, system)
-        span.set_attribute("gen_ai.provider.name", system)
+        # TODO: clean system name to match GenAiProviderNameValues?
+        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, system)
 
 
 def _set_response_and_usage_attributes(
@@ -137,10 +144,21 @@ def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     return finish_reasons
 
 
-def _maybe_set_input_messages(
-    span: Span, messages: List[InputMessage], capture: bool
+def _maybe_set_span_input_messages(
+    span: Span, messages: List[InputMessage]
 ) -> None:
-    if not capture:
+    # if GEN_AI stability mode is DEFAULT, do not capture message content
+    if (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+        )
+        == _StabilityMode.DEFAULT
+    ):
+        return
+    if get_content_capturing_mode() not in (
+        ContentCapturingMode.SPAN_ONLY,
+        ContentCapturingMode.SPAN_AND_EVENT,
+    ):
         return
     message_parts: List[Dict[str, Any]] = [
         asdict(message) for message in messages
@@ -221,14 +239,12 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
         self,
         tracer: Optional[Tracer] = None,
         meter: Optional[Meter] = None,
-        capture_content: bool = False,
     ):
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
         _meter: Meter = meter or get_meter(__name__)
         instruments = Instruments(_meter)
         self._duration_histogram = instruments.operation_duration_histogram
         self._token_histogram = instruments.token_usage_histogram
-        self._capture_content = capture_content
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
@@ -352,9 +368,7 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
             metric_attributes, prompt_tokens, completion_tokens = (
                 self._apply_common_span_attributes(span, invocation)
             )
-            _maybe_set_input_messages(
-                span, invocation.messages, self._capture_content
-            )
+            _maybe_set_span_input_messages(span, invocation.messages)
             _set_chat_generation_attrs(span, invocation.chat_generations)
             _record_token_metrics(
                 self._token_histogram,

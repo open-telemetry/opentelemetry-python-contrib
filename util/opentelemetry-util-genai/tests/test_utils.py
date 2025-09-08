@@ -139,7 +139,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert span.attributes is not None
         span_attrs = span.attributes
         assert span_attrs.get("gen_ai.operation.name") == "chat"
-        assert span_attrs.get("gen_ai.system") == "test-system"
+        assert span_attrs.get("gen_ai.provider.name") == "test-system"
         assert span.start_time is not None
         assert span.end_time is not None
         assert span.end_time > span.start_time
