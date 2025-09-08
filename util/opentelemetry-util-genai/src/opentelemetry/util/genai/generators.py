@@ -13,23 +13,22 @@
 # limitations under the License.
 
 """
-Emitters for GenAI telemetry instrumentation.
+Span generation utilities for GenAI telemetry.
 
-This module defines classes and utilities for mapping GenAI (Generative AI) invocations
-to OpenTelemetry spans, metrics, and events. Emitters manage the lifecycle of telemetry
-data for LLM (Large Language Model) operations, including success and error reporting.
+This module maps GenAI (Generative AI) invocations to OpenTelemetry spans and
+applies GenAI semantic convention attributes.
 
 Classes:
-    BaseEmitter: Abstract base class for GenAI telemetry emitters.
-    SpanMetricEventEmitter: Emits spans, metrics, and events for full telemetry.
-    SpanMetricEmitter: Emits only spans and metrics (no events).
+    - BaseTelemetryGenerator: Abstract base for GenAI telemetry emitters.
+    - SpanGenerator: Concrete implementation that creates and finalizes spans
+      for LLM operations (e.g., chat) and records input/output messages when
+      experimental mode and content capture settings allow.
 
-Functions:
-    _get_property_value: Utility to extract property values from objects or dicts.
-    _message_to_log_record: Converts a GenAI message to an OpenTelemetry LogRecord.
-    _chat_generation_to_log_record: Converts a chat generation to a LogRecord.
-    _get_metric_attributes: Builds metric attributes for telemetry reporting.
-
+Usage:
+    See `opentelemetry/util/genai/handler.py` for `TelemetryHandler`, which
+    constructs `LLMInvocation` objects and delegates to `SpanGenerator.start`,
+    `SpanGenerator.finish`, and `SpanGenerator.error` to produce spans that
+    follow the GenAI semantic conventions.
 """
 
 import json
