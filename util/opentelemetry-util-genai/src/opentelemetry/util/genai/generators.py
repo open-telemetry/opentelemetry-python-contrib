@@ -35,7 +35,6 @@ Functions:
 import json
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -143,41 +142,22 @@ def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     return finish_reasons
 
 
-class _CaptureTarget(Enum):
-    SPAN = "span"
-    EVENT = "event"
-
-
-def _should_capture_content(mode: _CaptureTarget) -> bool:
-    # if GEN_AI stability mode is DEFAULT, do not capture message content
-    if (
+def _is_experimental_mode() -> bool:
+    return (
         _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI,
         )
-        == _StabilityMode.DEFAULT
-    ):
-        return False
-
-    capture_mode = get_content_capturing_mode()
-    if mode == _CaptureTarget.SPAN:
-        return capture_mode in (
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        )
-
-    if mode == _CaptureTarget.EVENT:
-        return capture_mode in (
-            ContentCapturingMode.EVENT_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        )
-
-    return False
+        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    )
 
 
 def _maybe_set_span_input_messages(
     span: Span, messages: List[InputMessage]
 ) -> None:
-    if not _should_capture_content(_CaptureTarget.SPAN):
+    if not _is_experimental_mode() or get_content_capturing_mode() not in (
+        ContentCapturingMode.SPAN_ONLY,
+        ContentCapturingMode.SPAN_AND_EVENT,
+    ):
         return
     message_parts: List[Dict[str, Any]] = [
         asdict(message) for message in messages
@@ -189,7 +169,10 @@ def _maybe_set_span_input_messages(
 def _maybe_set_span_output_messages(
     span: Span, generations: List[OutputMessage]
 ) -> None:
-    if not _should_capture_content(_CaptureTarget.SPAN):
+    if not _is_experimental_mode() or get_content_capturing_mode() not in (
+        ContentCapturingMode.SPAN_ONLY,
+        ContentCapturingMode.SPAN_AND_EVENT,
+    ):
         return
     generation_parts: List[Dict[str, Any]] = [
         asdict(generation) for generation in generations

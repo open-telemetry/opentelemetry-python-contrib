@@ -97,20 +97,33 @@ class TestVersion(unittest.TestCase):
 
 
 class TestTelemetryHandler(unittest.TestCase):
-    def setUp(self):
-        self.span_exporter = InMemorySpanExporter()
+    @classmethod
+    def setUpClass(cls):
+        cls.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
         tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
+            SimpleSpanProcessor(cls.span_exporter)
         )
-        trace.set_tracer_provider(tracer_provider)
+        try:
+            trace.set_tracer_provider(tracer_provider)
+        except Exception:  # pragma: no cover - defensive
+            pass
+
+    def setUp(self):
+        self.span_exporter = self.__class__.span_exporter
+        self.span_exporter.clear()
         self.telemetry_handler = get_telemetry_handler()
 
     def tearDown(self):
+        # Clear spans and reset the singleton telemetry handler so each test starts clean
         self.span_exporter.clear()
-        # Reset to default tracer provider
-        trace.set_tracer_provider(trace.NoOpTracerProvider())
+        if hasattr(get_telemetry_handler, "_default_handler"):
+            delattr(get_telemetry_handler, "_default_handler")
 
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
     def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
         run_id = uuid4()
         message = InputMessage(
@@ -147,4 +160,11 @@ class TestTelemetryHandler(unittest.TestCase):
         assert invocation.attributes.get("custom_attr") == "value"
         assert invocation.attributes.get("extra") == "info"
 
-        # TODO: check messages
+        # Check messages captured on span
+        input_messages_json = span_attrs.get("gen_ai.input.messages")
+        output_messages_json = span_attrs.get("gen_ai.output.messages")
+        assert input_messages_json is not None
+        assert output_messages_json is not None
+
+        assert isinstance(input_messages_json, str)
+        assert isinstance(output_messages_json, str)
