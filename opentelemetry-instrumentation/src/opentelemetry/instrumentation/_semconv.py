@@ -162,9 +162,10 @@ _server_active_requests_count_attrs_new = [
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 
-class _OpenTelemetryStabilitySignalType:
+class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
     DATABASE = "database"
+    GEN_AI = "gen_ai"
 
 
 class _StabilityMode(Enum):
@@ -173,6 +174,7 @@ class _StabilityMode(Enum):
     HTTP_DUP = "http/dup"
     DATABASE = "database"
     DATABASE_DUP = "database/dup"
+    GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
 
 
 def _report_new(mode: _StabilityMode):
@@ -195,7 +197,7 @@ class _OpenTelemetrySemanticConventionStability:
                 return
 
             # Users can pass in comma delimited string for opt-in options
-            # Only values for http and database stability are supported for now
+            # Only values for http, gen ai, and database stability are supported for now
             opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN)
 
             if not opt_in:
@@ -203,6 +205,7 @@ class _OpenTelemetrySemanticConventionStability:
                 cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {
                     _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
                 }
                 cls._initialized = True
                 return
@@ -216,13 +219,20 @@ class _OpenTelemetrySemanticConventionStability:
             )
 
             cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.DEFAULT,
+                _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+            )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
                 _OpenTelemetryStabilitySignalType.DATABASE
             ] = cls._filter_mode(
                 opt_in_list,
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
-
             cls._initialized = True
 
     @staticmethod
