@@ -33,15 +33,14 @@ Functions:
 """
 
 import json
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from opentelemetry import trace
-from opentelemetry._logs import Logger
 from opentelemetry.context import Context, get_current
 from opentelemetry.metrics import Histogram, Meter, get_meter
-from opentelemetry.sdk._logs._internal import LogRecord as SDKLogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -72,95 +71,6 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-def _message_to_log_record(
-    message: InputMessage,
-    provider_name: Optional[str],
-    framework: Optional[str],
-    capture_content: bool,
-) -> Optional[SDKLogRecord]:
-    """Build an SDK LogRecord for an input message.
-
-    Returns an SDK-level LogRecord configured with:
-    - body: structured payload for the message (when capture_content is True)
-    - attributes: includes semconv fields and attributes["event.name"]
-    - event_name: mirrors the event name for SDK consumers
-    """
-
-    body = asdict(message)
-    if not capture_content and body and body.get("parts"):
-        # TODO: use utils env check, flag off which content to capture
-        for part in body.get("parts", []):
-            if part.get("content"):
-                part["content"] = ""
-
-    attributes: Dict[str, Any] = {
-        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-        "gen_ai.framework": framework,
-        # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
-        "gen_ai.provider.name": provider_name,
-        # Prefer structured logs; include event name as an attribute.
-        "event.name": "gen_ai.client.inference.operation.details",
-    }
-
-    if capture_content:  # TODO: Use utils env check
-        attributes["gen_ai.input.messages"] = body
-
-    return SDKLogRecord(
-        body=body or None,
-        attributes=attributes,
-        event_name="gen_ai.client.inference.operation.details",
-    )
-
-
-def _chat_generation_to_log_record(
-    chat_generation: OutputMessage,
-    index: int,
-    provider_name: Optional[str],
-    framework: Optional[str],
-    capture_content: bool,
-) -> Optional[SDKLogRecord]:
-    """Build an SDK LogRecord for a chat generation (choice) item.
-
-    Sets both the SDK event_name and attributes["event.name"] to "gen_ai.choice",
-    and includes structured fields in body (index, finish_reason, message).
-    """
-    if not chat_generation:
-        return None
-    attributes = {
-        # TODO: add below to opentelemetry.semconv._incubating.attributes.gen_ai_attributes
-        "gen_ai.framework": framework,
-        # TODO: Convert below to constant once opentelemetry.semconv._incubating.attributes.gen_ai_attributes is available
-        "gen_ai.provider.name": provider_name,
-        # Prefer structured logs; include event name as an attribute.
-        "event.name": "gen_ai.choice",
-    }
-
-    # Extract message content from parts (first Text part if available)
-    # TODO: use dataclass to dict
-    content: Optional[str] = None
-    for part in chat_generation.parts:
-        if isinstance(part, Text):
-            content = part.content
-            break
-    message = {
-        "type": chat_generation.role,
-    }
-    if capture_content and content is not None:
-        message["content"] = content
-
-    body = {
-        "index": index,
-        "finish_reason": chat_generation.finish_reason or "error",
-        "message": message,
-    }
-
-    return SDKLogRecord(
-        body=body or None,
-        attributes=attributes,
-        event_name="gen_ai.choice",
-    )
-
-
 def _get_metric_attributes(
     request_model: Optional[str],
     response_model: Optional[str],
@@ -182,11 +92,6 @@ def _get_metric_attributes(
         attributes[GenAI.GEN_AI_RESPONSE_MODEL] = response_model
 
     return attributes
-
-
-# ----------------------
-# Helper utilities (module-private) to reduce complexity in emitters
-# ----------------------
 
 
 def _set_initial_span_attributes(
@@ -225,28 +130,6 @@ def _set_response_and_usage_attributes(
         span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
 
 
-def _emit_chat_generation_logs(
-    logger: Optional[Logger],
-    generations: List[OutputMessage],
-    provider_name: Optional[str],
-    framework: Optional[str],
-    capture_content: bool,
-) -> List[str]:
-    finish_reasons: List[str] = []
-    for index, chat_generation in enumerate(generations):
-        log = _chat_generation_to_log_record(
-            chat_generation,
-            index,
-            provider_name,
-            framework,
-            capture_content=capture_content,
-        )
-        if log and logger:
-            logger.emit(log)
-        finish_reasons.append(chat_generation.finish_reason)
-    return finish_reasons
-
-
 def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     finish_reasons: List[str] = []
     for gen in generations:
@@ -270,7 +153,6 @@ def _set_chat_generation_attrs(
     span: Span, generations: List[OutputMessage]
 ) -> None:
     for index, chat_generation in enumerate(generations):
-        # Extract content
         # TODO: use dataclass to dict - Handle multiple responses
         content: Optional[str] = None
         for part in chat_generation.parts:
@@ -330,194 +212,6 @@ class BaseTelemetryGenerator:
         raise NotImplementedError
 
 
-class SpanMetricEventGenerator(BaseTelemetryGenerator):
-    """
-    Generates spans, metrics and events for a full telemetry picture.
-    """
-
-    def __init__(
-        self,
-        logger: Optional[Logger] = None,
-        tracer: Optional[Tracer] = None,
-        meter: Optional[Meter] = None,
-        capture_content: bool = False,
-    ):
-        self._tracer: Tracer = tracer or trace.get_tracer(__name__)
-        _meter: Meter = meter or get_meter(__name__)
-        instruments = Instruments(_meter)
-        self._duration_histogram = instruments.operation_duration_histogram
-        self._token_histogram = instruments.token_usage_histogram
-        self._logger: Optional[Logger] = logger
-        self._capture_content = capture_content
-
-        # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
-        self.spans: Dict[UUID, _SpanState] = {}
-
-    def _start_span(
-        self,
-        name: str,
-        kind: SpanKind,
-        parent_run_id: Optional[UUID] = None,
-    ) -> Span:
-        if parent_run_id is not None and parent_run_id in self.spans:
-            parent_span = self.spans[parent_run_id].span
-            ctx = set_span_in_context(parent_span)
-            span = self._tracer.start_span(name=name, kind=kind, context=ctx)
-        else:
-            # top-level or missing parent
-            span = self._tracer.start_span(name=name, kind=kind)
-
-        return span
-
-    def _end_span(self, run_id: UUID):
-        state = self.spans[run_id]
-        for child_id in state.children:
-            child_state = self.spans.get(child_id)
-            if child_state:
-                child_state.span.end()
-                # TODO: Clear our cache for child spans
-        state.span.end()
-        # TODO: Clear our cache for parent span
-
-    def start(self, invocation: LLMInvocation):
-        if (
-            invocation.parent_run_id is not None
-            and invocation.parent_run_id in self.spans
-        ):
-            self.spans[invocation.parent_run_id].children.append(
-                invocation.run_id
-            )
-
-        for message in invocation.messages:
-            system = invocation.attributes.get("system")
-            log = _message_to_log_record(
-                message=message,
-                provider_name=system,
-                framework=invocation.attributes.get("framework"),
-                capture_content=self._capture_content,
-            )
-            if log and self._logger:
-                # _message_to_log_record returns an SDKLogRecord
-                self._logger.emit(log)
-
-    def finish(self, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
-        span = self._start_span(
-            name=f"{system}.chat",
-            kind=SpanKind.CLIENT,
-            parent_run_id=invocation.parent_run_id,
-        )
-
-        with use_span(span, end_on_exit=False) as span:
-            request_model = invocation.attributes.get("request_model")
-            span_state = _SpanState(
-                span=span,
-                context=get_current(),
-                request_model=request_model,
-                system=system,
-                start_time=invocation.start_time,
-            )
-            self.spans[invocation.run_id] = span_state
-
-            framework = invocation.attributes.get("framework")
-            _set_initial_span_attributes(
-                span, request_model, system, framework
-            )
-
-            finish_reasons = _emit_chat_generation_logs(
-                self._logger,
-                invocation.chat_generations,
-                system,
-                framework,
-                self._capture_content,
-            )
-            if finish_reasons:
-                span.set_attribute(
-                    GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
-                )
-
-            response_model = invocation.attributes.get("response_model_name")
-            response_id = invocation.attributes.get("response_id")
-            prompt_tokens = invocation.attributes.get("input_tokens")
-            completion_tokens = invocation.attributes.get("output_tokens")
-            _set_response_and_usage_attributes(
-                span,
-                response_model,
-                response_id,
-                prompt_tokens,
-                completion_tokens,
-            )
-
-            metric_attributes = _get_metric_attributes(
-                request_model,
-                response_model,
-                GenAI.GenAiOperationNameValues.CHAT.value,
-                system,
-                framework,
-            )
-            _record_token_metrics(
-                self._token_histogram,
-                prompt_tokens,
-                completion_tokens,
-                metric_attributes,
-            )
-
-            self._end_span(invocation.run_id)
-            _record_duration(
-                self._duration_histogram, invocation, metric_attributes
-            )
-
-    def error(self, error: Error, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
-        span = self._start_span(
-            name=f"{system}.chat",
-            kind=SpanKind.CLIENT,
-            parent_run_id=invocation.parent_run_id,
-        )
-
-        with use_span(
-            span,
-            end_on_exit=False,
-        ) as span:
-            request_model = invocation.attributes.get("request_model")
-            system = invocation.attributes.get("system")
-
-            span_state = _SpanState(
-                span=span,
-                context=get_current(),
-                request_model=request_model,
-                system=system,
-                start_time=invocation.start_time,
-            )
-            self.spans[invocation.run_id] = span_state
-
-            span.set_status(Status(StatusCode.ERROR, error.message))
-            if span.is_recording():
-                span.set_attribute(
-                    ErrorAttributes.ERROR_TYPE, error.type.__qualname__
-                )
-
-            self._end_span(invocation.run_id)
-
-            response_model = invocation.attributes.get("response_model_name")
-            framework = invocation.attributes.get("framework")
-
-            metric_attributes = _get_metric_attributes(
-                request_model,
-                response_model,
-                GenAI.GenAiOperationNameValues.CHAT.value,
-                system,
-                framework,
-            )
-
-            # Record overall duration metric
-            if invocation.end_time is not None:
-                elapsed: float = invocation.end_time - invocation.start_time
-                self._duration_histogram.record(
-                    elapsed, attributes=metric_attributes
-                )
-
-
 class SpanMetricGenerator(BaseTelemetryGenerator):
     """
     Generates only spans and metrics (no events).
@@ -572,14 +266,19 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
                 invocation.run_id
             )
 
-    def finish(self, invocation: LLMInvocation):
+    @contextmanager
+    def _span_for_invocation(self, invocation: LLMInvocation):
+        """Create/register a span for the invocation and yield it.
+
+        The span is not ended automatically on exiting the context; callers
+        must finalize via _finalize_invocation.
+        """
         system = invocation.attributes.get("system")
         span = self._start_span(
             name=f"{system}.chat",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
-
         with use_span(span, end_on_exit=False) as span:
             request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
@@ -590,102 +289,88 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
                 start_time=invocation.start_time,
             )
             self.spans[invocation.run_id] = span_state
+            yield span
 
-            framework = invocation.attributes.get("framework")
-            _set_initial_span_attributes(
-                span, request_model, system, framework
+    def _apply_common_span_attributes(
+        self, span: Span, invocation: LLMInvocation
+    ) -> Tuple[
+        Dict[str, AttributeValue],
+        Optional[AttributeValue],
+        Optional[AttributeValue],
+    ]:
+        """Apply attributes shared by finish() and error() and compute metrics.
+
+        Returns (metric_attributes, prompt_tokens, completion_tokens).
+        """
+        request_model = invocation.attributes.get("request_model")
+        system = invocation.attributes.get("system")
+        framework = invocation.attributes.get("framework")
+
+        _set_initial_span_attributes(span, request_model, system, framework)
+
+        finish_reasons = _collect_finish_reasons(invocation.chat_generations)
+        if finish_reasons:
+            span.set_attribute(
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
             )
 
-            finish_reasons = _collect_finish_reasons(
-                invocation.chat_generations
-            )
-            if finish_reasons:
-                span.set_attribute(
-                    GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
-                )
+        response_model = invocation.attributes.get("response_model_name")
+        response_id = invocation.attributes.get("response_id")
+        prompt_tokens = invocation.attributes.get("input_tokens")
+        completion_tokens = invocation.attributes.get("output_tokens")
+        _set_response_and_usage_attributes(
+            span,
+            response_model,
+            response_id,
+            prompt_tokens,
+            completion_tokens,
+        )
 
-            response_model = invocation.attributes.get("response_model_name")
-            response_id = invocation.attributes.get("response_id")
-            prompt_tokens = invocation.attributes.get("input_tokens")
-            completion_tokens = invocation.attributes.get("output_tokens")
-            _set_response_and_usage_attributes(
-                span,
-                response_model,
-                response_id,
-                prompt_tokens,
-                completion_tokens,
-            )
+        metric_attributes = _get_metric_attributes(
+            request_model,
+            response_model,
+            GenAI.GenAiOperationNameValues.CHAT.value,
+            system,
+            framework,
+        )
+        return metric_attributes, prompt_tokens, completion_tokens
 
+    def _finalize_invocation(
+        self,
+        invocation: LLMInvocation,
+        metric_attributes: Dict[str, AttributeValue],
+    ) -> None:
+        """End span(s) and record duration for the invocation."""
+        self._end_span(invocation.run_id)
+        _record_duration(
+            self._duration_histogram, invocation, metric_attributes
+        )
+
+    def finish(self, invocation: LLMInvocation):
+        with self._span_for_invocation(invocation) as span:
+            metric_attributes, prompt_tokens, completion_tokens = (
+                self._apply_common_span_attributes(span, invocation)
+            )
             _maybe_set_input_messages(
                 span, invocation.messages, self._capture_content
             )
             _set_chat_generation_attrs(span, invocation.chat_generations)
-
-            metric_attributes = _get_metric_attributes(
-                request_model,
-                response_model,
-                GenAI.GenAiOperationNameValues.CHAT.value,
-                system,
-                framework,
-            )
             _record_token_metrics(
                 self._token_histogram,
                 prompt_tokens,
                 completion_tokens,
                 metric_attributes,
             )
-
-            self._end_span(invocation.run_id)
-            _record_duration(
-                self._duration_histogram, invocation, metric_attributes
-            )
+        self._finalize_invocation(invocation, metric_attributes)
 
     def error(self, error: Error, invocation: LLMInvocation):
-        system = invocation.attributes.get("system")
-        span = self._start_span(
-            name=f"{system}.chat",
-            kind=SpanKind.CLIENT,
-            parent_run_id=invocation.parent_run_id,
-        )
-
-        with use_span(
-            span,
-            end_on_exit=False,
-        ) as span:
-            request_model = invocation.attributes.get("request_model")
-            system = invocation.attributes.get("system")
-
-            span_state = _SpanState(
-                span=span,
-                context=get_current(),
-                request_model=request_model,
-                system=system,
-                start_time=invocation.start_time,
+        with self._span_for_invocation(invocation) as span:
+            metric_attributes, _, _ = self._apply_common_span_attributes(
+                span, invocation
             )
-            self.spans[invocation.run_id] = span_state
-
             span.set_status(Status(StatusCode.ERROR, error.message))
             if span.is_recording():
                 span.set_attribute(
                     ErrorAttributes.ERROR_TYPE, error.type.__qualname__
                 )
-
-            self._end_span(invocation.run_id)
-
-            response_model = invocation.attributes.get("response_model_name")
-            framework = invocation.attributes.get("framework")
-
-            metric_attributes = _get_metric_attributes(
-                request_model,
-                response_model,
-                GenAI.GenAiOperationNameValues.CHAT.value,
-                system,
-                framework,
-            )
-
-            # Record overall duration metric
-            if invocation.end_time is not None:
-                elapsed: float = invocation.end_time - invocation.start_time
-                self._duration_histogram.record(
-                    elapsed, attributes=metric_attributes
-                )
+        self._finalize_invocation(invocation, metric_attributes)
