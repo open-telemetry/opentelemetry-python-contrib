@@ -146,3 +146,5 @@ class TestTelemetryHandler(unittest.TestCase):
         assert invocation.run_id == run_id
         assert invocation.attributes.get("custom_attr") == "value"
         assert invocation.attributes.get("extra") == "info"
+
+        # TODO: check messages

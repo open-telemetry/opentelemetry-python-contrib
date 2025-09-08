@@ -35,6 +35,7 @@ Functions:
 import json
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
@@ -67,7 +68,7 @@ from opentelemetry.util.genai.utils import (
 from opentelemetry.util.types import AttributeValue
 
 from .instruments import Instruments
-from .types import Error, InputMessage, LLMInvocation, OutputMessage, Text
+from .types import Error, InputMessage, LLMInvocation, OutputMessage
 
 
 @dataclass
@@ -144,9 +145,12 @@ def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     return finish_reasons
 
 
-def _maybe_set_span_input_messages(
-    span: Span, messages: List[InputMessage]
-) -> None:
+class _CaptureTarget(Enum):
+    SPAN = "span"
+    EVENT = "event"
+
+
+def _should_capture_content(mode: _CaptureTarget) -> bool:
     # if GEN_AI stability mode is DEFAULT, do not capture message content
     if (
         _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -154,11 +158,28 @@ def _maybe_set_span_input_messages(
         )
         == _StabilityMode.DEFAULT
     ):
-        return
-    if get_content_capturing_mode() not in (
-        ContentCapturingMode.SPAN_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
+        return False
+
+    capture_mode = get_content_capturing_mode()
+    if mode == _CaptureTarget.SPAN:
+        return (
+            capture_mode == ContentCapturingMode.SPAN_ONLY
+            or capture_mode == ContentCapturingMode.SPAN_AND_EVENT
+        )
+
+    if mode == _CaptureTarget.EVENT:
+        return (
+            capture_mode == ContentCapturingMode.EVENT_ONLY
+            or capture_mode == ContentCapturingMode.SPAN_AND_EVENT
+        )
+
+    return False
+
+
+def _maybe_set_span_input_messages(
+    span: Span, messages: List[InputMessage]
+) -> None:
+    if not _should_capture_content(_CaptureTarget.SPAN):
         return
     message_parts: List[Dict[str, Any]] = [
         asdict(message) for message in messages
@@ -167,20 +188,17 @@ def _maybe_set_span_input_messages(
         span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
 
 
-def _set_chat_generation_attrs(
+def _maybe_set_span_output_messages(
     span: Span, generations: List[OutputMessage]
 ) -> None:
-    for index, chat_generation in enumerate(generations):
-        # TODO: use dataclass to dict - Handle multiple responses
-        content: Optional[str] = None
-        for part in chat_generation.parts:
-            if isinstance(part, Text):
-                content = part.content
-                break
-        # Upcoming semconv fields
-        span.set_attribute(f"gen_ai.completion.{index}.content", content or "")
+    if not _should_capture_content(_CaptureTarget.SPAN):
+        return
+    generation_parts: List[Dict[str, Any]] = [
+        asdict(generation) for generation in generations
+    ]
+    if generation_parts:
         span.set_attribute(
-            f"gen_ai.completion.{index}.role", chat_generation.role
+            "gen_ai.output.messages", json.dumps(generation_parts)
         )
 
 
@@ -369,7 +387,7 @@ class SpanMetricGenerator(BaseTelemetryGenerator):
                 self._apply_common_span_attributes(span, invocation)
             )
             _maybe_set_span_input_messages(span, invocation.messages)
-            _set_chat_generation_attrs(span, invocation.chat_generations)
+            _maybe_set_span_output_messages(span, invocation.chat_generations)
             _record_token_metrics(
                 self._token_histogram,
                 prompt_tokens,
