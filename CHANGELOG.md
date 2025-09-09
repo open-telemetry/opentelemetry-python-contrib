@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
 - `opentelemetry-instrumentation-botocore`: Add support for SNS semantic convention attribute aws.sns.topic.arn
   ([#3734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3734))
+- `opentelemetry-instrumentation`: botocore: upgrade moto package from 5.0.9 to 5.1.11
+  ([#3736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3736))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
