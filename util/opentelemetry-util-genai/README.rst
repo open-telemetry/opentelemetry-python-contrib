@@ -21,13 +21,6 @@ This package provides these span attributes.
 -> gen_ai.usage.input_tokens: Int(24)
 -> gen_ai.usage.output_tokens: Int(7)
 -> gen_ai.input.messages: Str("[{\"role\": \"user\", \"content\": \"hello world\"}]")
--> gen_ai.request.top_p: Double(0.9)
--> gen_ai.request.frequency_penalty: Double(0.5)
--> gen_ai.request.presence_penalty: Double(0.5)
--> gen_ai.request.stop_sequences: Slice(["\n","Human:","AI:"])
--> gen_ai.request.seed: Int(100)
--> gen_ai.request.max_tokens: Int(100)
--> gen_ai.request.temperature: Double(0.1)
 
 
 Installation

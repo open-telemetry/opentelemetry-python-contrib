@@ -158,52 +158,6 @@ def _maybe_set_span_output_messages(
         )
 
 
-def _maybe_set_additional_span_attributes(
-    span: Span, invocation: LLMInvocation
-) -> None:
-    if "top_p" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_TOP_P,
-            invocation.attributes["top_p"],
-        )
-
-    if "frequency_penalty" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY,
-            invocation.attributes["frequency_penalty"],
-        )
-
-    if "presence_penalty" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY,
-            invocation.attributes["presence_penalty"],
-        )
-
-    if "stop" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_STOP_SEQUENCES,
-            invocation.attributes["stop"],
-        )
-
-    if "seed" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_SEED,
-            invocation.attributes["seed"],
-        )
-
-    if "temperature" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_TEMPERATURE,
-            invocation.attributes["temperature"],
-        )
-
-    if "max_completion_tokens" in invocation.attributes:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_MAX_TOKENS,
-            invocation.attributes["max_completion_tokens"],
-        )
-
-
 class BaseTelemetryGenerator:
     """
     Abstract base for emitters mapping GenAI types -> OpenTelemetry.
@@ -316,7 +270,6 @@ class SpanGenerator(BaseTelemetryGenerator):
             prompt_tokens,
             completion_tokens,
         )
-        _maybe_set_additional_span_attributes(span, invocation)
         genai_attributes = _get_genai_attributes(
             request_model,
             response_model,
