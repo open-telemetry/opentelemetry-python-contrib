@@ -29,9 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
+- `opentelemetry-instrumentation-httpx`: fix missing metric response attributes when tracing is disabled
+  ([#3615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3615))
 
 ### Added
 
+- `opentelemetry-util-genai` Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
+  Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics
@@ -40,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
 - `opentelemetry-instrumentation`: add support for  `OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH` to inform opentelemetry-instrument about gevent monkeypatching
   ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
+- `opentelemetry-instrumentation-botocore`: Add support for SNS semantic convention attribute aws.sns.topic.arn
+  ([#3734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3734))
+- `opentelemetry-instrumentation`: botocore: upgrade moto package from 5.0.9 to 5.1.11
+  ([#3736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3736))
 - `opentelemetry-instrumentation`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-django`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-asgi`: Add Labeler utility. Add FalconInstrumentor, FlaskInstrumentor, DjangoInstrumentor, WsgiInstrumentor, AsgiInstrumentor support of custom attributes merging for HTTP duration metrics.
   ([#3689](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3689))
 
