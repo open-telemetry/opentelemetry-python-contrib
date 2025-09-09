@@ -55,10 +55,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
-        if serialized and "name" in serialized:
-            name = serialized.get("name")
-            if name not in ("ChatOpenAI", "ChatBedrock"):
-                return
+        if serialized.get("name") not in ("ChatOpenAI", "ChatBedrock"):
+              return
 
         if "invocation_params" in kwargs:
             params = (
