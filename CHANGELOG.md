@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
+- `opentelemetry-instrumentation-httpx`: fix missing metric response attributes when tracing is disabled
+  ([#3615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3615))
 
 ### Added
 
@@ -44,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
 - `opentelemetry-instrumentation`: botocore: Add support for AWS Step Functions semantic convention attributes
   ([#3737](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3737))
+- `opentelemetry-instrumentation-botocore`: Add support for SNS semantic convention attribute aws.sns.topic.arn
+  ([#3734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3734))
+- `opentelemetry-instrumentation`: botocore: upgrade moto package from 5.0.9 to 5.1.11
+  ([#3736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3736))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
