@@ -1047,7 +1047,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         return app
 
 
-class TestFastAPIManualInstrumentationHooks(TestBaseManualFastAPI):
+class TestFastAPIManualInstrumentationHooks(TestBaseFastAPI):
     def _create_app(self):
         def server_request_hook(span: trace.Span, scope: dict[str, Any]):
             span.update_name("name from server hook")
