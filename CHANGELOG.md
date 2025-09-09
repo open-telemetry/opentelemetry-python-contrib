@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
+- `opentelemetry-instrumentation-httpx`: fix missing metric response attributes when tracing is disabled
+  ([#3615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3615))
 
 ### Added
 
