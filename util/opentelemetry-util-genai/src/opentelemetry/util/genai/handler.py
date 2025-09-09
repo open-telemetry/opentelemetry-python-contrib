@@ -33,7 +33,6 @@ Usage:
 """
 
 import time
-from threading import Lock
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -64,7 +63,6 @@ class TelemetryHandler:
         self._generator = SpanGenerator(tracer=self._tracer)
 
         self._llm_registry: dict[UUID, LLMInvocation] = {}
-        self._lock = Lock()
 
     def start_llm(
         self,
@@ -79,8 +77,7 @@ class TelemetryHandler:
             parent_run_id=parent_run_id,
             attributes=attributes,
         )
-        with self._lock:
-            self._llm_registry[invocation.run_id] = invocation
+        self._llm_registry[invocation.run_id] = invocation
         self._generator.start(invocation)
 
     def stop_llm(
@@ -89,8 +86,7 @@ class TelemetryHandler:
         chat_generations: List[OutputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
-        with self._lock:
-            invocation = self._llm_registry.pop(run_id)
+        invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         invocation.attributes.update(attributes)
@@ -100,8 +96,7 @@ class TelemetryHandler:
     def fail_llm(
         self, run_id: UUID, error: Error, **attributes: Any
     ) -> LLMInvocation:
-        with self._lock:
-            invocation = self._llm_registry.pop(run_id)
+        invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.attributes.update(**attributes)
         self._generator.error(error, invocation)
