@@ -38,7 +38,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from opentelemetry import trace
-from opentelemetry.context import Context, get_current
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -70,10 +69,6 @@ from .types import Error, InputMessage, LLMInvocation, OutputMessage
 @dataclass
 class _SpanState:
     span: Span
-    context: Context
-    start_time: float
-    request_model: Optional[str] = None
-    system: Optional[str] = None
     children: List[UUID] = field(default_factory=list)
 
 
@@ -82,11 +77,8 @@ def _get_genai_attributes(
     response_model: Optional[str],
     operation_name: Optional[str],
     system: Optional[str],
-    framework: Optional[str],
 ) -> Dict[str, AttributeValue]:
     attributes: Dict[str, AttributeValue] = {}
-    if framework is not None:
-        attributes["gen_ai.framework"] = framework
     if system:
         attributes[GenAI.GEN_AI_PROVIDER_NAME] = system
     if operation_name:
@@ -103,15 +95,12 @@ def _set_initial_span_attributes(
     span: Span,
     request_model: Optional[str],
     system: Optional[str],
-    framework: Optional[str],
 ) -> None:
     span.set_attribute(
         GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
     )
     if request_model:
         span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-    if framework is not None:
-        span.set_attribute("gen_ai.framework", framework)
     if system is not None:
         # TODO: clean system name to match GenAiProviderNameValues?
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, system)
@@ -258,13 +247,8 @@ class SpanGenerator(BaseTelemetryGenerator):
             parent_run_id=invocation.parent_run_id,
         )
         with use_span(span, end_on_exit=False) as span:
-            request_model = invocation.attributes.get("request_model")
             span_state = _SpanState(
                 span=span,
-                context=get_current(),
-                request_model=request_model,
-                system=system,
-                start_time=invocation.start_time,
             )
             self.spans[invocation.run_id] = span_state
             yield span
@@ -279,9 +263,8 @@ class SpanGenerator(BaseTelemetryGenerator):
         """
         request_model = invocation.attributes.get("request_model")
         system = invocation.attributes.get("system")
-        framework = invocation.attributes.get("framework")
 
-        _set_initial_span_attributes(span, request_model, system, framework)
+        _set_initial_span_attributes(span, request_model, system)
 
         finish_reasons = _collect_finish_reasons(invocation.chat_generations)
         if finish_reasons:
@@ -305,7 +288,6 @@ class SpanGenerator(BaseTelemetryGenerator):
             response_model,
             GenAI.GenAiOperationNameValues.CHAT.value,
             system,
-            framework,
         )
         return (genai_attributes,)
 

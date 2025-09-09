@@ -13,7 +13,6 @@ Set the environment variable `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
 This package provides these span attributes.
 -> gen_ai.provider.name: Str(openai)
 -> gen_ai.operation.name: Str(chat)
--> gen_ai.framework: Str(langchain)
 -> gen_ai.system: Str(openai) # deprecated
 -> gen_ai.request.model: Str(gpt-3.5-turbo)
 -> gen_ai.response.finish_reasons: Slice(["stop"])
