@@ -53,6 +53,23 @@ def test_us_amazon_nova_lite_v1_0_bedrock_llm_call(
     assert_bedrock_completion_attributes(spans[0], result)
 
 
+# span_exporter, start_instrumentation, gemini are coming from fixtures defined in conftest.py
+@pytest.mark.vcr()
+def test_gemini(span_exporter, start_instrumentation, gemini):
+    messages = [
+        SystemMessage(content="You are a helpful assistant!"),
+        HumanMessage(content="What is the capital of France?"),
+    ]
+
+    result = gemini.invoke(messages)
+
+    assert result.content.find("The capital of France is **Paris**") != -1
+
+    # verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 0  # No spans should be created for gemini as of now
+
+
 def assert_openai_completion_attributes(
     span: ReadableSpan, response: Optional
 ):

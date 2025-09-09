@@ -7,6 +7,7 @@ import boto3
 import pytest
 import yaml
 from langchain_aws import ChatBedrock
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 from opentelemetry.instrumentation.langchain import LangChainInstrumentor
@@ -48,6 +49,13 @@ def fixture_us_amazon_nova_lite_v1_0():
         temperature=0.1,
         max_tokens=100,
     )
+    yield llm
+
+
+@pytest.fixture(scope="function", name="gemini")
+def fixture_gemini():
+    llm_model_value = "gemini-2.5-pro"
+    llm = ChatGoogleGenerativeAI(model=llm_model_value, api_key="test_key")
     yield llm
 
 
