@@ -66,12 +66,14 @@ class TelemetryHandler:
 
     def start_llm(
         self,
+        request_model: str,
         prompts: List[InputMessage],
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
         **attributes: Any,
     ) -> None:
         invocation = LLMInvocation(
+            request_model=request_model,
             messages=prompts,
             run_id=run_id,
             parent_run_id=parent_run_id,

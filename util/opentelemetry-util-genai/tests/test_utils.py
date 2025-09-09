@@ -132,7 +132,11 @@ class TestTelemetryHandler(unittest.TestCase):
 
         # Start and stop LLM invocation
         self.telemetry_handler.start_llm(
-            [message], run_id=run_id, custom_attr="value", system="test-system"
+            request_model="test-model",
+            prompts=[message],
+            run_id=run_id,
+            custom_attr="value",
+            system="test-system",
         )
         invocation = self.telemetry_handler.stop_llm(
             run_id, chat_generations=[chat_generation], extra="info"
@@ -142,7 +146,7 @@ class TestTelemetryHandler(unittest.TestCase):
         spans = self.span_exporter.get_finished_spans()
         assert len(spans) == 1
         span = spans[0]
-        assert span.name == "test-system.chat"
+        assert span.name == "chat test-model"
         assert span.kind == trace.SpanKind.CLIENT
 
         # Verify span attributes

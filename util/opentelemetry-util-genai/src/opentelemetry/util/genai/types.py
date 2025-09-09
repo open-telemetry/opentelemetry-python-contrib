@@ -80,6 +80,7 @@ class LLMInvocation:
     """
 
     run_id: UUID
+    request_model: str
     parent_run_id: Optional[UUID] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
