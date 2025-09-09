@@ -273,9 +273,9 @@ class SpanGenerator(BaseTelemetryGenerator):
         The span is not ended automatically on exiting the context; callers
         must finalize via _finalize_invocation.
         """
-        system = invocation.attributes.get("system")
+        request_model = invocation.attributes.get("request_model")
         span = self._start_span(
-            name=f"{system}.chat",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
             kind=SpanKind.CLIENT,
             parent_run_id=invocation.parent_run_id,
         )
