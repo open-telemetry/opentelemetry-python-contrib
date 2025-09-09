@@ -28,6 +28,15 @@ from opentelemetry.util.genai.types import ContentCapturingMode
 logger = logging.getLogger(__name__)
 
 
+def is_experimental_mode() -> bool:
+    return (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+        )
+        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    )
+
+
 def get_content_capturing_mode() -> ContentCapturingMode:
     """This function should not be called when GEN_AI stability mode is set to DEFAULT.
 

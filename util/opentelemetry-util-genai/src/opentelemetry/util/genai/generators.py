@@ -38,11 +38,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from opentelemetry import trace
-from opentelemetry.instrumentation._semconv import (
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-    _StabilityMode,
-)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -60,6 +55,7 @@ from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
     get_content_capturing_mode,
+    is_experimental_mode,
 )
 from opentelemetry.util.types import AttributeValue
 
@@ -130,19 +126,10 @@ def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     return finish_reasons
 
 
-def _is_experimental_mode() -> bool:
-    return (
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI,
-        )
-        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-    )
-
-
 def _maybe_set_span_input_messages(
     span: Span, messages: List[InputMessage]
 ) -> None:
-    if not _is_experimental_mode() or get_content_capturing_mode() not in (
+    if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
@@ -157,7 +144,7 @@ def _maybe_set_span_input_messages(
 def _maybe_set_span_output_messages(
     span: Span, generations: List[OutputMessage]
 ) -> None:
-    if not _is_experimental_mode() or get_content_capturing_mode() not in (
+    if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
