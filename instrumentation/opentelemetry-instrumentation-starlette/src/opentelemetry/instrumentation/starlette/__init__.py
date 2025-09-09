@@ -354,7 +354,11 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
         if match == Match.FULL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                # routes added via host routing won't have a path attribute
+                route = scope.get("path")
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
