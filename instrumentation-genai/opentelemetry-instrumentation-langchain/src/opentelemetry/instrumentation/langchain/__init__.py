@@ -14,7 +14,7 @@
 
 """
 Langchain instrumentation supporting `ChatOpenAI` and `ChatBedrock`, it can be enabled by
-using ``LangChainInstrumentor``.
+using ``LangChainInstrumentor``. Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
 
 Usage
 -----

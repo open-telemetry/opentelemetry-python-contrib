@@ -54,6 +54,12 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         metadata: dict[str, Any] | None,
         **kwargs: Any,
     ) -> None:
+        # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
+        if serialized and "name" in serialized:
+            name = serialized.get("name")
+            if name not in ("ChatOpenAI", "ChatBedrock"):
+                return
+
         if "invocation_params" in kwargs:
             params = (
                 kwargs["invocation_params"].get("params")
@@ -73,6 +79,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             elif (model := (metadata or {}).get(model_tag)) is not None:
                 request_model = model
                 break
+
+        # Skip telemetry for unsupported request models
+        if request_model == "unknown":
+            return
 
         span = self.span_manager.create_chat_span(
             run_id=run_id,
