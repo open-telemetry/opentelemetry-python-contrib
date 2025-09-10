@@ -136,7 +136,7 @@ class TestTelemetryHandler(unittest.TestCase):
             prompts=[message],
             run_id=run_id,
             custom_attr="value",
-            system="test-system",
+            provider="test-provider",
         )
         invocation = self.telemetry_handler.stop_llm(
             run_id, chat_generations=[chat_generation], extra="info"
@@ -153,7 +153,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert span.attributes is not None
         span_attrs = span.attributes
         assert span_attrs.get("gen_ai.operation.name") == "chat"
-        assert span_attrs.get("gen_ai.provider.name") == "test-system"
+        assert span_attrs.get("gen_ai.provider.name") == "test-provider"
         assert span.start_time is not None
         assert span.end_time is not None
         assert span.end_time > span.start_time

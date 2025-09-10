@@ -72,11 +72,11 @@ def _get_genai_attributes(
     request_model: Optional[str],
     response_model: Optional[str],
     operation_name: Optional[str],
-    system: Optional[str],
+    provider: Optional[str],
 ) -> Dict[str, AttributeValue]:
     attributes: Dict[str, AttributeValue] = {}
-    if system:
-        attributes[GenAI.GEN_AI_PROVIDER_NAME] = system
+    if provider:
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
     if operation_name:
         attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
     if request_model:
@@ -90,16 +90,16 @@ def _get_genai_attributes(
 def _set_initial_span_attributes(
     span: Span,
     request_model: Optional[str],
-    system: Optional[str],
+    provider: Optional[str],
 ) -> None:
     span.set_attribute(
         GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
     )
     if request_model:
         span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-    if system is not None:
-        # TODO: clean system name to match GenAiProviderNameValues?
-        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, system)
+    if provider is not None:
+        # TODO: clean provider name to match GenAiProviderNameValues?
+        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
 
 
 def _set_response_and_usage_attributes(
@@ -126,8 +126,10 @@ def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
     return finish_reasons
 
 
-def _maybe_set_span_input_messages(
-    span: Span, messages: List[InputMessage]
+def _maybe_set_span_messages(
+    span: Span,
+    input_messages: List[InputMessage],
+    output_messages: List[OutputMessage],
 ) -> None:
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
@@ -135,22 +137,13 @@ def _maybe_set_span_input_messages(
     ):
         return
     message_parts: List[Dict[str, Any]] = [
-        asdict(message) for message in messages
+        asdict(message) for message in input_messages
     ]
     if message_parts:
         span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
 
-
-def _maybe_set_span_output_messages(
-    span: Span, generations: List[OutputMessage]
-) -> None:
-    if not is_experimental_mode() or get_content_capturing_mode() not in (
-        ContentCapturingMode.SPAN_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
-        return
     generation_parts: List[Dict[str, Any]] = [
-        asdict(generation) for generation in generations
+        asdict(generation) for generation in output_messages
     ]
     if generation_parts:
         span.set_attribute(
@@ -184,7 +177,7 @@ class SpanGenerator(BaseTelemetryGenerator):
     ):
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
 
-        # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
+        # TODO: Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
         self.spans: Dict[UUID, _SpanState] = {}
 
     def _start_span(
@@ -200,6 +193,7 @@ class SpanGenerator(BaseTelemetryGenerator):
         else:
             # top-level or missing parent
             span = self._tracer.start_span(name=name, kind=kind)
+            set_span_in_context(span)
 
         return span
 
@@ -210,6 +204,7 @@ class SpanGenerator(BaseTelemetryGenerator):
             if child_state:
                 child_state.span.end()
         state.span.end()
+        del self.spans[run_id]
 
     def start(self, invocation: LLMInvocation):
         if (
@@ -245,12 +240,12 @@ class SpanGenerator(BaseTelemetryGenerator):
     ) -> Tuple[Dict[str, AttributeValue]]:
         """Apply attributes shared by finish() and error() and compute metrics.
 
-        Returns (genai_attributes).
+        Returns (genai_attributes) for use with metrics.
         """
         request_model = invocation.attributes.get("request_model")
-        system = invocation.attributes.get("system")
+        provider = invocation.attributes.get("provider")
 
-        _set_initial_span_attributes(span, request_model, system)
+        _set_initial_span_attributes(span, request_model, provider)
 
         finish_reasons = _collect_finish_reasons(invocation.chat_generations)
         if finish_reasons:
@@ -273,7 +268,7 @@ class SpanGenerator(BaseTelemetryGenerator):
             request_model,
             response_model,
             GenAI.GenAiOperationNameValues.CHAT.value,
-            system,
+            provider,
         )
         return (genai_attributes,)
 
@@ -286,8 +281,9 @@ class SpanGenerator(BaseTelemetryGenerator):
             _ = self._apply_common_span_attributes(
                 span, invocation
             )  # return value to be used with metrics
-            _maybe_set_span_input_messages(span, invocation.messages)
-            _maybe_set_span_output_messages(span, invocation.chat_generations)
+            _maybe_set_span_messages(
+                span, invocation.messages, invocation.chat_generations
+            )
         self._finalize_invocation(invocation)
 
     def error(self, error: Error, invocation: LLMInvocation):

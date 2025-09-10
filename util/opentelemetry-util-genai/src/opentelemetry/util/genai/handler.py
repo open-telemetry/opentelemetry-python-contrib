@@ -27,7 +27,7 @@ Functions:
 
 Usage:
     handler = get_telemetry_handler()
-    handler.start_llm(prompts, run_id, system="provider-name", **attrs)
+    handler.start_llm(prompts, run_id, **attrs)
     handler.stop_llm(run_id, chat_generations, **attrs)
     handler.fail_llm(run_id, error, **attrs)
 """
