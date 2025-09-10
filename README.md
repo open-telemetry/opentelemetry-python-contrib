@@ -116,12 +116,12 @@ Meeting notes are available as a public [Google doc](https://docs.google.com/doc
 - [Aaron Abbott](https://github.com/aabmass), Google
 - [Leighton Chen](https://github.com/lzchen), Microsoft
 - [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
-- [Shalev Roda](https://github.com/shalevr), Cisco
 
 For more information about the maintainer role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#maintainer).
 
 ### Approvers
 
+- [Dylan Russell](https://github.com/dylanrussell), Google
 - [Emídio Neto](https://github.com/emdneto), PicPay
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Owais Lone](https://github.com/owais), Splunk
@@ -134,20 +134,21 @@ For more information about the approver role, see the [community repository](htt
 
 ### Emeritus Maintainers
 
-- [Alex Boten](https://github.com/codeboten), Lightstep
-- [Diego Hurtado](https://github.com/ocelotl), Lightstep
-- [Owais Lone](https://github.com/owais), Splunk
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
+- [Alex Boten](https://github.com/codeboten)
+- [Diego Hurtado](https://github.com/ocelotl)
+- [Owais Lone](https://github.com/owais)
+- [Shalev Roda](https://github.com/shalevr)
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi)
 
 For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 
 ### Emeritus Approvers
 
-- [Ashutosh Goel](https://github.com/ashu658), Cisco
-- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Oxeye
-- [Nikolay Sokolik](https://github.com/nikosokolik), Oxeye
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
+- [Ashutosh Goel](https://github.com/ashu658)
+- [Héctor Hernández](https://github.com/hectorhdzg)
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN)
+- [Nikolay Sokolik](https://github.com/nikosokolik)
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay)
 
 For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 

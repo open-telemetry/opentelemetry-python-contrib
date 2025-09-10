@@ -13,10 +13,15 @@ on:
         - opentelemetry-instrumentation-google-genai
         description: 'Package to be released'
         required: true
+permissions:
+  contents: read
 run-name: "[Package][${{ inputs.package }}] Prepare patch release"
 
 jobs:
   prepare-patch-release:
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,13 +110,19 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Prepare patch release for ${PACKAGE_NAME} v${NEXT_VERSION}"
-          branch="opentelemetrybot/patch-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
+          branch="otelbot/patch-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
