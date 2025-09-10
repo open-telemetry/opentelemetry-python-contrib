@@ -34,7 +34,7 @@ Usage:
 import json
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from opentelemetry import trace
@@ -68,23 +68,35 @@ class _SpanState:
     children: List[UUID] = field(default_factory=list)
 
 
-def _get_genai_attributes(
-    request_model: Optional[str],
-    response_model: Optional[str],
-    operation_name: Optional[str],
-    provider: Optional[str],
-) -> Dict[str, AttributeValue]:
-    attributes: Dict[str, AttributeValue] = {}
-    if provider:
-        attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
-    if operation_name:
-        attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
-    if request_model:
-        attributes[GenAI.GEN_AI_REQUEST_MODEL] = request_model
-    if response_model:
-        attributes[GenAI.GEN_AI_RESPONSE_MODEL] = response_model
+def _apply_common_span_attributes(
+    span: Span, invocation: LLMInvocation
+) -> None:
+    """Apply attributes shared by finish() and error() and compute metrics.
 
-    return attributes
+    Returns (genai_attributes) for use with metrics.
+    """
+    request_model = invocation.attributes.get("request_model")
+    provider = invocation.attributes.get("provider")
+
+    _set_initial_span_attributes(span, request_model, provider)
+
+    finish_reasons = _collect_finish_reasons(invocation.chat_generations)
+    if finish_reasons:
+        span.set_attribute(
+            GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
+        )
+
+    response_model = invocation.attributes.get("response_model_name")
+    response_id = invocation.attributes.get("response_id")
+    prompt_tokens = invocation.attributes.get("input_tokens")
+    completion_tokens = invocation.attributes.get("output_tokens")
+    _set_response_and_usage_attributes(
+        span,
+        response_model,
+        response_id,
+        prompt_tokens,
+        completion_tokens,
+    )
 
 
 def _set_initial_span_attributes(
@@ -186,9 +198,13 @@ class SpanGenerator(BaseTelemetryGenerator):
         kind: SpanKind,
         parent_run_id: Optional[UUID] = None,
     ) -> Span:
-        if parent_run_id is not None and parent_run_id in self.spans:
-            parent_span = self.spans[parent_run_id].span
-            ctx = set_span_in_context(parent_span)
+        parent_span = (
+            self.spans.get(parent_run_id)
+            if parent_run_id is not None
+            else None
+        )
+        if parent_span is not None:
+            ctx = set_span_in_context(parent_span.span)
             span = self._tracer.start_span(name=name, kind=kind, context=ctx)
         else:
             # top-level or missing parent
@@ -207,16 +223,16 @@ class SpanGenerator(BaseTelemetryGenerator):
         del self.spans[run_id]
 
     def start(self, invocation: LLMInvocation):
-        if (
-            invocation.parent_run_id is not None
-            and invocation.parent_run_id in self.spans
-        ):
-            self.spans[invocation.parent_run_id].children.append(
-                invocation.run_id
-            )
+        parent_state = (
+            self.spans.get(invocation.parent_run_id)
+            if invocation.parent_run_id is not None
+            else None
+        )
+        if parent_state is not None:
+            parent_state.children.append(invocation.run_id)
 
     @contextmanager
-    def _span_for_invocation(self, invocation: LLMInvocation):
+    def _start_span_for_invocation(self, invocation: LLMInvocation):
         """Create/register a span for the invocation and yield it.
 
         The span is not ended automatically on exiting the context; callers
@@ -234,60 +250,20 @@ class SpanGenerator(BaseTelemetryGenerator):
             self.spans[invocation.run_id] = span_state
             yield span
 
-    @staticmethod
-    def _apply_common_span_attributes(
-        span: Span, invocation: LLMInvocation
-    ) -> Tuple[Dict[str, AttributeValue]]:
-        """Apply attributes shared by finish() and error() and compute metrics.
-
-        Returns (genai_attributes) for use with metrics.
-        """
-        request_model = invocation.attributes.get("request_model")
-        provider = invocation.attributes.get("provider")
-
-        _set_initial_span_attributes(span, request_model, provider)
-
-        finish_reasons = _collect_finish_reasons(invocation.chat_generations)
-        if finish_reasons:
-            span.set_attribute(
-                GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
-            )
-
-        response_model = invocation.attributes.get("response_model_name")
-        response_id = invocation.attributes.get("response_id")
-        prompt_tokens = invocation.attributes.get("input_tokens")
-        completion_tokens = invocation.attributes.get("output_tokens")
-        _set_response_and_usage_attributes(
-            span,
-            response_model,
-            response_id,
-            prompt_tokens,
-            completion_tokens,
-        )
-        genai_attributes = _get_genai_attributes(
-            request_model,
-            response_model,
-            GenAI.GenAiOperationNameValues.CHAT.value,
-            provider,
-        )
-        return (genai_attributes,)
-
     def _finalize_invocation(self, invocation: LLMInvocation) -> None:
         """End span(s) and record duration for the invocation."""
         self._end_span(invocation.run_id)
 
     def finish(self, invocation: LLMInvocation):
-        with self._span_for_invocation(invocation) as span:
-            _ = self._apply_common_span_attributes(
-                span, invocation
-            )  # return value to be used with metrics
+        with self._start_span_for_invocation(invocation) as span:
+            _apply_common_span_attributes(span, invocation)
             _maybe_set_span_messages(
                 span, invocation.messages, invocation.chat_generations
             )
         self._finalize_invocation(invocation)
 
     def error(self, error: Error, invocation: LLMInvocation):
-        with self._span_for_invocation(invocation) as span:
+        with self._start_span_for_invocation(invocation) as span:
             span.set_status(Status(StatusCode.ERROR, error.message))
             if span.is_recording():
                 span.set_attribute(

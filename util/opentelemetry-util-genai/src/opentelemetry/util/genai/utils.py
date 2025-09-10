@@ -42,14 +42,9 @@ def get_content_capturing_mode() -> ContentCapturingMode:
 
     When the GEN_AI stability mode is DEFAULT this function will raise a ValueError -- see the code below."""
     envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
-    if (
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI,
-        )
-        == _StabilityMode.DEFAULT
-    ):
+    if not is_experimental_mode():
         raise ValueError(
-            "This function should never be called when StabilityMode is default."
+            "This function should never be called when StabilityMode is not experimental."
         )
     if not envvar:
         return ContentCapturingMode.NO_CONTENT
