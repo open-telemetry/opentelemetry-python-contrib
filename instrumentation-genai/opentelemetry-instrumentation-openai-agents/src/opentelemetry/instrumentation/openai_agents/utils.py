@@ -14,6 +14,10 @@
 
 from os import environ
 from typing import Optional
+from .constants import GenAIProvider, GenAIToolType, GenAIOutputType
+
+_EMIT_OP_DETAILS_ENV = "OTEL_GENAI_EMIT_OPERATION_DETAILS"
+
 
 OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT = (
     "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT"
@@ -49,3 +53,56 @@ def get_agent_span_name(operation: str, model: Optional[str] = None) -> str:
     if model:
         return f"openai_agents {operation} {model}"
     return f"openai_agents {operation}"
+
+
+# ---------------- Normalization / Validation Helpers ----------------
+
+def normalize_provider(provider: Optional[str]) -> Optional[str]:
+    """Normalize provider name to spec-compliant value."""
+    if not provider:
+        return None
+    p = provider.strip().lower()
+    if p in GenAIProvider.ALL:
+        return p
+    return provider  # passthrough if unknown (forward compat)
+
+
+def validate_tool_type(tool_type: Optional[str]) -> str:
+    """Validate and normalize tool type."""
+    if not tool_type:
+        return GenAIToolType.FUNCTION  # default
+    t = tool_type.strip().lower()
+    return t if t in GenAIToolType.ALL else GenAIToolType.FUNCTION
+
+
+def normalize_output_type(output_type: Optional[str]) -> str:
+    """Normalize output type to spec-compliant value."""
+    if not output_type:
+        return GenAIOutputType.TEXT  # default
+    o = output_type.strip().lower()
+    base_map = {
+        "json_object": GenAIOutputType.JSON,
+        "jsonschema": GenAIOutputType.JSON,
+        "speech_audio": GenAIOutputType.SPEECH,
+        "audio_speech": GenAIOutputType.SPEECH,
+        "image_png": GenAIOutputType.IMAGE,
+        "function_arguments_json": GenAIOutputType.JSON,
+        "tool_call": GenAIOutputType.JSON,
+        "transcription_json": GenAIOutputType.JSON,
+    }
+    if o in base_map:
+        return base_map[o]
+    if o in {
+        GenAIOutputType.TEXT,
+        GenAIOutputType.JSON,
+        GenAIOutputType.IMAGE,
+        GenAIOutputType.SPEECH,
+    }:
+        return o
+    return GenAIOutputType.TEXT  # default for unknown
+
+
+def should_emit_operation_details() -> bool:
+    """Check if operation details event should be emitted."""
+    raw = environ.get(_EMIT_OP_DETAILS_ENV, "true")
+    return raw.lower() not in {"0", "false", "no"}

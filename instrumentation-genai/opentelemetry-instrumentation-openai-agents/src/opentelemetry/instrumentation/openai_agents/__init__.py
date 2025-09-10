@@ -13,8 +13,8 @@
 # limitations under the License.
 
 """
-OpenAI Agents instrumentation supporting `openai` in agent frameworks, it can be enabled by
-using ``OpenAIAgentsInstrumentor``.
+OpenAI Agents instrumentation supporting `openai` in agent frameworks.
+Enable with ``OpenAIAgentsInstrumentor``.
 
 .. _openai: https://pypi.org/project/openai/
 
@@ -24,7 +24,9 @@ Usage
 .. code:: python
 
     from openai import OpenAI
-    from opentelemetry.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+    from opentelemetry.instrumentation.openai_agents import (
+        OpenAIAgentsInstrumentor,
+    )
 
     OpenAIAgentsInstrumentor().instrument()
 
@@ -34,7 +36,8 @@ Usage
 API
 ---
 
-The OpenAI Agents instrumentation captures spans for OpenAI API calls made within agent frameworks.
+This instrumentation captures spans for OpenAI API calls made within
+agent frameworks.
 It provides detailed tracing information including:
 
 - Request and response content (if configured)
@@ -45,21 +48,29 @@ It provides detailed tracing information including:
 Configuration
 -------------
 
-The following environment variables can be used to configure the instrumentation:
+Environment variables:
 
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT``: Set to ``true`` to capture the content of the requests and responses. Default is ``false``.
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS``: Set to ``true`` to capture metrics. Default is ``true``.
+- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT``: ``true`` to
+    capture request/response content (default ``false``).
+- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS``: ``true`` to
+    capture metrics (default ``true``).
 """
 
 import logging
-from os import environ
 from typing import Collection
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_agents.package import _instruments
-from opentelemetry.instrumentation.openai_agents.version import __version__
-from opentelemetry.instrumentation.openai_agents.utils import is_content_enabled
-from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import GenAISemanticProcessor
+from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import (
+    GenAISemanticProcessor,
+)
+from opentelemetry.instrumentation.openai_agents.constants import (
+    GenAIProvider,
+    GenAIOperationName,
+    GenAIToolType,
+    GenAIOutputType,
+    GenAIEvaluationAttributes,
+)
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 from opentelemetry._events import get_event_logger
@@ -92,14 +103,28 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             event_logger_provider=event_logger_provider,
         )
 
-        add_trace_processor(GenAISemanticProcessor(tracer=tracer, event_logger=event_logger))
+        add_trace_processor(
+            GenAISemanticProcessor(
+                tracer=tracer,
+                event_logger=event_logger,
+            )
+        )
+
+        # Expose constants via module attributes for convenience
+        globals().update(
+            {
+                "GenAIProvider": GenAIProvider,
+                "GenAIOperationName": GenAIOperationName,
+                "GenAIToolType": GenAIToolType,
+                "GenAIOutputType": GenAIOutputType,
+                "GenAIEvaluationAttributes": GenAIEvaluationAttributes,
+            }
+        )
         
-
-
     def _uninstrument(self, **kwargs):
         """Uninstruments the OpenAI library for agent frameworks."""
         pass
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        """Return a list of python packages with versions that the will be instrumented."""
+        """Return list of python packages with versions instrumented."""
         return _instruments
