@@ -24,58 +24,6 @@ supports Flask-specific features such as:
 * The ``http.route`` Span attribute is set so that one can see which URL rule
   matched a request.
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.flask import FlaskInstrumentor
-
-    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
-
-For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
-invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
-``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
-some configurable tags like:
-
-.. code::
-
-    select * from auth_users /*metrics=value*/;"
-
-Inorder for the commenter to append flask related tags to sql queries, the commenter needs
-to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration
-inside ``commenter_options={}`` dict.
-
-For example, enabling this flag will add flask and it's version which
-is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    framework = True
-
-For example, enabling this flag will add route uri ``/*route='/home'*/``
-to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    route = True
-
-For example, enabling this flag will add controller name ``/*controller='home_view'*/``
-to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    controller = True
-
 Usage
 -----
 
@@ -240,6 +188,55 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+SQLCOMMENTER
+*****************************************
+You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
+    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
+For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
+invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
+``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
+some configurable tags like:
+
+.. code::
+
+    select * from auth_users /*metrics=value*/;"
+
+Inorder for the commenter to append flask related tags to sql queries, the commenter needs
+to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding configuration
+inside ``commenter_options={}`` dict.
+
+For example, enabling this flag will add flask and it's version which
+is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    framework = True
+
+For example, enabling this flag will add route uri ``/*route='/home'*/``
+to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    route = True
+
+For example, enabling this flag will add controller name ``/*controller='home_view'*/``
+to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    controller = True
 
 API
 ---

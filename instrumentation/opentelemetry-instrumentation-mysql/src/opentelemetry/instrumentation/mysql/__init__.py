@@ -50,12 +50,12 @@ Usage
     cursor.close()
     instrumented_cnx.close()
 
+Configuration
+-------------
+
 SQLCOMMENTER
 *****************************************
 You can optionally configure mysql-connector instrumentation to enable sqlcommenter which enriches the query with contextual information.
-
-Usage
------
 
 .. code:: python
 
@@ -69,7 +69,6 @@ Usage
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
-
 
 For example,
 ::
