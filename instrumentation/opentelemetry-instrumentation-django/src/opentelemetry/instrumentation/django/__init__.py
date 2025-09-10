@@ -241,6 +241,7 @@ from typing import Collection
 from django import VERSION as django_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -254,7 +255,7 @@ from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
 )
 from opentelemetry.instrumentation.django.middleware.otel_middleware import (
-    _DjangoMiddleware,
+    DjangoMiddleware,
 )
 from opentelemetry.instrumentation.django.package import _instruments
 from opentelemetry.instrumentation.django.version import __version__
@@ -316,7 +317,7 @@ class DjangoInstrumentor(BaseInstrumentor):
     """
 
     _opentelemetry_middleware = ".".join(
-        [_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__]
+        [DjangoMiddleware.__module__, DjangoMiddleware.__qualname__]
     )
 
     _sql_commenter_middleware = "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
@@ -351,34 +352,34 @@ class DjangoInstrumentor(BaseInstrumentor):
             meter_provider=meter_provider,
             schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
-        _DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
-        _DjangoMiddleware._tracer = tracer
-        _DjangoMiddleware._meter = meter
-        _DjangoMiddleware._excluded_urls = (
+        DjangoMiddleware._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        DjangoMiddleware._tracer = tracer
+        DjangoMiddleware._meter = meter
+        DjangoMiddleware._excluded_urls = (
             _excluded_urls_from_env
             if _excluded_urls is None
             else parse_excluded_urls(_excluded_urls)
         )
-        _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
-        _DjangoMiddleware._otel_response_hook = kwargs.pop(
+        DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
+        DjangoMiddleware._otel_response_hook = kwargs.pop(
             "response_hook", None
         )
-        _DjangoMiddleware._duration_histogram_old = None
+        DjangoMiddleware._duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
-            _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
+            DjangoMiddleware._duration_histogram_old = meter.create_histogram(
                 name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
                 description="Measures the duration of inbound HTTP requests.",
             )
-        _DjangoMiddleware._duration_histogram_new = None
+        DjangoMiddleware._duration_histogram_new = None
         if _report_new(sem_conv_opt_in_mode):
-            _DjangoMiddleware._duration_histogram_new = meter.create_histogram(
+            DjangoMiddleware._duration_histogram_new = meter.create_histogram(
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        _DjangoMiddleware._active_request_counter = (
+        DjangoMiddleware._active_request_counter = (
             create_http_server_active_requests(meter)
         )
         # This can not be solved, but is an inherent problem of this approach:
@@ -422,25 +423,52 @@ class DjangoInstrumentor(BaseInstrumentor):
                 middleware_position, self._sql_commenter_middleware
             )
 
-        settings_middleware.insert(
-            middleware_position, self._opentelemetry_middleware
+        otel_middleware = getattr(
+            settings, "OTEL_DJANGO_MIDDLEWARE", self._opentelemetry_middleware
         )
+        if not self._middleware_is_valid(otel_middleware):
+            _logger.debug(
+                'Middleware specified at settings.OTEL_DJANGO_MIDDLEWARE is not an instance of "%s". Switching to "%s".',
+                self._opentelemetry_middleware,
+                self._opentelemetry_middleware,
+            )
+            otel_middleware = self._opentelemetry_middleware
+
+        settings_middleware.insert(middleware_position, otel_middleware)
 
         setattr(settings, _middleware_setting, settings_middleware)
+
+    def _middleware_is_valid(self, middleware_path: str) -> bool:
+        if middleware_path == self._opentelemetry_middleware:
+            return True
+        try:
+            middleware_cls = import_string(middleware_path)
+        except ModuleNotFoundError:
+            return False
+
+        # Require the custom middleware to inherit from `DjangoMiddleware` because we do some
+        # patching to that class that the custom one needs to inherit.
+        return isinstance(middleware_cls, type) and issubclass(
+            middleware_cls, DjangoMiddleware
+        )
 
     def _uninstrument(self, **kwargs):
         _middleware_setting = _get_django_middleware_setting()
         settings_middleware = getattr(settings, _middleware_setting, None)
+        otel_middleware = getattr(
+            settings, "OTEL_DJANGO_MIDDLEWARE", self._opentelemetry_middleware
+        )
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
         # BaseInstrumentor and another one implemented in _instrument. Both
         # stop _instrument from running and thus, settings_middleware not being
         # set.
-        if settings_middleware is None or (
-            self._opentelemetry_middleware not in settings_middleware
+        if (
+            settings_middleware is None
+            or otel_middleware not in settings_middleware
         ):
             return
 
-        settings_middleware.remove(self._opentelemetry_middleware)
+        settings_middleware.remove(otel_middleware)
         setattr(settings, _middleware_setting, settings_middleware)
