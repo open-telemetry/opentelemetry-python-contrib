@@ -177,24 +177,15 @@ class _DjangoMiddleware(MiddlewareMixin):
     
     @staticmethod
     def format_request_objects_in_headers(attributes):
-        for key, value_list in list(attributes.items()):
-            new_values = []
-            for value in value_list:
-                if hasattr(value, "__class__"):
-                    if isinstance(value, HttpRequest):
-                        try:
-                            method = getattr(value, "method", "UNKNOWN")
-                            request_path = getattr(value, "path", "UNKNOWN")
-                            new_values.append(
-                                f"HttpRequest({method} {request_path})"
-                            )
-                        except (AttributeError, ValueError, TypeError):
-                            new_values.append("HttpRequest(...)")
-                    else:
-                        new_values.append(value)
-                else:
-                    new_values.append(value)
-            attributes[key] = new_values
+        for key, value_list in attributes.items():
+            for i, value in enumerate(value_list):
+                if isinstance(value, HttpRequest):
+                    try:
+                        method = getattr(value, "method", "UNKNOWN")
+                        request_path = getattr(value, "path", "UNKNOWN")
+                        value_list[i] = f"HttpRequest({method} {request_path})"
+                    except Exception:
+                        value_list[i] = "HttpRequest(...)"
         return attributes
 
     @staticmethod
