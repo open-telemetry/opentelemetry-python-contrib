@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# type: ignore[reportUnknownDeprecated]
+
 """
 Factories for event types described in
 https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#system-event.

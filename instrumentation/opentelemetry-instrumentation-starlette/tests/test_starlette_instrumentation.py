@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from starlette import applications
 from starlette.responses import PlainTextResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Host, Mount, Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -137,6 +137,24 @@ class TestStarletteManualInstrumentation(TestBase):
             self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
             self.assertEqual(
                 "http://testserver/sub/home",
+                span.attributes[HTTP_URL],
+            )
+
+    def test_host_starlette_call(self):
+        client = TestClient(self._app, base_url="http://testserver2")
+        client.get("/home")
+        spans = self.memory_exporter.get_finished_spans()
+
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        for span in spans_with_http_attributes:
+            self.assertEqual("/home", span.attributes[HTTP_TARGET])
+            self.assertEqual(
+                "http://testserver2/home",
                 span.attributes[HTTP_URL],
             )
 
@@ -294,6 +312,7 @@ class TestStarletteManualInstrumentation(TestBase):
                 Route("/user/{username}", home),
                 Route("/healthzz", health),
                 Mount("/sub", app=sub_app),
+                Host("testserver2", sub_app),
             ],
         )
 

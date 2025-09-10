@@ -59,13 +59,13 @@ Usage
     cursor.close()
     instrumented_cnx.close()
 
+Configuration
+-------------
+
 SQLCOMMENTER
 *****************************************
 You can optionally configure PyMySQL instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
-
-Usage
------
 
 .. code:: python
 
@@ -141,7 +141,6 @@ If sqlcommenter is enabled, you can optionally configure PyMySQL instrumentation
         enable_commenter=True,
         enable_attribute_commenter=True,
     )
-
 
 For example,
 ::

@@ -72,3 +72,30 @@ class TestInitialize(TestCase):
             )
 
         self.assertEqual("inner exception", str(em.exception))
+
+    @patch.dict(
+        "os.environ",
+        {
+            "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_foo"
+        },
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
+    def test_handles_invalid_gevent_monkeypatch(self, logger_mock):
+        # pylint:disable=no-self-use
+        auto_instrumentation.initialize()
+        logger_mock.error.assert_called_once_with(
+            "%s value must be `patch_all`",
+            "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH",
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            "OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH": "patch_all"
+        },
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
+    def test_handles_patch_all_gevent_monkeypatch(self, logger_mock):
+        # pylint:disable=no-self-use
+        auto_instrumentation.initialize()
+        logger_mock.error.assert_not_called()

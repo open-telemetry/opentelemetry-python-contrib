@@ -17,68 +17,6 @@ Instrument `django`_ to trace Django applications.
 
 .. _django: https://pypi.org/project/django/
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Django instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.django import DjangoInstrumentor
-
-    DjangoInstrumentor().instrument(is_sql_commentor_enabled=True)
-
-
-For example,
-::
-
-   Invoking Users().objects.all() will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
-
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding below variables to the settings.py
-
-SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
-
-For example,
-::
-Enabling this flag will add django framework and it's version which is /*framework='django%3A2.2.3*/
-
-SQLCOMMENTER_WITH_CONTROLLER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add controller name that handles the request /*controller='index'*/
-
-SQLCOMMENTER_WITH_ROUTE = True(Default) or False
-
-For example,
-::
-Enabling this flag will add url path that handles the request /*route='polls/'*/
-
-SQLCOMMENTER_WITH_APP_NAME = True(Default) or False
-
-For example,
-::
-Enabling this flag will add app name that handles the request /*app_name='polls'*/
-
-SQLCOMMENTER_WITH_OPENTELEMETRY = True(Default) or False
-
-For example,
-::
-Enabling this flag will add opentelemetry traceparent /*traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'*/
-
-SQLCOMMENTER_WITH_DB_DRIVER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add name of the db driver /*db_driver='django.db.backends.postgresql'*/
-
 Usage
 -----
 
@@ -231,6 +169,65 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+SQLCOMMENTER
+*****************************************
+You can optionally configure Django instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+
+    DjangoInstrumentor().instrument(is_sql_commentor_enabled=True)
+
+
+For example,
+::
+
+   Invoking Users().objects.all() will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
+   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
+
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding below variables to the settings.py
+
+SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
+
+For example,
+::
+Enabling this flag will add django framework and it's version which is /*framework='django%3A2.2.3*/
+
+SQLCOMMENTER_WITH_CONTROLLER = True(Default) or False
+
+For example,
+::
+Enabling this flag will add controller name that handles the request /*controller='index'*/
+
+SQLCOMMENTER_WITH_ROUTE = True(Default) or False
+
+For example,
+::
+Enabling this flag will add url path that handles the request /*route='polls/'*/
+
+SQLCOMMENTER_WITH_APP_NAME = True(Default) or False
+
+For example,
+::
+Enabling this flag will add app name that handles the request /*app_name='polls'*/
+
+SQLCOMMENTER_WITH_OPENTELEMETRY = True(Default) or False
+
+For example,
+::
+Enabling this flag will add opentelemetry traceparent /*traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'*/
+
+SQLCOMMENTER_WITH_DB_DRIVER = True(Default) or False
+
+For example,
+::
+Enabling this flag will add name of the db driver /*db_driver='django.db.backends.postgresql'*/
 
 API
 ---

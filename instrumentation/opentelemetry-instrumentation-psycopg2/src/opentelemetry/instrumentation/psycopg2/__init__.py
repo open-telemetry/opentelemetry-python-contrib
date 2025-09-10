@@ -18,13 +18,47 @@ using ``Psycopg2Instrumentor``.
 
 .. _Psycopg: http://initd.org/psycopg/
 
+Usage
+-----
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Call instrument() to wrap all database connections
+    Psycopg2Instrumentor().instrument()
+
+    cnx = psycopg2.connect(database='Database')
+
+    cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    cnx.close()
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
+
+Configuration
+-------------
+
 SQLCOMMENTER
 *****************************************
 You can optionally configure Psycopg2 instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
 
-Usage
------
 
 .. code:: python
 
@@ -99,39 +133,6 @@ For example,
 
     Invoking cursor.execute("select * from auth_users") will lead to postgresql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
     the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
-
-Usage
------
-
-.. code-block:: python
-
-    import psycopg2
-    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-
-    # Call instrument() to wrap all database connections
-    Psycopg2Instrumentor().instrument()
-
-    cnx = psycopg2.connect(database='Database')
-
-    cursor = cnx.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
-    cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.close()
-    cnx.close()
-
-.. code-block:: python
-
-    import psycopg2
-    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-
-    # Alternatively, use instrument_connection for an individual connection
-    cnx = psycopg2.connect(database='Database')
-    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
-    cursor = instrumented_cnx.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
-    cursor.execute("INSERT INTO test (testField) VALUES (123)")
-    cursor.close()
-    instrumented_cnx.close()
 
 API
 ---
