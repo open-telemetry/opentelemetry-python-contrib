@@ -259,7 +259,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
+from opentelemetry.util.http import redact_url, sanitize_method
 
 _logger = logging.getLogger(__name__)
 
@@ -313,7 +313,7 @@ def _extract_parameters(
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = httpx.URL(remove_url_credentials(str(request.url)))
+        url = httpx.URL(str(request.url))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
@@ -382,7 +382,7 @@ def _apply_request_client_attributes_to_span(
     )
 
     # http semconv transition: http.url -> url.full
-    _set_http_url(span_attributes, str(url), semconv)
+    _set_http_url(span_attributes, redact_url(str(url)), semconv)
 
     # Set HTTP method in metric labels
     _set_http_method(
@@ -417,7 +417,6 @@ def _apply_request_client_attributes_to_span(
 
 def _apply_response_client_attributes_to_span(
     span: Span,
-    metric_attributes: dict[str, typing.Any],
     status_code: int,
     http_version: str,
     semconv: _StabilityMode,
@@ -433,6 +432,30 @@ def _apply_response_client_attributes_to_span(
     http_status_code = http_status_to_status_code(status_code)
     span.set_status(http_status_code)
 
+    if http_status_code == StatusCode.ERROR and _report_new(semconv):
+        # http semconv transition: new error.type
+        span_attributes[ERROR_TYPE] = str(status_code)
+
+    if http_version and _report_new(semconv):
+        # http semconv transition: http.flavor -> network.protocol.version
+        _set_http_network_protocol_version(
+            span_attributes,
+            http_version.replace("HTTP/", ""),
+            semconv,
+        )
+
+    for key, val in span_attributes.items():
+        span.set_attribute(key, val)
+
+
+def _apply_response_client_attributes_to_metrics(
+    span: Span | None,
+    metric_attributes: dict[str, typing.Any],
+    status_code: int,
+    http_version: str,
+    semconv: _StabilityMode,
+) -> None:
+    """Apply response attributes to metric attributes."""
     # Set HTTP status code in metric attributes
     _set_status(
         span,
@@ -443,26 +466,12 @@ def _apply_response_client_attributes_to_span(
         sem_conv_opt_in_mode=semconv,
     )
 
-    if http_status_code == StatusCode.ERROR and _report_new(semconv):
-        # http semconv transition: new error.type
-        span_attributes[ERROR_TYPE] = str(status_code)
-
     if http_version and _report_new(semconv):
-        # http semconv transition: http.flavor -> network.protocol.version
         _set_http_network_protocol_version(
             metric_attributes,
             http_version.replace("HTTP/", ""),
             semconv,
         )
-        if _report_new(semconv):
-            _set_http_network_protocol_version(
-                span_attributes,
-                http_version.replace("HTTP/", ""),
-                semconv,
-            )
-
-    for key, val in span_attributes.items():
-        span.set_attribute(key, val)
 
 
 class SyncOpenTelemetryTransport(httpx.BaseTransport):
@@ -592,11 +601,19 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
@@ -777,11 +794,19 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
@@ -1001,11 +1026,19 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,
@@ -1109,11 +1142,19 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,

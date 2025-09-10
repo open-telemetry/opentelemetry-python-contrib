@@ -39,6 +39,18 @@ from opentelemetry.instrumentation.httpx import (
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -55,7 +67,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -76,6 +88,7 @@ if typing.TYPE_CHECKING:
 
 
 HTTP_RESPONSE_BODY = "http.response.body"
+SCHEMA_URL = Schemas.V1_21_0.value
 
 
 def _is_url_tuple(request: "RequestInfo"):
@@ -216,9 +229,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                 },
             )
 
@@ -237,9 +250,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(duration_data_point.attributes),
                 {
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_SCHEME: "http",
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
                 },
             )
             self.assertEqual(duration_data_point.count, 1)
@@ -263,9 +276,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "_OTHER",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 405,
+                    HTTP_METHOD: "_OTHER",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 405,
                 },
             )
 
@@ -282,9 +295,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(duration_data_point.attributes),
                 {
-                    SpanAttributes.HTTP_STATUS_CODE: 405,
-                    SpanAttributes.HTTP_METHOD: "_OTHER",
-                    SpanAttributes.HTTP_SCHEME: "http",
+                    HTTP_STATUS_CODE: 405,
+                    HTTP_METHOD: "_OTHER",
+                    HTTP_SCHEME: "http",
                 },
             )
 
@@ -354,7 +367,7 @@ class BaseTestCases:
 
             self.assertEqual(
                 span.instrumentation_scope.schema_url,
-                SpanAttributes.SCHEMA_URL,
+                SCHEMA_URL,
             )
             self.assertEqual(
                 dict(span.attributes),
@@ -404,23 +417,23 @@ class BaseTestCases:
 
             self.assertEqual(
                 span.instrumentation_scope.schema_url,
-                SpanAttributes.SCHEMA_URL,
+                SCHEMA_URL,
             )
 
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: url,
+                    HTTP_URL: url,
                     URL_FULL: url,
-                    SpanAttributes.HTTP_HOST: "mock",
+                    HTTP_HOST: "mock",
                     SERVER_ADDRESS: "mock",
                     NETWORK_PEER_ADDRESS: "mock",
-                    SpanAttributes.NET_PEER_PORT: 8080,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    NET_PEER_PORT: 8080,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_FLAVOR: "1.1",
+                    HTTP_FLAVOR: "1.1",
                     NETWORK_PROTOCOL_VERSION: "1.1",
                     SERVER_PORT: 8080,
                     NETWORK_PEER_PORT: 8080,
@@ -440,13 +453,13 @@ class BaseTestCases:
             self.assertEqual(
                 dict(metrics[0].data.data_points[0].attributes),
                 {
-                    SpanAttributes.HTTP_FLAVOR: "1.1",
-                    SpanAttributes.HTTP_HOST: "mock",
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_SCHEME: "http",
-                    SpanAttributes.NET_PEER_NAME: "mock",
-                    SpanAttributes.NET_PEER_PORT: 8080,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
+                    HTTP_STATUS_CODE: 200,
                 },
             )
             self.assertEqual(metrics[0].name, "http.client.duration")
@@ -477,9 +490,7 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(
-                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-            )
+            self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
@@ -489,9 +500,7 @@ class BaseTestCases:
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(
-                duration_data_point.attributes.get(
-                    SpanAttributes.HTTP_STATUS_CODE
-                ),
+                duration_data_point.attributes.get(HTTP_STATUS_CODE),
                 404,
             )
 
@@ -535,9 +544,7 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(
-                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-            )
+            self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
             self.assertEqual(
                 span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
             )
@@ -554,7 +561,7 @@ class BaseTestCases:
             self.assertEqual(
                 metrics[0]
                 .data.data_points[0]
-                .attributes.get(SpanAttributes.HTTP_STATUS_CODE),
+                .attributes.get(HTTP_STATUS_CODE),
                 404,
             )
             self.assertEqual(
@@ -612,9 +619,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 500,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 500,
                 },
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -689,14 +696,14 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: url,
+                    HTTP_URL: url,
                     URL_FULL: url,
-                    SpanAttributes.HTTP_HOST: "mock",
+                    HTTP_HOST: "mock",
                     SERVER_ADDRESS: "mock",
                     NETWORK_PEER_ADDRESS: "mock",
-                    SpanAttributes.NET_PEER_PORT: 8080,
+                    NET_PEER_PORT: 8080,
                     SERVER_PORT: 8080,
                     NETWORK_PEER_PORT: 8080,
                     ERROR_TYPE: "TimeoutException",
@@ -722,10 +729,8 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertEqual(span.name, "POST")
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_METHOD], "POST"
-            )
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], url)
+            self.assertEqual(span.attributes[HTTP_METHOD], "POST")
+            self.assertEqual(span.attributes[HTTP_URL], url)
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_if_headers_equals_none(self):
@@ -790,6 +795,85 @@ class BaseTestCases:
             )
             self.assertEqual(data_point.count, 1)
 
+        def _run_disabled_tracing_metrics_attributes_test(
+            self,
+            url: str,
+            expected_attributes: dict,
+            expected_number_of_metrics: int = 1,
+        ) -> None:
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                client = self.create_client(
+                    self.create_transport(
+                        tracer_provider=trace.NoOpTracerProvider()
+                    )
+                )
+                mock_span.is_recording.return_value = False
+                self.perform_request(url, client=client)
+
+                self.assertFalse(mock_span.is_recording())
+                self.assertTrue(mock_span.is_recording.called)
+
+                metrics = self.assert_metrics(
+                    num_metrics=expected_number_of_metrics
+                )
+                duration_data_point = metrics[0].data.data_points[0]
+
+                self.assertEqual(duration_data_point.count, 1)
+                self.assertEqual(
+                    dict(duration_data_point.attributes),
+                    expected_attributes,
+                )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled for old
+            semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                },
+                expected_number_of_metrics=1,
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_both_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled for both
+            semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
+                },
+                expected_number_of_metrics=2,
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_new_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled with new semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    SERVER_ADDRESS: "mock",
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
+                expected_number_of_metrics=1,
+            )
+
         def test_response_hook(self):
             transport = self.create_transport(
                 tracer_provider=self.tracer_provider,
@@ -803,9 +887,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -885,12 +969,8 @@ class BaseTestCases:
             self.perform_request(self.URL, client=client1)
             self.perform_request(https_url, client=client2)
             spans = self.assert_span(num_spans=2)
-            self.assertEqual(
-                spans[0].attributes[SpanAttributes.HTTP_URL], self.URL
-            )
-            self.assertEqual(
-                spans[1].attributes[SpanAttributes.HTTP_URL], https_url
-            )
+            self.assertEqual(spans[0].attributes[HTTP_URL], self.URL)
+            self.assertEqual(spans[1].attributes[HTTP_URL], https_url)
 
     @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
@@ -982,9 +1062,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -1003,9 +1083,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -1108,7 +1188,7 @@ class BaseTestCases:
                 with self.subTest(idx=idx, res=res):
                     self.assertEqual(res.text, "Hello!")
                     self.assertEqual(
-                        spans[idx].attributes[SpanAttributes.HTTP_URL],
+                        spans[idx].attributes[HTTP_URL],
                         self.URL,
                     )
 
@@ -1301,12 +1381,26 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         self.assert_span(num_spans=1)
         self.assert_metrics(num_metrics=1)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?sig=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        actual_url = span.attributes[HTTP_URL]
+
+        if "@" in actual_url:
+            # If credentials are present, they must be redacted
+            self.assertEqual(
+                span.attributes[HTTP_URL],
+                "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED",
+            )
+        else:
+            # If credentials are removed completely, the query string should still be redacted
+            self.assertIn(
+                "http://mock/status/200?sig=REDACTED",
+                actual_url,
+                f"Basic URL structure is incorrect: {actual_url}",
+            )
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
@@ -1373,12 +1467,24 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         self.assert_span(num_spans=2)
         self.assert_metrics(num_metrics=1)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?Signature=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        actual_url = span.attributes[HTTP_URL]
+
+        if "@" in actual_url:
+            self.assertEqual(
+                span.attributes[HTTP_URL],
+                "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED",
+            )
+        else:
+            self.assertIn(
+                "http://mock/status/200?Signature=REDACTED",
+                actual_url,
+                f"If credentials are removed, the query string still should be redacted {actual_url}",
+            )
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
@@ -1483,9 +1589,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.assertEqual(
             dict(span.attributes),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
             },
         )
 

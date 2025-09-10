@@ -206,14 +206,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 
 ### How to Get PRs Reviewed
 
-The maintainers and approvers of this repo are not experts in every instrumentation there is here.
-In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+The maintainers and approvers of this repository are not experts in every instrumentation there is here.
+In fact, each one of us knows enough about them to only review a few. Unfortunately, it can be hard
 to find enough experts in every instrumentation to quickly review every instrumentation PR. The
 instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
 or directories that they own. The owners listed there will be notified when PRs that modify their
 files are opened.
 
 If you are not getting reviews, please contact the respective owners directly.
+
+> [!TIP]
+> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate if you have expertise to review a PR.
 
 ### How to Get PRs Merged
 
@@ -325,9 +328,24 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 ### Update supported instrumentation package versions
 
 - Navigate to the **instrumentation package directory:**
-  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
-  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+  - Update **`pyproject.toml`** file by modifying `instruments` or `instruments-any` entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` or `_instruments_any` variable in instrumentation **`package.py`** file with the new version constraint
 - At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected. For example, the following entry requires both `util` and `common` plus either `foo` or `bar` to be present for the instrumentation to occur:
+```
+[project.optional-dependencies]
+instruments = [
+  "util ~= 1.0"
+  "common ~= 2.0"
+]
+instruments-any = [
+  "foo ~= 3.0"
+  "bar ~= 4.0"
+]
+```
+
+<!-- See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details on instruments-any -->
 
 If you're adding support for a new version of the instrumentation package, follow these additional steps:
 
