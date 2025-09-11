@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=no-name-in-module
+
 from __future__ import annotations
 
 import json
@@ -23,10 +25,10 @@ from opentelemetry._opamp.exceptions import (
 )
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.proto.anyvalue_pb2 import (
-    AnyValue as PB2AnyValue,  # pylint: disable=no-name-in-module
+    AnyValue as PB2AnyValue,
 )
 from opentelemetry._opamp.proto.anyvalue_pb2 import (
-    KeyValue as PB2KeyValue,  # pylint: disable=no-name-in-module
+    KeyValue as PB2KeyValue,
 )
 from opentelemetry.util.types import AnyValue
 
