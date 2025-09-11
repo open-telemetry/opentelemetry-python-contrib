@@ -22,6 +22,7 @@ from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
+from opentelemetry.instrumentation._labeler import enhance_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
@@ -436,12 +437,20 @@ class _DjangoMiddleware(MiddlewareMixin):
                 target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
                 if target:
                     duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                # Enhance attributes with any custom labeler attributes
+                duration_attrs_old = enhance_metric_attributes(
+                    duration_attrs_old
+                )
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
                     duration_attrs, _StabilityMode.HTTP
+                )
+                # Enhance attributes with any custom labeler attributes
+                duration_attrs_new = enhance_metric_attributes(
+                    duration_attrs_new
                 )
                 self._duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
