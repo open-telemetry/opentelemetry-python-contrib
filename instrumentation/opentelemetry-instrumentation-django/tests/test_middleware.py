@@ -20,6 +20,7 @@ from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
+from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
@@ -1018,6 +1019,100 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     def tearDownClass(cls):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
+
+    def test_wsgi_request_in_header_is_properly_formatted(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.method = "GET"
+        mock_wsgi_request.path = "/test/path"
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        input_attributes = {
+            "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
+        }
+        expected_attributes = {
+            "http.request.header.test_wsgirequest_header": [
+                "HttpRequest(GET /test/path)"
+            ]
+        }
+
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
+        )
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_wsgi_request_handles_extraction_error(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        type(mock_wsgi_request).method = property(
+            lambda self: (_ for _ in ()).throw(ValueError("Test error"))
+        )
+
+        input_attributes = {
+            "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
+        }
+        expected_attributes = {
+            "http.request.header.test_wsgirequest_header": ["HttpRequest(...)"]
+        }
+
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
+        )
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_handles_http_request_as_well(self):
+        mock_http_request = Mock(spec=HttpRequest)
+        mock_http_request.method = "POST"
+        mock_http_request.path = "/api/data"
+        mock_http_request.__class__.__name__ = "HttpRequest"
+
+        input_attributes = {
+            "http.request.header.test_httprequest_header": [mock_http_request]
+        }
+        expected_attributes = {
+            "http.request.header.test_httprequest_header": [
+                "HttpRequest(POST /api/data)"
+            ]
+        }
+
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
+        )
+
+        self.assertEqual(formatted_attributes, expected_attributes)
+
+    def test_regular_header_values_are_preserved(self):
+        mock_wsgi_request = Mock(spec=WSGIRequest)
+        mock_wsgi_request.method = "GET"
+        mock_wsgi_request.path = "/test/path"
+        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
+
+        input_attributes = {
+            "http.request.header.test_wsgirequest_header": [mock_wsgi_request],
+            "http.request.header.test_regular_header": ["regular-value"],
+        }
+        expected_attributes = {
+            "http.request.header.test_wsgirequest_header": [
+                "HttpRequest(GET /test/path)"
+            ],
+            "http.request.header.test_regular_header": ["regular-value"],
+        }
+
+        formatted_attributes = (
+            _DjangoMiddleware.format_request_objects_in_headers(
+                input_attributes
+            )
+        )
+
+        self.assertEqual(formatted_attributes, expected_attributes)
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
