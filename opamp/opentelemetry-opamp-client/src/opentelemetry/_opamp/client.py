@@ -21,6 +21,7 @@ from uuid_utils import uuid7
 
 from opentelemetry._opamp import messages
 from opentelemetry._opamp.proto import opamp_pb2
+from opentelemetry._opamp.transport.base import HttpTransport
 from opentelemetry._opamp.transport.requests import RequestsTransport
 from opentelemetry._opamp.version import __version__
 from opentelemetry.context import (
@@ -61,9 +62,12 @@ class OpAMPClient:
         timeout_millis: int = _DEFAULT_OPAMP_TIMEOUT_MS,
         agent_identifying_attributes: Mapping[str, AnyValue],
         agent_non_identifying_attributes: Mapping[str, AnyValue] | None = None,
+        transport: HttpTransport = None,
     ):
         self._timeout_millis = timeout_millis
-        self._transport = RequestsTransport()
+        self._transport = (
+            RequestsTransport() if transport is None else transport
+        )
 
         self._endpoint = endpoint
         headers = headers or {}
