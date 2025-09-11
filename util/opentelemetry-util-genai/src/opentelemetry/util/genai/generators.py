@@ -163,6 +163,21 @@ def _maybe_set_span_messages(
         )
 
 
+def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
+    """Apply attributes/messages common to finish() paths."""
+    _apply_common_span_attributes(span, invocation)
+    _maybe_set_span_messages(
+        span, invocation.messages, invocation.chat_generations
+    )
+
+
+def _apply_error_attributes(span: Span, error: Error) -> None:
+    """Apply status and error attributes common to error() paths."""
+    span.set_status(Status(StatusCode.ERROR, error.message))
+    if span.is_recording():
+        span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
+
+
 class BaseTelemetryGenerator:
     """
     Abstract base for emitters mapping GenAI types -> OpenTelemetry.
@@ -266,36 +281,22 @@ class SpanGenerator(BaseTelemetryGenerator):
         state = self.spans.get(invocation.run_id)
         if state is None:
             with self._start_span_for_invocation(invocation) as span:
-                _apply_common_span_attributes(span, invocation)
-                _maybe_set_span_messages(
-                    span, invocation.messages, invocation.chat_generations
-                )
+                _apply_finish_attributes(span, invocation)
             self._finalize_invocation(invocation)
             return
 
         span = state.span
-        _apply_common_span_attributes(span, invocation)
-        _maybe_set_span_messages(
-            span, invocation.messages, invocation.chat_generations
-        )
+        _apply_finish_attributes(span, invocation)
         self._finalize_invocation(invocation)
 
     def error(self, error: Error, invocation: LLMInvocation):
         state = self.spans.get(invocation.run_id)
         if state is None:
             with self._start_span_for_invocation(invocation) as span:
-                span.set_status(Status(StatusCode.ERROR, error.message))
-                if span.is_recording():
-                    span.set_attribute(
-                        ErrorAttributes.ERROR_TYPE, error.type.__qualname__
-                    )
+                _apply_error_attributes(span, error)
             self._finalize_invocation(invocation)
             return
 
         span = state.span
-        span.set_status(Status(StatusCode.ERROR, error.message))
-        if span.is_recording():
-            span.set_attribute(
-                ErrorAttributes.ERROR_TYPE, error.type.__qualname__
-            )
+        _apply_error_attributes(span, error)
         self._finalize_invocation(invocation)
