@@ -27,7 +27,7 @@ interactions:
       User-Agent:
       - python-requests/2.32.3
     method: POST
-    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
   response:
     body:
       string: |-
@@ -38,20 +38,36 @@ interactions:
                 "role": "model",
                 "parts": [
                   {
-                    "text": "Okay, I understand.  I'm ready for your test.  Please proceed.\n"
+                    "text": "This is a test."
                   }
                 ]
               },
               "finishReason": 1,
-              "avgLogprobs": -0.005519990466142956
+              "avgLogprobs": -14.465771484375
             }
           ],
           "usageMetadata": {
             "promptTokenCount": 5,
-            "candidatesTokenCount": 19,
-            "totalTokenCount": 24
+            "candidatesTokenCount": 5,
+            "totalTokenCount": 354,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 5
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 5
+              }
+            ],
+            "thoughtsTokenCount": 344
           },
-          "modelVersion": "gemini-1.5-flash-002"
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T15:18:37.008618Z",
+          "responseId": "zZWkaKpDipOZ5w__8qRQ"
         }
     headers:
       Content-Type:
@@ -63,7 +79,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '453'
+      - '734'
     status:
       code: 200
       message: OK

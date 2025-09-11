@@ -48,6 +48,11 @@ from wrapt import (
 )
 
 from opentelemetry._events import get_event_logger
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.vertexai.package import _instruments
@@ -118,10 +123,30 @@ class VertexAIInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_28_0.value,
             event_logger_provider=event_logger_provider,
         )
-
-        method_wrappers = MethodWrappers(
-            tracer, event_logger, is_content_enabled()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
         )
+        if sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            # Type checker now knows sem_conv_opt_in_mode is a Literal[_StabilityMode.DEFAULT]
+            method_wrappers = MethodWrappers(
+                tracer,
+                event_logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
+        elif sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
+            # Type checker now knows it's the other literal
+            method_wrappers = MethodWrappers(
+                tracer,
+                event_logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
+        else:
+            # Impossible to reach here, only 2 opt-in modes exist for GEN_AI.
+            raise ValueError(
+                f"Sem Conv opt in mode {sem_conv_opt_in_mode} not supported."
+            )
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):
