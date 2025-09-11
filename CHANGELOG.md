@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.37.0/0.58b0 (2025-09-11)
+
 ### Fixed
 
 - `opentelemetry-instrumentation-fastapi`: Fix middleware ordering to cover all exception handling use cases.
