@@ -230,6 +230,14 @@ class SpanGenerator(BaseTelemetryGenerator):
         )
         if parent_state is not None:
             parent_state.children.append(invocation.run_id)
+        span = self._start_span(
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
+            kind=SpanKind.CLIENT,
+            parent_run_id=invocation.parent_run_id,
+        )
+        # Keep span active but do not end it here; it will be ended in finish()/error()
+        with use_span(span, end_on_exit=False):
+            self.spans[invocation.run_id] = _SpanState(span=span)
 
     @contextmanager
     def _start_span_for_invocation(self, invocation: LLMInvocation):
@@ -255,18 +263,39 @@ class SpanGenerator(BaseTelemetryGenerator):
         self._end_span(invocation.run_id)
 
     def finish(self, invocation: LLMInvocation):
-        with self._start_span_for_invocation(invocation) as span:
-            _apply_common_span_attributes(span, invocation)
-            _maybe_set_span_messages(
-                span, invocation.messages, invocation.chat_generations
-            )
+        state = self.spans.get(invocation.run_id)
+        if state is None:
+            with self._start_span_for_invocation(invocation) as span:
+                _apply_common_span_attributes(span, invocation)
+                _maybe_set_span_messages(
+                    span, invocation.messages, invocation.chat_generations
+                )
+            self._finalize_invocation(invocation)
+            return
+
+        span = state.span
+        _apply_common_span_attributes(span, invocation)
+        _maybe_set_span_messages(
+            span, invocation.messages, invocation.chat_generations
+        )
         self._finalize_invocation(invocation)
 
     def error(self, error: Error, invocation: LLMInvocation):
-        with self._start_span_for_invocation(invocation) as span:
-            span.set_status(Status(StatusCode.ERROR, error.message))
-            if span.is_recording():
-                span.set_attribute(
-                    ErrorAttributes.ERROR_TYPE, error.type.__qualname__
-                )
+        state = self.spans.get(invocation.run_id)
+        if state is None:
+            with self._start_span_for_invocation(invocation) as span:
+                span.set_status(Status(StatusCode.ERROR, error.message))
+                if span.is_recording():
+                    span.set_attribute(
+                        ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+                    )
+            self._finalize_invocation(invocation)
+            return
+
+        span = state.span
+        span.set_status(Status(StatusCode.ERROR, error.message))
+        if span.is_recording():
+            span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+            )
         self._finalize_invocation(invocation)

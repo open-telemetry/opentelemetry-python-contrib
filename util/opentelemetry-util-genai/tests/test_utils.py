@@ -169,3 +169,53 @@ class TestTelemetryHandler(unittest.TestCase):
 
         assert isinstance(input_messages_json, str)
         assert isinstance(output_messages_json, str)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
+    def test_parent_child_span_relationship(self):
+        parent_id = uuid4()
+        child_id = uuid4()
+        message = InputMessage(role="Human", parts=[Text(content="hi")])
+        chat_generation = OutputMessage(
+            role="AI", parts=[Text(content="ok")], finish_reason="stop"
+        )
+
+        # Start parent and child (child references parent_run_id)
+        self.telemetry_handler.start_llm(
+            request_model="parent-model",
+            prompts=[message],
+            run_id=parent_id,
+            provider="test-provider",
+        )
+        self.telemetry_handler.start_llm(
+            request_model="child-model",
+            prompts=[message],
+            run_id=child_id,
+            parent_run_id=parent_id,
+            provider="test-provider",
+        )
+
+        # Stop child first, then parent (order should not matter)
+        self.telemetry_handler.stop_llm(
+            child_id, chat_generations=[chat_generation]
+        )
+        self.telemetry_handler.stop_llm(
+            parent_id, chat_generations=[chat_generation]
+        )
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+
+        # Identify spans irrespective of export order
+        child_span = next(s for s in spans if s.name == "chat child-model")
+        parent_span = next(s for s in spans if s.name == "chat parent-model")
+
+        # Same trace
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        # Child has parent set to parent's span id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        # Parent should not have a parent (root)
+        assert parent_span.parent is None
