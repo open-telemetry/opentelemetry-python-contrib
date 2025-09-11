@@ -269,30 +269,26 @@ class SpanGenerator(BaseTelemetryGenerator):
             self.spans[invocation.run_id] = span_state
             yield span
 
-    def _finalize_invocation(self, invocation: LLMInvocation) -> None:
-        """End span(s) and record duration for the invocation."""
-        self._end_span(invocation.run_id)
-
     def finish(self, invocation: LLMInvocation):
         state = self.spans.get(invocation.run_id)
         if state is None:
             with self._start_span_for_invocation(invocation) as span:
                 _apply_finish_attributes(span, invocation)
-            self._finalize_invocation(invocation)
+            self._end_span(invocation.run_id)
             return
 
         span = state.span
         _apply_finish_attributes(span, invocation)
-        self._finalize_invocation(invocation)
+        self._end_span(invocation.run_id)
 
     def error(self, error: Error, invocation: LLMInvocation):
         state = self.spans.get(invocation.run_id)
         if state is None:
             with self._start_span_for_invocation(invocation) as span:
                 _apply_error_attributes(span, error)
-            self._finalize_invocation(invocation)
+            self._end_span(invocation.run_id)
             return
 
         span = state.span
         _apply_error_attributes(span, error)
-        self._finalize_invocation(invocation)
+        self._end_span(invocation.run_id)
