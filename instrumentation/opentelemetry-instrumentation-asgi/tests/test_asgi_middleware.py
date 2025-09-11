@@ -780,7 +780,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         def update_expected_server(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8")}
+                {
+                    SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    SpanAttributes.HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                }
             )
             return expected
 
@@ -797,7 +800,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         def update_expected_server(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8")}
+                {
+                    SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    SpanAttributes.HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                }
             )
             return expected
 
@@ -1728,7 +1734,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_HOST: "127.0.0.1",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://127.0.0.1/?foo=bar",
+                SpanAttributes.HTTP_URL: "http://test/?foo=bar",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.HTTP_SERVER_NAME: "test",
@@ -1781,7 +1787,7 @@ class TestAsgiAttributes(unittest.TestCase):
                 SpanAttributes.HTTP_METHOD: "GET",
                 SpanAttributes.HTTP_HOST: "127.0.0.1",
                 SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://127.0.0.1/?foo=bar",
+                SpanAttributes.HTTP_URL: "http://test/?foo=bar",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.HTTP_SERVER_NAME: "test",
