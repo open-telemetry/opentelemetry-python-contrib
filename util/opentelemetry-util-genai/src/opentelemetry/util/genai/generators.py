@@ -238,21 +238,9 @@ class SpanGenerator(BaseTelemetryGenerator):
         del self.spans[run_id]
 
     def start(self, invocation: LLMInvocation):
-        parent_state = (
-            self.spans.get(invocation.parent_run_id)
-            if invocation.parent_run_id is not None
-            else None
-        )
-        if parent_state is not None:
-            parent_state.children.append(invocation.run_id)
-        span = self._start_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
-            kind=SpanKind.CLIENT,
-            parent_run_id=invocation.parent_run_id,
-        )
-        # Keep span active but do not end it here; it will be ended in finish()/error()
-        with use_span(span, end_on_exit=False):
-            self.spans[invocation.run_id] = _SpanState(span=span)
+        # Create/register the span; keep it active but do not end it here.
+        with self._start_span_for_invocation(invocation):
+            pass
 
     @contextmanager
     def _start_span_for_invocation(self, invocation: LLMInvocation):
@@ -261,6 +249,14 @@ class SpanGenerator(BaseTelemetryGenerator):
         The span is not ended automatically on exiting the context; callers
         must finalize via _finalize_invocation.
         """
+        # Establish parent/child relationship if a parent span exists.
+        parent_state = (
+            self.spans.get(invocation.parent_run_id)
+            if invocation.parent_run_id is not None
+            else None
+        )
+        if parent_state is not None:
+            parent_state.children.append(invocation.run_id)
         span = self._start_span(
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
