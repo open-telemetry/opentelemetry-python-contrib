@@ -280,32 +280,32 @@ def remove_none_values(body):
     return result
 
 
-def assert_log_parent(log, span):
+def assert_log_parent(log_record, span):
     if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
-        assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
+        assert log_record.trace_id == span.get_span_context().trace_id
+        assert log_record.span_id == span.get_span_context().span_id
+        assert log_record.trace_flags == span.get_span_context().trace_flags
 
 
-def assert_message_in_logs(log, event_name, expected_content, parent_span):
+def assert_message_in_logs(
+    log_record, event_name, expected_content, parent_span
+):
     assert (
-        log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    ), log.log_record.attributes[EventAttributes.EVENT_NAME]
+        log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    ), log_record.attributes[EventAttributes.EVENT_NAME]
     assert (
-        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+        log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
     )
 
     if not expected_content:
-        assert not log.log_record.body
+        assert not log_record.body
     else:
-        assert log.log_record.body
-        assert dict(log.log_record.body) == remove_none_values(
+        assert log_record.body
+        assert dict(log_record.body) == remove_none_values(
             expected_content
-        ), dict(log.log_record.body)
-    assert_log_parent(log, parent_span)
+        ), dict(log_record.body)
+    assert_log_parent(log_record, parent_span)
 
 
 def assert_all_metric_attributes(
