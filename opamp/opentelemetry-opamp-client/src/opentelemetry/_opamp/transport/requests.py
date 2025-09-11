@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from typing import Mapping
 
 import requests
@@ -22,8 +24,8 @@ from opentelemetry._opamp.transport.exceptions import OpAMPException
 
 
 class RequestsTransport(HttpTransport):
-    def __init__(self):
-        self.session = requests.Session()
+    def __init__(self, session: requests.Session | None = None):
+        self.session = requests.Session() if session is None else session
 
     def send(
         self,
