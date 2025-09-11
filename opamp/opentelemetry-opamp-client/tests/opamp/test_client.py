@@ -30,6 +30,7 @@ from opentelemetry._opamp.proto.anyvalue_pb2 import (
 from opentelemetry._opamp.proto.anyvalue_pb2 import (
     KeyValue as PB2KeyValue,  # pylint: disable=no-name-in-module
 )
+from opentelemetry._opamp.transport.requests import RequestsTransport
 from opentelemetry._opamp.version import __version__
 
 
@@ -61,12 +62,14 @@ def test_can_instantiate_opamp_client_with_defaults():
 
 
 def test_can_instantiate_opamp_client_all_params():
+    transport = RequestsTransport()
     client = OpAMPClient(
         endpoint="url",
         headers={"an": "header"},
         timeout_millis=2_000,
         agent_identifying_attributes={"foo": "bar"},
         agent_non_identifying_attributes={"bar": "baz"},
+        transport=transport,
     )
 
     assert client
@@ -85,6 +88,7 @@ def test_can_instantiate_opamp_client_all_params():
     assert client._agent_description.non_identifying_attributes == [
         PB2KeyValue(key="bar", value=PB2AnyValue(string_value="baz")),
     ]
+    assert client._transport is transport
 
 
 def test_client_headers_override_defaults():
