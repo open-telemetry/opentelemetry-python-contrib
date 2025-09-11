@@ -15,6 +15,7 @@
 from unittest import mock
 
 import pytest
+import requests
 
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.transport.base import base_headers
@@ -26,6 +27,14 @@ def test_can_instantiate_requests_transport():
     transport = RequestsTransport()
 
     assert transport
+
+
+def test_can_instantiate_requests_transport_with_own_session():
+    session = requests.Session()
+    transport = RequestsTransport(session=session)
+
+    assert transport
+    assert transport.session is session
 
 
 def test_can_send():
