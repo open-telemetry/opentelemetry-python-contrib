@@ -23,6 +23,12 @@ from opentelemetry._opamp import messages
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.transport.requests import RequestsTransport
 from opentelemetry._opamp.version import __version__
+from opentelemetry.context import (
+    _SUPPRESS_INSTRUMENTATION_KEY,
+    attach,
+    detach,
+    set_value,
+)
 from opentelemetry.util.types import AnyValue
 
 _logger = getLogger(__name__)
@@ -142,6 +148,7 @@ class OpAMPClient:
         return data
 
     def _send(self, data: bytes):
+        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
         try:
             response = self._transport.send(
                 url=self._endpoint,
@@ -152,6 +159,7 @@ class OpAMPClient:
             return response
         finally:
             self._sequence_num += 1
+            detach(token)
 
     @staticmethod
     def _decode_remote_config(
