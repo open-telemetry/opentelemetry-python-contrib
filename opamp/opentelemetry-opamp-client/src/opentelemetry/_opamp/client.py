@@ -62,7 +62,7 @@ class OpAMPClient:
         timeout_millis: int = _DEFAULT_OPAMP_TIMEOUT_MS,
         agent_identifying_attributes: Mapping[str, AnyValue],
         agent_non_identifying_attributes: Mapping[str, AnyValue] | None = None,
-        transport: HttpTransport = None,
+        transport: HttpTransport | None = None,
     ):
         self._timeout_millis = timeout_millis
         self._transport = (
