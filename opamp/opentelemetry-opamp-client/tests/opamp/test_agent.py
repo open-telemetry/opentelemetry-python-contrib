@@ -38,7 +38,7 @@ def test_can_start_agent():
 def test_agent_start_will_send_connection_and_disconnetion_messages():
     client_mock = mock.Mock()
     mock_message = {"mock": "message"}
-    client_mock._send.return_value = mock_message
+    client_mock.send.return_value = mock_message
     message_handler = mock.Mock()
     agent = OpAMPAgent(
         interval=30, client=client_mock, message_handler=message_handler
@@ -49,7 +49,7 @@ def test_agent_start_will_send_connection_and_disconnetion_messages():
     agent.stop()
 
     # one send for connection message, one for disconnect agent message
-    assert client_mock._send.call_count == 2
+    assert client_mock.send.call_count == 2
     # connection callback has been called
     assert agent._schedule is True
     # connection message response has been received
@@ -92,7 +92,7 @@ def test_agent_retries_before_max_attempts(caplog):
     message_handler_mock = mock.Mock()
     client_mock = mock.Mock()
     connection_message = disconnection_message = server_message = mock.Mock()
-    client_mock._send.side_effect = [
+    client_mock.send.side_effect = [
         connection_message,
         Exception,
         server_message,
@@ -110,7 +110,7 @@ def test_agent_retries_before_max_attempts(caplog):
     sleep(0.1)
     agent.stop()
 
-    assert client_mock._send.call_count == 4
+    assert client_mock.send.call_count == 4
     assert message_handler_mock.call_count == 2
 
 
@@ -119,7 +119,7 @@ def test_agent_stops_after_max_attempts(caplog):
     message_handler_mock = mock.Mock()
     client_mock = mock.Mock()
     connection_message = disconnection_message = mock.Mock()
-    client_mock._send.side_effect = [
+    client_mock.send.side_effect = [
         connection_message,
         Exception,
         Exception,
@@ -138,7 +138,7 @@ def test_agent_stops_after_max_attempts(caplog):
     sleep(0.1)
     agent.stop()
 
-    assert client_mock._send.call_count == 4
+    assert client_mock.send.call_count == 4
     assert message_handler_mock.call_count == 1
 
 
