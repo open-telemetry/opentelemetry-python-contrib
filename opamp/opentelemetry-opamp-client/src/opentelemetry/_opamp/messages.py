@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # pylint: disable=no-name-in-module
+# FIXME: remove this after _opamp -> opamp, making this helpers public is not enough for pyright
+# type: ignore[reportUnusedFunction]
 
 from __future__ import annotations
 
