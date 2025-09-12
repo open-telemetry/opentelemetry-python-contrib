@@ -23,8 +23,9 @@ Usage
 The DB-API instrumentor and its utilities provide common, core functionality for
 database framework or object relation mapper (ORM) instrumentations. Users will
 typically instrument database client code with those framework/ORM-specific
-instrumentations, instead of directly using this DB-API integration. See full list
-at `instrumentation`_.
+instrumentations, instead of directly using this DB-API integration. Features
+such as sqlcommenter can be configured at framework/ORM level as well. See full
+list at `instrumentation`_.
 
 .. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
 
@@ -57,15 +58,10 @@ Configuration
 
 SQLCommenter
 ************
-sqlcommenter is supported by several Python database client framework/ORM-specific
-instrumentors. See their respective docs for how to opt into this feature at
-`instrumentation`_. There is no need to opt in at the DB-API level unless setting up
-its integration directly.
-
-If using DB-API instrumentation directly, you can optionally enable sqlcommenter which
-enriches the query with contextual information. Queries made after setting up
-trace integration with sqlcommenter enabled will have configurable key-value pairs
-appended to them, e.g. ``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
@@ -89,16 +85,11 @@ records are enabled. For more information, see:
     )
 
 
-SQLComment customization
-************************
-sqlcommenter is supported by several Python database client framework/ORM-specific
-instrumentors. See their respective docs for how to configure this feature at
-`instrumentation`_. There is no need to configure at the DB-API level unless setting up
-its integration directly.
-
-If using DB-API instrumentation directly, the key-value pairs appended to the query
-can be configured using ``commenter_options``. When sqlcommenter is enabled, all
-available KVs/tags are calculated by default. ``commenter_options`` supports *opting out*
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
 of specific KVs.
 
 .. code:: python
@@ -122,7 +113,7 @@ of specific KVs.
         }
     )
 
-Available commenter options
+Available commenter_options
 ###########################
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
@@ -147,15 +138,10 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 
 SQLComment in span attribute
 ****************************
-sqlcommenter is supported by several Python database client framework/ORM-specific
-instrumentors. See their respective docs for how to opt into this feature at
-`instrumentation`_. There is no need to opt in at the DB-API level unless setting up
-its integration directly.
-
-If using DB-API instrumentation directly and sqlcommenter is enabled, you can opt into
-the inclusion of sqlcomment in the query span ``db.statement`` attribute for your needs.
-If ``commenter_options`` have been set, the span attribute comment will also be configured
-by this setting.
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
 
 .. code:: python
 
