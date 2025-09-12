@@ -46,7 +46,6 @@ Usage
 
     import os
 
-    from opentelemetry._opamp import messages
     from opentelemetry._opamp.agent import OpAMPAgent
     from opentelemetry._opamp.client import OpAMPClient
     from opentelemetry._opamp.proto import opamp_pb2 as opamp_pb2
@@ -55,7 +54,7 @@ Usage
 
 
     def opamp_handler(agent: OpAMPAgent, client: OpAMPClient, message: opamp_pb2.ServerToAgent):
-        for config_filename, config in messages._decode_remote_config(message.remote_config):
+        for config_filename, config in client.decode_remote_config(message.remote_config):
             print("do something")
 
 
