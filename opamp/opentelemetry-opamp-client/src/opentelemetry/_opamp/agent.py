@@ -124,7 +124,7 @@ class OpAMPAgent:
         atexit.register(self.stop)
 
         # enqueue the connection message so we can then enable heartbeat
-        payload = self._client._build_connection_message()
+        payload = self._client.build_connection_message()
         self.send(
             payload,
             max_retries=self._max_retries,
@@ -162,7 +162,7 @@ class OpAMPAgent:
         """
         while not self._stop.wait(self._interval):
             if self._schedule:
-                payload = self._client._build_heartbeat_message()
+                payload = self._client.build_heartbeat_message()
                 job = _Job(
                     payload=payload,
                     max_retries=self._heartbeat_max_retries,
@@ -185,7 +185,7 @@ class OpAMPAgent:
             message = None
             while job.should_retry() and not self._stop.is_set():
                 try:
-                    message = self._client._send(job.payload)
+                    message = self._client.send(job.payload)
                     logger.debug("Job succeeded: %r", job.payload)
                     break
                 except Exception as exc:
@@ -241,9 +241,9 @@ class OpAMPAgent:
         # Before exiting send signal the server we are disconnecting to free our resources
         # This is not required by the spec but is helpful in practice
         logger.debug("Stopping OpAMPClient: sending AgentDisconnect")
-        payload = self._client._build_agent_disconnect_message()
+        payload = self._client.build_agent_disconnect_message()
         try:
-            self._client._send(payload)
+            self._client.send(payload)
         except Exception:  # pylint: disable=broad-exception-caught
             logger.debug(
                 "Stopping OpAMPClient: failed to send AgentDisconnect message"

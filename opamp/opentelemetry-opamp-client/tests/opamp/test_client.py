@@ -100,7 +100,7 @@ def test_client_headers_override_defaults():
         headers={"User-Agent": "Custom"},
     )
     client._transport = mock.Mock()
-    client._send(b"")
+    client.send(b"")
 
     (send_call,) = client._transport.mock_calls
     assert send_call == mock.call.send(
@@ -115,7 +115,7 @@ def test_client_headers_override_defaults():
 
 
 def test_build_connection_message(client):
-    data = client._build_connection_message()
+    data = client.build_connection_message()
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -142,7 +142,7 @@ def test_build_connection_message_can_serialize_attributes():
             "float": 2.0,
         },
     )
-    data = client._build_connection_message()
+    data = client.build_connection_message()
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -163,7 +163,7 @@ def test_build_connection_message_can_serialize_attributes():
 
 
 def test_build_agent_disconnect_message(client):
-    data = client._build_agent_disconnect_message()
+    data = client.build_agent_disconnect_message()
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -176,7 +176,7 @@ def test_build_agent_disconnect_message(client):
 
 
 def test_build_heartbeat_message(client):
-    data = client._build_heartbeat_message()
+    data = client.build_heartbeat_message()
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -188,7 +188,7 @@ def test_build_heartbeat_message(client):
 
 
 def test_update_remote_config_status_without_previous_config(client):
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
@@ -202,14 +202,14 @@ def test_update_remote_config_status_without_previous_config(client):
 
 
 def test_update_remote_config_status_with_same_config(client):
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
 
     assert remote_config_status is not None
 
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
@@ -218,7 +218,7 @@ def test_update_remote_config_status_with_same_config(client):
 
 
 def test_update_remote_config_status_with_diffent_config(client):
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
@@ -226,7 +226,7 @@ def test_update_remote_config_status_with_diffent_config(client):
     assert remote_config_status is not None
 
     # different status
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_FAILED,
     )
@@ -234,7 +234,7 @@ def test_update_remote_config_status_with_diffent_config(client):
     assert remote_config_status is not None
 
     # different error message
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_FAILED,
         error_message="different error message",
@@ -243,7 +243,7 @@ def test_update_remote_config_status_with_diffent_config(client):
     assert remote_config_status is not None
 
     # different hash
-    remote_config_status = client._update_remote_config_status(
+    remote_config_status = client.update_remote_config_status(
         remote_config_hash=b"1234",
         status=opamp_pb2.RemoteConfigStatuses_FAILED,
         error_message="different error message",
@@ -253,11 +253,11 @@ def test_update_remote_config_status_with_diffent_config(client):
 
 
 def test_build_remote_config_status_response_message_no_error_message(client):
-    remote_config_status = messages._build_remote_config_status_message(
+    remote_config_status = messages.build_remote_config_status_message(
         last_remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
-    data = client._build_remote_config_status_response_message(
+    data = client.build_remote_config_status_response_message(
         remote_config_status
     )
 
@@ -280,12 +280,12 @@ def test_build_remote_config_status_response_message_no_error_message(client):
 def test_build_remote_config_status_response_message_with_error_message(
     client,
 ):
-    remote_config_status = messages._build_remote_config_status_message(
+    remote_config_status = messages.build_remote_config_status_message(
         last_remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_FAILED,
         error_message="an error message",
     )
-    data = client._build_remote_config_status_response_message(
+    data = client.build_remote_config_status_response_message(
         remote_config_status
     )
 
@@ -308,8 +308,8 @@ def test_build_remote_config_status_response_message_with_error_message(
 def test_message_sequence_num_increases_in_send(client):
     client._transport = mock.Mock()
     for index in range(2):
-        data = client._build_heartbeat_message()
-        client._send(data)
+        data = client.build_heartbeat_message()
+        client.send(data)
 
         message = opamp_pb2.AgentToServer()
         message.ParseFromString(data)
@@ -320,7 +320,7 @@ def test_message_sequence_num_increases_in_send(client):
 
 def test_send(client):
     client._transport = mock.Mock()
-    client._send(b"foo")
+    client.send(b"foo")
 
     (send_call,) = client._transport.mock_calls
     assert send_call == mock.call.send(
@@ -346,7 +346,7 @@ def test_decode_remote_config(client):
     config.config_map["text/json"].content_type = "text/json"
     message = opamp_pb2.AgentRemoteConfig(config=config)
 
-    decoded = list(client._decode_remote_config(message))
+    decoded = list(client.decode_remote_config(message))
     assert sorted(decoded) == sorted(
         [
             ("application/json", {"a": "config"}),
@@ -362,7 +362,7 @@ def test_decode_remote_config_invalid_content_type(client):
     message = opamp_pb2.AgentRemoteConfig(config=config)
 
     with pytest.raises(OpAMPRemoteConfigParseException):
-        list(client._decode_remote_config(message))
+        list(client.decode_remote_config(message))
 
 
 def test_decode_remote_config_invalid_file_body(client):
@@ -372,4 +372,4 @@ def test_decode_remote_config_invalid_file_body(client):
     message = opamp_pb2.AgentRemoteConfig(config=config)
 
     with pytest.raises(OpAMPRemoteConfigDecodeException):
-        list(client._decode_remote_config(message))
+        list(client.decode_remote_config(message))
