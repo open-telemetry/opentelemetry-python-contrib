@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3734))
 - `opentelemetry-instrumentation`: botocore: upgrade moto package from 5.0.9 to 5.1.11
   ([#3736](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3736))
+- `opentelemetry-instrumentation-dbapi`: Add support for `commenter_options` in `trace_integration` to control SQLCommenter behavior
+  ([#3743](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3743))
 
 ## Version 1.36.0/0.57b0 (2025-07-29)
 
