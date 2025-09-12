@@ -41,14 +41,14 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
         if not message.remote_config.config_hash:
             return
 
-        updated_remote_config = client._update_remote_config_status(
+        updated_remote_config = client.update_remote_config_status(
             remote_config_hash=message.remote_config.config_hash,
             status=opamp_pb2.RemoteConfigStatuses_APPLIED,
             error_message="",
         )
         if updated_remote_config is not None:
             logger.debug("Updated Remote Config")
-            message = client._build_remote_config_status_response_message(
+            message = client.build_remote_config_status_response_message(
                 updated_remote_config
             )
             agent.send(payload=message)
