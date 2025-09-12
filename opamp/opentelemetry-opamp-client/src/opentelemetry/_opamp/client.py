@@ -65,15 +65,13 @@ class OpAMPClient:
         transport: HttpTransport | None = None,
     ):
         self._timeout_millis = timeout_millis
-        self._transport = (
-            RequestsTransport() if transport is None else transport
-        )
+        self._transport = RequestsTransport() if transport is None else transport
 
         self._endpoint = endpoint
         headers = headers or {}
         self._headers = {**_OTLP_HTTP_HEADERS, **headers}
 
-        self._agent_description = messages._build_agent_description(
+        self._agent_description = messages.build_agent_description(
             identifying_attributes=agent_identifying_attributes,
             non_identifying_attributes=agent_non_identifying_attributes,
         )
@@ -82,31 +80,31 @@ class OpAMPClient:
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
 
     def _build_connection_message(self) -> bytes:
-        message = messages._build_presentation_message(
+        message = messages.build_presentation_message(
             instance_uid=self._instance_uid,
             agent_description=self._agent_description,
             sequence_num=self._sequence_num,
             capabilities=_HANDLED_CAPABILITIES,
         )
-        data = messages._encode_message(message)
+        data = messages.encode_message(message)
         return data
 
     def _build_agent_disconnect_message(self) -> bytes:
-        message = messages._build_agent_disconnect_message(
+        message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=_HANDLED_CAPABILITIES,
         )
-        data = messages._encode_message(message)
+        data = messages.encode_message(message)
         return data
 
     def _build_heartbeat_message(self) -> bytes:
-        message = messages._build_heartbeat_message(
+        message = messages.build_heartbeat_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=_HANDLED_CAPABILITIES,
         )
-        data = messages._encode_message(message)
+        data = messages.encode_message(message)
         return data
 
     def _update_remote_config_status(
@@ -117,8 +115,7 @@ class OpAMPClient:
     ) -> opamp_pb2.RemoteConfigStatus | None:
         status_changed = (
             not self._remote_config_status
-            or self._remote_config_status.last_remote_config_hash
-            != remote_config_hash
+            or self._remote_config_status.last_remote_config_hash != remote_config_hash
             or self._remote_config_status.status != status
             or self._remote_config_status.error_message != error_message
         )
@@ -128,27 +125,23 @@ class OpAMPClient:
                 "Update remote config status changed for %s",
                 remote_config_hash,
             )
-            self._remote_config_status = (
-                messages._build_remote_config_status_message(
-                    last_remote_config_hash=remote_config_hash,
-                    status=status,
-                    error_message=error_message,
-                )
+            self._remote_config_status = messages.build_remote_config_status_message(
+                last_remote_config_hash=remote_config_hash,
+                status=status,
+                error_message=error_message,
             )
             return self._remote_config_status
 
         return None
 
-    def _build_remote_config_status_response_message(
-        self, remote_config_status: opamp_pb2.RemoteConfigStatus
-    ) -> bytes:
-        message = messages._build_remote_config_status_response_message(
+    def _build_remote_config_status_response_message(self, remote_config_status: opamp_pb2.RemoteConfigStatus) -> bytes:
+        message = messages.build_remote_config_status_response_message(
             instance_uid=self._instance_uid,
             sequence_num=self._sequence_num,
             capabilities=_HANDLED_CAPABILITIES,
             remote_config_status=remote_config_status,
         )
-        data = messages._encode_message(message)
+        data = messages.encode_message(message)
         return data
 
     def _send(self, data: bytes):
@@ -169,7 +162,5 @@ class OpAMPClient:
     def _decode_remote_config(
         remote_config: opamp_pb2.AgentRemoteConfig,
     ) -> Generator[tuple[str, Mapping[str, AnyValue]]]:
-        for config_file, config in messages._decode_remote_config(
-            remote_config
-        ):
+        for config_file, config in messages.decode_remote_config(remote_config):
             yield config_file, config

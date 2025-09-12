@@ -14,7 +14,6 @@
 
 # pylint: disable=no-name-in-module
 # FIXME: remove this after _opamp -> opamp, making this helpers public is not enough for pyright
-# type: ignore[reportUnusedFunction]
 
 from __future__ import annotations
 
@@ -35,7 +34,7 @@ from opentelemetry._opamp.proto.anyvalue_pb2 import (
 from opentelemetry.util.types import AnyValue
 
 
-def _decode_message(data: bytes) -> opamp_pb2.ServerToAgent:
+def decode_message(data: bytes) -> opamp_pb2.ServerToAgent:
     message = opamp_pb2.ServerToAgent()
     message.ParseFromString(data)
     return message
@@ -65,7 +64,7 @@ def _encode_attributes(attributes: Mapping[str, AnyValue]):
     ]
 
 
-def _build_agent_description(
+def build_agent_description(
     identifying_attributes: Mapping[str, AnyValue],
     non_identifying_attributes: Mapping[str, AnyValue] | None = None,
 ) -> opamp_pb2.AgentDescription:
@@ -81,7 +80,7 @@ def _build_agent_description(
     )
 
 
-def _build_presentation_message(
+def build_presentation_message(
     instance_uid: bytes,
     sequence_num: int,
     agent_description: opamp_pb2.AgentDescription,
@@ -96,7 +95,7 @@ def _build_presentation_message(
     return command
 
 
-def _build_heartbeat_message(
+def build_heartbeat_message(
     instance_uid: bytes, sequence_num: int, capabilities: int
 ) -> opamp_pb2.AgentToServer:
     command = opamp_pb2.AgentToServer(
@@ -107,7 +106,7 @@ def _build_heartbeat_message(
     return command
 
 
-def _build_agent_disconnect_message(
+def build_agent_disconnect_message(
     instance_uid: bytes, sequence_num: int, capabilities: int
 ) -> opamp_pb2.AgentToServer:
     command = opamp_pb2.AgentToServer(
@@ -119,7 +118,7 @@ def _build_agent_disconnect_message(
     return command
 
 
-def _build_remote_config_status_message(
+def build_remote_config_status_message(
     last_remote_config_hash: bytes,
     status: opamp_pb2.RemoteConfigStatuses.ValueType,
     error_message: str = "",
@@ -131,7 +130,7 @@ def _build_remote_config_status_message(
     )
 
 
-def _build_remote_config_status_response_message(
+def build_remote_config_status_response_message(
     instance_uid: bytes,
     sequence_num: int,
     capabilities: int,
@@ -146,11 +145,11 @@ def _build_remote_config_status_response_message(
     return command
 
 
-def _encode_message(data: opamp_pb2.AgentToServer) -> bytes:
+def encode_message(data: opamp_pb2.AgentToServer) -> bytes:
     return data.SerializeToString()
 
 
-def _decode_remote_config(
+def decode_remote_config(
     remote_config: opamp_pb2.AgentRemoteConfig,
 ) -> Generator[tuple[str, Mapping[str, AnyValue]]]:
     for (

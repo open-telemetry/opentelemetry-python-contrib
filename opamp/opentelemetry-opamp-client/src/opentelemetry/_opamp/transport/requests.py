@@ -44,6 +44,6 @@ class RequestsTransport(HttpTransport):
         except Exception:
             raise OpAMPException
 
-        message = messages._decode_message(response.content)
+        message = messages.decode_message(response.content)
 
         return message
