@@ -30,10 +30,12 @@ dependencies = [
   "opentelemetry-api>=1.31.0",
 ]
 
+[project.entry-points.opentelemetry_genai_upload_hook]
+fsspec = "opentelemetry.util.genai._fsspec_upload:fsspec_upload_hook"
+
 [project.optional-dependencies]
-test = [
-  "pytest>=7.0.0",
-]
+test = ["pytest>=7.0.0"]
+fsspec = ["fsspec>=2025.9.0"]
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/util/opentelemetry-util-genai"
@@ -43,10 +45,7 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/util/genai/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-]
+include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
