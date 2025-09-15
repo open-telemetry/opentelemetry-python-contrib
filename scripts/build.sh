@@ -32,7 +32,7 @@ DISTDIR=dist
    cd $DISTDIR
    for x in * ; do
     # FIXME: Remove this once opentelemetry-resource-detector-azure package goes 1.X
-    if echo "$x" | grep -Eq "^opentelemetry_resource_detector_azure.*(\.tar\.gz|\.whl)$"; then
+    if echo "$x" | grep -Eq "^opentelemetry_(resource_detector_azure|util_genai).*(\.tar\.gz|\.whl)$"; then
       echo "Skipping $x because of manual upload by Azure maintainers."
       rm $x
     # NOTE: We filter beta vs 1.0 package at this point because we can read the
