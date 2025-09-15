@@ -36,3 +36,7 @@ components:
   sdk-extension/opentelemetry-sdk-extension-aws:
     - srprash
     - jj22ee
+
+  util/opentelemetry-util-genai:
+    - DylanRussell
+    - keith-decker
