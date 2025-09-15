@@ -15,3 +15,13 @@ OpenTelemetry Python - GenAI Util
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: opentelemetry.util.genai.environment_variables
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: opentelemetry.util.genai.upload_hook
+    :members:
+    :undoc-members:
+    :show-inheritance:
