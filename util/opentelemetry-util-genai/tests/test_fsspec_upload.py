@@ -29,7 +29,7 @@ from fsspec.implementations.memory import MemoryFileSystem
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload import (
+from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
     FsspecUploader,
     FsspecUploadHook,
 )
@@ -61,7 +61,10 @@ class TestFsspecEntryPoint(TestCase):
         from opentelemetry.util.genai import _fsspec_upload
 
         # Simulate fsspec imports failing
-        with patch.dict(sys.modules, {"fsspec": None}):
+        with patch.dict(
+            sys.modules,
+            {"opentelemetry.util.genai._fsspec_upload.fsspec_hook": None},
+        ):
             importlib.reload(_fsspec_upload)
             self.assertIsInstance(load_upload_hook(), _NoOpUploadHook)
 
