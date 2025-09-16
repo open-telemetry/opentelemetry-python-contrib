@@ -1,0 +1,15 @@
+langchain==0.3.21 #todo: find the lowest compatible version
+langchain_openai
+
+# Pin exact versions to ensure compatibility
+opentelemetry-api==1.36.0
+opentelemetry-sdk==1.36.0
+opentelemetry-exporter-otlp-proto-grpc==1.36.0
+opentelemetry-semantic-conventions==0.57b0
+# Add these dependencies explicitly
+opentelemetry-proto==1.36.0
+
+python-dotenv[cli]
+deepeval
+
+# For local development: `pip install -e /path/to/opentelemetry-instrumentation-langchain`
