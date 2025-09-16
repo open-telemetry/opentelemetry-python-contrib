@@ -71,7 +71,7 @@ class TelemetryHandler:
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
         **attributes: Any,
-    ) -> None:
+    ) -> LLMInvocation:
         invocation = LLMInvocation(
             request_model=request_model,
             messages=prompts,
@@ -81,6 +81,7 @@ class TelemetryHandler:
         )
         self._llm_registry[invocation.run_id] = invocation
         self._generator.start(invocation)
+        return invocation
 
     def stop_llm(
         self,

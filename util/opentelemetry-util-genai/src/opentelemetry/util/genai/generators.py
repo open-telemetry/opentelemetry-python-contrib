@@ -78,9 +78,18 @@ def _apply_common_span_attributes(
     request_model = invocation.attributes.get("request_model")
     provider = invocation.attributes.get("provider")
 
-    _set_initial_span_attributes(span, request_model, provider)
+    span.set_attribute(
+        GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
+    )
+    if request_model:
+        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
+    if provider is not None:
+        # TODO: clean provider name to match GenAiProviderNameValues?
+        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
 
-    finish_reasons = _collect_finish_reasons(invocation.chat_generations)
+    finish_reasons: List[str] = []
+    for gen in invocation.chat_generations:
+        finish_reasons.append(gen.finish_reason)
     if finish_reasons:
         span.set_attribute(
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
@@ -99,21 +108,6 @@ def _apply_common_span_attributes(
     )
 
 
-def _set_initial_span_attributes(
-    span: Span,
-    request_model: Optional[str],
-    provider: Optional[str],
-) -> None:
-    span.set_attribute(
-        GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
-    )
-    if request_model:
-        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-    if provider is not None:
-        # TODO: clean provider name to match GenAiProviderNameValues?
-        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
-
-
 def _set_response_and_usage_attributes(
     span: Span,
     response_model: Optional[str],
@@ -129,13 +123,6 @@ def _set_response_and_usage_attributes(
         span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
     if isinstance(completion_tokens, (int, float)):
         span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
-
-
-def _collect_finish_reasons(generations: List[OutputMessage]) -> List[str]:
-    finish_reasons: List[str] = []
-    for gen in generations:
-        finish_reasons.append(gen.finish_reason)
-    return finish_reasons
 
 
 def _maybe_set_span_messages(
