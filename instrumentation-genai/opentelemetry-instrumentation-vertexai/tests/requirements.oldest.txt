@@ -66,9 +66,9 @@ yarl==1.15.2
 zipp==3.20.2
 
 # when updating, also update in pyproject.toml
-opentelemetry-api==1.35.0
-opentelemetry-sdk==1.35.0
-opentelemetry-semantic-conventions==0.56b0
-opentelemetry-instrumentation==0.56b0
+opentelemetry-api==1.37.0
+opentelemetry-sdk==1.37.0
+opentelemetry-semantic-conventions==0.58b0
+opentelemetry-instrumentation==0.58b0
 
 -e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
