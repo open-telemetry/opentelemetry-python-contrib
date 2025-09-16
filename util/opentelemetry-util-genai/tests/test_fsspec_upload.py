@@ -30,7 +30,6 @@ from fsspec.implementations.memory import MemoryFileSystem
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
-    FsspecUploader,
     FsspecUploadHook,
 )
 from opentelemetry.util.genai.upload_hook import (
@@ -88,15 +87,18 @@ FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
 
 class TestFsspecUploadHook(TestCase):
     def setUp(self):
-        self.mock_uploader = MagicMock(spec=FsspecUploader)
+        self._fsspec_patcher = patch(
+            "opentelemetry.util.genai._fsspec_upload.fsspec_hook.fsspec"
+        )
+        self.mock_fsspec = self._fsspec_patcher.start()
         self.hook = FsspecUploadHook(
-            uploader=self.mock_uploader,
             base_path=BASE_PATH,
             max_size=MAXSIZE,
         )
 
     def tearDown(self) -> None:
         self.hook.shutdown()
+        self._fsspec_patcher.stop()
 
     def test_shutdown_no_items(self):
         self.hook.shutdown()
@@ -111,7 +113,7 @@ class TestFsspecUploadHook(TestCase):
         self.hook.shutdown()
 
         self.assertEqual(
-            self.mock_uploader.upload.call_count,
+            self.mock_fsspec.open.call_count,
             3,
             "should have uploaded 3 files",
         )
@@ -122,7 +124,7 @@ class TestFsspecUploadHook(TestCase):
         def blocked_upload(*args: Any) -> None:
             unblock_upload.wait()
 
-        self.mock_uploader.upload = MagicMock(wraps=blocked_upload)
+        self.mock_fsspec.open = MagicMock(wraps=blocked_upload)
 
         # fill the queue
         for _ in range(MAXSIZE):
@@ -133,7 +135,7 @@ class TestFsspecUploadHook(TestCase):
             )
 
         self.assertLessEqual(
-            self.mock_uploader.upload.call_count,
+            self.mock_fsspec.open.call_count,
             MAXSIZE,
             f"uploader should only be called {MAXSIZE=} times",
         )
@@ -155,7 +157,7 @@ class TestFsspecUploadHook(TestCase):
         def failing_upload(*args: Any) -> None:
             raise RuntimeError("failed to upload")
 
-        self.mock_uploader.upload = MagicMock(wraps=failing_upload)
+        self.mock_fsspec.open = MagicMock(wraps=failing_upload)
 
         with self.assertLogs(level=logging.ERROR) as logs:
             self.hook.upload(
@@ -184,8 +186,7 @@ class TestFsspecUploadHook(TestCase):
 
 class FsspecUploaderTest(TestCase):
     def test_upload(self):
-        uploader = FsspecUploader()
-        uploader.upload(
+        FsspecUploadHook._do_upload(
             "memory://my_path",
             lambda: [asdict(fake_input) for fake_input in FAKE_INPUTS],
         )
@@ -207,7 +208,6 @@ class TestFsspecUploadHookIntegration(TestBase):
 
     def test_upload_completions(self):
         hook = FsspecUploadHook(
-            uploader=FsspecUploader(),
             base_path=BASE_PATH,
         )
         hook.upload(

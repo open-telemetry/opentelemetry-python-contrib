@@ -60,22 +60,6 @@ def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
     return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
 
 
-class FsspecUploader:
-    """Implements uploading GenAI completions to a generic backend using fsspec
-
-    This class is used by the `BatchUploadHook` to upload completions to an external
-    storage.
-    """
-
-    def upload(  # pylint: disable=no-self-use
-        self,
-        path: str,
-        json_encodeable: Callable[[], JsonEncodeable],
-    ) -> None:
-        with fsspec_open(path, "w") as file:
-            json.dump(json_encodeable(), file, separators=(",", ":"))
-
-
 class FsspecUploadHook(UploadHook):
     """An upload hook using ``fsspec`` to upload to external storage
 
@@ -93,12 +77,10 @@ class FsspecUploadHook(UploadHook):
     def __init__(
         self,
         *,
-        uploader: FsspecUploader,
         base_path: str,
         max_size: int = 20,
     ) -> None:
         self._base_path = base_path
-        self._uploader = uploader
         self._max_size = max_size
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
@@ -126,7 +108,7 @@ class FsspecUploadHook(UploadHook):
 
             try:
                 fut = self._executor.submit(
-                    self._uploader.upload, path, json_encodeable
+                    self._do_upload, path, json_encodeable
                 )
                 fut.add_done_callback(done)
             except RuntimeError:
@@ -151,6 +133,13 @@ class FsspecUploadHook(UploadHook):
                 self._base_path, f"{uuid_str}_system_instruction.json"
             ),
         )
+
+    @staticmethod
+    def _do_upload(
+        path: str, json_encodeable: Callable[[], JsonEncodeable]
+    ) -> None:
+        with fsspec_open(path, "w") as file:
+            json.dump(json_encodeable(), file, separators=(",", ":"))
 
     def upload(
         self,

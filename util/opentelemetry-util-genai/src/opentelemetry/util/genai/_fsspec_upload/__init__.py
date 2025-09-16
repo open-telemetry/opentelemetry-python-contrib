@@ -27,7 +27,6 @@ def fsspec_upload_hook() -> UploadHook:
     try:
         # pylint: disable=import-outside-toplevel
         from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
-            FsspecUploader,
             FsspecUploadHook,
         )
     except ImportError:
@@ -37,7 +36,4 @@ def fsspec_upload_hook() -> UploadHook:
     if not base_path:
         return _NoOpUploadHook()
 
-    return FsspecUploadHook(
-        uploader=FsspecUploader(),
-        base_path=base_path,
-    )
+    return FsspecUploadHook(base_path=base_path)
