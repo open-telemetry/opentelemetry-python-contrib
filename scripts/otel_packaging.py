@@ -60,12 +60,17 @@ def get_instrumentation_packages(
         with open(pyproject_toml_path, "rb") as file:
             pyproject_toml = tomli.load(file)
 
+        optional_dependencies = pyproject_toml["project"][
+            "optional-dependencies"
+        ]
+        instruments = optional_dependencies.get("instruments", [])
+        # instruments-any is an optional field that can be used instead of or in addition to instruments. While instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
+        instruments_any = optional_dependencies.get("instruments-any", [])
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
-            "instruments": pyproject_toml["project"]["optional-dependencies"][
-                "instruments"
-            ],
+            "instruments": instruments,
+            "instruments-any": instruments_any,
         }
         if instrumentation["name"] in independent_packages:
             specifier = independent_packages[instrumentation["name"]]

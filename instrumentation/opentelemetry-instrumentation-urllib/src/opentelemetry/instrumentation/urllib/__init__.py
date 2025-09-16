@@ -119,6 +119,9 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_URL,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_BODY_SIZE,
     HTTP_CLIENT_RESPONSE_BODY_SIZE,
@@ -130,7 +133,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.util.http import (
     ExcludeList,
@@ -325,7 +327,7 @@ def _instrument(
                 sem_conv_opt_in_mode=_StabilityMode.HTTP,
             )
 
-            duration_attrs_old[SpanAttributes.HTTP_URL] = url
+            duration_attrs_old[HTTP_URL] = url
 
             _record_histograms(
                 histograms,

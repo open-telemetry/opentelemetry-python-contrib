@@ -192,7 +192,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import MeterProvider, get_meter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
@@ -352,7 +354,11 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
         if match == Match.FULL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                # routes added via host routing won't have a path attribute
+                route = scope.get("path")
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
@@ -374,7 +380,7 @@ def _get_default_span_details(
     method: str = scope.get("method", "")
     attributes: dict[str, Any] = {}
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket
