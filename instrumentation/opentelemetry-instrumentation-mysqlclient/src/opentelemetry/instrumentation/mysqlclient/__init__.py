@@ -36,6 +36,9 @@ Usage
     cursor.close()
     cnx.close()
 
+Configuration
+-------------
+
 SQLCOMMENTER
 *****************************************
 You can optionally configure MySQLClient instrumentation to enable sqlcommenter which enriches
