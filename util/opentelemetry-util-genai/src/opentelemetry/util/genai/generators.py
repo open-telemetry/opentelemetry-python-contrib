@@ -32,10 +32,13 @@ Usage:
 """
 
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from contextvars import Token
+from typing import Dict, Optional
 from uuid import UUID
 
+from typing_extensions import TypeAlias
+
+from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -45,7 +48,6 @@ from opentelemetry.trace import (
     SpanKind,
     Tracer,
     set_span_in_context,
-    use_span,
 )
 
 from .span_utils import (
@@ -54,11 +56,8 @@ from .span_utils import (
 )
 from .types import Error, LLMInvocation
 
-
-@dataclass
-class _SpanState:
-    span: Span
-    children: List[UUID] = field(default_factory=list)
+# Type alias matching the token type expected by opentelemetry.context.detach
+ContextToken: TypeAlias = Token[otel_context.Context]
 
 
 class BaseTelemetryGenerator:
@@ -87,43 +86,17 @@ class SpanGenerator(BaseTelemetryGenerator):
     ):
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
 
-        # TODO: Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
-        self.spans: Dict[UUID, _SpanState] = {}
-
-    def _start_span(
-        self,
-        name: str,
-        kind: SpanKind,
-        parent_run_id: Optional[UUID] = None,
-    ) -> Span:
-        parent_span = (
-            self.spans.get(parent_run_id)
-            if parent_run_id is not None
-            else None
-        )
-        if parent_span is not None:
-            ctx = set_span_in_context(parent_span.span)
-            span = self._tracer.start_span(name=name, kind=kind, context=ctx)
-        else:
-            # top-level or missing parent
-            span = self._tracer.start_span(name=name, kind=kind)
-            set_span_in_context(span)
-
-        return span
-
-    def _end_span(self, run_id: UUID):
-        state = self.spans[run_id]
-        for child_id in state.children:
-            child_state = self.spans.get(child_id)
-            if child_state:
-                child_state.span.end()
-        state.span.end()
-        del self.spans[run_id]
+        # Store the active span and its context attachment token
+        self._active: Dict[UUID, tuple[Span, ContextToken]] = {}
 
     def start(self, invocation: LLMInvocation):
-        # Create/register the span; keep it active but do not end it here.
-        with self._start_span_for_invocation(invocation):
-            pass
+        # Create a span and attach it as current; keep the token to detach later
+        span = self._tracer.start_span(
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
+            kind=SpanKind.CLIENT,
+        )
+        token = otel_context.attach(set_span_in_context(span))
+        self._active[invocation.run_id] = (span, token)
 
     @contextmanager
     def _start_span_for_invocation(self, invocation: LLMInvocation):
@@ -132,46 +105,46 @@ class SpanGenerator(BaseTelemetryGenerator):
         The span is not ended automatically on exiting the context; callers
         must finalize via _finalize_invocation.
         """
-        # Establish parent/child relationship if a parent span exists.
-        parent_state = (
-            self.spans.get(invocation.parent_run_id)
-            if invocation.parent_run_id is not None
-            else None
-        )
-        if parent_state is not None:
-            parent_state.children.append(invocation.run_id)
-        span = self._start_span(
+        # Create a span and attach it as current; keep the token to detach later
+        span = self._tracer.start_span(
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
-            parent_run_id=invocation.parent_run_id,
         )
-        with use_span(span, end_on_exit=False) as span:
-            span_state = _SpanState(
-                span=span,
-            )
-            self.spans[invocation.run_id] = span_state
-            yield span
+        token = otel_context.attach(set_span_in_context(span))
+        # store active span and its context attachment token
+        self._active[invocation.run_id] = (span, token)
+        yield span
 
     def finish(self, invocation: LLMInvocation):
-        state = self.spans.get(invocation.run_id)
-        if state is None:
-            with self._start_span_for_invocation(invocation) as span:
+        active = self._active.get(invocation.run_id)
+        if active is None:
+            # If missing, create a quick span to record attributes and end it
+            with self._tracer.start_as_current_span(
+                name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
+                kind=SpanKind.CLIENT,
+            ) as span:
                 _apply_finish_attributes(span, invocation)
-            self._end_span(invocation.run_id)
             return
 
-        span = state.span
+        span, token = active
         _apply_finish_attributes(span, invocation)
-        self._end_span(invocation.run_id)
+        # Detach context and end span
+        otel_context.detach(token)
+        span.end()
+        del self._active[invocation.run_id]
 
     def error(self, error: Error, invocation: LLMInvocation):
-        state = self.spans.get(invocation.run_id)
-        if state is None:
-            with self._start_span_for_invocation(invocation) as span:
+        active = self._active.get(invocation.run_id)
+        if active is None:
+            with self._tracer.start_as_current_span(
+                name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
+                kind=SpanKind.CLIENT,
+            ) as span:
                 _apply_error_attributes(span, error)
-            self._end_span(invocation.run_id)
             return
 
-        span = state.span
+        span, token = active
         _apply_error_attributes(span, error)
-        self._end_span(invocation.run_id)
+        otel_context.detach(token)
+        span.end()
+        del self._active[invocation.run_id]

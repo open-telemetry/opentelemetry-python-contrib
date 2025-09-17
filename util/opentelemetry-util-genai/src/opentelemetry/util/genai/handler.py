@@ -33,6 +33,7 @@ Usage:
 """
 
 import time
+import uuid
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -68,20 +69,20 @@ class TelemetryHandler:
         self,
         request_model: str,
         prompts: List[InputMessage],
-        run_id: UUID,
-        parent_run_id: Optional[UUID] = None,
+        run_id: Optional[UUID] = None,
         **attributes: Any,
-    ) -> LLMInvocation:
+    ) -> UUID:
+        if run_id is None:
+            run_id = uuid.uuid4()
         invocation = LLMInvocation(
             request_model=request_model,
             messages=prompts,
             run_id=run_id,
-            parent_run_id=parent_run_id,
             attributes=attributes,
         )
         self._llm_registry[invocation.run_id] = invocation
         self._generator.start(invocation)
-        return invocation
+        return invocation.run_id
 
     def stop_llm(
         self,
