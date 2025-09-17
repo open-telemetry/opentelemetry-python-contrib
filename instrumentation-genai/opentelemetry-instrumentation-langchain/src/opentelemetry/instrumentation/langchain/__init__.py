@@ -36,7 +36,7 @@ API
 ---
 """
 
-from typing import Any, Callable, Collection, Optional
+from typing import Any, Callable, Collection
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from wrapt import wrap_function_wrapper  # type: ignore

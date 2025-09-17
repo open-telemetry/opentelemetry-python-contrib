@@ -28,7 +28,6 @@ class TestSpanManager:
             (uuid.uuid4(), True),  # Parent in spans
         ],
     )
-
     def test_create_span(
         self, handler, tracer, parent_run_id, parent_in_spans
     ):
@@ -42,9 +41,7 @@ class TestSpanManager:
         # Setup parent if needed
         if parent_run_id is not None and parent_in_spans:
             parent_mock_span = unittest.mock.Mock(spec=Span)
-            handler.spans[parent_run_id] = _SpanState(
-                span=parent_mock_span
-            )
+            handler.spans[parent_run_id] = _SpanState(span=parent_mock_span)
 
         with (
             unittest.mock.patch.object(
@@ -81,10 +78,7 @@ class TestSpanManager:
                 )
                 mock_set_span_in_context.assert_called_once_with(mock_span)
 
-
-    def test_end_span(
-            self, handler
-    ):
+    def test_end_span(self, handler):
         # Arrange
         run_id = uuid.uuid4()
         mock_span = unittest.mock.Mock(spec=Span)
