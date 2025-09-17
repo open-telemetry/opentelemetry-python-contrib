@@ -15,15 +15,28 @@
 import os
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
+from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
-from opentelemetry.util.genai.types import ContentCapturingMode
+from opentelemetry.util.genai.handler import get_telemetry_handler
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    InputMessage,
+    OutputMessage,
+    Text,
+)
 from opentelemetry.util.genai.utils import get_content_capturing_mode
 
 
@@ -81,3 +94,128 @@ class TestVersion(unittest.TestCase):
             )
         self.assertEqual(len(cm.output), 1)
         self.assertIn("INVALID_VALUE is not a valid option for ", cm.output[0])
+
+
+class TestTelemetryHandler(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.span_exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(cls.span_exporter)
+        )
+        trace.set_tracer_provider(tracer_provider)
+
+    def setUp(self):
+        self.span_exporter = self.__class__.span_exporter
+        self.span_exporter.clear()
+        self.telemetry_handler = get_telemetry_handler()
+
+    def tearDown(self):
+        # Clear spans and reset the singleton telemetry handler so each test starts clean
+        self.span_exporter.clear()
+        if hasattr(get_telemetry_handler, "_default_handler"):
+            delattr(get_telemetry_handler, "_default_handler")
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
+    def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
+        run_id = uuid4()
+        message = InputMessage(
+            role="Human", parts=[Text(content="hello world")]
+        )
+        chat_generation = OutputMessage(
+            role="AI", parts=[Text(content="hello back")], finish_reason="stop"
+        )
+
+        # Start and stop LLM invocation
+        self.telemetry_handler.start_llm(
+            request_model="test-model",
+            prompts=[message],
+            run_id=run_id,
+            custom_attr="value",
+            provider="test-provider",
+        )
+        invocation = self.telemetry_handler.stop_llm(
+            run_id, chat_generations=[chat_generation], extra="info"
+        )
+
+        # Get the spans that were created
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "chat test-model"
+        assert span.kind == trace.SpanKind.CLIENT
+
+        # Verify span attributes
+        assert span.attributes is not None
+        span_attrs = span.attributes
+        assert span_attrs.get("gen_ai.operation.name") == "chat"
+        assert span_attrs.get("gen_ai.provider.name") == "test-provider"
+        assert span.start_time is not None
+        assert span.end_time is not None
+        assert span.end_time > span.start_time
+        assert invocation.run_id == run_id
+        assert invocation.attributes.get("custom_attr") == "value"
+        assert invocation.attributes.get("extra") == "info"
+
+        # Check messages captured on span
+        input_messages_json = span_attrs.get("gen_ai.input.messages")
+        output_messages_json = span_attrs.get("gen_ai.output.messages")
+        assert input_messages_json is not None
+        assert output_messages_json is not None
+
+        assert isinstance(input_messages_json, str)
+        assert isinstance(output_messages_json, str)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
+    def test_parent_child_span_relationship(self):
+        parent_id = uuid4()
+        child_id = uuid4()
+        message = InputMessage(role="Human", parts=[Text(content="hi")])
+        chat_generation = OutputMessage(
+            role="AI", parts=[Text(content="ok")], finish_reason="stop"
+        )
+
+        # Start parent and child (child references parent_run_id)
+        self.telemetry_handler.start_llm(
+            request_model="parent-model",
+            prompts=[message],
+            run_id=parent_id,
+            provider="test-provider",
+        )
+        self.telemetry_handler.start_llm(
+            request_model="child-model",
+            prompts=[message],
+            run_id=child_id,
+            parent_run_id=parent_id,
+            provider="test-provider",
+        )
+
+        # Stop child first, then parent (order should not matter)
+        self.telemetry_handler.stop_llm(
+            child_id, chat_generations=[chat_generation]
+        )
+        self.telemetry_handler.stop_llm(
+            parent_id, chat_generations=[chat_generation]
+        )
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+
+        # Identify spans irrespective of export order
+        child_span = next(s for s in spans if s.name == "chat child-model")
+        parent_span = next(s for s in spans if s.name == "chat parent-model")
+
+        # Same trace
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        # Child has parent set to parent's span id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        # Parent should not have a parent (root)
+        assert parent_span.parent is None
