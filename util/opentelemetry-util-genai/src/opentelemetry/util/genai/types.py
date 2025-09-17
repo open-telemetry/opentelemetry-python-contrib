@@ -19,6 +19,8 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID
 
+from opentelemetry.util.types import AttributeValue
+
 
 class ContentCapturingMode(Enum):
     # Do not capture content (default).
@@ -86,9 +88,12 @@ class LLMInvocation:
     end_time: Optional[float] = None
     messages: List[InputMessage] = field(default_factory=list)
     chat_generations: List[OutputMessage] = field(default_factory=list)
+    provider: Optional[str] = None
+    response_model_name: Optional[str] = None
+    response_id: Optional[str] = None
+    input_tokens: Optional[AttributeValue] = None
+    output_tokens: Optional[AttributeValue] = None
     attributes: Dict[str, Any] = field(default_factory=dict)
-    span_id: int = 0
-    trace_id: int = 0
 
 
 @dataclass

@@ -14,7 +14,7 @@
 
 import json
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -31,7 +31,6 @@ from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
     is_experimental_mode,
 )
-from opentelemetry.util.types import AttributeValue
 
 from .types import Error, InputMessage, LLMInvocation, OutputMessage
 
@@ -43,8 +42,8 @@ def _apply_common_span_attributes(
 
     Returns (genai_attributes) for use with metrics.
     """
-    request_model = invocation.attributes.get("request_model")
-    provider = invocation.attributes.get("provider")
+    request_model = invocation.request_model
+    provider = invocation.provider
 
     span.set_attribute(
         GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
@@ -63,34 +62,20 @@ def _apply_common_span_attributes(
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
         )
 
-    response_model = invocation.attributes.get("response_model_name")
-    response_id = invocation.attributes.get("response_id")
-    prompt_tokens = invocation.attributes.get("input_tokens")
-    completion_tokens = invocation.attributes.get("output_tokens")
-    _set_response_and_usage_attributes(
-        span,
-        response_model,
-        response_id,
-        prompt_tokens,
-        completion_tokens,
-    )
-
-
-def _set_response_and_usage_attributes(
-    span: Span,
-    response_model: Optional[str],
-    response_id: Optional[str],
-    prompt_tokens: Optional[AttributeValue],
-    completion_tokens: Optional[AttributeValue],
-) -> None:
-    if response_model is not None:
-        span.set_attribute(GenAI.GEN_AI_RESPONSE_MODEL, response_model)
-    if response_id is not None:
-        span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, response_id)
-    if isinstance(prompt_tokens, (int, float)):
-        span.set_attribute(GenAI.GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
-    if isinstance(completion_tokens, (int, float)):
-        span.set_attribute(GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
+    if invocation.response_model_name is not None:
+        span.set_attribute(
+            GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name
+        )
+    if invocation.response_id is not None:
+        span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, invocation.response_id)
+    if isinstance(invocation.input_tokens, (int, float)):
+        span.set_attribute(
+            GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens
+        )
+    if isinstance(invocation.output_tokens, (int, float)):
+        span.set_attribute(
+            GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens
+        )
 
 
 def _maybe_set_span_messages(

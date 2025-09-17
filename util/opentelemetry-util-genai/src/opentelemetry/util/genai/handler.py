@@ -74,10 +74,20 @@ class TelemetryHandler:
     ) -> UUID:
         if run_id is None:
             run_id = uuid.uuid4()
+        provider = attributes.pop("provider", None)
+        response_model_name = attributes.pop("response_model_name", None)
+        response_id = attributes.pop("response_id", None)
+        input_tokens = attributes.pop("input_tokens", None)
+        output_tokens = attributes.pop("output_tokens", None)
         invocation = LLMInvocation(
             request_model=request_model,
             messages=prompts,
             run_id=run_id,
+            provider=provider,
+            response_model_name=response_model_name,
+            response_id=response_id,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             attributes=attributes,
         )
         self._llm_registry[invocation.run_id] = invocation
@@ -93,6 +103,19 @@ class TelemetryHandler:
         invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
+        if "provider" in attributes:
+            invocation.provider = attributes.pop("provider")
+        if "response_model_name" in attributes:
+            invocation.response_model_name = attributes.pop(
+                "response_model_name"
+            )
+        if "response_id" in attributes:
+            invocation.response_id = attributes.pop("response_id")
+        if "input_tokens" in attributes:
+            invocation.input_tokens = attributes.pop("input_tokens")
+        if "output_tokens" in attributes:
+            invocation.output_tokens = attributes.pop("output_tokens")
+        # Keep any remaining attributes
         invocation.attributes.update(attributes)
         self._generator.finish(invocation)
         return invocation
@@ -102,6 +125,18 @@ class TelemetryHandler:
     ) -> LLMInvocation:
         invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
+        if "provider" in attributes:
+            invocation.provider = attributes.pop("provider")
+        if "response_model_name" in attributes:
+            invocation.response_model_name = attributes.pop(
+                "response_model_name"
+            )
+        if "response_id" in attributes:
+            invocation.response_id = attributes.pop("response_id")
+        if "input_tokens" in attributes:
+            invocation.input_tokens = attributes.pop("input_tokens")
+        if "output_tokens" in attributes:
+            invocation.output_tokens = attributes.pop("output_tokens")
         invocation.attributes.update(**attributes)
         self._generator.error(error, invocation)
         return invocation
