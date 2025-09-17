@@ -7,5 +7,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-Repurpose the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable when GEN AI stability mode is set to `gen_ai_latest_experimental`,
-to take on an enum (`NO_CONTENT/SPAN_ONLY/EVENT_ONLY/SPAN_AND_EVENT`) instead of a boolean. Add a utility function to help parse this environment variable.
+- Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
+  Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
