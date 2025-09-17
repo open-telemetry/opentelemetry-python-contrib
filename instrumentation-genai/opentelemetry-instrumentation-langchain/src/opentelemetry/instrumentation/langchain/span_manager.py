@@ -97,6 +97,7 @@ class _SpanManager:
             child_state = self.spans.get(child_id)
             if child_state:
                 child_state.span.end()
+                del self.spans[child_id]
         state.span.end()
         del self.spans[run_id]
 

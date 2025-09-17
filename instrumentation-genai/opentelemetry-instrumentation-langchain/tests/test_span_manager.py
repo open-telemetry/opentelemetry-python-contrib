@@ -4,7 +4,7 @@ import uuid
 import pytest
 
 from opentelemetry.instrumentation.langchain.span_manager import (
-    SpanManager,
+    _SpanManager,
     _SpanState,
 )
 from opentelemetry.trace import SpanKind, get_tracer
@@ -18,7 +18,7 @@ class TestSpanManager:
 
     @pytest.fixture
     def handler(self, tracer):
-        return SpanManager(tracer=tracer)
+        return _SpanManager(tracer=tracer)
 
     @pytest.mark.parametrize(
         "parent_run_id,parent_in_spans",
@@ -28,6 +28,7 @@ class TestSpanManager:
             (uuid.uuid4(), True),  # Parent in spans
         ],
     )
+
     def test_create_span(
         self, handler, tracer, parent_run_id, parent_in_spans
     ):
@@ -42,7 +43,7 @@ class TestSpanManager:
         if parent_run_id is not None and parent_in_spans:
             parent_mock_span = unittest.mock.Mock(spec=Span)
             handler.spans[parent_run_id] = _SpanState(
-                span=parent_mock_span, context=None
+                span=parent_mock_span
             )
 
         with (
@@ -52,12 +53,9 @@ class TestSpanManager:
             unittest.mock.patch(
                 "opentelemetry.instrumentation.langchain.span_manager.set_span_in_context"
             ) as mock_set_span_in_context,
-            unittest.mock.patch(
-                "opentelemetry.instrumentation.langchain.span_manager.get_current"
-            ),
         ):
             # Act
-            result = handler.create_span(
+            result = handler._create_span(
                 run_id, parent_run_id, span_name, kind
             )
 
@@ -81,4 +79,29 @@ class TestSpanManager:
                 mock_start_span.assert_called_once_with(
                     name=span_name, kind=kind
                 )
-                mock_set_span_in_context.assert_not_called()
+                mock_set_span_in_context.assert_called_once_with(mock_span)
+
+
+    def test_end_span(
+            self, handler
+    ):
+        # Arrange
+        run_id = uuid.uuid4()
+        mock_span = unittest.mock.Mock(spec=Span)
+        mock_context = unittest.mock.Mock()
+        handler.spans[run_id] = _SpanState(span=mock_span)
+
+        # Add a child to verify it's removed
+        child_run_id = uuid.uuid4()
+        child_mock_span = unittest.mock.Mock(spec=Span)
+        handler.spans[child_run_id] = _SpanState(span=child_mock_span)
+        handler.spans[run_id].children.append(child_run_id)
+
+        # Act
+        handler.end_span(run_id)
+
+        # Assert
+        mock_span.end.assert_called_once()
+        child_mock_span.end.assert_called_once()
+        assert run_id not in handler.spans
+        assert child_run_id not in handler.spans

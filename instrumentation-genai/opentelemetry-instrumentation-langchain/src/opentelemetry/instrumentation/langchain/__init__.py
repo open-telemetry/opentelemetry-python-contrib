@@ -60,7 +60,7 @@ class LangChainInstrumentor(BaseInstrumentor):
     """
 
     def __init__(
-        self, exception_logger: Optional[Callable[[Exception], Any]] = None
+        self,
     ):
         super().__init__()
 
@@ -76,7 +76,7 @@ class LangChainInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_30_0.value,
         )
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
