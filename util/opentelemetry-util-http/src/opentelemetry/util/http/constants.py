@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """
-Constants for OpenTelemetry requests instrumentation.
+Constants for OpenTelemetry HTTP utilities.
 
 This module contains configuration constants and pattern definitions used
-by the requests instrumentation for various features like synthetic user
+by HTTP instrumentation utilities for various features like synthetic user
 agent detection.
 """
 

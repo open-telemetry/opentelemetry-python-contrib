@@ -124,10 +124,6 @@ from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.requests.constants import (
-    BOT_PATTERNS,
-    TEST_PATTERNS,
-)
 from opentelemetry.instrumentation.requests.package import _instruments
 from opentelemetry.instrumentation.requests.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -138,7 +134,6 @@ from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
-    UserAgentSyntheticTypeValues,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
@@ -153,6 +148,7 @@ from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.util.http import (
     ExcludeList,
+    detect_synthetic_user_agent,
     get_excluded_urls,
     parse_excluded_urls,
     redact_url,
@@ -164,33 +160,6 @@ _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
 _RequestHookT = Optional[Callable[[Span, PreparedRequest], None]]
 _ResponseHookT = Optional[Callable[[Span, PreparedRequest, Response], None]]
-
-
-def _detect_synthetic_user_agent(user_agent: str) -> Optional[str]:
-    """
-    Detect synthetic user agent type based on user agent string contents.
-
-    Args:
-        user_agent: The user agent string to analyze
-
-    Returns:
-        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
-        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
-        None otherwise
-
-    Note: Test patterns take priority over bot patterns.
-    """
-    if not user_agent:
-        return None
-
-    user_agent_lower = user_agent.lower()
-
-    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
-        return UserAgentSyntheticTypeValues.TEST.value
-    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
-        return UserAgentSyntheticTypeValues.BOT.value
-
-    return None
 
 
 def _set_http_status_code_attribute(
@@ -283,7 +252,7 @@ def _instrument(
 
         # Check for synthetic user agent type
         user_agent = headers.get("User-Agent")
-        synthetic_type = _detect_synthetic_user_agent(user_agent)
+        synthetic_type = detect_synthetic_user_agent(user_agent)
         if synthetic_type:
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
