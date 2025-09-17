@@ -26,7 +26,7 @@ from opentelemetry.trace.span import Span
 class _SecretsManagerExtension(_AwsSdkExtension):
     def extract_attributes(self, attributes: _AttributeMapT):
         """
-        SecretId can be secret name or secret arn, the function extracts attributes
+        SecretId is extracted if a secret ARN, the function extracts the attribute
         only if the SecretId parameter is provided as an arn which starts with
         `arn:aws:secretsmanager:`
         """
