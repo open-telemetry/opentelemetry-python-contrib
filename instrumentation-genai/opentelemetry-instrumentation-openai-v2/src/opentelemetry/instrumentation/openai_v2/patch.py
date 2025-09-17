@@ -172,12 +172,6 @@ def embeddings_create(
             )
         }
 
-        # Using a custom attribute "gen_ai.embeddings.dimension.count". Will propose to semantic conventions.
-        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
-                "dimensions"
-            ]
-
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
             name=span_name,
@@ -234,12 +228,6 @@ def async_embeddings_create(
                 GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
             )
         }
-
-        # Set embeddings dimensions if specified in the request
-        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            span_attributes["gen_ai.embeddings.dimension.count"] = kwargs[
-                "dimensions"
-            ]
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(

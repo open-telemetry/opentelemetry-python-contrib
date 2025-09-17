@@ -241,10 +241,8 @@ def get_llm_request_attributes(
         == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
     ):
         # Add embedding dimensions if specified
-        if "dimensions" in kwargs and kwargs["dimensions"] is not None:
-            attributes["gen_ai.embeddings.dimension.count"] = kwargs[
-                "dimensions"
-            ]
+        if (dimensions := kwargs.get("dimensions")) is not None:
+            attributes["gen_ai.embeddings.dimension.count"] = dimensions
 
         # Add encoding format if specified
         if "encoding_format" in kwargs:
