@@ -174,7 +174,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/route/2020/template/",
+            "http://testserver/route/2020/template/",
         )
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE],
@@ -219,7 +219,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/route/2020/template/",
+            "http://testserver/route/2020/template/",
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
@@ -248,7 +248,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            "http://testserver/traced/",
         )
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
@@ -289,7 +289,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            "http://testserver/traced/",
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
@@ -328,7 +328,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            "http://testserver/traced/",
         )
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
@@ -369,7 +369,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/traced/",
+            "http://testserver/traced/",
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
@@ -396,7 +396,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/error/",
+            "http://testserver/error/",
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
@@ -450,7 +450,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
         self.assertEqual(
             span.attributes[SpanAttributes.HTTP_URL],
-            "http://127.0.0.1/error/",
+            "http://testserver/error/",
         )
         self.assertEqual(span.attributes[SpanAttributes.HTTP_ROUTE], "^error/")
         self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
