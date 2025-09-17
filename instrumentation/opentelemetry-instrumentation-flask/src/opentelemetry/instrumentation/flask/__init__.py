@@ -308,12 +308,14 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -438,9 +440,7 @@ def _rewrapped_app(
 
             if request_route:
                 # http.target to be included in old semantic conventions
-                duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
-                    request_route
-                )
+                duration_attrs_old[HTTP_TARGET] = str(request_route)
 
             # Enhance attributes with any custom labeler attributes
             duration_attrs_old = enhance_metric_attributes(duration_attrs_old)
@@ -489,7 +489,7 @@ def _wrapped_before_request(
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
-            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+            attributes[HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
