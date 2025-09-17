@@ -47,7 +47,10 @@ from wrapt import wrap_function_wrapper
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
-from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
+from opentelemetry.instrumentation.openai_v2.utils import (
+    get_content_mode,
+    is_latest_experimental_enabled,
+)
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
@@ -71,13 +74,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0", # TODO: Schemas.V1_37_0.value,
         )
         event_logger_provider = kwargs.get("event_logger_provider")
         event_logger = get_event_logger(
             __name__,
             "",
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0",  # TODO: Schemas.V1_37_0.value,
             event_logger_provider=event_logger_provider,
         )
         meter_provider = kwargs.get("meter_provider")
@@ -85,16 +88,21 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             meter_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url="https://opentelemetry.io/schemas/1.37.0",  # TODO: Schemas.V1_37_0.value,
         )
 
         instruments = Instruments(self._meter)
 
+        latest_experimental_enabled = is_latest_experimental_enabled()
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                get_content_mode(latest_experimental_enabled),
+                latest_experimental_enabled,
             ),
         )
 
@@ -102,7 +110,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                get_content_mode(latest_experimental_enabled),
+                latest_experimental_enabled,
             ),
         )
 

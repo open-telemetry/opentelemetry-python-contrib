@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
+import json
+import logging
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from enum import Enum
 from os import environ
-from typing import Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional, Union
 from urllib.parse import urlparse
 
 from httpx import URL
 from openai import NOT_GIVEN
 
-from opentelemetry._events import Event
+from opentelemetry._events import Event, EventLogger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -29,22 +35,84 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
+from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
+# TODO: reuse common code
+OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
+
+logger = logging.getLogger(__name__)
 
 
-def is_content_enabled() -> bool:
+class ContentCapturingMode(str, Enum):
+    SPAN = "span"
+    EVENT = "event"
+    NONE = "none"
+
+
+def get_content_mode(
+    latest_experimental_enabled: bool,
+) -> ContentCapturingMode:
     capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "none"
+    ).lower()
+
+    if latest_experimental_enabled:
+        try:
+            return ContentCapturingMode(capture_content)
+        except ValueError as ex:
+            logger.warning(
+                "Error when parsing `%s` environment variable: {%s}",
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+                str(ex),
+            )
+            return ContentCapturingMode.NONE
+
+    else:
+        # back-compat
+        return (
+            ContentCapturingMode.EVENT
+            if capture_content == "true"
+            else ContentCapturingMode.NONE
+        )
+
+
+def is_latest_experimental_enabled() -> bool:
+    stability_opt_in = environ.get(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+
+    return (
+        stability_opt_in is not None
+        and stability_opt_in.lower() == "gen_ai_latest_experimental"
     )
 
-    return capture_content.lower() == "true"
+
+def create_details_event_attributes(
+    request_attributes: dict,
+    latest_experimental_enabled: bool,
+    content_mode: ContentCapturingMode,
+):
+    # TODO: once logger.enabled is supported, we should use it to optimize
+    # and, when enabled, can record event even when content is disabled
+    # for now, let's only enable event when user enabled content on events.
+    details_event_attributes = (
+        request_attributes.copy()
+        if latest_experimental_enabled
+        and content_mode == ContentCapturingMode.EVENT
+        else None
+    )
+    # TODO: switch to proper event name once possible
+    if details_event_attributes:
+        details_event_attributes["event.name"] = (
+            "gen_ai.client.inference.operation.details"
+        )
+
+    return details_event_attributes
 
 
-def extract_tool_calls(item, capture_content):
+def extract_tool_calls_old(item, content_mode: ContentCapturingMode):
     tool_calls = get_property_value(item, "tool_calls")
     if tool_calls is None:
         return None
@@ -69,13 +137,40 @@ def extract_tool_calls(item, capture_content):
                 tool_call_dict["function"]["name"] = name
 
             arguments = get_property_value(func, "arguments")
-            if capture_content and arguments:
+            if content_mode == ContentCapturingMode.EVENT and arguments:
                 if isinstance(arguments, str):
                     arguments = arguments.replace("\n", "")
                 tool_call_dict["function"]["arguments"] = arguments
 
         calls.append(tool_call_dict)
     return calls
+
+
+def extract_tool_calls_new(tool_calls) -> list["ToolCallRequestPart"]:
+    parts = []
+    for tool_call in tool_calls:
+        tool_call_part = ToolCallRequestPart()
+        call_id = get_property_value(tool_call, "id")
+        if call_id:
+            tool_call_part.id = call_id
+
+        func = get_property_value(tool_call, "function")
+        if func:
+            tool_call_part.function = {}
+            name = get_property_value(func, "name")
+            if name:
+                tool_call_part.name = name
+
+            arguments = get_property_value(func, "arguments")
+            if arguments:
+                try:
+                    tool_call_part.arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    tool_call_part.arguments = arguments
+
+        # TODO: support custom
+        parts.append(tool_call_part)
+    return parts
 
 
 def set_server_address_and_port(client_instance, attributes):
@@ -104,7 +199,139 @@ def get_property_value(obj, property_name):
     return getattr(obj, property_name, None)
 
 
-def message_to_event(message, capture_content):
+def record_input_messages(
+    messages,
+    content_mode: ContentCapturingMode,
+    latest_experimental_enabled: bool,
+    span: Span,
+    details_event_attributes: dict,
+    event_logger: EventLogger,
+):
+    if latest_experimental_enabled:
+        if (
+            content_mode == ContentCapturingMode.NONE
+            or (
+                content_mode == ContentCapturingMode.SPAN
+                and not span.is_recording()
+            )
+            or (
+                content_mode == ContentCapturingMode.EVENT
+                and details_event_attributes is None
+            )
+        ):
+            return
+
+        chat_messages = json.dumps(
+            _prepare_input_messages(messages),
+            ensure_ascii=False,
+            cls=DataclassEncoder,
+        )
+
+        if span.is_recording() and content_mode == ContentCapturingMode.SPAN:
+            span.set_attribute("gen_ai.input.messages", chat_messages)
+        elif (
+            details_event_attributes is not None
+            and content_mode == ContentCapturingMode.EVENT
+        ):
+            details_event_attributes["gen_ai.input.messages"] = chat_messages
+    else:
+        for message in messages:
+            event_logger.emit(_message_to_event(message, content_mode))
+
+
+def _prepare_input_messages(messages) -> List["ChatMessage"]:
+    chat_messages = []
+    for message in messages:
+        role = get_property_value(message, "role")
+        chat_message = ChatMessage(role=role, parts=[])
+        chat_messages.append(chat_message)
+
+        content = get_property_value(message, "content")
+
+        if role == "assistant":
+            tool_calls = get_property_value(message, "tool_calls")
+            if tool_calls:
+                chat_message.parts += extract_tool_calls_new(tool_calls)
+            if _is_text_part(content):
+                chat_message.parts.append(TextPart(content=content))
+
+        elif role == "tool":
+            tool_call_id = get_property_value(message, "tool_call_id")
+            chat_message.parts.append(
+                ToolCallResponsePart(id=tool_call_id, response=content)
+            )
+
+        else:
+            # system, developer, user, fallback
+            if _is_text_part(content):
+                chat_message.parts.append(TextPart(content=content))
+    return chat_messages
+
+
+def _is_text_part(content: Any) -> bool:
+    return isinstance(content, str) or (
+        isinstance(content, Iterable)
+        and all(isinstance(part, str) for part in content)
+    )
+
+
+def record_output_messages(
+    choices,
+    content_mode: ContentCapturingMode,
+    latest_experimental_enabled: bool,
+    span: Span,
+    event_attributes: dict,
+    event_logger: EventLogger,
+):
+    if latest_experimental_enabled:
+        if content_mode == ContentCapturingMode.NONE or (
+            content_mode == ContentCapturingMode.SPAN
+            and not span.is_recording()
+        ):
+            return
+
+        output_messages = json.dumps(
+            _prepare_output_messages(choices),
+            ensure_ascii=False,
+            cls=DataclassEncoder,
+        )
+
+        if content_mode == ContentCapturingMode.SPAN:
+            span.set_attribute("gen_ai.output.messages", output_messages)
+        elif (
+            content_mode == ContentCapturingMode.EVENT
+            and event_attributes is not None
+        ):
+            event_attributes["gen_ai.output.messages"] = output_messages
+    else:
+        for choice in choices:
+            event_logger.emit(_choice_to_event(choice, content_mode))
+
+
+def _prepare_output_messages(choices) -> List["OutputMessage"]:
+    output_messages = []
+    for choice in choices:
+        message = OutputMessage(
+            finish_reason=choice.finish_reason or "error",
+            role=(
+                choice.message.role
+                if choice.message and choice.message.role
+                else None
+            ),
+        )
+        output_messages.append(message)
+
+        if choice.message:
+            tool_calls = get_property_value(choice.message, "tool_calls")
+            if tool_calls:
+                message.parts += extract_tool_calls_new(tool_calls)
+            content = get_property_value(choice.message, "content")
+            if _is_text_part(content):
+                message.parts.append(TextPart(content=content))
+    return output_messages
+
+
+def _message_to_event(message, content_mode: ContentCapturingMode):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -112,10 +339,10 @@ def message_to_event(message, capture_content):
     content = get_property_value(message, "content")
 
     body = {}
-    if capture_content and content:
+    if content_mode == ContentCapturingMode.EVENT and content:
         body["content"] = content
     if role == "assistant":
-        tool_calls = extract_tool_calls(message, capture_content)
+        tool_calls = extract_tool_calls_old(message, content_mode)
         if tool_calls:
             body = {"tool_calls": tool_calls}
     elif role == "tool":
@@ -130,7 +357,7 @@ def message_to_event(message, capture_content):
     )
 
 
-def choice_to_event(choice, capture_content):
+def _choice_to_event(choice, content_mode: ContentCapturingMode):
     attributes = {
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
     }
@@ -148,11 +375,11 @@ def choice_to_event(choice, capture_content):
                 else None
             )
         }
-        tool_calls = extract_tool_calls(choice.message, capture_content)
+        tool_calls = extract_tool_calls_old(choice.message, content_mode)
         if tool_calls:
             message["tool_calls"] = tool_calls
         content = get_property_value(choice.message, "content")
-        if capture_content and content:
+        if content_mode == ContentCapturingMode.EVENT and content:
             message["content"] = content
         body["message"] = message
 
@@ -163,16 +390,16 @@ def choice_to_event(choice, capture_content):
     )
 
 
-def set_span_attributes(span, attributes: dict):
-    for field, value in attributes.model_dump(by_alias=True).items():
-        set_span_attribute(span, field, value)
+def set_attribute(span, event_attributes, name, value):
+    if not span.is_recording() and event_attributes is None:
+        return
 
-
-def set_span_attribute(span, name, value):
     if non_numerical_value_is_set(value) is False:
         return
 
     span.set_attribute(name, value)
+    if event_attributes is not None:
+        event_attributes[name] = value
 
 
 def is_streaming(kwargs):
@@ -184,13 +411,21 @@ def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
 
 
 def get_llm_request_attributes(
-    kwargs,
-    client_instance,
-    operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+    kwargs, client_instance, operation_name, latest_experimental_enabled
 ):
+    provider_name_attr_key = (
+        "gen_ai.provider.name"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_SYSTEM
+    )
+    request_seed_attr_key = (
+        "gen_ai.request.seed"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED
+    )
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        provider_name_attr_key: GenAIAttributes.GenAiSystemValues.OPENAI.value,
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
         GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
         GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
@@ -202,26 +437,51 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
             "frequency_penalty"
         ),
-        GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
+        request_seed_attr_key: kwargs.get("seed"),
     }
 
+    output_type_attr_key = (
+        "gen_ai.output.type"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+    )
     if (response_format := kwargs.get("response_format")) is not None:
         # response_format may be string or object with a string in the `type` key
         if isinstance(response_format, Mapping):
             if (
                 response_format_type := response_format.get("type")
             ) is not None:
-                attributes[
-                    GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-                ] = response_format_type
+                if response_format_type == "text":
+                    attributes[output_type_attr_key] = (
+                        "text"  # TODO there should be an enum in semconv package
+                    )
+                elif (
+                    response_format_type == "json_schema"
+                    or response_format_type == "json_object"
+                ):
+                    attributes[output_type_attr_key] = "json"
+                else:
+                    # should never happen with chat completion API
+                    pass
         else:
-            attributes[
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-            ] = response_format
+            # should never happen with chat completion API
+            attributes[output_type_attr_key] = response_format
 
     set_server_address_and_port(client_instance, attributes)
-    service_tier = kwargs.get("service_tier")
-    attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = (
+
+    service_tier_attribute_key = (
+        "openai.request.service_tier"
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+    )
+
+    extra_body = kwargs.get("extra_body", None)
+    if extra_body and isinstance(extra_body, dict):
+        service_tier = extra_body.get("service_tier", None)
+    else:
+        service_tier = kwargs.get("service_tier", None)
+
+    attributes[service_tier_attribute_key] = (
         service_tier if service_tier != "auto" else None
     )
 
@@ -229,10 +489,91 @@ def get_llm_request_attributes(
     return {k: v for k, v in attributes.items() if v is not None}
 
 
-def handle_span_exception(span, error):
-    span.set_status(Status(StatusCode.ERROR, str(error)))
+def record_exception(span, details_event_attributes, error, event_logger):
     if span.is_recording():
+        span.set_status(Status(StatusCode.ERROR, str(error)))
         span.set_attribute(
             ErrorAttributes.ERROR_TYPE, type(error).__qualname__
         )
+    if details_event_attributes:
+        details_event_attributes[ErrorAttributes.ERROR_TYPE] = type(
+            error
+        ).__qualname__
+        event_logger.emit(
+            Event(
+                name="gen_ai.client.inference.operation.details",
+                attributes=details_event_attributes,
+                trace_id=span.get_span_context().trace_id,
+                span_id=span.get_span_context().span_id,
+                trace_flags=span.get_span_context().trace_flags,
+            )
+        )
     span.end()
+
+
+@dataclass
+class TextPart:
+    type: str = "text"
+    content: str = None
+
+
+@dataclass
+class ToolCallRequestPart:
+    type: str = "tool_call"
+    id: Optional[str] = None
+    name: str = ""
+    arguments: Any = None
+
+
+@dataclass
+class ToolCallResponsePart:
+    type: str = "tool_call_response"
+    id: Optional[str] = None
+    response: Any = None
+
+
+@dataclass
+class GenericPart:
+    type: str = ""
+
+
+MessagePart = Union[
+    TextPart,
+    ToolCallRequestPart,
+    ToolCallResponsePart,
+    GenericPart,
+]
+
+
+class Role(str, Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
+
+@dataclass
+class ChatMessage:
+    role: Union[Role, str]
+    parts: List[MessagePart] = field(default_factory=list)
+
+
+class FinishReason(str, Enum):
+    STOP = "stop"
+    LENGTH = "length"
+    CONTENT_FILTER = "content_filter"
+    TOOL_CALL = "tool_call"
+    ERROR = "error"
+
+
+@dataclass
+class OutputMessage(ChatMessage):
+    finish_reason: Union[FinishReason, str] = ""
+
+
+class DataclassEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if dataclasses.is_dataclass(obj):
+            return dataclasses.asdict(obj)
+        else:
+            return super(DataclassEncoder, self).default(obj)
