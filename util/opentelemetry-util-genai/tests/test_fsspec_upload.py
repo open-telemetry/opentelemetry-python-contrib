@@ -121,10 +121,11 @@ class TestFsspecUploadHook(TestCase):
     def test_upload_blocked(self):
         unblock_upload = threading.Event()
 
-        def blocked_upload(*args: Any) -> None:
+        def blocked_upload(*args: Any):
             unblock_upload.wait()
+            return MagicMock()
 
-        self.mock_fsspec.open = MagicMock(wraps=blocked_upload)
+        self.mock_fsspec.open.side_effect = blocked_upload
 
         # fill the queue
         for _ in range(MAXSIZE):

@@ -21,8 +21,6 @@ OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK = (
 )
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK
-
-The only known value is ``fsspec``, which
 """
 
 OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH = (
@@ -32,7 +30,7 @@ OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH = (
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH
 
 An :func:`fsspec.open` compatible URI/path for uploading prompts and responses. Can be a local
-path like ``file:./prompts`` or a cloud storage URI such as ``gs://my_bucket``. For more
+path like ``/path/to/prompts`` or a cloud storage URI such as ``gs://my_bucket``. For more
 information, see
 
 * `Instantiate a file-system

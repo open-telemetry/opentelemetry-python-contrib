@@ -104,7 +104,7 @@ class FsspecUploadHook(UploadHook):
                     "fsspec upload queue is full, dropping upload %s",
                     path,
                 )
-                return
+                continue
 
             try:
                 fut = self._executor.submit(
