@@ -45,6 +45,27 @@ from .types import Error, InputMessage, LLMInvocation, OutputMessage
 from .version import __version__
 
 
+def _apply_known_attrs_to_invocation(
+    invocation: LLMInvocation, attributes: dict[str, Any]
+) -> None:
+    """Pop known fields from attributes and set them on the invocation.
+
+    Mutates the provided attributes dict by popping known keys, leaving
+    only unknown/custom attributes behind for the caller to persist into
+    invocation.attributes.
+    """
+    if "provider" in attributes:
+        invocation.provider = attributes.pop("provider")
+    if "response_model_name" in attributes:
+        invocation.response_model_name = attributes.pop("response_model_name")
+    if "response_id" in attributes:
+        invocation.response_id = attributes.pop("response_id")
+    if "input_tokens" in attributes:
+        invocation.input_tokens = attributes.pop("input_tokens")
+    if "output_tokens" in attributes:
+        invocation.output_tokens = attributes.pop("output_tokens")
+
+
 class TelemetryHandler:
     """
     High-level handler managing GenAI invocation lifecycles and emitting
@@ -72,24 +93,25 @@ class TelemetryHandler:
         run_id: Optional[UUID] = None,
         **attributes: Any,
     ) -> UUID:
+        """Start an LLM invocation and create a pending span entry.
+
+        Known attributes provided via ``**attributes`` (``provider``,
+        ``response_model_name``, ``response_id``, ``input_tokens``,
+        ``output_tokens``) are extracted and set as explicit fields on the
+        ``LLMInvocation``. Any remaining keys are preserved in
+        ``invocation.attributes`` for custom metadata.
+
+        Returns the ``run_id`` used to track the invocation lifecycle.
+        """
         if run_id is None:
             run_id = uuid.uuid4()
-        provider = attributes.pop("provider", None)
-        response_model_name = attributes.pop("response_model_name", None)
-        response_id = attributes.pop("response_id", None)
-        input_tokens = attributes.pop("input_tokens", None)
-        output_tokens = attributes.pop("output_tokens", None)
         invocation = LLMInvocation(
             request_model=request_model,
             messages=prompts,
             run_id=run_id,
-            provider=provider,
-            response_model_name=response_model_name,
-            response_id=response_id,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
             attributes=attributes,
         )
+        _apply_known_attrs_to_invocation(invocation, invocation.attributes)
         self._llm_registry[invocation.run_id] = invocation
         self._generator.start(invocation)
         return invocation.run_id
@@ -100,22 +122,11 @@ class TelemetryHandler:
         chat_generations: List[OutputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
+        """Finalize an LLM invocation successfully and end its span."""
         invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
-        if "provider" in attributes:
-            invocation.provider = attributes.pop("provider")
-        if "response_model_name" in attributes:
-            invocation.response_model_name = attributes.pop(
-                "response_model_name"
-            )
-        if "response_id" in attributes:
-            invocation.response_id = attributes.pop("response_id")
-        if "input_tokens" in attributes:
-            invocation.input_tokens = attributes.pop("input_tokens")
-        if "output_tokens" in attributes:
-            invocation.output_tokens = attributes.pop("output_tokens")
-        # Keep any remaining attributes
+        _apply_known_attrs_to_invocation(invocation, attributes)
         invocation.attributes.update(attributes)
         self._generator.finish(invocation)
         return invocation
@@ -123,20 +134,10 @@ class TelemetryHandler:
     def fail_llm(
         self, run_id: UUID, error: Error, **attributes: Any
     ) -> LLMInvocation:
+        """Fail an LLM invocation and end its span with error status."""
         invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
-        if "provider" in attributes:
-            invocation.provider = attributes.pop("provider")
-        if "response_model_name" in attributes:
-            invocation.response_model_name = attributes.pop(
-                "response_model_name"
-            )
-        if "response_id" in attributes:
-            invocation.response_id = attributes.pop("response_id")
-        if "input_tokens" in attributes:
-            invocation.input_tokens = attributes.pop("input_tokens")
-        if "output_tokens" in attributes:
-            invocation.output_tokens = attributes.pop("output_tokens")
+        _apply_known_attrs_to_invocation(invocation, attributes)
         invocation.attributes.update(**attributes)
         self._generator.error(error, invocation)
         return invocation
