@@ -82,7 +82,6 @@ class TestSpanManager:
         # Arrange
         run_id = uuid.uuid4()
         mock_span = unittest.mock.Mock(spec=Span)
-        mock_context = unittest.mock.Mock()
         handler.spans[run_id] = _SpanState(span=mock_span)
 
         # Add a child to verify it's removed
