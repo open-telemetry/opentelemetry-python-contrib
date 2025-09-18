@@ -199,18 +199,10 @@ class FsspecUploadHook(UploadHook):
         if span:
             span.set_attributes(references)
         if log_record:
-            # set in both attributes and body until they are consolidated
-            # https://github.com/open-telemetry/semantic-conventions/issues/1870
             log_record.attributes = {
                 **(log_record.attributes or {}),
                 **references,
             }
-
-            if log_record.body is None or isinstance(log_record.body, Mapping):
-                log_record.body = {
-                    **(log_record.body or {}),
-                    **references,
-                }
 
     def shutdown(self) -> None:
         # TODO: support timeout

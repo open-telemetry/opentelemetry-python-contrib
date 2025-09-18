@@ -229,7 +229,6 @@ class TestFsspecUploadHookIntegration(TestBase):
         for attributes in [
             span.attributes,
             log_record.attributes,
-            log_record.body,
         ]:
             for ref_key in [
                 "gen_ai.input.messages_ref",
@@ -273,21 +272,3 @@ class TestFsspecUploadHookIntegration(TestBase):
         self.assertIn("gen_ai.input.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.output.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.system_instructions_ref", log_record.attributes)
-        self.assertIn("gen_ai.input.messages_ref", log_record.body)
-        self.assertIn("gen_ai.output.messages_ref", log_record.body)
-        self.assertIn("gen_ai.system_instructions_ref", log_record.body)
-
-    def test_stamps_log_with_map_body(self):
-        log_record = LogRecord(body={"hello": "world"})
-        self.upload_with_log(log_record)
-
-        # stamp on both body and attributes, preserving existing
-        self.assertEqual(log_record.body["hello"], "world")
-        self.assertIn("gen_ai.input.messages_ref", log_record.body)
-        self.assertIn("gen_ai.output.messages_ref", log_record.body)
-        self.assertIn("gen_ai.system_instructions_ref", log_record.body)
-
-    def test_doesnt_stamp_log_string_body(self):
-        log_record = LogRecord(body="hello world")
-        self.upload_with_log(log_record)
-        self.assertEqual(log_record.body, "hello world")
