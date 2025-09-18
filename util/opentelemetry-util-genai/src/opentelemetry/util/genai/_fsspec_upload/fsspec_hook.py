@@ -19,7 +19,6 @@ import json
 import logging
 import posixpath
 import threading
-from collections.abc import Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial
