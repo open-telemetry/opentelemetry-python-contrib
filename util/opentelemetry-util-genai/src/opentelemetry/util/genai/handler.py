@@ -33,9 +33,7 @@ Usage:
 """
 
 import time
-import uuid
 from typing import Any, List, Optional
-from uuid import UUID
 
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
@@ -72,7 +70,7 @@ class TelemetryHandler:
     them as spans, metrics, and events.
     """
 
-    def __init__(self, emitter_type_full: bool = True, **kwargs: Any):
+    def __init__(self, **kwargs: Any):
         tracer_provider = kwargs.get("tracer_provider")
         self._tracer = get_tracer(
             __name__,
@@ -81,18 +79,14 @@ class TelemetryHandler:
             schema_url=Schemas.V1_36_0.value,
         )
 
-        # TODO: trigger span+metric+event generation based on the full emitter flag
         self._generator = SpanGenerator(tracer=self._tracer)
-
-        self._llm_registry: dict[UUID, LLMInvocation] = {}
 
     def start_llm(
         self,
         request_model: str,
         prompts: List[InputMessage],
-        run_id: Optional[UUID] = None,
         **attributes: Any,
-    ) -> UUID:
+    ) -> LLMInvocation:
         """Start an LLM invocation and create a pending span entry.
 
         Known attributes provided via ``**attributes`` (``provider``,
@@ -101,29 +95,24 @@ class TelemetryHandler:
         ``LLMInvocation``. Any remaining keys are preserved in
         ``invocation.attributes`` for custom metadata.
 
-        Returns the ``run_id`` used to track the invocation lifecycle.
+        Returns the ``LLMInvocation`` to use with `stop_llm` and `fail_llm`.
         """
-        if run_id is None:
-            run_id = uuid.uuid4()
         invocation = LLMInvocation(
             request_model=request_model,
             messages=prompts,
-            run_id=run_id,
             attributes=attributes,
         )
         _apply_known_attrs_to_invocation(invocation, invocation.attributes)
-        self._llm_registry[invocation.run_id] = invocation
         self._generator.start(invocation)
-        return invocation.run_id
+        return invocation
 
     def stop_llm(
         self,
-        run_id: UUID,
+        invocation: LLMInvocation,
         chat_generations: List[OutputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
         """Finalize an LLM invocation successfully and end its span."""
-        invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         invocation.chat_generations = chat_generations
         _apply_known_attrs_to_invocation(invocation, attributes)
@@ -132,10 +121,9 @@ class TelemetryHandler:
         return invocation
 
     def fail_llm(
-        self, run_id: UUID, error: Error, **attributes: Any
+        self, invocation: LLMInvocation, error: Error, **attributes: Any
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
-        invocation = self._llm_registry.pop(run_id)
         invocation.end_time = time.time()
         _apply_known_attrs_to_invocation(invocation, attributes)
         invocation.attributes.update(**attributes)
@@ -143,9 +131,7 @@ class TelemetryHandler:
         return invocation
 
 
-def get_telemetry_handler(
-    emitter_type_full: bool = True, **kwargs: Any
-) -> TelemetryHandler:
+def get_telemetry_handler(**kwargs: Any) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
     """
@@ -153,8 +139,6 @@ def get_telemetry_handler(
         get_telemetry_handler, "_default_handler", None
     )
     if handler is None:
-        handler = TelemetryHandler(
-            emitter_type_full=emitter_type_full, **kwargs
-        )
+        handler = TelemetryHandler(**kwargs)
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler

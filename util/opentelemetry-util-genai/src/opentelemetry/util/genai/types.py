@@ -14,12 +14,19 @@
 
 
 import time
+from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID
 
+from typing_extensions import TypeAlias
+
+from opentelemetry.context import Context
+from opentelemetry.trace import Span
 from opentelemetry.util.types import AttributeValue
+
+ContextToken: TypeAlias = Token[Context]
 
 
 class ContentCapturingMode(Enum):
@@ -81,8 +88,9 @@ class LLMInvocation:
     Represents a single LLM call invocation.
     """
 
-    run_id: UUID
     request_model: str
+    context_token: Optional[ContextToken] = None
+    span: Optional[Span] = None
     parent_run_id: Optional[UUID] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None

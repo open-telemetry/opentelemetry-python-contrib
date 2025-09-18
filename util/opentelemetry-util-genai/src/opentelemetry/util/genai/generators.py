@@ -31,7 +31,6 @@ Usage:
     follow the GenAI semantic conventions.
 """
 
-from contextlib import contextmanager
 from contextvars import Token
 from typing import Dict, Optional
 from uuid import UUID
@@ -95,56 +94,26 @@ class SpanGenerator(BaseTelemetryGenerator):
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
         )
-        token = otel_context.attach(set_span_in_context(span))
-        self._active[invocation.run_id] = (span, token)
-
-    @contextmanager
-    def _start_span_for_invocation(self, invocation: LLMInvocation):
-        """Create/register a span for the invocation and yield it.
-
-        The span is not ended automatically on exiting the context; callers
-        must finalize via _finalize_invocation.
-        """
-        # Create a span and attach it as current; keep the token to detach later
-        span = self._tracer.start_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
-            kind=SpanKind.CLIENT,
+        invocation.span = span
+        invocation.context_token = otel_context.attach(
+            set_span_in_context(span)
         )
-        token = otel_context.attach(set_span_in_context(span))
-        # store active span and its context attachment token
-        self._active[invocation.run_id] = (span, token)
-        yield span
 
     def finish(self, invocation: LLMInvocation):
-        active = self._active.get(invocation.run_id)
-        if active is None:
-            # If missing, create a quick span to record attributes and end it
-            with self._tracer.start_as_current_span(
-                name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
-                kind=SpanKind.CLIENT,
-            ) as span:
-                _apply_finish_attributes(span, invocation)
+        if invocation.context_token is None or invocation.span is None:
             return
 
-        span, token = active
-        _apply_finish_attributes(span, invocation)
+        _apply_finish_attributes(invocation.span, invocation)
         # Detach context and end span
-        otel_context.detach(token)
-        span.end()
-        del self._active[invocation.run_id]
+        otel_context.detach(invocation.context_token)
+        invocation.span.end()
 
     def error(self, error: Error, invocation: LLMInvocation):
-        active = self._active.get(invocation.run_id)
-        if active is None:
-            with self._tracer.start_as_current_span(
-                name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
-                kind=SpanKind.CLIENT,
-            ) as span:
-                _apply_error_attributes(span, error)
+        if invocation.context_token is None or invocation.span is None:
             return
 
-        span, token = active
-        _apply_error_attributes(span, error)
-        otel_context.detach(token)
-        span.end()
-        del self._active[invocation.run_id]
+        _apply_error_attributes(invocation.span, error)
+        # Detach context and end span
+        otel_context.detach(invocation.context_token)
+        invocation.span.end()
+        return

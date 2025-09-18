@@ -122,7 +122,6 @@ class TestTelemetryHandler(unittest.TestCase):
         content_capturing="SPAN_ONLY",
     )
     def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
-        run_id = uuid4()
         message = InputMessage(
             role="Human", parts=[Text(content="hello world")]
         )
@@ -131,15 +130,14 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
         # Start and stop LLM invocation
-        self.telemetry_handler.start_llm(
+        invocation = self.telemetry_handler.start_llm(
             request_model="test-model",
             prompts=[message],
-            run_id=run_id,
             custom_attr="value",
             provider="test-provider",
         )
-        invocation = self.telemetry_handler.stop_llm(
-            run_id, chat_generations=[chat_generation], extra="info"
+        self.telemetry_handler.stop_llm(
+            invocation, chat_generations=[chat_generation], extra="info"
         )
 
         # Get the spans that were created
@@ -157,7 +155,6 @@ class TestTelemetryHandler(unittest.TestCase):
         assert span.start_time is not None
         assert span.end_time is not None
         assert span.end_time > span.start_time
-        assert invocation.run_id == run_id
         assert invocation.attributes.get("custom_attr") == "value"
         assert invocation.attributes.get("extra") == "info"
 
@@ -183,13 +180,13 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
         # Start parent and child (child references parent_run_id)
-        self.telemetry_handler.start_llm(
+        parent_invocation = self.telemetry_handler.start_llm(
             request_model="parent-model",
             prompts=[message],
             run_id=parent_id,
             provider="test-provider",
         )
-        self.telemetry_handler.start_llm(
+        child_invocation = self.telemetry_handler.start_llm(
             request_model="child-model",
             prompts=[message],
             run_id=child_id,
@@ -199,10 +196,10 @@ class TestTelemetryHandler(unittest.TestCase):
 
         # Stop child first, then parent (order should not matter)
         self.telemetry_handler.stop_llm(
-            child_id, chat_generations=[chat_generation]
+            child_invocation, chat_generations=[chat_generation]
         )
         self.telemetry_handler.stop_llm(
-            parent_id, chat_generations=[chat_generation]
+            parent_invocation, chat_generations=[chat_generation]
         )
 
         spans = self.span_exporter.get_finished_spans()
