@@ -18,8 +18,10 @@ from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterable,
     Awaitable,
     Callable,
+    Iterable,
     MutableSequence,
 )
 
@@ -36,10 +38,16 @@ from opentelemetry.instrumentation.vertexai.utils import (
 from opentelemetry.trace import SpanKind, Tracer
 
 if TYPE_CHECKING:
-    from google.cloud.aiplatform_v1.services.prediction_service import client
+    from google.cloud.aiplatform_v1.services.prediction_service import (
+        async_client,
+        client,
+    )
     from google.cloud.aiplatform_v1.types import (
         content,
         prediction_service,
+    )
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        async_client as async_client_v1beta1,
     )
     from google.cloud.aiplatform_v1beta1.services.prediction_service import (
         client as client_v1beta1,
@@ -101,7 +109,9 @@ class MethodWrappers:
     def _with_instrumentation(
         self,
         instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        | client_v1beta1.PredictionServiceClient
+        | async_client.PredictionServiceAsyncClient
+        | async_client_v1beta1.PredictionServiceAsyncClient,
         args: Any,
         kwargs: Any,
     ):
@@ -178,8 +188,8 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
             ],
         ],
-        instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        instance: async_client.PredictionServiceAsyncClient
+        | async_client_v1beta1.PredictionServiceAsyncClient,
         args: Any,
         kwargs: Any,
     ) -> (
@@ -192,3 +202,53 @@ class MethodWrappers:
             response = await wrapped(*args, **kwargs)
             handle_response(response)
             return response
+
+    def stream_generate_content(
+        self,
+        wrapped: Callable[
+            ...,
+            Iterable[prediction_service.GenerateContentResponse]
+            | Iterable[prediction_service_v1beta1.GenerateContentResponse],
+        ],
+        instance: client.PredictionServiceClient
+        | client_v1beta1.PredictionServiceClient,
+        args: Any,
+        kwargs: Any,
+    ) -> Iterable[
+        prediction_service.GenerateContentResponse
+        | prediction_service_v1beta1.GenerateContentResponse,
+    ]:
+        with self._with_instrumentation(
+            instance, args, kwargs
+        ) as handle_response:
+            for response in wrapped(*args, **kwargs):
+                handle_response(response)
+                yield response
+
+    async def astream_generate_content(
+        self,
+        wrapped: Callable[
+            ...,
+            Awaitable[
+                AsyncIterable[prediction_service.GenerateContentResponse]
+            ]
+            | Awaitable[
+                AsyncIterable[
+                    prediction_service_v1beta1.GenerateContentResponse
+                ]
+            ],
+        ],
+        instance: async_client.PredictionServiceAsyncClient
+        | async_client_v1beta1.PredictionServiceAsyncClient,
+        args: Any,
+        kwargs: Any,
+    ) -> AsyncIterable[
+        prediction_service.GenerateContentResponse
+        | prediction_service_v1beta1.GenerateContentResponse,
+    ]:
+        with self._with_instrumentation(
+            instance, args, kwargs
+        ) as handle_response:
+            async for response in await wrapped(*args, **kwargs):
+                handle_response(response)
+                yield response
