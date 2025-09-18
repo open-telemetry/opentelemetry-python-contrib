@@ -64,8 +64,12 @@ vcrpy==6.0.2
 wrapt==1.16.0
 yarl==1.15.2
 zipp==3.20.2
-
 # when updating, also update in pyproject.toml
--e opentelemetry-instrumentation
+opentelemetry-api==1.37
+opentelemetry-sdk==1.37
+opentelemetry-semantic-conventions==0.58b0
+opentelemetry-instrumentation==0.58b0
+
+
 -e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
 -e util/opentelemetry-util-genai

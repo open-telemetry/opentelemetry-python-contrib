@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from typing import Any, Collection
 
+from typing_extensions import assert_never
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
@@ -109,18 +110,26 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+        )
         tracer_provider = kwargs.get("tracer_provider")
+        schema = (
+            Schemas.V1_28_0.value
+            if sem_conv_opt_in_mode == _StabilityMode.DEFAULT
+            else Schemas.V1_36_0
+        )
         tracer = get_tracer(
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=schema,
         )
         event_logger_provider = kwargs.get("event_logger_provider")
         event_logger = get_event_logger(
             __name__,
             "",
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=schema,
             event_logger_provider=event_logger_provider,
         )
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -143,10 +152,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode,
             )
         else:
-            # Impossible to reach here, only 2 opt-in modes exist for GEN_AI.
-            raise ValueError(
-                f"Sem Conv opt in mode {sem_conv_opt_in_mode} not supported."
-            )
+            assert_never()
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):

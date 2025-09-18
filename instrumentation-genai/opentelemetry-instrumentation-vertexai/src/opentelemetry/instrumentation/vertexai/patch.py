@@ -134,12 +134,6 @@ class MethodWrappers:
         self.capture_content = capture_content
         self.sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
-    #   Deprecations:
-    #   - `gen_ai.system.message` event - use `gen_ai.system_instructions` or
-    #     `gen_ai.input.messages` attributes instead.
-    #   - `gen_ai.user.message`, `gen_ai.assistant.message`, `gen_ai.tool.message` events
-    #     (use `gen_ai.input.messages` attribute instead)
-    #   - `gen_ai.choice` event (use `gen_ai.output.messages` attribute instead)
     @contextmanager
     def _with_new_instrumentation(
         self,
@@ -166,9 +160,10 @@ class MethodWrappers:
 
             def handle_response(
                 response: prediction_service.GenerateContentResponse
-                | prediction_service_v1beta1.GenerateContentResponse,
+                | prediction_service_v1beta1.GenerateContentResponse
+                | None,
             ) -> None:
-                if span.is_recording():
+                if span.is_recording() and response:
                     # When streaming, this is called multiple times so attributes would be
                     # overwritten. In practice, it looks the API only returns the interesting
                     # attributes on the last streamed response. However, I couldn't find
@@ -266,20 +261,11 @@ class MethodWrappers:
             with self._with_new_instrumentation(
                 capture_content, instance, args, kwargs
             ) as handle_response:
+                response = None
                 try:
                     response = wrapped(*args, **kwargs)
-                except Exception as e:
-                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
-                    self.event_logger.emit(
-                        create_operation_details_event(
-                            params=_extract_params(*args, **kwargs),
-                            response=None,
-                            capture_content=capture_content,
-                            api_endpoint=api_endpoint,
-                        )
-                    )
-                    raise e
-                handle_response(response)
+                finally:
+                    handle_response(response)
                 return response
 
     async def agenerate_content(
@@ -312,18 +298,9 @@ class MethodWrappers:
             with self._with_new_instrumentation(
                 capture_content, instance, args, kwargs
             ) as handle_response:
+                response = None
                 try:
                     response = await wrapped(*args, **kwargs)
-                except Exception as e:
-                    api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
-                    self.event_logger.emit(
-                        create_operation_details_event(
-                            params=_extract_params(*args, **kwargs),
-                            response=None,
-                            capture_content=capture_content,
-                            api_endpoint=api_endpoint,
-                        )
-                    )
-                    raise e
-                handle_response(response)
+                finally:
+                    handle_response(response)
                 return response

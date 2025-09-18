@@ -329,7 +329,7 @@ def create_operation_details_event(
     }:
         return event
     if params.system_instruction:
-        attributes["gen_ai.system_instructions"] = [
+        attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS] = [
             {
                 "type": "text",
                 "content": "\n".join(
@@ -338,12 +338,12 @@ def create_operation_details_event(
             }
         ]
     if params.contents:
-        attributes["gen_ai.input.messages"] = [
+        attributes[GenAIAttributes.GEN_AI_INPUT_MESSAGES] = [
             asdict(_convert_content_to_message(content))
             for content in params.contents
         ]
     if response and response.candidates:
-        attributes["gen_ai.output.messages"] = [
+        attributes[GenAIAttributes.GEN_AI_OUTPUT_MESSAGES] = [
             asdict(x) for x in _convert_response_to_output_messages(response)
         ]
     return event
@@ -370,7 +370,6 @@ def _convert_content_to_message(
     content: content.Content | content_v1beta1.Content,
 ) -> InputMessage:
     parts: MessagePart = []
-    message = InputMessage(role=content.role, parts=parts)
     for idx, part in enumerate(content.parts):
         if "function_response" in part:
             part = part.function_response
@@ -399,7 +398,7 @@ def _convert_content_to_message(
             )
             dict_part["type"] = type(part)
             parts.append(dict_part)
-    return message
+    return InputMessage(role=content.role, parts=parts)
 
 
 def response_to_events(
