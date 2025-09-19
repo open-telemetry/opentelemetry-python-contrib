@@ -43,7 +43,6 @@ from __future__ import annotations
 
 from typing import Any, Collection
 
-from typing_extensions import assert_never
 from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
@@ -152,7 +151,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode,
             )
         else:
-            assert_never(sem_conv_opt_in_mode)
+            raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):

@@ -266,9 +266,9 @@ class MethodWrappers:
                 response = None
                 try:
                     response = wrapped(*args, **kwargs)
+                    return response
                 finally:
                     handle_response(response)
-                return response
 
     async def agenerate_content(
         self,
@@ -303,6 +303,6 @@ class MethodWrappers:
                 response = None
                 try:
                     response = await wrapped(*args, **kwargs)
+                    return response
                 finally:
                     handle_response(response)
-                return response
