@@ -23,7 +23,7 @@ from typing import (
     MutableSequence,
 )
 
-from opentelemetry._events import EventLogger
+from opentelemetry._logs import Logger
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
     get_genai_request_attributes,
@@ -91,10 +91,10 @@ def _extract_params(
 
 class MethodWrappers:
     def __init__(
-        self, tracer: Tracer, event_logger: EventLogger, capture_content: bool
+        self, tracer: Tracer, logger: Logger, capture_content: bool
     ) -> None:
         self.tracer = tracer
-        self.event_logger = event_logger
+        self.logger = logger
         self.capture_content = capture_content
 
     @contextmanager
@@ -122,7 +122,7 @@ class MethodWrappers:
             for event in request_to_events(
                 params=params, capture_content=self.capture_content
             ):
-                self.event_logger.emit(event)
+                self.logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
@@ -143,7 +143,7 @@ class MethodWrappers:
                 for event in response_to_events(
                     response=response, capture_content=self.capture_content
                 ):
-                    self.event_logger.emit(event)
+                    self.logger.emit(event)
 
             yield handle_response
 
