@@ -13,10 +13,11 @@
 # limitations under the License.
 # pylint: disable=too-many-locals
 
+import logging
 from typing import Optional
 
 import pytest
-from openai import APIConnectionError, NotFoundError, OpenAI
+from openai import NOT_GIVEN, APIConnectionError, NotFoundError, OpenAI
 from openai.resources.chat.completions import ChatCompletion
 
 from opentelemetry.sdk.trace import ReadableSpan
@@ -43,7 +44,9 @@ def test_chat_completion_with_content(
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
     response = openai_client.chat.completions.create(
-        messages=messages_value, model=llm_model_value, stream=False
+        messages=messages_value,
+        model=llm_model_value,
+        stream=False,
     )
 
     spans = span_exporter.get_finished_spans()
@@ -66,6 +69,30 @@ def test_chat_completion_with_content(
         },
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
+
+@pytest.mark.vcr()
+def test_chat_completion_handles_not_given(
+    span_exporter, log_exporter, openai_client, instrument_no_content, caplog
+):
+    caplog.set_level(logging.WARNING)
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = openai_client.chat.completions.create(
+        messages=messages_value,
+        model=llm_model_value,
+        stream=False,
+        top_p=NOT_GIVEN,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert_completion_attributes(spans[0], llm_model_value, response)
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    assert_no_invalid_type_warning(caplog)
 
 
 @pytest.mark.vcr()
@@ -947,3 +974,7 @@ def get_current_weather_tool_definition():
             },
         },
     }
+
+
+def assert_no_invalid_type_warning(caplog):
+    assert "Invalid type" not in caplog.text
