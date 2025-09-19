@@ -19,18 +19,31 @@ import json
 import logging
 import posixpath
 import threading
+from base64 import b64encode
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial
-from typing import Any, Callable, Literal, TextIO, cast
+from typing import Any, Callable, Final, Literal, TextIO, cast
 from uuid import uuid4
 
 import fsspec
 
 from opentelemetry._logs import LogRecord
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai.upload_hook import UploadHook
+
+GEN_AI_INPUT_MESSAGES_REF: Final = (
+    gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
+)
+GEN_AI_OUTPUT_MESSAGES_REF: Final = (
+    gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES + "_ref"
+)
+GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
+    gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
+)
+
 
 _logger = logging.getLogger(__name__)
 
@@ -139,7 +152,12 @@ class FsspecUploadHook(UploadHook):
         path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
         with fsspec_open(path, "w") as file:
-            json.dump(json_encodeable(), file, separators=(",", ":"))
+            json.dump(
+                json_encodeable(),
+                file,
+                separators=(",", ":"),
+                cls=Base64JsonEncoder,
+            )
 
     def upload(
         self,
@@ -177,8 +195,27 @@ class FsspecUploadHook(UploadHook):
             },
         )
 
-        # TODO: stamp the refs on telemetry
+        # stamp the refs on telemetry
+        references = {
+            GEN_AI_INPUT_MESSAGES_REF: ref_names.inputs_ref,
+            GEN_AI_OUTPUT_MESSAGES_REF: ref_names.outputs_ref,
+            GEN_AI_SYSTEM_INSTRUCTIONS_REF: ref_names.system_instruction_ref,
+        }
+        if span:
+            span.set_attributes(references)
+        if log_record:
+            log_record.attributes = {
+                **(log_record.attributes or {}),
+                **references,
+            }
 
     def shutdown(self) -> None:
         # TODO: support timeout
         self._executor.shutdown()
+
+
+class Base64JsonEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return b64encode(o).decode()
+        return super().default(o)
