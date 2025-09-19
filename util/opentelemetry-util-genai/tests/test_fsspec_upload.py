@@ -18,6 +18,7 @@ import importlib
 import logging
 import sys
 import threading
+from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Any
 from unittest import TestCase
@@ -84,12 +85,24 @@ FAKE_OUTPUTS = [
 FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
 
 
+class ThreadSafeMagicMock(MagicMock):
+    def __init__(self, *args, **kwargs) -> None:
+        self.__dict__["_lock"] = threading.Lock()
+        super().__init__(*args, **kwargs)
+
+    def _increment_mock_call(self, /, *args, **kwargs):
+        with self.__dict__["_lock"]:
+            super()._increment_mock_call(*args, **kwargs)
+
+
 class TestFsspecUploadHook(TestCase):
     def setUp(self):
         self._fsspec_patcher = patch(
             "opentelemetry.util.genai._fsspec_upload.fsspec_hook.fsspec"
         )
         self.mock_fsspec = self._fsspec_patcher.start()
+        self.mock_fsspec.open = ThreadSafeMagicMock()
+
         self.hook = FsspecUploadHook(
             base_path=BASE_PATH,
             max_size=MAXSIZE,
@@ -98,6 +111,20 @@ class TestFsspecUploadHook(TestCase):
     def tearDown(self) -> None:
         self.hook.shutdown()
         self._fsspec_patcher.stop()
+
+    @contextmanager
+    def block_upload(self):
+        unblock_upload = threading.Event()
+
+        def blocked_upload(*args: Any):
+            unblock_upload.wait()
+            return MagicMock()
+
+        try:
+            self.mock_fsspec.open.side_effect = blocked_upload
+            yield
+        finally:
+            unblock_upload.set()
 
     def test_shutdown_no_items(self):
         self.hook.shutdown()
@@ -118,46 +145,45 @@ class TestFsspecUploadHook(TestCase):
         )
 
     def test_upload_blocked(self):
-        unblock_upload = threading.Event()
+        with self.block_upload():
+            # fill the queue
+            for _ in range(MAXSIZE):
+                self.hook.upload(
+                    inputs=FAKE_INPUTS,
+                    outputs=FAKE_OUTPUTS,
+                    system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                )
 
-        def blocked_upload(*args: Any):
-            unblock_upload.wait()
-            return MagicMock()
+            self.assertLessEqual(
+                self.mock_fsspec.open.call_count,
+                MAXSIZE,
+                f"uploader should only be called {MAXSIZE=} times",
+            )
 
-        self.mock_fsspec.open.side_effect = blocked_upload
+            with self.assertLogs(level=logging.WARNING) as logs:
+                self.hook.upload(
+                    inputs=FAKE_INPUTS,
+                    outputs=FAKE_OUTPUTS,
+                    system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                )
 
-        # fill the queue
-        for _ in range(MAXSIZE):
+            self.assertIn(
+                "fsspec upload queue is full, dropping upload", logs.output[0]
+            )
+
+    def test_shutdown_timeout(self):
+        with self.block_upload():
             self.hook.upload(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
             )
 
-        self.assertLessEqual(
-            self.mock_fsspec.open.call_count,
-            MAXSIZE,
-            f"uploader should only be called {MAXSIZE=} times",
-        )
-
-        with self.assertLogs(level=logging.WARNING) as logs:
-            self.hook.upload(
-                inputs=FAKE_INPUTS,
-                outputs=FAKE_OUTPUTS,
-                system_instruction=FAKE_SYSTEM_INSTRUCTION,
-            )
-
-        self.assertIn(
-            "fsspec upload queue is full, dropping upload", logs.output[0]
-        )
-
-        unblock_upload.set()
+            # shutdown should timeout and return even though there are still items in the queue
+            self.hook.shutdown(timeout_sec=0.01)
 
     def test_failed_upload_logs(self):
-        def failing_upload(*args: Any) -> None:
-            raise RuntimeError("failed to upload")
-
-        self.mock_fsspec.open = MagicMock(wraps=failing_upload)
+        self.mock_fsspec.open.side_effect = RuntimeError("failed to upload")
 
         with self.assertLogs(level=logging.ERROR) as logs:
             self.hook.upload(
@@ -177,7 +203,7 @@ class TestFsspecUploadHook(TestCase):
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
             )
-        self.assertEqual(len(logs.output), 1)
+        self.assertEqual(len(logs.output), 3)
         self.assertIn(
             "attempting to upload file after FsspecUploadHook.shutdown() was already called",
             logs.output[0],
