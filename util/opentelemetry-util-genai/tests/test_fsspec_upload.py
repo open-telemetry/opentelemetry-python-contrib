@@ -14,7 +14,6 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
-
 import importlib
 import logging
 import sys
@@ -25,8 +24,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import fsspec
-from fsspec.implementations.memory import MemoryFileSystem
 
+from opentelemetry._logs import LogRecord
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
@@ -201,23 +200,93 @@ class FsspecUploaderTest(TestCase):
 
 class TestFsspecUploadHookIntegration(TestBase):
     def setUp(self):
-        MemoryFileSystem.store.clear()
+        super().setUp()
+        self.hook = FsspecUploadHook(base_path=BASE_PATH)
+
+    def tearDown(self):
+        super().tearDown()
+        self.hook.shutdown()
 
     def assert_fsspec_equal(self, path: str, value: str) -> None:
         with fsspec.open(path, "r") as file:
             self.assertEqual(file.read(), value)
 
     def test_upload_completions(self):
-        hook = FsspecUploadHook(
-            base_path=BASE_PATH,
+        tracer = self.tracer_provider.get_tracer(__name__)
+        log_record = LogRecord()
+
+        with tracer.start_as_current_span("chat mymodel") as span:
+            self.hook.upload(
+                inputs=FAKE_INPUTS,
+                outputs=FAKE_OUTPUTS,
+                system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                span=span,
+                log_record=log_record,
+            )
+        self.hook.shutdown()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        span = finished_spans[0]
+
+        # span attributes, log attributes, and log body have refs
+        for attributes in [
+            span.attributes,
+            log_record.attributes,
+        ]:
+            for ref_key in [
+                "gen_ai.input.messages_ref",
+                "gen_ai.output.messages_ref",
+                "gen_ai.system_instructions_ref",
+            ]:
+                self.assertIn(ref_key, attributes)
+
+        self.assert_fsspec_equal(
+            span.attributes["gen_ai.input.messages_ref"],
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]}]',
         )
-        hook.upload(
+        self.assert_fsspec_equal(
+            span.attributes["gen_ai.output.messages_ref"],
+            '[{"role":"assistant","parts":[{"content":"Paris","type":"text"}],"finish_reason":"stop"}]',
+        )
+        self.assert_fsspec_equal(
+            span.attributes["gen_ai.system_instructions_ref"],
+            '[{"content":"You are a helpful assistant.","type":"text"}]',
+        )
+
+    def test_stamps_empty_log(self):
+        log_record = LogRecord()
+        self.hook.upload(
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
         )
-        hook.shutdown()
 
-        fs = fsspec.open(BASE_PATH).fs
-        self.assertEqual(len(fs.ls(BASE_PATH)), 3)
-        # TODO: test stamped telemetry
+        # stamp on both body and attributes
+        self.assertIn("gen_ai.input.messages_ref", log_record.attributes)
+        self.assertIn("gen_ai.output.messages_ref", log_record.attributes)
+        self.assertIn("gen_ai.system_instructions_ref", log_record.attributes)
+
+    def test_upload_bytes(self) -> None:
+        log_record = LogRecord()
+        self.hook.upload(
+            inputs=[
+                types.InputMessage(
+                    role="user",
+                    parts=[
+                        types.Text(content="What is the capital of France?"),
+                        {"type": "generic_bytes", "bytes": b"hello"},
+                    ],
+                )
+            ],
+            outputs=FAKE_OUTPUTS,
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
+        )
+        self.hook.shutdown()
+
+        self.assert_fsspec_equal(
+            log_record.attributes["gen_ai.input.messages_ref"],
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"},{"type":"generic_bytes","bytes":"aGVsbG8="}]}]',
+        )
