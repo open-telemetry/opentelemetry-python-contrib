@@ -19,6 +19,7 @@ import json
 import logging
 import posixpath
 import threading
+from base64 import b64encode
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial
@@ -151,7 +152,12 @@ class FsspecUploadHook(UploadHook):
         path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
         with fsspec_open(path, "w") as file:
-            json.dump(json_encodeable(), file, separators=(",", ":"))
+            json.dump(
+                json_encodeable(),
+                file,
+                separators=(",", ":"),
+                cls=Base64JsonEncoder,
+            )
 
     def upload(
         self,
@@ -206,3 +212,10 @@ class FsspecUploadHook(UploadHook):
     def shutdown(self) -> None:
         # TODO: support timeout
         self._executor.shutdown()
+
+
+class Base64JsonEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return b64encode(o).decode()
+        return super().default(o)
