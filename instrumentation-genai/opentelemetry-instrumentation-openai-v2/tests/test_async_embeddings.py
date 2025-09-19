@@ -14,8 +14,6 @@
 
 """Unit tests for OpenAI Async Embeddings API instrumentation."""
 
-from typing import Optional
-
 import pytest
 from openai import AsyncOpenAI, NotFoundError
 
@@ -26,10 +24,9 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+
+from .test_utils import assert_all_attributes
 
 
 @pytest.mark.asyncio
@@ -243,87 +240,4 @@ def assert_embedding_attributes(
             response.data[0].embedding
         )
 
-    # Assert tokens are correctly recorded
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == response.usage.prompt_tokens
-    )
-
-
-def assert_all_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    response_id: str = None,
-    response_model: str = None,
-    input_tokens: Optional[int] = None,
-    operation_name: str = "embeddings",
-    server_address: str = "api.openai.com",
-    server_port: int = 443,
-):
-    """Assert common attributes on the span"""
-    assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    assert (
-        GenAIAttributes.GenAiSystemValues.OPENAI.value
-        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
-
-    if response_model:
-        assert (
-            response_model
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
-
-    if response_id:
-        assert (
-            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
-
-    if input_tokens:
-        assert (
-            input_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
-
-    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
-    if server_port != 443 and server_port > 0:
-        assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
-
-
-def assert_log_parent(log, span):
-    """Assert that the log record has the correct parent span context"""
-    if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
-        assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
-
-
-def remove_none_values(body):
-    result = {}
-    for key, value in body.items():
-        if value is None:
-            continue
-        if isinstance(value, dict):
-            result[key] = remove_none_values(value)
-        elif isinstance(value, list):
-            result[key] = [
-                remove_none_values(i) if isinstance(i, dict) else i
-                for i in value
-            ]
-        else:
-            result[key] = value
-    return result
+    return

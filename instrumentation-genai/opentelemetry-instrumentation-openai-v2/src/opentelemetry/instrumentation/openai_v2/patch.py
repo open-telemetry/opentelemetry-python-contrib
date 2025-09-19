@@ -14,7 +14,7 @@
 
 
 from timeit import default_timer
-from typing import Optional
+from typing import Any, Optional
 
 from openai import Stream
 
@@ -164,27 +164,24 @@ def embeddings_create(
     """Wrap the `create` method of the `Embeddings` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {
-            **get_llm_request_attributes(
-                kwargs,
-                instance,
-                GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
-            )
-        }
+        span_attributes = get_llm_request_attributes(
+            kwargs,
+            instance,
+            GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+        )
+        span_name = _get_embeddings_span_name(span_attributes)
+        input_text = kwargs.get("input", "")
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=True,
         ) as span:
-            # Store the input for later use in the response attributes
-            input_text = kwargs.get("input", "")
-
             start = default_timer()
             result = None
             error_type = None
+
             try:
                 result = wrapped(*args, **kwargs)
 
@@ -199,6 +196,7 @@ def embeddings_create(
                 error_type = type(error).__qualname__
                 handle_span_exception(span, error)
                 raise
+
             finally:
                 duration = max((default_timer() - start), 0)
                 _record_metrics(
@@ -221,27 +219,24 @@ def async_embeddings_create(
     """Wrap the `create` method of the `AsyncEmbeddings` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {
-            **get_llm_request_attributes(
-                kwargs,
-                instance,
-                GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
-            )
-        }
+        span_attributes = get_llm_request_attributes(
+            kwargs,
+            instance,
+            GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+        )
+        span_name = _get_embeddings_span_name(span_attributes)
+        input_text = kwargs.get("input", "")
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=True,
         ) as span:
-            # Store the input for later use in the response attributes
-            input_text = kwargs.get("input", "")
-
             start = default_timer()
             result = None
             error_type = None
+
             try:
                 result = await wrapped(*args, **kwargs)
 
@@ -256,6 +251,7 @@ def async_embeddings_create(
                 error_type = type(error).__qualname__
                 handle_span_exception(span, error)
                 raise
+
             finally:
                 duration = max((default_timer() - start), 0)
                 _record_metrics(
@@ -268,6 +264,11 @@ def async_embeddings_create(
                 )
 
     return traced_method
+
+
+def _get_embeddings_span_name(span_attributes):
+    """Get span name for embeddings operations."""
+    return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
 
 def _record_metrics(
@@ -390,13 +391,11 @@ def _set_response_attributes(
 
 
 def _set_embeddings_response_attributes(
-    span,
-    result,
+    span: Span,
+    result: Any,
     capture_content: bool,
     input_text: str,
 ):
-    """Set attributes on the span based on the embeddings response."""
-    # Set the model name if available
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
     )

@@ -13,13 +13,10 @@
 # limitations under the License.
 # pylint: disable=too-many-locals
 
-from typing import Optional
 
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, NotFoundError
-from openai.resources.chat.completions import ChatCompletion
 
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -31,6 +28,12 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
+)
+
+from .test_utils import (
+    assert_all_attributes,
+    assert_log_parent,
+    remove_none_values,
 )
 
 
@@ -47,7 +50,14 @@ async def test_async_chat_completion_with_content(
     )
 
     spans = span_exporter.get_finished_spans()
-    assert_completion_attributes(spans[0], llm_model_value, response)
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
@@ -81,7 +91,14 @@ async def test_async_chat_completion_no_content(
     )
 
     spans = span_exporter.get_finished_spans()
-    assert_completion_attributes(spans[0], llm_model_value, response)
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
@@ -162,7 +179,14 @@ async def test_async_chat_completion_extra_params(
     )
 
     spans = span_exporter.get_finished_spans()
-    assert_completion_attributes(spans[0], llm_model_value, response)
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED] == 42
     )
@@ -195,7 +219,14 @@ async def test_async_chat_completion_multiple_choices(
     )
 
     spans = span_exporter.get_finished_spans()
-    assert_completion_attributes(spans[0], llm_model_value, response)
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 3  # 1 user message + 2 choice messages
@@ -302,8 +333,22 @@ async def chat_completion_tool_call(
     # validate both calls
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 2
-    assert_completion_attributes(spans[0], llm_model_value, response_0)
-    assert_completion_attributes(spans[1], llm_model_value, response_1)
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response_0.id,
+        response_0.model,
+        response_0.usage.prompt_tokens,
+        response_0.usage.completion_tokens,
+    )
+    assert_all_attributes(
+        spans[1],
+        llm_model_value,
+        response_1.id,
+        response_1.model,
+        response_1.usage.prompt_tokens,
+        response_1.usage.completion_tokens,
+    )
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 9  # 3 logs for first completion, 6 for second
@@ -811,106 +856,6 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
             expected_content
         )
     assert_log_parent(log, parent_span)
-
-
-def remove_none_values(body):
-    result = {}
-    for key, value in body.items():
-        if value is None:
-            continue
-        if isinstance(value, dict):
-            result[key] = remove_none_values(value)
-        elif isinstance(value, list):
-            result[key] = [remove_none_values(i) for i in value]
-        else:
-            result[key] = value
-    return result
-
-
-def assert_completion_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    response: ChatCompletion,
-    operation_name: str = "chat",
-    server_address: str = "api.openai.com",
-):
-    return assert_all_attributes(
-        span,
-        request_model,
-        response.id,
-        response.model,
-        response.usage.prompt_tokens,
-        response.usage.completion_tokens,
-        operation_name,
-        server_address,
-    )
-
-
-def assert_all_attributes(
-    span: ReadableSpan,
-    request_model: str,
-    response_id: str = None,
-    response_model: str = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
-    operation_name: str = "chat",
-    server_address: str = "api.openai.com",
-):
-    assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    assert (
-        GenAIAttributes.GenAiSystemValues.OPENAI.value
-        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
-    if response_model:
-        assert (
-            response_model
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
-
-    if response_id:
-        assert (
-            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
-
-    if input_tokens:
-        assert (
-            input_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
-
-    if output_tokens:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
-        )
-
-    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
-
-
-def assert_log_parent(log, span):
-    if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
-        assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
 
 
 def get_current_weather_tool_definition():
