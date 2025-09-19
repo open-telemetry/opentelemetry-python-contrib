@@ -67,6 +67,7 @@ dependencies = [
   "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
+  "opentelemetry-instrumentation-langchain[instruments]",
 ]
 
 
@@ -138,6 +139,7 @@ opentelemetry-util-http = { workspace = true }
 opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
+opentelemetry-instrumentation-langchain = { workspace = true }
 
 # https://docs.astral.sh/uv/reference/settings/#workspace
 [tool.uv.workspace]
