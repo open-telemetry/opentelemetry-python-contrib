@@ -1,0 +1,13 @@
+python-dotenv
+openai>=1.40.0
+openai-agents>=0.2.9
+pydantic>=2.7.0
+
+# OpenTelemetry core & exporters
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+azure-monitor-opentelemetry-exporter
+
+# Instrumentation for Agents API (install if published separately)
+opentelemetry-instrumentation-openai-agents>=0.1.0
