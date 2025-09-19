@@ -3965,7 +3965,7 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-util-http -- -ra
 
-  py39-test-util-genai_ubuntu-latest:
+py39-test-util-genai_ubuntu-latest:
     name: util-genai 3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -3983,6 +3983,120 @@ jobs:
 
       - name: Run tests
         run: tox -e py39-test-util-genai -- -ra
+
+  py310-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-exporter-credential-provider-gcp -- -ra
+
+  py311-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-exporter-credential-provider-gcp -- -ra
+
+  py312-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-exporter-credential-provider-gcp -- -ra
+
+  py313-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-exporter-credential-provider-gcp -- -ra
+
+  pypy3-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp pypy-3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-exporter-credential-provider-gcp -- -ra
+
+  py39-test-exporter-credential-provider-gcp_ubuntu-latest:
+    name: exporter-credential-provider-gcp 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-exporter-credential-provider-gcp -- -ra
 
   py310-test-util-genai_ubuntu-latest:
     name: util-genai 3.10 Ubuntu

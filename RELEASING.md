@@ -27,6 +27,7 @@
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
+> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general release.
 
@@ -92,6 +93,7 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
+> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general patch release.
 
