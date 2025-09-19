@@ -239,5 +239,3 @@ def assert_embedding_attributes(
         assert span.attributes["gen_ai.embeddings.dimension.count"] == len(
             response.data[0].embedding
         )
-
-    return

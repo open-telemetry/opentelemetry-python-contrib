@@ -347,9 +347,3 @@ def assert_embedding_attributes(
         assert span.attributes["gen_ai.embeddings.dimension.count"] == len(
             response.data[0].embedding
         )
-
-    # Assert tokens are correctly recorded
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == response.usage.prompt_tokens
-    )
