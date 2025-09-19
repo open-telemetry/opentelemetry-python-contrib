@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-sdk-extension-aws` Add caching, matching, and targets logic to complete AWS X-Ray Remote Sampler implementation
+  ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3761))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
