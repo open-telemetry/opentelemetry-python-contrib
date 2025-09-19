@@ -27,9 +27,9 @@ Functions:
 
 Usage:
     handler = get_telemetry_handler()
-    handler.start_llm(prompts, run_id, **attrs)
-    handler.stop_llm(run_id, chat_generations, **attrs)
-    handler.fail_llm(run_id, error, **attrs)
+    handler.start_llm(input_messages, request_model, **attrs)
+    handler.stop_llm(invocation, output_messages, **attrs)
+    handler.fail_llm(invocation, error, **attrs)
 """
 
 import time
@@ -84,7 +84,7 @@ class TelemetryHandler:
     def start_llm(
         self,
         request_model: str,
-        prompts: List[InputMessage],
+        input_messages: List[InputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
         """Start an LLM invocation and create a pending span entry.
@@ -99,7 +99,7 @@ class TelemetryHandler:
         """
         invocation = LLMInvocation(
             request_model=request_model,
-            messages=prompts,
+            input_messages=input_messages,
             attributes=attributes,
         )
         _apply_known_attrs_to_invocation(invocation, invocation.attributes)
@@ -109,12 +109,12 @@ class TelemetryHandler:
     def stop_llm(
         self,
         invocation: LLMInvocation,
-        chat_generations: List[OutputMessage],
+        output_messages: List[OutputMessage],
         **attributes: Any,
     ) -> LLMInvocation:
         """Finalize an LLM invocation successfully and end its span."""
         invocation.end_time = time.time()
-        invocation.chat_generations = chat_generations
+        invocation.output_messages = output_messages
         _apply_known_attrs_to_invocation(invocation, attributes)
         invocation.attributes.update(attributes)
         self._generator.finish(invocation)

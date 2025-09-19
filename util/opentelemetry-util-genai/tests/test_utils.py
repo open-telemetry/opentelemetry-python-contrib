@@ -132,12 +132,14 @@ class TestTelemetryHandler(unittest.TestCase):
         # Start and stop LLM invocation
         invocation = self.telemetry_handler.start_llm(
             request_model="test-model",
-            prompts=[message],
+            input_messages=[message],
             custom_attr="value",
             provider="test-provider",
         )
         self.telemetry_handler.stop_llm(
-            invocation, chat_generations=[chat_generation], extra="info"
+            invocation,
+            output_messages=[chat_generation],
+            extra="info",
         )
 
         # Get the spans that were created
@@ -182,13 +184,13 @@ class TestTelemetryHandler(unittest.TestCase):
         # Start parent and child (child references parent_run_id)
         parent_invocation = self.telemetry_handler.start_llm(
             request_model="parent-model",
-            prompts=[message],
+            input_messages=[message],
             run_id=parent_id,
             provider="test-provider",
         )
         child_invocation = self.telemetry_handler.start_llm(
             request_model="child-model",
-            prompts=[message],
+            input_messages=[message],
             run_id=child_id,
             parent_run_id=parent_id,
             provider="test-provider",
@@ -196,10 +198,10 @@ class TestTelemetryHandler(unittest.TestCase):
 
         # Stop child first, then parent (order should not matter)
         self.telemetry_handler.stop_llm(
-            child_invocation, chat_generations=[chat_generation]
+            child_invocation, output_messages=[chat_generation]
         )
         self.telemetry_handler.stop_llm(
-            parent_invocation, chat_generations=[chat_generation]
+            parent_invocation, output_messages=[chat_generation]
         )
 
         spans = self.span_exporter.get_finished_spans()

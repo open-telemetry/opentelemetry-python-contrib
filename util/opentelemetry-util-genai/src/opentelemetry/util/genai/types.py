@@ -18,7 +18,6 @@ from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
-from uuid import UUID
 
 from typing_extensions import TypeAlias
 
@@ -91,11 +90,10 @@ class LLMInvocation:
     request_model: str
     context_token: Optional[ContextToken] = None
     span: Optional[Span] = None
-    parent_run_id: Optional[UUID] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
-    messages: List[InputMessage] = field(default_factory=list)
-    chat_generations: List[OutputMessage] = field(default_factory=list)
+    input_messages: List[InputMessage] = field(default_factory=list)
+    output_messages: List[OutputMessage] = field(default_factory=list)
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None

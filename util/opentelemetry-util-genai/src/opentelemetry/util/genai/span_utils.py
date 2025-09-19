@@ -14,7 +14,7 @@
 
 import json
 from dataclasses import asdict
-from typing import Any, Dict, List
+from typing import List
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -55,7 +55,7 @@ def _apply_common_span_attributes(
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
 
     finish_reasons: List[str] = []
-    for gen in invocation.chat_generations:
+    for gen in invocation.output_messages:
         finish_reasons.append(gen.finish_reason)
     if finish_reasons:
         span.set_attribute(
@@ -88,18 +88,15 @@ def _maybe_set_span_messages(
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
         return
-    message_parts: List[Dict[str, Any]] = [
-        asdict(message) for message in input_messages
-    ]
-    if message_parts:
-        span.set_attribute("gen_ai.input.messages", json.dumps(message_parts))
-
-    generation_parts: List[Dict[str, Any]] = [
-        asdict(generation) for generation in output_messages
-    ]
-    if generation_parts:
+    if input_messages:
         span.set_attribute(
-            "gen_ai.output.messages", json.dumps(generation_parts)
+            GenAI.GEN_AI_INPUT_MESSAGES,
+            json.dumps([asdict(message) for message in input_messages]),
+        )
+    if output_messages:
+        span.set_attribute(
+            GenAI.GEN_AI_OUTPUT_MESSAGES,
+            json.dumps([asdict(message) for message in output_messages]),
         )
 
 
@@ -107,7 +104,7 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
     """Apply attributes/messages common to finish() paths."""
     _apply_common_span_attributes(span, invocation)
     _maybe_set_span_messages(
-        span, invocation.messages, invocation.chat_generations
+        span, invocation.input_messages, invocation.output_messages
     )
 
 
