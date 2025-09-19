@@ -98,7 +98,7 @@ def _extract_params(
     )
 
 
-# For details about GEN_AI_LATEST_EXPERIMENTAL stabilty mode see
+# For details about GEN_AI_LATEST_EXPERIMENTAL stability mode see
 # https://github.com/open-telemetry/semantic-conventions/blob/v1.37.0/docs/gen-ai/gen-ai-agent-spans.md?plain=1#L18-L37
 class MethodWrappers:
     @overload

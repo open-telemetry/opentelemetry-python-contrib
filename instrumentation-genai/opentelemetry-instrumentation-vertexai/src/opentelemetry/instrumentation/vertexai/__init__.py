@@ -117,7 +117,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
         schema = (
             Schemas.V1_28_0.value
             if sem_conv_opt_in_mode == _StabilityMode.DEFAULT
-            else Schemas.V1_36_0
+            else Schemas.V1_36_0.value
         )
         tracer = get_tracer(
             __name__,
@@ -152,7 +152,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode,
             )
         else:
-            assert_never()
+            assert_never(sem_conv_opt_in_mode)
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):

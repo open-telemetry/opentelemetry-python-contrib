@@ -121,7 +121,7 @@ def get_server_attributes(
     }
 
 
-def get_genai_request_attributes(
+def get_genai_request_attributes(  # pylint: disable=too-many-branches
     use_latest_semconvs: bool,
     params: GenerateContentParams,
     operation_name: GenAIAttributes.GenAiOperationNameValues = GenAIAttributes.GenAiOperationNameValues.CHAT,
