@@ -354,7 +354,6 @@ def test_generate_content_all_events(
                 "You are a clever language model"
             ),
         ),
-        generate_content,
         log_exporter,
         instrument_with_content,
     )
@@ -373,7 +372,6 @@ def test_preview_generate_content_all_input_events(
                 "You are a clever language model"
             ),
         ),
-        generate_content,
         log_exporter,
         instrument_with_content,
     )
@@ -381,7 +379,6 @@ def test_preview_generate_content_all_input_events(
 
 def generate_content_all_input_events(
     model: GenerativeModel | PreviewGenerativeModel,
-    generate_content: callable,
     log_exporter: InMemoryLogExporter,
     instrument_with_content: VertexAIInstrumentor,
 ):
