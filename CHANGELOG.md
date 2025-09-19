@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+### Fixed
+- `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
+  ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
