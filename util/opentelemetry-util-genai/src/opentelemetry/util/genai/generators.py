@@ -48,12 +48,11 @@ from opentelemetry.trace import (
     Tracer,
     set_span_in_context,
 )
-
-from .span_utils import (
+from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_finish_attributes,
 )
-from .types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error, LLMInvocation
 
 # Type alias matching the token type expected by opentelemetry.context.detach
 ContextToken: TypeAlias = Token[otel_context.Context]

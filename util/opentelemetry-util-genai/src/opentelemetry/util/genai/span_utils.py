@@ -26,13 +26,17 @@ from opentelemetry.trace import (
     Span,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.types import (
+    Error,
+    InputMessage,
+    LLMInvocation,
+    OutputMessage,
+)
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
     get_content_capturing_mode,
     is_experimental_mode,
 )
-
-from .types import Error, InputMessage, LLMInvocation, OutputMessage
 
 
 def _apply_common_span_attributes(

@@ -53,10 +53,9 @@ from typing import Any, Optional
 
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
-
-from .generators import SpanGenerator
-from .types import Error, LLMInvocation
-from .version import __version__
+from opentelemetry.util.genai.generators import SpanGenerator
+from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.version import __version__
 
 
 class TelemetryHandler:
