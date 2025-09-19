@@ -76,7 +76,7 @@ class LangChainInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_30_0.value,
+            schema_url=Schemas.V1_37_0.value,
         )
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(

@@ -1,7 +1,7 @@
 langchain==0.3.21
 langchain_openai
-opentelemetry-sdk~=1.30.0
-opentelemetry-exporter-otlp-proto-grpc~=1.30.0
+opentelemetry-sdk>=1.31.0
+opentelemetry-exporter-otlp-proto-grpc>=1.31.0
 opentelemetry-distro~=0.51b0
 
 # Uncomment after lanchain instrumetation is released
