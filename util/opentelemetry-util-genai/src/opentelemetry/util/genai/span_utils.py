@@ -14,7 +14,7 @@
 
 import json
 from dataclasses import asdict
-from typing import List
+from typing import Any, Dict, List
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -100,12 +100,21 @@ def _maybe_set_span_messages(
         )
 
 
+def _maybe_set_span_extra_attributes(
+    span: Span,
+    attributes: Dict[str, Any],
+) -> None:
+    for key, value in attributes.items():
+        span.set_attribute(key, value)
+
+
 def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
     """Apply attributes/messages common to finish() paths."""
     _apply_common_span_attributes(span, invocation)
     _maybe_set_span_messages(
         span, invocation.input_messages, invocation.output_messages
     )
+    _maybe_set_span_extra_attributes(span, invocation.attributes)
 
 
 def _apply_error_attributes(span: Span, error: Error) -> None:

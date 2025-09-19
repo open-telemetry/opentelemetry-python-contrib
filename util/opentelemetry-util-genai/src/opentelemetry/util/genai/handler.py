@@ -27,41 +27,36 @@ Functions:
 
 Usage:
     handler = get_telemetry_handler()
-    handler.start_llm(input_messages, request_model, **attrs)
-    handler.stop_llm(invocation, output_messages, **attrs)
-    handler.fail_llm(invocation, error, **attrs)
+
+    # Create an invocation object with your request data
+    invocation = LLMInvocation(
+        request_model="my-model",
+        input_messages=[...],
+        provider="my-provider",
+        attributes={"custom": "attr"},
+    )
+
+    # Start the invocation (opens a span)
+    handler.start_llm(invocation)
+
+    # Populate outputs and any additional attributes, then stop (closes the span)
+    invocation.output_messages = [...]
+    invocation.attributes.update({"more": "attrs"})
+    handler.stop_llm(invocation)
+
+    # Or, in case of error
+    # handler.fail_llm(invocation, Error(type="...", message="..."))
 """
 
 import time
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .generators import SpanGenerator
-from .types import Error, InputMessage, LLMInvocation, OutputMessage
+from .types import Error, LLMInvocation
 from .version import __version__
-
-
-def _apply_known_attrs_to_invocation(
-    invocation: LLMInvocation, attributes: dict[str, Any]
-) -> None:
-    """Pop known fields from attributes and set them on the invocation.
-
-    Mutates the provided attributes dict by popping known keys, leaving
-    only unknown/custom attributes behind for the caller to persist into
-    invocation.attributes.
-    """
-    if "provider" in attributes:
-        invocation.provider = attributes.pop("provider")
-    if "response_model_name" in attributes:
-        invocation.response_model_name = attributes.pop("response_model_name")
-    if "response_id" in attributes:
-        invocation.response_id = attributes.pop("response_id")
-    if "input_tokens" in attributes:
-        invocation.input_tokens = attributes.pop("input_tokens")
-    if "output_tokens" in attributes:
-        invocation.output_tokens = attributes.pop("output_tokens")
 
 
 class TelemetryHandler:
@@ -83,50 +78,23 @@ class TelemetryHandler:
 
     def start_llm(
         self,
-        request_model: str,
-        input_messages: List[InputMessage],
-        **attributes: Any,
+        invocation: LLMInvocation,
     ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry.
-
-        Known attributes provided via ``**attributes`` (``provider``,
-        ``response_model_name``, ``response_id``, ``input_tokens``,
-        ``output_tokens``) are extracted and set as explicit fields on the
-        ``LLMInvocation``. Any remaining keys are preserved in
-        ``invocation.attributes`` for custom metadata.
-
-        Returns the ``LLMInvocation`` to use with `stop_llm` and `fail_llm`.
-        """
-        invocation = LLMInvocation(
-            request_model=request_model,
-            input_messages=input_messages,
-            attributes=attributes,
-        )
-        _apply_known_attrs_to_invocation(invocation, invocation.attributes)
+        """Start an LLM invocation and create a pending span entry."""
         self._generator.start(invocation)
         return invocation
 
-    def stop_llm(
-        self,
-        invocation: LLMInvocation,
-        output_messages: List[OutputMessage],
-        **attributes: Any,
-    ) -> LLMInvocation:
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
         """Finalize an LLM invocation successfully and end its span."""
         invocation.end_time = time.time()
-        invocation.output_messages = output_messages
-        _apply_known_attrs_to_invocation(invocation, attributes)
-        invocation.attributes.update(attributes)
         self._generator.finish(invocation)
         return invocation
 
     def fail_llm(
-        self, invocation: LLMInvocation, error: Error, **attributes: Any
+        self, invocation: LLMInvocation, error: Error
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
         invocation.end_time = time.time()
-        _apply_known_attrs_to_invocation(invocation, attributes)
-        invocation.attributes.update(**attributes)
         self._generator.error(error, invocation)
         return invocation
 

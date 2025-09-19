@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import unittest
 from unittest.mock import patch
-from uuid import uuid4
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -34,6 +34,7 @@ from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     InputMessage,
+    LLMInvocation,
     OutputMessage,
     Text,
 )
@@ -130,17 +131,18 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
         # Start and stop LLM invocation
-        invocation = self.telemetry_handler.start_llm(
+        invocation = LLMInvocation(
             request_model="test-model",
             input_messages=[message],
-            custom_attr="value",
             provider="test-provider",
+            attributes={"custom_attr": "value"},
         )
-        self.telemetry_handler.stop_llm(
-            invocation,
-            output_messages=[chat_generation],
-            extra="info",
-        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        invocation.output_messages = [chat_generation]
+        invocation.attributes.update({"extra": "info"})
+        self.telemetry_handler.stop_llm(invocation)
 
         # Get the spans that were created
         spans = self.span_exporter.get_finished_spans()
@@ -165,44 +167,54 @@ class TestTelemetryHandler(unittest.TestCase):
         output_messages_json = span_attrs.get("gen_ai.output.messages")
         assert input_messages_json is not None
         assert output_messages_json is not None
-
         assert isinstance(input_messages_json, str)
         assert isinstance(output_messages_json, str)
+        input_messages = json.loads(input_messages_json)
+        output_messages = json.loads(output_messages_json)
+        assert len(input_messages) == 1
+        assert len(output_messages) == 1
+        assert input_messages[0].get("role") == "Human"
+        assert output_messages[0].get("role") == "AI"
+        assert output_messages[0].get("finish_reason") == "stop"
+        assert (
+            output_messages[0].get("parts")[0].get("content") == "hello back"
+        )
+
+        # Check that extra attributes are added to the span
+        assert span_attrs.get("extra") == "info"
+        assert span_attrs.get("custom_attr") == "value"
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
     )
     def test_parent_child_span_relationship(self):
-        parent_id = uuid4()
-        child_id = uuid4()
         message = InputMessage(role="Human", parts=[Text(content="hi")])
         chat_generation = OutputMessage(
             role="AI", parts=[Text(content="ok")], finish_reason="stop"
         )
 
         # Start parent and child (child references parent_run_id)
-        parent_invocation = self.telemetry_handler.start_llm(
+        parent_invocation = LLMInvocation(
             request_model="parent-model",
             input_messages=[message],
-            run_id=parent_id,
             provider="test-provider",
         )
-        child_invocation = self.telemetry_handler.start_llm(
+        child_invocation = LLMInvocation(
             request_model="child-model",
             input_messages=[message],
-            run_id=child_id,
-            parent_run_id=parent_id,
             provider="test-provider",
         )
 
+        # Pass invocation data to start_llm
+        self.telemetry_handler.start_llm(parent_invocation)
+        self.telemetry_handler.start_llm(child_invocation)
+
         # Stop child first, then parent (order should not matter)
-        self.telemetry_handler.stop_llm(
-            child_invocation, output_messages=[chat_generation]
-        )
-        self.telemetry_handler.stop_llm(
-            parent_invocation, output_messages=[chat_generation]
-        )
+        child_invocation.output_messages = [chat_generation]
+        parent_invocation.output_messages = [chat_generation]
+        self.telemetry_handler.stop_llm(child_invocation)
+        self.telemetry_handler.stop_llm(parent_invocation)
 
         spans = self.span_exporter.get_finished_spans()
         assert len(spans) == 2
