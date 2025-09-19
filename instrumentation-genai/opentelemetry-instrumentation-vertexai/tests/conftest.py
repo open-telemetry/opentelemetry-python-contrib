@@ -115,27 +115,16 @@ def vertexai_init(vcr: VCR) -> None:
     )
 
 
-@pytest.fixture(
-    params=[True, False],
-    ids=["newStyleInstrumentation", "oldStyleInstrumentation"],
-)
+@pytest.fixture(scope="function")
 def instrument_no_content(
     tracer_provider, event_logger_provider, meter_provider, request
 ):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
-    if request.param:
-        os.environ.update(
-            {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
-        )
-        os.environ.update(
-            {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"}
-        )
-    else:
-        os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
-        os.environ.update(
-            {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
-        )
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+    )
 
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
@@ -150,29 +139,67 @@ def instrument_no_content(
         instrumentor.uninstrument()
 
 
-@pytest.fixture(
-    params=[True, False],
-    ids=["newStyleInstrumentation", "oldStyleInstrumentation"],
-)
+@pytest.fixture(scope="function")
+def instrument_no_content_with_experimental_semconvs(
+    tracer_provider, event_logger_provider, meter_provider, request
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"}
+    )
+
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_experimental_semconvs(
+    tracer_provider, event_logger_provider, meter_provider
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"}
+    )
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
 def instrument_with_content(
     tracer_provider, event_logger_provider, meter_provider, request
 ):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
-    if request.param:
-        os.environ.update(
-            {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
-        )
-        os.environ.update(
-            {
-                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"
-            }
-        )
-    else:
-        os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
-        os.environ.update(
-            {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
-        )
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+    )
     instrumentor = VertexAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,

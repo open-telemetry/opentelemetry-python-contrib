@@ -28,7 +28,7 @@ def test_generate_content(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-2.5-pro")
     generate_content(
@@ -60,38 +60,30 @@ def test_generate_content(
     }
 
     logs = log_exporter.get_finished_logs()
-
-    # Emits user and choice events
-    assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
-
-    span_context = spans[0].get_span_context()
-    assert user_log.trace_id == span_context.trace_id
-    assert user_log.span_id == span_context.span_id
-    assert user_log.trace_flags == span_context.trace_flags
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
-    assert user_log.body == {
-        "content": [{"text": "Say this is a test"}],
-        "role": "user",
-    }
-
-    assert choice_log.trace_id == span_context.trace_id
-    assert choice_log.span_id == span_context.span_id
-    assert choice_log.trace_flags == span_context.trace_flags
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
-    assert choice_log.body == {
-        "finish_reason": "stop",
-        "index": 0,
-        "message": {
-            "content": [{"text": "This is a test."}],
-            "role": "model",
-        },
+    assert len(logs) == 1
+    log = logs[0].log_record
+    assert log.attributes == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
+        "gen_ai.response.model": "gemini-2.5-pro",
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 5,
+        "gen_ai.input.messages": (
+            {
+                "role": "user",
+                "parts": ({"type": "text", "content": "Say this is a test"},),
+            },
+        ),
+        "gen_ai.output.messages": (
+            {
+                "role": "model",
+                "parts": ({"type": "text", "content": "This is a test."},),
+                "finish_reason": "stop",
+            },
+        ),
     }
 
 
@@ -100,7 +92,7 @@ def test_generate_content_without_events(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
-    instrument_no_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-2.5-pro")
     generate_content(
@@ -127,23 +119,31 @@ def test_generate_content_without_events(
     }
 
     logs = log_exporter.get_finished_logs()
-    # Emits user and choice event without body.content
-    assert len(logs) == 2
-    user_log, choice_log = [log_data.log_record for log_data in logs]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
-    assert user_log.body == {"role": "user"}
-
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
-    assert choice_log.body == {
-        "finish_reason": "stop",
-        "index": 0,
-        "message": {"role": "model"},
+    assert len(logs) == 1
+    log = logs[0].log_record
+    print(log.attributes)
+    assert log.attributes == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
+        "gen_ai.response.model": "gemini-2.5-pro",
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.output_tokens": 5,
+        "gen_ai.input.messages": (
+            {
+                "role": "user",
+                "parts": ({"content": "Say this is a test", "type": "text"},),
+            },
+        ),
+        "gen_ai.output.messages": (
+            {
+                "role": "model",
+                "parts": ({"content": "This is a test.", "type": "text"},),
+                "finish_reason": "stop",
+            },
+        ),
     }
 
 
@@ -151,7 +151,7 @@ def test_generate_content_without_events(
 def test_generate_content_empty_model(
     span_exporter: InMemorySpanExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("")
     try:
@@ -184,7 +184,7 @@ def test_generate_content_empty_model(
 def test_generate_content_missing_model(
     span_exporter: InMemorySpanExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-does-not-exist")
     try:
@@ -217,7 +217,7 @@ def test_generate_content_missing_model(
 def test_generate_content_invalid_temperature(
     span_exporter: InMemorySpanExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-2.5-pro")
     try:
@@ -252,7 +252,7 @@ def test_generate_content_invalid_temperature(
 def test_generate_content_invalid_role(
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model = GenerativeModel("gemini-2.5-pro")
     try:
@@ -274,19 +274,23 @@ def test_generate_content_invalid_role(
     assert len(logs) == 1
     log = logs[0].log_record
     assert log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
-    assert log.body == {
-        "content": [{"text": "Say this is a test"}],
-        "role": "invalid_role",
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
+        "gen_ai.input.messages": (
+            {
+                "role": "invalid_role",
+                "parts": ({"type": "text", "content": "Say this is a test"},),
+            },
+        ),
     }
 
 
 @pytest.mark.vcr()
 def test_generate_content_extra_params(
     span_exporter,
-    instrument_no_content,
+    instrument_no_content_with_experimental_semconvs,
     generate_content: callable,
 ):
     generation_config = GenerationConfig(
@@ -345,7 +349,7 @@ def assert_span_error(span: ReadableSpan) -> None:
 def test_generate_content_all_events(
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     generate_content_all_input_events(
         GenerativeModel(
@@ -356,7 +360,7 @@ def test_generate_content_all_events(
         ),
         generate_content,
         log_exporter,
-        instrument_with_content,
+        instrument_with_experimental_semconvs,
     )
 
 
@@ -364,7 +368,7 @@ def test_generate_content_all_events(
 def test_preview_generate_content_all_input_events(
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     generate_content_all_input_events(
         PreviewGenerativeModel(
@@ -375,7 +379,7 @@ def test_preview_generate_content_all_input_events(
         ),
         generate_content,
         log_exporter,
-        instrument_with_content,
+        instrument_with_experimental_semconvs,
     )
 
 
@@ -383,7 +387,7 @@ def generate_content_all_input_events(
     model: GenerativeModel | PreviewGenerativeModel,
     generate_content: callable,
     log_exporter: InMemoryLogExporter,
-    instrument_with_content: VertexAIInstrumentor,
+    instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model.generate_content(
         [
@@ -404,60 +408,60 @@ def generate_content_all_input_events(
             seed=12345, response_mime_type="text/plain"
         ),
     )
-
-    # Emits a system event, 2 users events, an assistant event, and the choice (response) event
+    # Emits a single log.
     logs = log_exporter.get_finished_logs()
-    assert len(logs) == 5
-    system_log, user_log1, assistant_log, user_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
-
-    assert system_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.system.message",
-    }
-    assert system_log.body == {
-        "content": [{"text": "You are a clever language model"}],
-        # The API only allows user and model, so system instruction is considered a user role
-        "role": "user",
-    }
-
-    assert user_log1.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
-    assert user_log1.body == {
-        "content": [{"text": "My name is OpenTelemetry"}],
-        "role": "user",
-    }
-
-    assert assistant_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.assistant.message",
-    }
-    assert assistant_log.body == {
-        "content": [{"text": "Hello OpenTelemetry!"}],
-        "role": "model",
-    }
-
-    assert user_log2.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
-    assert user_log2.body == {
-        "content": [{"text": "Address me by name and say this is a test"}],
-        "role": "user",
-    }
-
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
-    assert choice_log.body == {
-        "finish_reason": "stop",
-        "index": 0,
-        "message": {
-            "content": [{"text": "OpenTelemetry, this is a test."}],
-            "role": "model",
-        },
+    assert len(logs) == 1
+    log = logs[0].log_record
+    assert log.attributes == {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
+        "gen_ai.request.seed": 12345,
+        "gen_ai.output.type": "text",
+        "server.address": "us-central1-aiplatform.googleapis.com",
+        "server.port": 443,
+        "gen_ai.response.model": "gemini-2.5-pro",
+        "gen_ai.response.finish_reasons": ("stop",),
+        "gen_ai.usage.input_tokens": 25,
+        "gen_ai.usage.output_tokens": 8,
+        "gen_ai.system_instructions": (
+            {"type": "text", "content": "You are a clever language model"},
+        ),
+        "gen_ai.input.messages": (
+            {
+                "role": "user",
+                "parts": (
+                    {
+                        "type": "text",
+                        "content": "My name is OpenTelemetry",
+                    },
+                ),
+            },
+            {
+                "role": "model",
+                "parts": (
+                    {"type": "text", "content": "Hello OpenTelemetry!"},
+                ),
+            },
+            {
+                "role": "user",
+                "parts": (
+                    {
+                        "type": "text",
+                        "content": "Address me by name and say this is a test",
+                    },
+                ),
+            },
+        ),
+        "gen_ai.output.messages": (
+            {
+                "role": "model",
+                "parts": (
+                    {
+                        "type": "text",
+                        "content": "OpenTelemetry, this is a test.",
+                    },
+                ),
+                "finish_reason": "stop",
+            },
+        ),
     }
