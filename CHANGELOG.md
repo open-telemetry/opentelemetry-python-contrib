@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- `opentelemetry-instrumentation-dbapi`: Add support for `commenter_options` in `trace_integration` function to control SQLCommenter behavior
+  ([#3743](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3743))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
