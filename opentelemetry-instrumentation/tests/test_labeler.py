@@ -116,15 +116,15 @@ class TestLabeler(unittest.TestCase):
         num_threads = 100
         increments_per_thread = 50
         expected_final_value = num_threads * increments_per_thread
-        
+
         def increment_worker():
             for _ in range(increments_per_thread):
                 # read-modify-write to increase contention
                 attrs = labeler.get_attributes()  # Read
-                current = attrs["counter"]        # Extract
-                new_value = current + 1           # Modify
-                labeler.add("counter", new_value) # Write
-        
+                current = attrs["counter"]  # Extract
+                new_value = current + 1  # Modify
+                labeler.add("counter", new_value)  # Write
+
         threads = []
         for _ in range(num_threads):
             thread = threading.Thread(target=increment_worker)
@@ -133,12 +133,13 @@ class TestLabeler(unittest.TestCase):
             thread.start()
         for thread in threads:
             thread.join()
-        
+
         final_value = labeler.get_attributes()["counter"]
         self.assertEqual(
-            final_value, expected_final_value,
+            final_value,
+            expected_final_value,
             f"Expected {expected_final_value}, got {final_value}. "
-            f"Lost {expected_final_value - final_value} updates due to race conditions."
+            f"Lost {expected_final_value - final_value} updates due to race conditions.",
         )
 
 
