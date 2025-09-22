@@ -14,6 +14,7 @@
 
 import contextvars
 import threading
+from types import MappingProxyType
 from typing import Any, Dict, Optional, Union
 
 # Context variable to store the current labeler
@@ -105,7 +106,7 @@ class Labeler:
         Returns a copy of all attributes added to the labeler.
         """
         with self._lock:
-            return self._attributes.copy()
+            return MappingProxyType(self._attributes)
 
     def clear(self) -> None:
         with self._lock:
@@ -160,7 +161,7 @@ def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
     """
     labeler = _labeler_context.get()
     if labeler is None:
-        return {}
+        return MappingProxyType({})
     return labeler.get_attributes()
 
 
