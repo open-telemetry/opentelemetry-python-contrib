@@ -89,6 +89,8 @@ class SpanGenerator(BaseTelemetryGenerator):
 
     def start(self, invocation: LLMInvocation):
         # Create a span and attach it as current; keep the token to detach later
+        if not (invocation.request_model and invocation.request_model.strip()):
+            raise ValueError("request_model is required")
         span = self._tracer.start_span(
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
