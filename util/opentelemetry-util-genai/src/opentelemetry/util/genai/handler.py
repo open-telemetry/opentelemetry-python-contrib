@@ -80,7 +80,7 @@ class TelemetryHandler:
         self._generator.start(invocation)
         try:
             yield invocation
-        except Exception as exc:  # noqa: B902 - ensure we capture all exceptions incl. SystemExit, KeyboardInterrupt
+        except Exception as exc:
             invocation.end_time = time.time()
             self._generator.error(
                 Error(message=str(exc), type=type(exc)), invocation
