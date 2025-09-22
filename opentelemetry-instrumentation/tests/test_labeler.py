@@ -77,7 +77,7 @@ class TestLabeler(unittest.TestCase):
         self.assertEqual(len(labeler), 0)
 
     def test_thread_safety(self):
-        labeler = Labeler()
+        labeler = Labeler(max_custom_attrs=1000)
         num_threads = 10
         num_operations = 100
 

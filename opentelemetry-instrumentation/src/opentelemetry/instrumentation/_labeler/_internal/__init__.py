@@ -29,32 +29,76 @@ class Labeler:
     This feature is experimental and unstable.
     """
 
-    def __init__(self):
+    def __init__(
+        self, max_custom_attrs: int = 20, max_attr_value_length: int = 100
+    ):
+        """
+        Initialize a new Labeler instance.
+
+        Args:
+            max_custom_attrs: Maximum number of custom attributes to store.
+                When this limit is reached, new attributes will be ignored;
+                existing attributes can still be updated.
+            max_attr_value_length: Maximum length for string attribute values.
+                String values exceeding this length will be truncated.
+        """
         self._lock = threading.Lock()
         self._attributes: Dict[str, Union[str, int, float, bool]] = {}
+        self._max_custom_attrs = max_custom_attrs
+        self._max_attr_value_length = max_attr_value_length
 
     def add(self, key: str, value: Union[str, int, float, bool]) -> None:
         """
-        Add a single attribute to the labeler.
+        Add a single attribute to the labeler, subject to the labeler's limits:
+        - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
+        - String values exceeding max_attr_value_length are truncated
 
         Args:
-            key: The attribute key
-            value: The attribute value (must be a primitive type)
+            key: attribute key
+            value: attribute value, must be a primitive type: str, int, float, or bool
         """
         with self._lock:
+            if (
+                len(self._attributes) >= self._max_custom_attrs
+                and key not in self._attributes
+            ):
+                return
+
+            if (
+                isinstance(value, str)
+                and len(value) > self._max_attr_value_length
+            ):
+                value = value[: self._max_attr_value_length]
+
             self._attributes[key] = value
 
     def add_attributes(
         self, attributes: Dict[str, Union[str, int, float, bool]]
     ) -> None:
         """
-        Add multiple attributes to the labeler.
+        Add multiple attributes to the labeler, subject to the labeler's limits:
+        - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
+        - String values exceeding max_attr_value_length are truncated
 
         Args:
-            attributes: Dictionary of attributes to add
+            attributes: Dictionary of attributes to add. Values must be primitive types
+                (str, int, float, or bool)
         """
         with self._lock:
-            self._attributes.update(attributes)
+            for key, value in attributes.items():
+                if (
+                    len(self._attributes) >= self._max_custom_attrs
+                    and key not in self._attributes
+                ):
+                    break
+
+                if (
+                    isinstance(value, str)
+                    and len(value) > self._max_attr_value_length
+                ):
+                    value = value[: self._max_attr_value_length]
+
+                self._attributes[key] = value
 
     def get_attributes(self) -> Dict[str, Union[str, int, float, bool]]:
         """
@@ -123,21 +167,17 @@ def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
 def enhance_metric_attributes(
     base_attributes: Dict[str, Any],
     include_custom: bool = True,
-    max_custom_attrs: int = 20,
-    max_attr_value_length: int = 100,
 ) -> Dict[str, Any]:
     """
     Combines base_attributes with custom attributes from the current labeler,
-    returning a new dictionary of attributes. Custom attributes are skipped
-    if they would override base_attributes, or exceed max_custom_attrs number.
-    If custom attributes have string values exceeding the max_attr_value_length,
-    then they are truncated.
+    returning a new dictionary of attributes according to the labeler configuration:
+    - Attributes that would override base_attributes are skipped
+    - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
+    - String values exceeding max_attr_value_length are truncated
 
     Args:
         base_attributes: The base attributes for the metric
         include_custom: Whether to include custom labeler attributes
-        max_custom_attrs: Maximum number of custom attributes to include
-        max_attr_value_length: Maximum length for string attribute values
 
     Returns:
         Dictionary combining base and custom attributes. If no custom attributes,
@@ -146,7 +186,11 @@ def enhance_metric_attributes(
     if not include_custom:
         return base_attributes.copy()
 
-    custom_attributes = get_labeler_attributes()
+    labeler = _labeler_context.get()
+    if labeler is None:
+        return base_attributes.copy()
+
+    custom_attributes = labeler.get_attributes()
     if not custom_attributes:
         return base_attributes.copy()
 
@@ -154,13 +198,16 @@ def enhance_metric_attributes(
 
     added_count = 0
     for key, value in custom_attributes.items():
-        if added_count >= max_custom_attrs:
+        if added_count >= labeler._max_custom_attrs:
             break
         if key in base_attributes:
             continue
 
-        if isinstance(value, str) and len(value) > max_attr_value_length:
-            value = value[:max_attr_value_length]
+        if (
+            isinstance(value, str)
+            and len(value) > labeler._max_attr_value_length
+        ):
+            value = value[: labeler._max_attr_value_length]
 
         enhanced_attributes[key] = value
         added_count += 1
