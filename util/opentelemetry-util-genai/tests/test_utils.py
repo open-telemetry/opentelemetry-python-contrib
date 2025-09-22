@@ -191,6 +191,43 @@ class TestTelemetryHandler(unittest.TestCase):
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
     )
+    def test_llm_manual_start_and_stop_creates_span(self):
+        message = InputMessage(role="Human", parts=[Text(content="hi")])
+        chat_generation = OutputMessage(
+            role="AI", parts=[Text(content="ok")], finish_reason="stop"
+        )
+
+        invocation = LLMInvocation(
+            request_model="manual-model",
+            input_messages=[message],
+            provider="test-provider",
+            attributes={"manual": True},
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        invocation.output_messages = [chat_generation]
+        invocation.attributes.update({"extra_manual": "yes"})
+        self.telemetry_handler.stop_llm(invocation)
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.name == "chat manual-model"
+        assert span.kind == trace.SpanKind.CLIENT
+        assert span.start_time is not None
+        assert span.end_time is not None
+        assert span.end_time > span.start_time
+
+        attrs = span.attributes
+        assert attrs is not None
+        assert attrs.get("manual") is True
+        assert attrs.get("extra_manual") == "yes"
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+    )
     def test_parent_child_span_relationship(self):
         message = InputMessage(role="Human", parts=[Text(content="hi")])
         chat_generation = OutputMessage(
