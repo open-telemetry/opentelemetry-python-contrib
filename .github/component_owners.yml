@@ -40,3 +40,7 @@ components:
   util/opentelemetry-util-genai:
     - DylanRussell
     - keith-decker
+
+  instrumentation-genai/opentelemetry-instrumentation-langchain:
+    - zhirafovod
+    - wrisa
