@@ -29,6 +29,8 @@ Usage:
     handler = get_telemetry_handler()
 
     # Create an invocation object with your request data
+    # The span and context_token attributes are set by the TelemetryHandler, and
+    # managed by the TelemetryHandler during the lifecycle of the span.
     invocation = LLMInvocation(
         request_model="my-model",
         input_messages=[...],
@@ -49,7 +51,8 @@ Usage:
 """
 
 import time
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Iterator, Optional
 
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
@@ -75,27 +78,27 @@ class TelemetryHandler:
 
         self._generator = SpanGenerator(tracer=self._tracer)
 
-    def start_llm(
-        self,
-        invocation: LLMInvocation,
-    ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry."""
-        self._generator.start(invocation)
-        return invocation
+    @contextmanager
+    def llm(self, invocation: LLMInvocation) -> Iterator[LLMInvocation]:
+        """Context manager for LLM invocations.
 
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
-        """Finalize an LLM invocation successfully and end its span."""
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        self._generator.start(invocation)
+        try:
+            yield invocation
+        except BaseException as exc:  # noqa: B902 - ensure we capture all exceptions incl. SystemExit, KeyboardInterrupt
+            invocation.end_time = time.time()
+            self._generator.error(
+                Error(message=str(exc), type=type(exc)), invocation
+            )
+            raise
         invocation.end_time = time.time()
         self._generator.finish(invocation)
-        return invocation
-
-    def fail_llm(
-        self, invocation: LLMInvocation, error: Error
-    ) -> LLMInvocation:
-        """Fail an LLM invocation and end its span with error status."""
-        invocation.end_time = time.time()
-        self._generator.error(error, invocation)
-        return invocation
 
 
 def get_telemetry_handler(**kwargs: Any) -> TelemetryHandler:

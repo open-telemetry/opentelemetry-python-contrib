@@ -84,7 +84,9 @@ class OutputMessage:
 @dataclass
 class LLMInvocation:
     """
-    Represents a single LLM call invocation.
+    Represents a single LLM call invocation. When creating an LLMInvocation object,
+    only update the data attributes. The span and context_token attributes are
+    set by the TelemetryHandler.
     """
 
     request_model: str
