@@ -279,8 +279,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
         self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"],
-            str(params)
+            spans_list[0].attributes["db.statement.parameters"], str(params)
         )
 
     # pylint: disable=unused-argument
@@ -504,7 +503,6 @@ class TestPostgresqlIntegrationAsync(
         query = "SELECT * FROM mytable WHERE myparam1 = %s AND myparam2 = %s"
         params = ("test", 42)
         async with cnx.cursor() as cursor:
-
             await cursor.execute(query, params)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -513,8 +511,7 @@ class TestPostgresqlIntegrationAsync(
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
         self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"],
-            str(params)
+            spans_list[0].attributes["db.statement.parameters"], str(params)
         )
 
     # pylint: disable=unused-argument
