@@ -16,6 +16,7 @@
 import contextvars
 import threading
 import unittest
+from unittest.mock import patch
 
 from opentelemetry.instrumentation._labeler import (
     Labeler,
@@ -74,6 +75,123 @@ class TestLabeler(unittest.TestCase):
         labeler.add("key2", "value2")
         labeler.clear()
         self.assertEqual(labeler.get_attributes(), {})
+        self.assertEqual(len(labeler), 0)
+
+    def test_add_valid_types(self):
+        labeler = Labeler()
+        labeler.add("str_key", "string_value")
+        labeler.add("int_key", 42)
+        labeler.add("float_key", 3.14)
+        labeler.add("bool_true_key", True)
+        labeler.add("bool_false_key", False)
+
+        attributes = labeler.get_attributes()
+        expected = {
+            "str_key": "string_value",
+            "int_key": 42,
+            "float_key": 3.14,
+            "bool_true_key": True,
+            "bool_false_key": False,
+        }
+        self.assertEqual(attributes, expected)
+        self.assertEqual(len(labeler), 5)
+
+    def test_add_invalid_types_logs_warning_and_skips(self):
+        labeler = Labeler()
+
+        with patch(
+            "opentelemetry.instrumentation._labeler._internal._logger.warning"
+        ) as mock_warning:
+            labeler.add("valid", "value")
+
+            labeler.add("dict_key", {"nested": "dict"})
+            labeler.add("list_key", [1, 2, 3])
+            labeler.add("none_key", None)
+            labeler.add("tuple_key", (1, 2))
+            labeler.add("set_key", {1, 2, 3})
+
+            labeler.add("another_valid", 123)
+
+        self.assertEqual(mock_warning.call_count, 5)
+        warning_calls = [call[0] for call in mock_warning.call_args_list]
+        self.assertIn("dict_key", str(warning_calls[0]))
+        self.assertIn("dict", str(warning_calls[0]))
+        self.assertIn("list_key", str(warning_calls[1]))
+        self.assertIn("list", str(warning_calls[1]))
+        self.assertIn("none_key", str(warning_calls[2]))
+        self.assertIn("NoneType", str(warning_calls[2]))
+
+        attributes = labeler.get_attributes()
+        expected = {"valid": "value", "another_valid": 123}
+        self.assertEqual(attributes, expected)
+        self.assertEqual(len(labeler), 2)
+
+    def test_add_attributes_valid_types(self):
+        labeler = Labeler()
+        attrs = {
+            "str_key": "string_value",
+            "int_key": 42,
+            "float_key": 3.14,
+            "bool_true_key": True,
+            "bool_false_key": False,
+        }
+        labeler.add_attributes(attrs)
+        attributes = labeler.get_attributes()
+        self.assertEqual(attributes, attrs)
+        self.assertEqual(len(labeler), 5)
+
+    def test_add_attributes_invalid_types_logs_and_skips(self):
+        labeler = Labeler()
+
+        with patch(
+            "opentelemetry.instrumentation._labeler._internal._logger.warning"
+        ) as mock_warning:
+            mixed_attrs = {
+                "valid_str": "value",
+                "invalid_dict": {"nested": "dict"},
+                "valid_int": 42,
+                "invalid_list": [1, 2, 3],
+                "valid_bool": True,
+                "invalid_none": None,
+            }
+            labeler.add_attributes(mixed_attrs)
+
+        self.assertEqual(mock_warning.call_count, 3)
+        warning_calls = [str(call) for call in mock_warning.call_args_list]
+        self.assertTrue(any("invalid_dict" in call for call in warning_calls))
+        self.assertTrue(any("invalid_list" in call for call in warning_calls))
+        self.assertTrue(any("invalid_none" in call for call in warning_calls))
+        attributes = labeler.get_attributes()
+        expected = {
+            "valid_str": "value",
+            "valid_int": 42,
+            "valid_bool": True,
+        }
+        self.assertEqual(attributes, expected)
+        self.assertEqual(len(labeler), 3)
+
+    def test_add_attributes_all_invalid_types(self):
+        """Test add_attributes when all types are invalid"""
+        labeler = Labeler()
+
+        with patch(
+            "opentelemetry.instrumentation._labeler._internal._logger.warning"
+        ) as mock_warning:
+            invalid_attrs = {
+                "dict_key": {"nested": "dict"},
+                "list_key": [1, 2, 3],
+                "none_key": None,
+                "custom_obj": object(),
+            }
+
+            labeler.add_attributes(invalid_attrs)
+
+        # Should have logged warnings for all 4 invalid attributes
+        self.assertEqual(mock_warning.call_count, 4)
+
+        # No attributes should be stored
+        attributes = labeler.get_attributes()
+        self.assertEqual(attributes, {})
         self.assertEqual(len(labeler), 0)
 
     def test_thread_safety(self):

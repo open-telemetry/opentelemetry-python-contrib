@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextvars
+import logging
 import threading
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Union
@@ -21,6 +22,8 @@ from typing import Any, Dict, Optional, Union
 _labeler_context: contextvars.ContextVar[Optional["Labeler"]] = (
     contextvars.ContextVar("otel_labeler", default=None)
 )
+
+_logger = logging.getLogger(__name__)
 
 
 class Labeler:
@@ -58,6 +61,14 @@ class Labeler:
             key: attribute key
             value: attribute value, must be a primitive type: str, int, float, or bool
         """
+        if not isinstance(value, (str, int, float, bool)):
+            _logger.warning(
+                "Skipping attribute '%s': value must be str, int, float, or bool, got %s",
+                key,
+                type(value).__name__,
+            )
+            return
+
         with self._lock:
             if (
                 len(self._attributes) >= self._max_custom_attrs
@@ -87,6 +98,14 @@ class Labeler:
         """
         with self._lock:
             for key, value in attributes.items():
+                if not isinstance(value, (str, int, float, bool)):
+                    _logger.warning(
+                        "Skipping attribute '%s': value must be str, int, float, or bool, got %s",
+                        key,
+                        type(value).__name__,
+                    )
+                    continue
+
                 if (
                     len(self._attributes) >= self._max_custom_attrs
                     and key not in self._attributes
