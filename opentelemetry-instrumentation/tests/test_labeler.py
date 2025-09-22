@@ -77,7 +77,7 @@ class TestLabeler(unittest.TestCase):
         self.assertEqual(len(labeler), 0)
 
     def test_thread_safety(self):
-        labeler = Labeler(max_custom_attrs=1000)
+        labeler = Labeler(max_custom_attrs=1100)  # 11 * 100
         num_threads = 10
         num_operations = 100
 
@@ -87,6 +87,8 @@ class TestLabeler(unittest.TestCase):
                     f"thread_{thread_id}_key_{i_operation}",
                     f"value_{i_operation}",
                 )
+                # "shared" key that all 10 threads compete to write to
+                labeler.add("shared", thread_id)
 
         # Start multiple threads
         threads = []
@@ -99,10 +101,45 @@ class TestLabeler(unittest.TestCase):
         for thread in threads:
             thread.join()
 
-        # Check that all attributes were added
         attributes = labeler.get_attributes()
-        expected_count = num_threads * num_operations
-        self.assertEqual(len(attributes), expected_count)
+        # Should have all unique keys plus "shared"
+        expected_unique_keys = num_threads * num_operations
+        self.assertEqual(len(attributes), expected_unique_keys + 1)
+        # "shared" key should exist and have some valid thread_id
+        self.assertIn("shared", attributes)
+        self.assertIn(attributes["shared"], range(num_threads))
+
+    def test_thread_safety_atomic_increment(self):
+        """More non-atomic operations than test_thread_safety"""
+        labeler = Labeler(max_custom_attrs=100)
+        labeler.add("counter", 0)
+        num_threads = 100
+        increments_per_thread = 50
+        expected_final_value = num_threads * increments_per_thread
+        
+        def increment_worker():
+            for _ in range(increments_per_thread):
+                # read-modify-write to increase contention
+                attrs = labeler.get_attributes()  # Read
+                current = attrs["counter"]        # Extract
+                new_value = current + 1           # Modify
+                labeler.add("counter", new_value) # Write
+        
+        threads = []
+        for _ in range(num_threads):
+            thread = threading.Thread(target=increment_worker)
+            threads.append(thread)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        
+        final_value = labeler.get_attributes()["counter"]
+        self.assertEqual(
+            final_value, expected_final_value,
+            f"Expected {expected_final_value}, got {final_value}. "
+            f"Lost {expected_final_value - final_value} updates due to race conditions."
+        )
 
 
 class TestLabelerContext(unittest.TestCase):
