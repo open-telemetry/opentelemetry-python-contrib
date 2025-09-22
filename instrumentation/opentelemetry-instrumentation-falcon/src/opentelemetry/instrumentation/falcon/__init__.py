@@ -233,7 +233,7 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry.instrumentation._labeler import enhance_metric_attributes
+from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
@@ -460,7 +460,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                     attributes, _StabilityMode.DEFAULT
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs = enhance_metric_attributes(duration_attrs)
+                duration_attrs = enrich_metric_attributes(duration_attrs)
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs
                 )
@@ -469,7 +469,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                     attributes, _StabilityMode.HTTP
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs = enhance_metric_attributes(duration_attrs)
+                duration_attrs = enrich_metric_attributes(duration_attrs)
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs
                 )

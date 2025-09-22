@@ -63,13 +63,13 @@ Here's an example showing how to use the labeler with programmatic Flask instrum
 
 The labeler also works with auto-instrumentation.
 
-Custom attributes are merged by any instrumentors that use ``enhance_metric_attributes`` before their calls to report individual metrics recording, such as ``Histogram.record``. ``enchance_metrics_attributes`` does not overwrite base attributes that exist at the same keys.
+Custom attributes are merged by any instrumentors that use ``enrich_metric_attributes`` before their calls to report individual metrics recording, such as ``Histogram.record``. ``enchance_metrics_attributes`` does not overwrite base attributes that exist at the same keys.
 """
 
 from opentelemetry.instrumentation._labeler._internal import (
     Labeler,
     clear_labeler,
-    enhance_metric_attributes,
+    enrich_metric_attributes,
     get_labeler,
     get_labeler_attributes,
     set_labeler,
@@ -81,5 +81,5 @@ __all__ = [
     "set_labeler",
     "clear_labeler",
     "get_labeler_attributes",
-    "enhance_metric_attributes",
+    "enrich_metric_attributes",
 ]

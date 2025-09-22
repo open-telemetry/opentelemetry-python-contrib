@@ -272,7 +272,7 @@ from timeit import default_timer
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
 from opentelemetry import context, trace
-from opentelemetry.instrumentation._labeler import enhance_metric_attributes
+from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
@@ -763,7 +763,7 @@ class OpenTelemetryMiddleware:
                     req_attrs, _StabilityMode.DEFAULT
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_old = enhance_metric_attributes(
+                duration_attrs_old = enrich_metric_attributes(
                     duration_attrs_old
                 )
                 self.duration_histogram_old.record(
@@ -774,7 +774,7 @@ class OpenTelemetryMiddleware:
                     req_attrs, _StabilityMode.HTTP
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_new = enhance_metric_attributes(
+                duration_attrs_new = enrich_metric_attributes(
                     duration_attrs_new
                 )
                 self.duration_histogram_new.record(

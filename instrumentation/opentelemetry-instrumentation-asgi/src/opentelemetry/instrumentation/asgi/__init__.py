@@ -261,7 +261,7 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._labeler import (
-    enhance_metric_attributes,
+    enrich_metric_attributes,
     get_labeler,
 )
 from opentelemetry.instrumentation._semconv import (
@@ -857,7 +857,7 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.DEFAULT
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_old = enhance_metric_attributes(
+                duration_attrs_old = enrich_metric_attributes(
                     duration_attrs_old
                 )
                 if target:
@@ -866,7 +866,7 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.HTTP
                 )
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_new = enhance_metric_attributes(
+                duration_attrs_new = enrich_metric_attributes(
                     duration_attrs_new
                 )
                 if self.duration_histogram_old:

@@ -184,9 +184,9 @@ def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
     return labeler.get_attributes()
 
 
-def enhance_metric_attributes(
+def enrich_metric_attributes(
     base_attributes: Dict[str, Any],
-    include_custom: bool = True,
+    enrich_enabled: bool = True,
 ) -> Dict[str, Any]:
     """
     Combines base_attributes with custom attributes from the current labeler,
@@ -197,13 +197,13 @@ def enhance_metric_attributes(
 
     Args:
         base_attributes: The base attributes for the metric
-        include_custom: Whether to include custom labeler attributes
+        enrich_enabled: Whether to include custom labeler attributes
 
     Returns:
         Dictionary combining base and custom attributes. If no custom attributes,
         returns a copy of the original base attributes.
     """
-    if not include_custom:
+    if not enrich_enabled:
         return base_attributes.copy()
 
     labeler = _labeler_context.get()
@@ -214,7 +214,7 @@ def enhance_metric_attributes(
     if not custom_attributes:
         return base_attributes.copy()
 
-    enhanced_attributes = base_attributes.copy()
+    enriched_attributes = base_attributes.copy()
 
     added_count = 0
     for key, value in custom_attributes.items():
@@ -229,7 +229,7 @@ def enhance_metric_attributes(
         ):
             value = value[: labeler._max_attr_value_length]
 
-        enhanced_attributes[key] = value
+        enriched_attributes[key] = value
         added_count += 1
 
-    return enhanced_attributes
+    return enriched_attributes

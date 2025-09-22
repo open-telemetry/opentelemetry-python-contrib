@@ -290,7 +290,7 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
-from opentelemetry.instrumentation._labeler import enhance_metric_attributes
+from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
@@ -443,7 +443,7 @@ def _rewrapped_app(
                 duration_attrs_old[HTTP_TARGET] = str(request_route)
 
             # Enhance attributes with any custom labeler attributes
-            duration_attrs_old = enhance_metric_attributes(duration_attrs_old)
+            duration_attrs_old = enrich_metric_attributes(duration_attrs_old)
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
@@ -457,7 +457,7 @@ def _rewrapped_app(
                 duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
             # Enhance attributes with any custom labeler attributes
-            duration_attrs_new = enhance_metric_attributes(duration_attrs_new)
+            duration_attrs_new = enrich_metric_attributes(duration_attrs_new)
 
             duration_histogram_new.record(
                 max(duration_s, 0), duration_attrs_new
