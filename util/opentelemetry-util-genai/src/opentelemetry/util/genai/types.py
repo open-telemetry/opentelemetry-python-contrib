@@ -81,6 +81,18 @@ class OutputMessage:
     finish_reason: Union[str, FinishReason]
 
 
+def _new_input_messages() -> List[InputMessage]:
+    return []
+
+
+def _new_output_messages() -> List[OutputMessage]:
+    return []
+
+
+def _new_str_any_dict() -> Dict[str, Any]:
+    return {}
+
+
 @dataclass
 class LLMInvocation:
     """
@@ -94,14 +106,18 @@ class LLMInvocation:
     span: Optional[Span] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
-    input_messages: List[InputMessage] = field(default_factory=list)
-    output_messages: List[OutputMessage] = field(default_factory=list)
+    input_messages: List[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: List[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None
     output_tokens: Optional[AttributeValue] = None
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
 
 
 @dataclass
