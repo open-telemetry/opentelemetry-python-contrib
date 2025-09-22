@@ -31,7 +31,7 @@ __all__ = ["_SpanManager"]
 @dataclass
 class _SpanState:
     span: Span
-    children: List[UUID] = field(default_factory=list) # type: ignore [reportUnknownVariableType]
+    children: List[UUID] = field(default_factory=list)  # type: ignore [reportUnknownVariableType]
 
 
 class _SpanManager:
