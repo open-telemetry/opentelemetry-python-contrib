@@ -31,21 +31,18 @@ Usage:
     follow the GenAI semantic conventions.
 """
 
-from contextvars import Token
-from typing import Dict, Optional
-from uuid import UUID
-
-from typing_extensions import TypeAlias
+from typing import Any
 
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
-    Span,
     SpanKind,
     Tracer,
+    get_tracer,
     set_span_in_context,
 )
 from opentelemetry.util.genai.span_utils import (
@@ -53,9 +50,7 @@ from opentelemetry.util.genai.span_utils import (
     _apply_finish_attributes,
 )
 from opentelemetry.util.genai.types import Error, LLMInvocation
-
-# Type alias matching the token type expected by opentelemetry.context.detach
-ContextToken: TypeAlias = Token[otel_context.Context]
+from opentelemetry.util.genai.version import __version__
 
 
 class BaseTelemetryGenerator:
@@ -80,12 +75,16 @@ class SpanGenerator(BaseTelemetryGenerator):
 
     def __init__(
         self,
-        tracer: Optional[Tracer] = None,
+        **kwargs: Any,
     ):
+        tracer_provider = kwargs.get("tracer_provider")
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=Schemas.V1_36_0.value,
+        )
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
-
-        # Store the active span and its context attachment token
-        self._active: Dict[UUID, tuple[Span, ContextToken]] = {}
 
     def start(self, invocation: LLMInvocation):
         # Create a span and attach it as current; keep the token to detach later

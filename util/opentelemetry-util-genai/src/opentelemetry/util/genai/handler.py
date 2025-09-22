@@ -54,11 +54,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, Iterator, Optional
 
-from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.trace import get_tracer
 from opentelemetry.util.genai.generators import SpanGenerator
 from opentelemetry.util.genai.types import Error, LLMInvocation
-from opentelemetry.util.genai.version import __version__
 
 
 class TelemetryHandler:
@@ -68,15 +65,7 @@ class TelemetryHandler:
     """
 
     def __init__(self, **kwargs: Any):
-        tracer_provider = kwargs.get("tracer_provider")
-        self._tracer = get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url=Schemas.V1_36_0.value,
-        )
-
-        self._generator = SpanGenerator(tracer=self._tracer)
+        self._generator = SpanGenerator(**kwargs)
 
     @contextmanager
     def llm(self, invocation: LLMInvocation) -> Iterator[LLMInvocation]:
@@ -91,7 +80,7 @@ class TelemetryHandler:
         self._generator.start(invocation)
         try:
             yield invocation
-        except BaseException as exc:  # noqa: B902 - ensure we capture all exceptions incl. SystemExit, KeyboardInterrupt
+        except Exception as exc:  # noqa: B902 - ensure we capture all exceptions incl. SystemExit, KeyboardInterrupt
             invocation.end_time = time.time()
             self._generator.error(
                 Error(message=str(exc), type=type(exc)), invocation
