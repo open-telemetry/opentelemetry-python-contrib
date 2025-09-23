@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+### Fixed
+
+  - `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
@@ -71,6 +78,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-kafka-python` Utilize instruments-any functionality.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collections` metrics with collection unit is specified in semconv ([3617](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3617))
+
+### Added
+
+### Fixed
+
+  - `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 
 ## Version 1.35.0/0.56b0 (2025-07-11)
 
