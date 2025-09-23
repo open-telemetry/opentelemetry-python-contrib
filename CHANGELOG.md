@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
 - `opentelemetry-instrumentation-requests` Detect synthetic sources on requests.
   ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
-  
+
+### Fixed
+
+### Added
+- `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
+  ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
