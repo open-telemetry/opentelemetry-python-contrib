@@ -13,7 +13,7 @@
 # limitations under the License.
 from os import environ
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from google.auth.transport.requests import AuthorizedSession
 
@@ -27,6 +27,7 @@ from opentelemetry.sdk.environment_variables import (
 
 
 class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
+    @patch("google.auth.default")
     @patch.dict(
         environ,
         {
@@ -34,9 +35,13 @@ class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
             _OTEL_PYTHON_EXPORTER_OTLP_GRPC_TRACES_CREDENTIAL_PROVIDER: "gcp_grpc_credentials",
         },
     )
-    def test_loads_otlp_exporters_with_google_creds(self):  # pylint: disable=no-self-use
+    def test_loads_otlp_exporters_with_google_creds(self, mock_default):  # pylint: disable=no-self-use
         """Test that OTel configuration internals can load the credentials from entrypoint by
         name"""
-
+        mock_credentials = MagicMock()
+        mock_credentials.project_id = "test-project"
+        mock_default.return_value = (mock_credentials, "test-project")
         http_exporter = OTLPSpanExporter()
         assert isinstance(http_exporter._session, AuthorizedSession)
+        # Assert that google.auth.default was called
+        mock_default.assert_called_once()
