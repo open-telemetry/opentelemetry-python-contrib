@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. 
+[#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
