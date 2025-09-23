@@ -293,36 +293,6 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-resource-detector-azure-1 -- -ra
 
-  py39-test-exporter-credential-provider-gcp:
-    name: exporter-credential-provider-gcp 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-          architecture: "x64"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-exporter-credential-provider-gcp -- -ra
-
   py39-test-sdk-extension-aws-0:
     name: sdk-extension-aws-0 
     runs-on: ubuntu-latest
@@ -2482,6 +2452,36 @@ jobs:
 
       - name: Run tests
         run: tox -e py39-test-util-http -- -ra
+
+  py39-test-exporter-credential-provider-gcp:
+    name: exporter-credential-provider-gcp 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-exporter-credential-provider-gcp -- -ra
 
   py39-test-util-genai:
     name: util-genai 

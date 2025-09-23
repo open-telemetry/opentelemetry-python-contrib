@@ -1077,6 +1077,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-util-http
 
+  lint-exporter-credential-provider-gcp:
+    name: exporter-credential-provider-gcp
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-exporter-credential-provider-gcp
+
   lint-util-genai:
     name: util-genai
     runs-on: ubuntu-latest
@@ -1095,25 +1114,6 @@ jobs:
 
       - name: Run tests
         run: tox -e lint-util-genai
-
-  lint-gcp-exporter-credential-provider:
-    name: exporter-credential-provider-gcp
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e lint-gcp-exporter-credential-provider
 
   lint-propagator-aws-xray:
     name: propagator-aws-xray
