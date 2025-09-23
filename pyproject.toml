@@ -143,9 +143,14 @@ members = [
   "instrumentation/*",
   "instrumentation-genai/*",
   "exporter/*",
+  "exporter/exporter-credential-providers/*",
   "opentelemetry-instrumentation",
   "propagator/*",
   "util/opentelemetry-util-http",
+]
+
+exclude = [
+  "exporter/exporter-credential-providers",
 ]
 
 [tool.ruff]

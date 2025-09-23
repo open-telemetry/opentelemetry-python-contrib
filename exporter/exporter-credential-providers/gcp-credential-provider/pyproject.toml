@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-exporter-auth-provider-gcp"
+name = "opentelemetry-exporter-credential-provider-gcp"
 dynamic = ["version"]
-description = "GCP OTLP Exporter Auth Provider for OpenTelemetry"
+description = "GCP OTLP Exporter Credential Provider for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.9"
@@ -31,15 +31,15 @@ dependencies = [
 ]
 
 [project.entry-points.opentelemetry_otlp_credential_provider]
-gcp_grpc_credentials = "opentelemetry.auth_provider:create_google_grpc_credentials"
-gcp_http_credentials = "opentelemetry.auth_provider:create_google_authorized_session"
+gcp_grpc_credentials = "opentelemetry.credential_provider:create_google_grpc_credentials"
+gcp_http_credentials = "opentelemetry.credential_provider:create_google_authorized_session"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter-auth-provider/gcp-auth-provider"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/exporter-credential-providers/gcp-credential-provider"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/auth_provider/version.py"
+path = "src/opentelemetry/credential_provider/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

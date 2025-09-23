@@ -6,7 +6,6 @@
 set -ev
 
 # Get the latest versions of packaging tools
-python3 -m pip install --upgrade pip build setuptools wheel
 
 BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
@@ -22,9 +21,6 @@ DISTDIR=dist
      cd "$d"
      # Some ext directories (such as docker tests) are not intended to be
      # packaged. Verify the intent by looking for a pyproject.toml.
-     if [ -f pyproject.toml ]; then
-      python3 -m build --outdir "$BASEDIR/dist/"
-     fi
    )
  done
 

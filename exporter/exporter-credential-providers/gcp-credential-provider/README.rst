@@ -1,8 +1,8 @@
-OpenTelemetry GCP Auth Provider for OTLP Exporters
+OpenTelemetry GCP Credential Provider for OTLP Exporters
 ==============================================
 
-.. image:: https://badge.fury.io/py/opentelemetry-exporter-auth-provider-gcp.svg
-    :target: https://badge.fury.io/py/opentelemetry-exporter-auth-provider-gcp
+.. image:: https://badge.fury.io/py/opentelemetry-exporter-credential-provider-gcp.svg
+    :target: https://badge.fury.io/py/opentelemetry-exporter-credential-provider-gcp
 
 .. image:: https://readthedocs.org/projects/google-cloud-opentelemetry/badge/?version=latest
     :target: https://google-cloud-opentelemetry.readthedocs.io/en/latest/?badge=latest
@@ -27,7 +27,7 @@ Installation
 
 .. code:: bash
 
-    pip install opentelemetry-exporter-auth-provider-gcp
+    pip install opentelemetry-exporter-credential-provider-gcp
 
 Usage
 -----
