@@ -86,7 +86,3 @@ class TestDetectSyntheticUserAgent(unittest.TestCase):
         result = detect_synthetic_user_agent(user_agent)
         # alwayson should be checked first and return 'test'
         self.assertEqual(result, UserAgentSyntheticTypeValues.TEST.value)
-
-
-if __name__ == "__main__":
-    unittest.main()
