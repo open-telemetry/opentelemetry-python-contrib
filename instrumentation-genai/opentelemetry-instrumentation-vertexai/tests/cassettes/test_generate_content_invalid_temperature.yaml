@@ -30,7 +30,7 @@ interactions:
       User-Agent:
       - python-requests/2.32.3
     method: POST
-    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
   response:
     body:
       string: |-
@@ -52,7 +52,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '809'
+      - '1472'
     status:
       code: 400
       message: Bad Request

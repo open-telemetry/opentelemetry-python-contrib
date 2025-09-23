@@ -19,9 +19,12 @@ import json
 import logging
 import posixpath
 import threading
+from base64 import b64encode
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
+from time import time
 from typing import Any, Callable, Final, Literal, TextIO, cast
 from uuid import uuid4
 
@@ -102,12 +105,12 @@ class FsspecUploadHook(UploadHook):
 
     def _submit_all(self, upload_data: UploadData) -> None:
         def done(future: Future[None]) -> None:
-            self._semaphore.release()
-
             try:
                 future.result()
             except Exception:  # pylint: disable=broad-except
                 _logger.exception("fsspec uploader failed")
+            finally:
+                self._semaphore.release()
 
         for path, json_encodeable in upload_data.items():
             # could not acquire, drop data
@@ -127,7 +130,7 @@ class FsspecUploadHook(UploadHook):
                 _logger.info(
                     "attempting to upload file after FsspecUploadHook.shutdown() was already called"
                 )
-                break
+                self._semaphore.release()
 
     def _calculate_ref_path(self) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
@@ -151,7 +154,12 @@ class FsspecUploadHook(UploadHook):
         path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
         with fsspec_open(path, "w") as file:
-            json.dump(json_encodeable(), file, separators=(",", ":"))
+            json.dump(
+                json_encodeable(),
+                file,
+                separators=(",", ":"),
+                cls=Base64JsonEncoder,
+            )
 
     def upload(
         self,
@@ -203,6 +211,25 @@ class FsspecUploadHook(UploadHook):
                 **references,
             }
 
-    def shutdown(self) -> None:
-        # TODO: support timeout
-        self._executor.shutdown()
+    def shutdown(self, *, timeout_sec: float = 10.0) -> None:
+        deadline = time() + timeout_sec
+
+        # Wait for all tasks to finish to flush the queue
+        with ExitStack() as stack:
+            for _ in range(self._max_size):
+                remaining = deadline - time()
+                if not self._semaphore.acquire(timeout=remaining):  # pylint: disable=consider-using-with
+                    # Couldn't finish flushing all uploads before timeout
+                    break
+
+                stack.callback(self._semaphore.release)
+
+            # Queue is flushed and blocked, start shutdown
+            self._executor.shutdown(wait=False)
+
+
+class Base64JsonEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return b64encode(o).decode()
+        return super().default(o)
