@@ -98,7 +98,9 @@ class TelemetryHandler:
         return invocation
 
     @contextmanager
-    def llm(self, invocation: LLMInvocation) -> Iterator[LLMInvocation]:
+    def llm(
+        self, invocation: Optional[LLMInvocation] = None
+    ) -> Iterator[LLMInvocation]:
         """Context manager for LLM invocations.
 
         Only set data attributes on the invocation object, do not modify the span or context.
@@ -107,6 +109,10 @@ class TelemetryHandler:
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
+        if invocation is None:
+            invocation = LLMInvocation(
+                request_model="",
+            )
         self.start_llm(invocation)
         try:
             yield invocation

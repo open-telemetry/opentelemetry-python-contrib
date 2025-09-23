@@ -135,14 +135,11 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
         # Start and stop LLM invocation using context manager
-        invocation = LLMInvocation(
-            request_model="test-model",
-            input_messages=[message],
-            provider="test-provider",
-            attributes={"custom_attr": "value"},
-        )
-
-        with self.telemetry_handler.llm(invocation):
+        with self.telemetry_handler.llm() as invocation:
+            invocation.request_model = "test-model"
+            invocation.input_messages = [message]
+            invocation.provider = "test-provider"
+            invocation.attributes = {"custom_attr": "value"}
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
@@ -234,20 +231,16 @@ class TestTelemetryHandler(unittest.TestCase):
             role="AI", parts=[Text(content="ok")], finish_reason="stop"
         )
 
-        # Start parent and child using nested contexts (child becomes child span of parent)
-        parent_invocation = LLMInvocation(
-            request_model="parent-model",
-            input_messages=[message],
-            provider="test-provider",
-        )
-        child_invocation = LLMInvocation(
-            request_model="child-model",
-            input_messages=[message],
-            provider="test-provider",
-        )
-
-        with self.telemetry_handler.llm(parent_invocation):
-            with self.telemetry_handler.llm(child_invocation):
+        with self.telemetry_handler.llm() as parent_invocation:
+            parent_invocation.request_model = "parent-model"
+            parent_invocation.input_messages = [message]
+            parent_invocation.provider = "test-provider"
+            # Perform things here, calling a tool, processing, etc.
+            with self.telemetry_handler.llm() as child_invocation:
+                child_invocation.request_model = "child-model"
+                child_invocation.input_messages = [message]
+                child_invocation.provider = "test-provider"
+                # Perform things here, calling a tool, processing, etc.
                 # Stop child first by exiting inner context
                 child_invocation.output_messages = [chat_generation]
             # Then stop parent by exiting outer context
