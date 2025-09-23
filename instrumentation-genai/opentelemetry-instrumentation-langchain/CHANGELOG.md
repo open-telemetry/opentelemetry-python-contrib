@@ -7,8 +7,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Fixed typecheck.
-  ([#3773](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3773))
-- 
 - Added span support for genAI langchain llm invocation.
   ([#3665](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3665))
