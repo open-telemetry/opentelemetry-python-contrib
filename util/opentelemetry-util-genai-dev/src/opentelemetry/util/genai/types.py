@@ -14,13 +14,19 @@
 
 
 import time
+from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID, uuid4
 
+from typing_extensions import TypeAlias
+
+from opentelemetry.context import Context
 from opentelemetry.trace import Span
 from opentelemetry.util.types import AttributeValue
+
+ContextToken: TypeAlias = Token[Context]
 
 
 class ContentCapturingMode(Enum):
@@ -76,34 +82,46 @@ class OutputMessage:
     finish_reason: Union[str, FinishReason]
 
 
+def _new_input_messages() -> list[InputMessage]:
+    return []
+
+
+def _new_output_messages() -> list[OutputMessage]:
+    return []
+
+
+def _new_str_any_dict() -> dict[str, Any]:
+    return {}
+
+
 @dataclass
 class LLMInvocation:
     """
-    Represents a single LLM call invocation.
-    Added optional fields (run_id, parent_run_id, messages, chat_generations) to
-    interoperate with advanced generators (SpanMetricGenerator, SpanMetricEventGenerator).
+    Represents a single LLM call invocation. When creating an LLMInvocation object,
+    only update the data attributes. The span and context_token attributes are
+    set by the TelemetryHandler.
     """
 
     request_model: str
-    # Stores either a contextvars Token or a context manager (use_span) kept open until finish/error.
-    context_token: Optional[Any] = None
+    context_token: Optional[ContextToken] = None
     span: Optional[Span] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
-    input_messages: List[InputMessage] = field(default_factory=list)
-    output_messages: List[OutputMessage] = field(default_factory=list)
+    input_messages: List[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: List[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None
     output_tokens: Optional[AttributeValue] = None
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    # Advanced generator compatibility fields
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    # Ahead of upstream
     run_id: UUID = field(default_factory=uuid4)
     parent_run_id: Optional[UUID] = None
-    # Unified views expected by span_metric* generators
-    messages: List[InputMessage] = field(default_factory=list)
-    chat_generations: List[OutputMessage] = field(default_factory=list)
 
 
 @dataclass
