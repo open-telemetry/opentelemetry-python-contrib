@@ -17,9 +17,6 @@ from unittest.mock import patch
 
 from google.auth.transport.requests import AuthorizedSession
 
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter as GRPCOTLPSpanExporter,
-)
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter,
 )
@@ -43,6 +40,3 @@ class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
 
         http_exporter = OTLPSpanExporter()
         assert isinstance(http_exporter._session, AuthorizedSession)
-        # TODO: figure out how to assert something about the credentials that this thing initializes..
-        grpc_exporter = GRPCOTLPSpanExporter()
-        print(dir(grpc_exporter))

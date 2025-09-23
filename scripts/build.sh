@@ -6,6 +6,7 @@
 set -ev
 
 # Get the latest versions of packaging tools
+python3 -m pip install --upgrade pip build setuptools wheel
 
 BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
@@ -15,10 +16,13 @@ DISTDIR=dist
   mkdir -p $DISTDIR
   rm -rf ${DISTDIR:?}/*
 
- for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
+ for d in exporter/*/ exporter/exporter-credential-providers/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"
      cd "$d"
+     if [ -f pyproject.toml ]; then
+      python3 -m build --outdir "$BASEDIR/dist/"
+     fi
      # Some ext directories (such as docker tests) are not intended to be
      # packaged. Verify the intent by looking for a pyproject.toml.
    )
