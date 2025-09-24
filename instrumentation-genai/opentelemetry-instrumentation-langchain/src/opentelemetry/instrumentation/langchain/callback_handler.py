@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from langchain_core.agents import AgentAction, AgentFinish  # type: ignore
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
@@ -222,3 +223,99 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         self.span_manager.handle_error(error, run_id)
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run when chain starts running."""
+        # Extract chain name from serialized or kwargs
+        chain_name = "unknown"
+        if serialized and "kwargs" in serialized and serialized["kwargs"].get("name"):
+            chain_name = serialized["kwargs"]["name"]
+        elif kwargs.get("name"):
+            chain_name = kwargs["name"]
+        elif serialized.get("name"):
+            chain_name = serialized["name"]
+        elif "id" in serialized:
+            chain_name = serialized["id"][-1]
+
+        span = self.span_manager.create_chain_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            chain_name=chain_name,
+        )
+
+        # If this is an agent chain, set agent-specific attributes
+        if metadata and "agent_name" in metadata:
+            span.set_attribute(GenAI.GEN_AI_AGENT_NAME, metadata["agent_name"])
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, "invoke_agent")
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run when chain ends running."""
+        self.span_manager.end_span(run_id)
+
+    def on_chain_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run when chain errors."""
+        self.span_manager.handle_error(error, run_id)
+
+    def on_agent_action(
+        self,
+        action: AgentAction,  # type: ignore
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run on agent action."""
+        # Agent actions are tracked as part of the chain span
+        # We can add attributes to the existing span if needed
+        span = self.span_manager.get_span(run_id)
+        if span:
+            tool = getattr(action, "tool", None)
+            if tool:
+                span.set_attribute("langchain.agent.action.tool", tool)
+            tool_input = getattr(action, "tool_input", None)
+            if tool_input:
+                span.set_attribute("langchain.agent.action.tool_input", str(tool_input))
+
+    def on_agent_finish(
+        self,
+        finish: AgentFinish,  # type: ignore
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        tags: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Run on agent finish."""
+        # Agent finish is tracked as part of the chain span
+        span = self.span_manager.get_span(run_id)
+        if span:
+            return_values = getattr(finish, "return_values", None)
+            if return_values and "output" in return_values:
+                span.set_attribute("langchain.agent.finish.output", str(return_values["output"]))

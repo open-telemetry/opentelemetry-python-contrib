@@ -91,6 +91,46 @@ class _SpanManager:
 
         return span
 
+    def create_agent_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        agent_name: Optional[str] = None,
+    ) -> Span:
+        """Create a span for agent invocation."""
+        span_name = f"invoke_agent {agent_name}" if agent_name else "invoke_agent"
+        span = self._create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=span_name,
+            kind=SpanKind.CLIENT,
+        )
+        span.set_attribute(
+            GenAI.GEN_AI_OPERATION_NAME,
+            "invoke_agent",
+        )
+        if agent_name:
+            span.set_attribute(GenAI.GEN_AI_AGENT_NAME, agent_name)
+
+        return span
+
+    def create_chain_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        chain_name: str,
+    ) -> Span:
+        """Create a span for chain execution."""
+        span = self._create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=f"chain {chain_name}",
+            kind=SpanKind.INTERNAL,
+        )
+        # Chains are internal operations, not direct GenAI operations
+        # We can track them but they don't have a gen_ai.operation.name
+        return span
+
     def end_span(self, run_id: UUID) -> None:
         state = self.spans[run_id]
         for child_id in state.children:
