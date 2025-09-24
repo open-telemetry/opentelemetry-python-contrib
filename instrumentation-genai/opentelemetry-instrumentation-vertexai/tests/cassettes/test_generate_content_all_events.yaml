@@ -51,7 +51,7 @@ interactions:
       User-Agent:
       - python-requests/2.32.3
     method: POST
-    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
   response:
     body:
       string: |-
@@ -62,20 +62,36 @@ interactions:
                 "role": "model",
                 "parts": [
                   {
-                    "text": "OpenTelemetry, this is a test.\n"
+                    "text": "OpenTelemetry, this is a test."
                   }
                 ]
               },
               "finishReason": 1,
-              "avgLogprobs": -1.1655389850299496e-06
+              "avgLogprobs": -8.984109878540039
             }
           ],
           "usageMetadata": {
             "promptTokenCount": 25,
-            "candidatesTokenCount": 9,
-            "totalTokenCount": 34
+            "candidatesTokenCount": 8,
+            "totalTokenCount": 439,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 25
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 8
+              }
+            ],
+            "thoughtsTokenCount": 406
           },
-          "modelVersion": "gemini-1.5-flash-002"
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:12.290295Z",
+          "responseId": "UJCkaPfbEdDxgLUPhardyQg"
         }
     headers:
       Content-Type:
@@ -87,7 +103,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '422'
+      - '757'
     status:
       code: 200
       message: OK

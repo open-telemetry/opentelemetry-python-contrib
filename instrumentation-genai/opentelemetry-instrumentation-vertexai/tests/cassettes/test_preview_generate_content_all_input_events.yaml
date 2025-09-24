@@ -51,7 +51,7 @@ interactions:
       User-Agent:
       - python-requests/2.32.3
     method: POST
-    uri: https://us-central1-aiplatform.googleapis.com/v1beta1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-1.5-flash-002:generateContent?%24alt=json%3Benum-encoding%3Dint
+    uri: https://us-central1-aiplatform.googleapis.com/v1beta1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
   response:
     body:
       string: |-
@@ -62,18 +62,19 @@ interactions:
                 "role": "model",
                 "parts": [
                   {
-                    "text": "OpenTelemetry, this is a test.\n"
+                    "text": "OpenTelemetry, this is a test."
                   }
                 ]
               },
               "finishReason": 1,
-              "avgLogprobs": -1.1655389850299496e-06
+              "avgLogprobs": -7.633238792419434
             }
           ],
           "usageMetadata": {
             "promptTokenCount": 25,
-            "candidatesTokenCount": 9,
-            "totalTokenCount": 34,
+            "candidatesTokenCount": 8,
+            "totalTokenCount": 400,
+            "trafficType": 1,
             "promptTokensDetails": [
               {
                 "modality": 1,
@@ -83,13 +84,14 @@ interactions:
             "candidatesTokensDetails": [
               {
                 "modality": 1,
-                "tokenCount": 9
+                "tokenCount": 8
               }
-            ]
+            ],
+            "thoughtsTokenCount": 367
           },
-          "modelVersion": "gemini-1.5-flash-002",
-          "createTime": "2025-02-03T22:15:35.089616Z",
-          "responseId": "B0ChZ5C8BbXInvgP19PTyA4"
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:21.164378Z",
+          "responseId": "WZCkaJqECuavgLUP4fGpsQs"
         }
     headers:
       Content-Type:
@@ -101,7 +103,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '715'
+      - '757'
     status:
       code: 200
       message: OK
