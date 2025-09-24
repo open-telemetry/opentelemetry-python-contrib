@@ -35,7 +35,7 @@ gcp_grpc_credentials = "opentelemetry.gcp_credential_provider:create_google_grpc
 gcp_http_credentials = "opentelemetry.gcp_credential_provider:create_google_authorized_session"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/exporter-credential-providers/gcp-credential-provider"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/opentelemetry-exporter-credential-provider-gcp"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
