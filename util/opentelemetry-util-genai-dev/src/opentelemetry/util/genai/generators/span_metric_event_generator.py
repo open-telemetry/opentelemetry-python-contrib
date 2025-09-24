@@ -121,18 +121,14 @@ class SpanMetricEventGenerator(BaseTelemetryGenerator):
             )
             invocation.span = span
 
-        # Normalize invocation collections for metrics helpers
-        if not invocation.messages:
-            invocation.messages = invocation.input_messages
-        if not invocation.chat_generations:
-            invocation.chat_generations = invocation.output_messages
+        # Use input_messages and output_messages directly
 
         # Update any new attributes added after start
         for k, v in invocation.attributes.items():
             span.set_attribute(k, v)
 
         # Finish reasons & response / usage attrs
-        finish_reasons = _collect_finish_reasons(invocation.chat_generations)
+        finish_reasons = _collect_finish_reasons(invocation.output_messages)
         if finish_reasons:
             span.set_attribute(
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
@@ -147,20 +143,16 @@ class SpanMetricEventGenerator(BaseTelemetryGenerator):
         )
 
         # Emit per-choice generation events (gated by environment var)
-        if (
-            invocation.chat_generations
-            and self._logger
-            and os.getenv(_ENV_VAR)
-        ):
+        if invocation.output_messages and self._logger and os.getenv(_ENV_VAR):
             try:
                 _emit_chat_generation_logs(
                     self._logger,
-                    invocation.chat_generations,
+                    invocation.output_messages,
                     provider_name=invocation.provider,
                     framework=invocation.attributes.get("framework"),
                     capture_content=self._capture_content,
                 )
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
         # Record metrics (duration + tokens)

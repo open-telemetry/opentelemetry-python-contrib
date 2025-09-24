@@ -42,6 +42,7 @@ API
 """
 
 import json
+import os
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -98,10 +99,17 @@ class LangChainInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # Ensure metrics + events generator by default
+        from opentelemetry.util.genai.environment_variables import OTEL_INSTRUMENTATION_GENAI_GENERATOR
+
+        if not os.environ.get(OTEL_INSTRUMENTATION_GENAI_GENERATOR):
+            os.environ[OTEL_INSTRUMENTATION_GENAI_GENERATOR] = "span_metric_event"
         tracer_provider = kwargs.get("tracer_provider")
-        # Create dedicated handler bound to provided tracer provider (ensures spans go to test exporter)
+        meter_provider = kwargs.get("meter_provider")
+        # Create dedicated handler bound to provided tracer and meter providers (ensures spans and metrics go to test exporters)
         self._telemetry_handler = TelemetryHandler(
-            tracer_provider=tracer_provider
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
         def _build_input_messages(messages):

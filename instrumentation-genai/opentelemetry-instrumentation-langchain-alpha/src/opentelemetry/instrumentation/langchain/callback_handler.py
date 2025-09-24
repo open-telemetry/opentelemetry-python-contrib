@@ -139,6 +139,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             input_messages=input_messages,
             attributes=attrs,
         )
+        # no need for messages/chat_generations fields; generator uses input_messages and output_messages
         self._telemetry_handler.start_llm(inv)
         with self._lock:
             self._invocations[run_id] = inv
@@ -178,6 +179,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     finish_reason=finish_reason,
                 )
             ]
+        # no additional assignments needed; generator uses output_messages
         llm_output = getattr(response, "llm_output", None) or {}
         response_model = llm_output.get("model_name") or llm_output.get(
             "model"
