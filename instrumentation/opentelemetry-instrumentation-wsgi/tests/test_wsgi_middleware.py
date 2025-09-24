@@ -52,6 +52,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -790,6 +793,83 @@ class TestWsgiAttributes(unittest.TestCase):
             ).items(),
             expected_new.items(),
         )
+
+    def test_http_user_agent_synthetic_bot_detection(self):
+        """Test that bot user agents are detected as synthetic with type 'bot'"""
+        test_cases = [
+            "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            "googlebot/1.0",
+            "bingbot/1.0",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have both the original user agent and synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+                self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "bot")
+
+    def test_http_user_agent_synthetic_test_detection(self):
+        """Test that test user agents are detected as synthetic with type 'test'"""
+        test_cases = [
+            "alwayson/1.0",
+            "AlwaysOn/2.0",
+            "test-alwayson-client",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have both the original user agent and synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+                self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "test")
+
+    def test_http_user_agent_non_synthetic(self):
+        """Test that normal user agents are not marked as synthetic"""
+        test_cases = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+            "PostmanRuntime/7.28.4",
+            "curl/7.68.0",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have the original user agent but no synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertNotIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+
+    def test_http_user_agent_synthetic_new_semconv(self):
+        """Test synthetic user agent detection with new semantic conventions"""
+        self.environ["HTTP_USER_AGENT"] = (
+            "Mozilla/5.0 (compatible; Googlebot/2.1)"
+        )
+        attributes = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        # Should have both the new semconv user agent and synthetic type
+        self.assertIn(USER_AGENT_ORIGINAL, attributes)
+        self.assertEqual(
+            attributes[USER_AGENT_ORIGINAL],
+            "Mozilla/5.0 (compatible; Googlebot/2.1)",
+        )
+        self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+        self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "bot")
 
     def test_response_attributes(self):
         otel_wsgi.add_response_attributes(self.span, "404 Not Found", {})
