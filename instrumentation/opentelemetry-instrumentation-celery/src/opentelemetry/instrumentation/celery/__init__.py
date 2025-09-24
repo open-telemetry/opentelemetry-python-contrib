@@ -47,6 +47,16 @@ Usage
 
     add.delay(42, 50)
 
+Configuration
+-------------
+
+The ``CeleryInstrumentor().instrument()`` method accepts the following arguments:
+
+* ``use_links`` (bool): When ``True``, Celery task execution spans will be linked to the
+  task creation spans instead of being created as child spans. This provides a looser
+  coupling between spans in distributed systems. Defaults to ``False`` to maintain
+  backward compatibility.
+
 Setting up tracing
 ------------------
 
@@ -122,6 +132,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
+        use_links = kwargs.get("use_links", False)
 
         # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
@@ -130,6 +141,8 @@ class CeleryInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
+        # pylint: disable=attribute-defined-outside-init
+        self._use_links = use_links
 
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(
@@ -170,14 +183,32 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
-        token = context_api.attach(tracectx) if tracectx is not None else None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
         operation_name = f"{_TASK_RUN}/{task.name}"
-        span = self._tracer.start_span(
-            operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER
-        )
+
+        if self._use_links and tracectx is not None:
+            parent_span_context = trace.get_current_span(
+                tracectx
+            ).get_span_context()
+            links = (
+                [trace.Link(parent_span_context)]
+                if parent_span_context.is_valid
+                else None
+            )
+            span = self._tracer.start_span(
+                operation_name, links=links, kind=trace.SpanKind.CONSUMER
+            )
+            # Don't attach the context when using links to avoid parent-child relationship
+            token = None
+        else:
+            token = (
+                context_api.attach(tracectx) if tracectx is not None else None
+            )
+            span = self._tracer.start_span(
+                operation_name, context=tracectx, kind=trace.SpanKind.CONSUMER
+            )
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
