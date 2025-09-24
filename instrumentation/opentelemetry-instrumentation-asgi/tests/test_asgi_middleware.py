@@ -896,17 +896,17 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         ]
 
         # Test each user agent case separately to avoid span accumulation
-        for i, user_agent in enumerate(test_cases):
+        for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_bot(expected):
+                def update_expected_synthetic_bot(
+                    expected, ua: bytes = user_agent
+                ):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "bot",
                         }
                     )
@@ -933,17 +933,17 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         ]
 
         # Test each user agent case separately to avoid span accumulation
-        for i, user_agent in enumerate(test_cases):
+        for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_test(expected):
+                def update_expected_synthetic_test(
+                    expected, ua: bytes = user_agent
+                ):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "test",
                         }
                     )
@@ -971,18 +971,18 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         ]
 
         # Test each user agent case separately to avoid span accumulation
-        for i, user_agent in enumerate(test_cases):
+        for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_non_synthetic(expected):
+                def update_expected_non_synthetic(
+                    expected, ua: bytes = user_agent
+                ):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                         }
                     )
                     return expected
