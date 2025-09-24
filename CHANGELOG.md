@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+### Added
+- `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
+  ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
 ### Fixed
@@ -40,8 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-util-genai` Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
-  Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics
