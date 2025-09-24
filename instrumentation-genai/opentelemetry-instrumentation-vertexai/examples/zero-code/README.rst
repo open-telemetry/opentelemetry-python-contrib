@@ -1,5 +1,5 @@
 OpenTelemetry VertexAI Instrumentation Example
-============================================
+==============================================
 
 This is an example of how to instrument VertexAI calls with zero code changes,
 using `opentelemetry-instrument`.
