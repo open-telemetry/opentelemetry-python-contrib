@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -2404,7 +2404,7 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry-exporter-credential-provider-gcp"
-source = { editable = "exporter/exporter-credential-providers/gcp-credential-provider" }
+source = { editable = "exporter/opentelemetry-exporter-credential-provider-gcp" }
 dependencies = [
     { name = "google-auth" },
     { name = "grpcio" },
@@ -2413,9 +2413,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-auth", specifier = "~=2.4" },
-    { name = "grpcio", specifier = "~=1.7" },
-    { name = "requests", specifier = "~=2.3" },
+    { name = "google-auth", specifier = ">=2.25" },
+    { name = "grpcio", specifier = ">=1.67.0" },
+    { name = "requests", specifier = ">=2.7" },
 ]
 
 [[package]]

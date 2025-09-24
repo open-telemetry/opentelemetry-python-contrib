@@ -145,14 +145,9 @@ members = [
   "instrumentation/*",
   "instrumentation-genai/*",
   "exporter/*",
-  "exporter/exporter-credential-providers/*",
   "opentelemetry-instrumentation",
   "propagator/*",
   "util/*",
-]
-
-exclude = [
-  "exporter/exporter-credential-providers",
 ]
 
 [tool.ruff]
@@ -210,6 +205,7 @@ include = [
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
+  "exporter/opentelemetry-exporter-credential-provider-gcp",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.
@@ -224,5 +220,4 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
-  "exporter-auth-provider/gcp-auth-provider/tests/**/*.py",
 ]

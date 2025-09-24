@@ -25,21 +25,21 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "grpcio ~= 1.7",
-  "google-auth ~= 2.4",
-  "requests ~= 2.3",
+  "grpcio >= 1.67.0",
+  "google-auth >= 2.25",
+  "requests >= 2.7",
 ]
 
 [project.entry-points.opentelemetry_otlp_credential_provider]
-gcp_grpc_credentials = "opentelemetry.credential_provider:create_google_grpc_credentials"
-gcp_http_credentials = "opentelemetry.credential_provider:create_google_authorized_session"
+gcp_grpc_credentials = "opentelemetry.gcp_credential_provider:create_google_grpc_credentials"
+gcp_http_credentials = "opentelemetry.gcp_credential_provider:create_google_authorized_session"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/exporter/exporter-credential-providers/gcp-credential-provider"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/credential_provider/version.py"
+path = "src/opentelemetry/gcp_credential_provider/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

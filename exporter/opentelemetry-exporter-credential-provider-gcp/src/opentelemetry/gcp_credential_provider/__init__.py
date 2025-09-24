@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import google.auth
-import google.auth.transport.requests
 import grpc
 import requests
 from google.auth.transport.grpc import AuthMetadataPlugin
 from google.auth.transport.requests import AuthorizedSession, Request
+
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
 
 
 def create_google_grpc_credentials() -> grpc.ChannelCredentials:

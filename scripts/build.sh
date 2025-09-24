@@ -16,15 +16,15 @@ DISTDIR=dist
   mkdir -p $DISTDIR
   rm -rf ${DISTDIR:?}/*
 
- for d in exporter/*/ exporter/exporter-credential-providers/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
+ for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"
      cd "$d"
+     # Some ext directories (such as docker tests) are not intended to be
+     # packaged. Verify the intent by looking for a pyproject.toml.
      if [ -f pyproject.toml ]; then
       python3 -m build --outdir "$BASEDIR/dist/"
      fi
-     # Some ext directories (such as docker tests) are not intended to be
-     # packaged. Verify the intent by looking for a pyproject.toml.
    )
  done
 

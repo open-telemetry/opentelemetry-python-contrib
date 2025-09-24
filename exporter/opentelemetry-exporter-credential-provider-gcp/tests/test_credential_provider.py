@@ -25,6 +25,8 @@ from opentelemetry.sdk.environment_variables import (
     _OTEL_PYTHON_EXPORTER_OTLP_HTTP_TRACES_CREDENTIAL_PROVIDER,
 )
 
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportMissingImports=false
+
 
 class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
     @patch("google.auth.default")
@@ -35,7 +37,9 @@ class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
             _OTEL_PYTHON_EXPORTER_OTLP_GRPC_TRACES_CREDENTIAL_PROVIDER: "gcp_grpc_credentials",
         },
     )
-    def test_loads_otlp_exporters_with_google_creds(self, mock_default):  # pylint: disable=no-self-use
+    def test_loads_otlp_exporters_with_google_creds(
+        self, mock_default: MagicMock
+    ):  # pylint: disable=no-self-use
         """Test that OTel configuration internals can load the credentials from entrypoint by
         name"""
         mock_credentials = MagicMock()
