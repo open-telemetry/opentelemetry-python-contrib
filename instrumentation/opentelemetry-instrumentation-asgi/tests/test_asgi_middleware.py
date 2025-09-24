@@ -895,15 +895,18 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             b"bingbot/1.0",
         ]
 
-        for user_agent in test_cases:
+        # Test each user agent case separately to avoid span accumulation
+        for i, user_agent in enumerate(test_cases):
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_bot(expected, ua=user_agent):
+                def update_expected_synthetic_bot(expected):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
+                                "utf8"
+                            ),
                             USER_AGENT_SYNTHETIC_TYPE: "bot",
                         }
                     )
@@ -918,6 +921,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     outputs, modifiers=[update_expected_synthetic_bot]
                 )
 
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
+
     async def test_user_agent_synthetic_test_detection(self):
         """Test that test user agents are detected as synthetic with type 'test'"""
         test_cases = [
@@ -926,15 +932,18 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             b"test-alwayson-client",
         ]
 
-        for user_agent in test_cases:
+        # Test each user agent case separately to avoid span accumulation
+        for i, user_agent in enumerate(test_cases):
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_test(expected, ua=user_agent):
+                def update_expected_synthetic_test(expected):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
+                                "utf8"
+                            ),
                             USER_AGENT_SYNTHETIC_TYPE: "test",
                         }
                     )
@@ -949,6 +958,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     outputs, modifiers=[update_expected_synthetic_test]
                 )
 
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
+
     async def test_user_agent_non_synthetic(self):
         """Test that normal user agents are not marked as synthetic"""
         test_cases = [
@@ -958,16 +970,19 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             b"curl/7.68.0",
         ]
 
-        for user_agent in test_cases:
+        # Test each user agent case separately to avoid span accumulation
+        for i, user_agent in enumerate(test_cases):
             with self.subTest(user_agent=user_agent):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_non_synthetic(expected, ua=user_agent):
+                def update_expected_non_synthetic(expected):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
+                                "utf8"
+                            ),
                         }
                     )
                     return expected
@@ -980,6 +995,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.validate_outputs(
                     outputs, modifiers=[update_expected_non_synthetic]
                 )
+
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
 
     async def test_user_agent_synthetic_new_semconv(self):
         """Test synthetic user agent detection with new semantic conventions"""
