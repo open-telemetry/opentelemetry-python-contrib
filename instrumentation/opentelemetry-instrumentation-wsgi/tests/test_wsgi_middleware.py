@@ -530,6 +530,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.validate_response(response, span_name=method)
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiAttributes(unittest.TestCase):
     def setUp(self):
         self.environ = {}

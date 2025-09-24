@@ -900,12 +900,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_bot(expected):
+                def update_expected_synthetic_bot(expected, ua=user_agent):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "bot",
                         }
                     )
@@ -933,12 +931,10 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_synthetic_test(expected):
+                def update_expected_synthetic_test(expected, ua=user_agent):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "test",
                         }
                     )
@@ -967,13 +963,11 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 # Clear headers first
                 self.scope["headers"] = []
 
-                def update_expected_non_synthetic(expected):
+                def update_expected_non_synthetic(expected, ua=user_agent):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: user_agent.decode(
-                                "utf8"
-                            ),
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
                         }
                     )
                     return expected
