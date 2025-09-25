@@ -117,7 +117,7 @@ class ConverseStreamWrapper(ObjectProxy):
                         self._content_block["toolUse"]["input"] = json.loads(
                             self._tool_json_input_buf
                         )
-                    except json.DecodeError:
+                    except json.JSONDecodeError:
                         self._content_block["toolUse"]["input"] = (
                             self._tool_json_input_buf
                         )
