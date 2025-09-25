@@ -1,13 +1,13 @@
 OpenTelemetry Langchain Zero-Code Instrumentation Example
-======================================================
+=========================================================
 
 This is an example of how to instrument Langchain with zero code changes,
 using `opentelemetry-instrument`.
 
-When :code:`main.py <main.py>`_ is run, it exports traces to an OTLP-compatible endpoint.
+When `main.py <main.py>`_ is run, it exports traces to an OTLP-compatible endpoint.
 Traces include details such as the span name and other attributes.
 
-Note: :code:`.env <.env>`_ file configures additional environment variables:
+Note: `.env <.env>`_ file configures additional environment variables:
 - :code:`OTEL_LOGS_EXPORTER=otlp` to specify exporter type.
 - :code:`OPENAI_API_KEY` open AI key for accessing the OpenAI API.
 - :code:`OTEL_EXPORTER_OTLP_ENDPOINT` to specify the endpoint for exporting traces (default is http://localhost:4317).
@@ -15,7 +15,7 @@ Note: :code:`.env <.env>`_ file configures additional environment variables:
 Setup
 -----
 
-Minimally, update the :code:`.env <.env>`_ file with your :code:`OPENAI_API_KEY`.
+Minimally, update the `.env <.env>`_ file with your :code:`OPENAI_API_KEY`.
 An OTLP compatible endpoint should be listening for traces http://localhost:4317.
 If not, update :code:`OTEL_EXPORTER_OTLP_ENDPOINT` as well.
 
