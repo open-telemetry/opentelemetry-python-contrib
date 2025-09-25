@@ -48,7 +48,12 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace.span import Span
-from opentelemetry.util.genai.types import ContentCapturingMode, MessagePart
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    MessagePart,
+    InputMessage,
+    OutputMessage,
+)
 from opentelemetry.util.genai.upload_hook import load_upload_hook
 
 from .allowlist_util import AllowList
@@ -56,8 +61,6 @@ from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .message import (
-    InputMessage,
-    OutputMessage,
     to_input_messages,
     to_output_messages,
     to_system_instructions,
@@ -263,11 +266,17 @@ def _create_completion_details_attributes(
     as_str: bool = False,
 ) -> dict[str, Any]:
     attributes: dict[str, Any] = {
-        "gen_ai.input.messages": [dataclasses.asdict(input_message) for input_message in input_messages],
-        "gen_ai.output.messages": [dataclasses.asdict(output_message) for output_message in output_messages],
+        gen_ai_attributes.GEN_AI_INPUT_MESSAGES: [
+            dataclasses.asdict(input_message) for input_message in input_messages
+        ],
+        gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES: [
+            dataclasses.asdict(output_message) for output_message in output_messages
+        ],
     }
     if system_instructions:
-        attributes["gen_ai.system.instructions"] = [dataclasses.asdict(sys_instr) for sys_instr in system_instructions]
+        attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS] = [
+            dataclasses.asdict(sys_instr) for sys_instr in system_instructions
+        ]
 
     if as_str:
         return {k: json.dumps(v) for k, v in attributes.items()}
@@ -455,15 +464,16 @@ class _GenerateContentInstrumentationHelper:
         input_messages = to_input_messages(contents=transformers.t_contents(request))
         output_messages = to_output_messages(candidates=response.candidates or [])
 
-
-
         span = None
         if self._content_recording_enabled in [
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
             completion_details_attributes = _create_completion_details_attributes(
-                input_messages, output_messages, system_instructions, as_str=True,
+                input_messages,
+                output_messages,
+                system_instructions,
+                as_str=True,
             )
             span = trace.get_current_span()
             span.set_attributes(completion_details_attributes)
@@ -472,10 +482,14 @@ class _GenerateContentInstrumentationHelper:
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
             completion_details_attributes = _create_completion_details_attributes(
-                input_messages, output_messages, system_instructions,
+                input_messages,
+                output_messages,
+                system_instructions,
             )
             attributes.update(completion_details_attributes)
-            event = Event(name="gen_ai.client.inference.operation.details", attributes=attributes)
+            event = Event(
+                name="gen_ai.client.inference.operation.details", attributes=attributes
+            )
             hook = load_upload_hook()
             hook.upload(
                 inputs=input_messages,
