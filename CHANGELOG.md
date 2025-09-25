@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+- Add `rstcheck` to pre-commit to stop introducing invalid RST
+  ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
+
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
