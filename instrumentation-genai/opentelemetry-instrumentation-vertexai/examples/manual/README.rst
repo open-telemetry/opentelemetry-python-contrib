@@ -1,5 +1,5 @@
 OpenTelemetry VertexAI Instrumentation Example
-============================================
+==============================================
 
 This is an example of how to instrument VertexAI calls when configuring OpenTelemetry SDK and Instrumentations manually.
 
@@ -12,8 +12,8 @@ your VertexAI requests.
 Note: `.env <.env>`_ file configures additional environment variables:
 
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` configures
-VertexAI instrumentation to capture prompt and completion contents on
-events.
+  VertexAI instrumentation to capture prompt and completion contents on
+  events.
 
 Setup
 -----
