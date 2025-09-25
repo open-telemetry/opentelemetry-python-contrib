@@ -1,5 +1,5 @@
 OpenTelemetry Util for GenAI
-=======================
+============================
 
 
 The GenAI Utils package will include boilerplate and helpers to standardize instrumentation for Generative AI. 
