@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import urllib.parse
 from contextlib import contextmanager
+from contextvars import Token
 from importlib import import_module
 from re import escape, sub
 from typing import Any, Dict, Generator, Sequence
@@ -30,10 +31,11 @@ from opentelemetry.context import (
     _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
     _SUPPRESS_INSTRUMENTATION_KEY,
 )
+from opentelemetry.context.context import Context
 
 # pylint: disable=E0611
 from opentelemetry.propagate import extract
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import Span, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -119,7 +121,7 @@ def _start_internal_or_server_span(
     context_carrier,
     context_getter,
     attributes=None,
-):
+) -> tuple[Span, Token[Context]]:
     """Returns internal or server span along with the token which can be used by caller to reset context
 
 
@@ -136,13 +138,13 @@ def _start_internal_or_server_span(
             from carrier.
     """
 
-    token = ctx = span_kind = None
     if trace.get_current_span() is trace.INVALID_SPAN:
         ctx = extract(context_carrier, getter=context_getter)
         token = context.attach(ctx)
         span_kind = trace.SpanKind.SERVER
     else:
         ctx = context.get_current()
+        token = None
         span_kind = trace.SpanKind.INTERNAL
     span = tracer.start_span(
         name=span_name,
