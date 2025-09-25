@@ -34,7 +34,7 @@ from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai.upload_hook import UploadHook
+from opentelemetry.util.genai.completion_hook import CompletionHook
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
     gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
@@ -75,12 +75,12 @@ def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
     return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
 
 
-class FsspecUploadHook(UploadHook):
-    """An upload hook using ``fsspec`` to upload to external storage
+class FsspecUploadCompletionHook(CompletionHook):
+    """An completion hook using ``fsspec`` to upload to external storage
 
     This function can be used as the
-    :func:`~opentelemetry.util.genai.upload_hook.load_upload_hook` implementation by
-    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK` to ``fsspec``.
+    :func:`~opentelemetry.util.genai.completion_hook.load_completion_hook` implementation by
+    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK` to ``fsspec_upload``.
     :envvar:`OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH` must be configured to specify the
     base path for uploads.
 
@@ -128,7 +128,7 @@ class FsspecUploadHook(UploadHook):
                 fut.add_done_callback(done)
             except RuntimeError:
                 _logger.info(
-                    "attempting to upload file after FsspecUploadHook.shutdown() was already called"
+                    "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called"
                 )
                 self._semaphore.release()
 
@@ -161,7 +161,7 @@ class FsspecUploadHook(UploadHook):
                 cls=Base64JsonEncoder,
             )
 
-    def upload(
+    def on_completion(
         self,
         *,
         inputs: list[types.InputMessage],
