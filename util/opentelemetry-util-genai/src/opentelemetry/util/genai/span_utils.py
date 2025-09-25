@@ -60,9 +60,7 @@ def _apply_common_span_attributes(
         # TODO: clean provider name to match GenAiProviderNameValues?
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
 
-    finish_reasons: List[str] = []
-    for gen in invocation.output_messages:
-        finish_reasons.append(gen.finish_reason)
+    finish_reasons = [gen.finish_reason for gen in invocation.output_messages]
     if finish_reasons:
         span.set_attribute(
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
