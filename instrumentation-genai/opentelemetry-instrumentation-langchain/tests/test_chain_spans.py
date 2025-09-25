@@ -7,7 +7,6 @@ import pytest
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as GenAI
 from opentelemetry.trace import SpanKind
 
 

@@ -98,7 +98,9 @@ class _SpanManager:
         agent_name: Optional[str] = None,
     ) -> Span:
         """Create a span for agent invocation."""
-        span_name = f"invoke_agent {agent_name}" if agent_name else "invoke_agent"
+        span_name = (
+            f"invoke_agent {agent_name}" if agent_name else "invoke_agent"
+        )
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,

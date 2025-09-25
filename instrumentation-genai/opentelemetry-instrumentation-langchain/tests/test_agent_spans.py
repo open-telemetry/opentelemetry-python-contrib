@@ -1,6 +1,6 @@
 """Tests for agent-related spans in LangChain instrumentation."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -9,7 +9,9 @@ from langchain_core.agents import AgentAction, AgentFinish
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as GenAI
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.trace import SpanKind
 
 
@@ -26,7 +28,10 @@ def test_agent_chain_span(callback_handler, span_exporter):
 
     # Start a chain that represents an agent
     callback_handler.on_chain_start(
-        serialized={"name": "TestAgent", "id": ["langchain", "agents", "TestAgent"]},
+        serialized={
+            "name": "TestAgent",
+            "id": ["langchain", "agents", "TestAgent"],
+        },
         inputs={"input": "What is the capital of France?"},
         run_id=run_id,
         parent_run_id=parent_run_id,
@@ -99,7 +104,10 @@ def test_agent_action_tracking(callback_handler, span_exporter):
     span = spans[0]
     assert span.attributes.get("langchain.agent.action.tool") == "calculator"
     assert span.attributes.get("langchain.agent.action.tool_input") == "2 + 2"
-    assert span.attributes.get("langchain.agent.finish.output") == "The answer is 4"
+    assert (
+        span.attributes.get("langchain.agent.finish.output")
+        == "The answer is 4"
+    )
 
 
 def test_regular_chain_without_agent(callback_handler, span_exporter):
@@ -131,7 +139,9 @@ def test_regular_chain_without_agent(callback_handler, span_exporter):
     assert span.name == "chain RegularChain"
     assert span.kind == SpanKind.INTERNAL
     assert GenAI.GEN_AI_AGENT_NAME not in span.attributes
-    assert GenAI.GEN_AI_OPERATION_NAME not in span.attributes  # Regular chains don't have operation name
+    assert (
+        GenAI.GEN_AI_OPERATION_NAME not in span.attributes
+    )  # Regular chains don't have operation name
 
 
 def test_chain_error_handling(callback_handler, span_exporter):
