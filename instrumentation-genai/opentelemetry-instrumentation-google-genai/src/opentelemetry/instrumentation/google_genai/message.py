@@ -15,31 +15,36 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum
 
 from google.genai import types as genai_types
 from opentelemetry.util.genai.types import (
-    InputMessage,
-    OutputMessage,
-    MessagePart,
     FinishReason,
+    InputMessage,
+    MessagePart,
+    OutputMessage,
     Text,
     ToolCall,
     ToolCallResponse,
 )
 
-from .message_models import (
-    # BlobPart,
-    # FileDataPart,
-    Role,
-)
+
+class Role(str, Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
 
 _logger = logging.getLogger(__name__)
+
 
 def to_input_messages(
     *,
     contents: list[genai_types.Content],
 ) -> list[InputMessage]:
     return [_to_input_message(content) for content in contents]
+
 
 def to_output_messages(
     *,
@@ -58,31 +63,28 @@ def to_output_messages(
             parts=message.parts,
         )
 
-    messages = (
-        content_to_output_message(candidate) for candidate in candidates
-    )
+    messages = (content_to_output_message(candidate) for candidate in candidates)
     return [message for message in messages if message is not None]
+
 
 def to_system_instructions(
     *,
     content: genai_types.Content,
 ) -> list[MessagePart]:
-    parts = (
-        _to_part(part, idx) for idx, part in enumerate(content.parts or [])
-    )
+    parts = (_to_part(part, idx) for idx, part in enumerate(content.parts or []))
     return [part for part in parts if part is not None]
+
 
 def _to_input_message(
     content: genai_types.Content,
 ) -> InputMessage:
-    parts = (
-        _to_part(part, idx) for idx, part in enumerate(content.parts or [])
-    )
+    parts = (_to_part(part, idx) for idx, part in enumerate(content.parts or []))
     return InputMessage(
         role=_to_role(content.role),
         # filter Nones
         parts=[part for part in parts if part is not None],
     )
+
 
 def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
     def tool_call_id(name: str | None) -> str:
@@ -93,29 +95,22 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
     if (text := part.text) is not None:
         return Text(content=text)
 
-    # if data := part.inline_data:  # TODO ???
-    #     return BlobPart(mime_type=data.mime_type or "", data=data.data or b"")
-
-    # if data := part.file_data: # TODO ???
-    #     return FileDataPart(
-    #         mime_type=data.mime_type or "", file_uri=data.file_uri or ""
-    #     )
-
     if call := part.function_call:
         return ToolCall(
-            id=call.id or tool_call_id(call.name), # TODO ???
+            id=call.id or tool_call_id(call.name),
             name=call.name or "",
             arguments=call.args,
         )
 
     if response := part.function_response:
         return ToolCallResponse(
-            id=response.id or tool_call_id(response.name), # TODO ???
+            id=response.id or tool_call_id(response.name),
             response=response.response,
         )
 
     _logger.info("Unknown part dropped from telemetry %s", part)
     return None
+
 
 def _to_role(role: str | None) -> str:
     if role == "user":
