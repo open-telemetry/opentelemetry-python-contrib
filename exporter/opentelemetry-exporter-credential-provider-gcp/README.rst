@@ -1,5 +1,5 @@
 OpenTelemetry GCP Credential Provider for OTLP Exporters
-==============================================
+========================================================
 
 .. image:: https://badge.fury.io/py/opentelemetry-exporter-credential-provider-gcp.svg
     :target: https://badge.fury.io/py/opentelemetry-exporter-credential-provider-gcp

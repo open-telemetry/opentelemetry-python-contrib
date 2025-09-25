@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import environ
+from platform import python_implementation
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from google.auth.transport.requests import AuthorizedSession
+from pytest import mark
 
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter,
@@ -36,6 +38,9 @@ class TestOTLPTraceAutoInstrumentGcpCredential(TestCase):
             _OTEL_PYTHON_EXPORTER_OTLP_HTTP_TRACES_CREDENTIAL_PROVIDER: "gcp_http_credentials",
             _OTEL_PYTHON_EXPORTER_OTLP_GRPC_TRACES_CREDENTIAL_PROVIDER: "gcp_grpc_credentials",
         },
+    )
+    @mark.skipif(
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
     )
     def test_loads_otlp_exporters_with_google_creds(
         self, mock_default: MagicMock
