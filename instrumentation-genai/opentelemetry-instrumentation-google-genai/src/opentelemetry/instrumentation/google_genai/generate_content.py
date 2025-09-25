@@ -475,7 +475,7 @@ class _GenerateContentInstrumentationHelper:
                 input_messages, output_messages, system_instructions,
             )
             attributes.update(completion_details_attributes)
-            event = Event(name="gen_ai.completion.details", attributes=attributes)
+            event = Event(name="gen_ai.client.inference.operation.details", attributes=attributes)
             hook = load_upload_hook()
             hook.upload(
                 inputs=input_messages,
