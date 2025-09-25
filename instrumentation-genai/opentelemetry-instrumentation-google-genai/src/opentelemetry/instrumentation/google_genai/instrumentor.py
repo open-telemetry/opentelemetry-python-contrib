@@ -18,6 +18,7 @@ from opentelemetry._events import get_event_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter_provider
 from opentelemetry.trace import get_tracer_provider
+from opentelemetry.util.genai.upload_hook import load_upload_hook
 
 from .allowlist_util import AllowList
 from .generate_content import (
@@ -58,8 +59,10 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
             event_logger_provider=event_logger_provider,
             meter_provider=meter_provider,
         )
+        upload_hook = kwargs.get("upload_hook") or load_upload_hook()
         self._generate_content_snapshot = instrument_generate_content(
             otel_wrapper,
+            upload_hook,
             generate_content_config_key_allowlist=self._generate_content_config_key_allowlist,
         )
 
