@@ -48,7 +48,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace.span import Span
-from opentelemetry.util.genai.types import ContentCapturingMode
+from opentelemetry.util.genai.types import ContentCapturingMode, MessagePart
 from opentelemetry.util.genai.upload_hook import load_upload_hook
 
 from .allowlist_util import AllowList
@@ -60,7 +60,7 @@ from .message import (
     OutputMessage,
     to_input_messages,
     to_output_messages,
-    to_system_instruction,
+    to_system_instructions,
 )
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
@@ -259,20 +259,18 @@ def _config_to_system_instruction(
 def _create_completion_details_attributes(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
-    system_instruction: Union[InputMessage, None],
-):
-    attributes = {
-        "gen_ai.input.messages": json.dumps(
-            [dataclasses.asdict(input_message) for input_message in input_messages]
-        ),
-        "gen_ai.output.messages": json.dumps(
-            [dataclasses.asdict(output_message) for output_message in output_messages]
-        ),
+    system_instructions: list[MessagePart],
+    as_str: bool = False,
+) -> dict[str, Any]:
+    attributes: dict[str, Any] = {
+        "gen_ai.input.messages": [dataclasses.asdict(input_message) for input_message in input_messages],
+        "gen_ai.output.messages": [dataclasses.asdict(output_message) for output_message in output_messages],
     }
-    if system_instruction:
-        attributes["gen_ai.system.instructions"] = json.dumps(
-            dataclasses.asdict(system_instruction)
-        )
+    if system_instructions:
+        attributes["gen_ai.system.instructions"] = [dataclasses.asdict(sys_instr) for sys_instr in system_instructions]
+
+    if as_str:
+        return {k: json.dumps(v) for k, v in attributes.items()}
 
     return attributes
 
@@ -449,46 +447,45 @@ class _GenerateContentInstrumentationHelper:
         attributes = {
             gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
         }
-        system_instruction = None
+        system_instructions = []
         if system_content := _config_to_system_instruction(config):
-            system_instruction = to_system_instruction(
+            system_instructions = to_system_instructions(
                 content=transformers.t_contents(system_content)[0]
             )
         input_messages = to_input_messages(contents=transformers.t_contents(request))
         output_messages = to_output_messages(candidates=response.candidates or [])
 
-        completion_details_attributes = _create_completion_details_attributes(
-            input_messages, output_messages, system_instruction
-        )
+
 
         span = None
         if self._content_recording_enabled in [
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
+            completion_details_attributes = _create_completion_details_attributes(
+                input_messages, output_messages, system_instructions, as_str=True,
+            )
             span = trace.get_current_span()
             span.set_attributes(completion_details_attributes)
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
+            completion_details_attributes = _create_completion_details_attributes(
+                input_messages, output_messages, system_instructions,
+            )
             attributes.update(completion_details_attributes)
             event = Event(name="gen_ai.completion.details", attributes=attributes)
             hook = load_upload_hook()
             hook.upload(
                 inputs=input_messages,
                 outputs=output_messages,
-                system_instruction=(
-                    system_instruction.parts if system_instruction else []
-                ),
+                system_instruction=system_instructions,
                 span=span,
                 log_record=event,
             )
-            # TODO Cannot access attribute shutdown for class UploadHook
-            # hook.shutdown()
-            self._otel_wrapper.log_completion_details(
-                event=event,
-            )
+            hook.shutdown()
+            self._otel_wrapper.log_completion_details(event=event)
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None

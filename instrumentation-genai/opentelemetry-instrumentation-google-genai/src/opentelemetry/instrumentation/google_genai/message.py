@@ -39,7 +39,7 @@ def to_input_messages(
     *,
     contents: list[genai_types.Content],
 ) -> list[InputMessage]:
-    return [_to_input_message(content) for content in contents])
+    return [_to_input_message(content) for content in contents]
 
 def to_output_messages(
     *,
@@ -63,11 +63,14 @@ def to_output_messages(
     )
     return [message for message in messages if message is not None]
 
-def to_system_instruction(
+def to_system_instructions(
     *,
     content: genai_types.Content,
-) -> InputMessage:
-    return _to_input_message(content)
+) -> list[MessagePart]:
+    parts = (
+        _to_part(part, idx) for idx, part in enumerate(content.parts or [])
+    )
+    return [part for part in parts if part is not None]
 
 def _to_input_message(
     content: genai_types.Content,
@@ -114,11 +117,11 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
     _logger.info("Unknown part dropped from telemetry %s", part)
     return None
 
-def _to_role(role: str | None) -> Role | str:
+def _to_role(role: str | None) -> str:
     if role == "user":
-        return Role.USER
+        return Role.USER.value
     if role == "model":
-        return Role.ASSISTANT
+        return Role.ASSISTANT.value
     return ""
 
 
