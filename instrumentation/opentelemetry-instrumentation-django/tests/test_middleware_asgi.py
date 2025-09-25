@@ -30,7 +30,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
-    _DjangoMiddleware,
+    DjangoMiddleware,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -137,11 +137,11 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.env_patch.start()
         _django_instrumentor.instrument()
         self.exclude_patch = patch(
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware._excluded_urls",
             get_excluded_urls("DJANGO"),
         )
         self.traced_patch = patch(
-            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._traced_request_attrs",
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.DjangoMiddleware._traced_request_attrs",
             get_traced_request_attrs("DJANGO"),
         )
         self.exclude_patch.start()
@@ -573,12 +573,12 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             response_hook_args = (span, request, response)
             response["hook-header"] = "set by hook"
 
-        _DjangoMiddleware._otel_request_hook = request_hook
-        _DjangoMiddleware._otel_response_hook = response_hook
+        DjangoMiddleware._otel_request_hook = request_hook
+        DjangoMiddleware._otel_response_hook = response_hook
 
         response = await self.async_client.get("/span_name/1234/")
-        _DjangoMiddleware._otel_request_hook = (
-            _DjangoMiddleware._otel_response_hook
+        DjangoMiddleware._otel_request_hook = (
+            DjangoMiddleware._otel_response_hook
         ) = None
 
         self.assertEqual(response["hook-header"], "set by hook")
