@@ -6,9 +6,9 @@ OpenTelemetry OpenAI Agents Instrumentation
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai-agents.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-openai-agents/
 
-This library allows tracing OpenAI Agents framework requests and logging of messages made by the
-`OpenAI Python API library <https://pypi.org/project/openai/>`_ when used with agent frameworks.
-It also captures the duration of the operations and the number of tokens used as metrics.
+This library instruments the `OpenAI Agents framework <https://openai.github.io/openai-agents-python/>`_
+to trace requests and log messages flowing through agents. It also captures operation duration and
+token usage as metrics.
 
 Installation
 ------------
