@@ -45,7 +45,7 @@ class TestOpenAIAgentsInstrumentor(TestBase):
         """Test that instrumentation dependencies are returned."""
         dependencies = self.instrumentor.instrumentation_dependencies()
         self.assertIsInstance(dependencies, tuple)
-        self.assertEqual(dependencies, ("openai-agent >= 0.1.0",))
+        self.assertEqual(dependencies, ("openai-agents >= 0.3.2",))
 
     @mock.patch.dict(
         "os.environ",

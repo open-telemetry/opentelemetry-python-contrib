@@ -21,8 +21,8 @@ Dependency note
 ---------------
 
 This instrumentation integrates with the OpenAI Agents framework via the
-`openai-agent <https://pypi.org/project/openai-agent/>`_ package. Ensure
-``openai-agent>=0.1.0`` is installed in environments where agent events are
+`openai-agents <https://pypi.org/project/openai-agents/>`_ package. Ensure
+``openai-agents>=0.3.2`` is installed in environments where agent events are
 emitted; otherwise, the instrumentor will load but skip processor setup.
 
 Usage

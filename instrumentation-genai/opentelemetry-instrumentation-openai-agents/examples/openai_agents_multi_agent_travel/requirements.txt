@@ -1,6 +1,6 @@
 python-dotenv
 openai>=1.40.0
-openai-agents>=0.2.9
+openai-agents>=0.3.2
 pydantic>=2.7.0
 
 # OpenTelemetry core & exporters
