@@ -4,10 +4,7 @@
 
 ### Added
 
-- Initial implementation of OpenAI Agents instrumentation
-- Support for OpenAI API client tracing in agent frameworks
-- Capture of request/response content and metrics
-- Configuration options for content capture and metrics collection
+- Initial implementation of OpenAI Agents instrumentation ([#3762](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3762))
 
 ### Changed
 
