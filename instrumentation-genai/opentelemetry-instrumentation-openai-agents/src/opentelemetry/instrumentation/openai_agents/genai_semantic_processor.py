@@ -98,11 +98,8 @@ from .events import emit_operation_details_event
 
 # Import utilities and event helpers
 from .utils import (
-    is_content_enabled,
-    is_metrics_enabled,
     normalize_output_type,
     normalize_provider,
-    should_emit_operation_details,
     validate_tool_type,
 )
 
@@ -260,26 +257,16 @@ class GenAISemanticProcessor(TracingProcessor):
         self._otel_spans: dict[str, OtelSpan] = {}
         self._tokens: dict[str, object] = {}
 
-        # Metrics configuration
-        self._metrics_enabled = is_metrics_enabled()
+        # Metrics configuration (always enabled)
+        self._metrics_enabled = True
         self._meter = None
         self._duration_histogram: Optional[Histogram] = None
         self._token_usage_histogram: Optional[Histogram] = None
 
-        # Configuration for opt-in attributes
-        self._capture_system_instructions = (
-            os.getenv(
-                "OTEL_GENAI_CAPTURE_SYSTEM_INSTRUCTIONS", "false"
-            ).lower()
-            == "true"
-        )
-        self._capture_messages = (
-            os.getenv("OTEL_GENAI_CAPTURE_MESSAGES", "false").lower() == "true"
-        )
-        self._capture_tool_definitions = (
-            os.getenv("OTEL_GENAI_CAPTURE_TOOL_DEFINITIONS", "false").lower()
-            == "true"
-        )
+        # Configuration for attribute capture (always enabled)
+        self._capture_system_instructions = True
+        self._capture_messages = True
+        self._capture_tool_definitions = True
 
         # Initialize metrics if enabled
         if self._metrics_enabled:
@@ -577,7 +564,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 attributes[key] = value
 
             # Emit operation details event if configured
-            if should_emit_operation_details() and self._event_logger:
+            if self._event_logger:
                 emit_operation_details_event(
                     self._event_logger, attributes, otel_span
                 )
@@ -758,9 +745,9 @@ class GenAISemanticProcessor(TracingProcessor):
                 if k in mc and mc[k] is not None:
                     yield attr, mc[k]
 
-        # Sensitive data (opt-in)
-        if self.include_sensitive_data and is_content_enabled():
-            # Input messages (opt-in)
+        # Sensitive data capture
+        if self.include_sensitive_data:
+            # Input messages
             if self._capture_messages and span_data.input:
                 yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(span_data.input)
                 if self.emit_legacy:
@@ -769,7 +756,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(span_data.input),
                     )
 
-            # System instructions (opt-in)
+            # System instructions
             if self._capture_system_instructions and span_data.input:
                 sys_instr = self._collect_system_instructions(span_data.input)
                 if sys_instr:
@@ -778,7 +765,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(sys_instr),
                     )
 
-            # Output messages (opt-in)
+            # Output messages
             if self._capture_messages and span_data.output:
                 yield GEN_AI_OUTPUT_MESSAGES, safe_json_dumps(span_data.output)
                 if self.emit_legacy:
@@ -817,7 +804,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "conversation_id") and span_data.conversation_id:
             yield GEN_AI_CONVERSATION_ID, span_data.conversation_id
 
-        # Agent definitions (opt-in)
+        # Agent definitions
         if self._capture_tool_definitions and hasattr(
             span_data, "agent_definitions"
         ):
@@ -826,7 +813,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 safe_json_dumps(span_data.agent_definitions),
             )
 
-        # System instructions from agent definitions (opt-in)
+        # System instructions from agent definitions
         if self._capture_system_instructions and hasattr(
             span_data, "agent_definitions"
         ):
@@ -876,7 +863,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "description") and span_data.description:
             yield GEN_AI_TOOL_DESCRIPTION, span_data.description
 
-        # Tool definitions (opt-in)
+        # Tool definitions
         if self._capture_tool_definitions and hasattr(
             span_data, "tool_definitions"
         ):
@@ -885,8 +872,8 @@ class GenAISemanticProcessor(TracingProcessor):
                 safe_json_dumps(span_data.tool_definitions),
             )
 
-        # Tool input/output (sensitive, opt-in via include_sensitive_data)
-        if self.include_sensitive_data and is_content_enabled():
+        # Tool input/output (sensitive)
+        if self.include_sensitive_data:
             if span_data.input is not None:
                 arg_val = (
                     safe_json_dumps(span_data.input)
@@ -967,8 +954,8 @@ class GenAISemanticProcessor(TracingProcessor):
                 ):
                     yield GEN_AI_USAGE_TOTAL_TOKENS, usage.total_tokens
 
-        # Input/output messages (opt-in)
-        if self.include_sensitive_data and is_content_enabled():
+        # Input/output messages
+        if self.include_sensitive_data:
             # Input messages
             if self._capture_messages and span_data.input:
                 yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(span_data.input)
@@ -1032,8 +1019,8 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "format") and span_data.format:
             yield "gen_ai.audio.input.format", span_data.format
 
-        # Transcript (sensitive, opt-in)
-        if self.include_sensitive_data and is_content_enabled():
+        # Transcript (sensitive)
+        if self.include_sensitive_data:
             if self._capture_messages and hasattr(span_data, "transcript"):
                 yield "gen_ai.transcription.text", span_data.transcript
 
@@ -1057,8 +1044,8 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "format") and span_data.format:
             yield "gen_ai.audio.output.format", span_data.format
 
-        # Input text (sensitive, opt-in)
-        if self.include_sensitive_data and is_content_enabled():
+        # Input text (sensitive)
+        if self.include_sensitive_data:
             if self._capture_messages and hasattr(span_data, "input_text"):
                 yield "gen_ai.speech.input_text", span_data.input_text
 

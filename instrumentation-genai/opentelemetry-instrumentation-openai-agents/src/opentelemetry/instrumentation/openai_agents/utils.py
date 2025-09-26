@@ -12,36 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import environ
 from typing import Optional
 
 from .constants import GenAIOutputType, GenAIProvider, GenAIToolType
-
-_EMIT_OP_DETAILS_ENV = "OTEL_GENAI_EMIT_OPERATION_DETAILS"
-
-
-OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT = (
-    "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT"
-)
-OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS = (
-    "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS"
-)
-
-
-def is_content_enabled() -> bool:
-    """Check if content capture is enabled."""
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT, "false"
-    )
-    return capture_content.lower() == "true"
-
-
-def is_metrics_enabled() -> bool:
-    """Check if metrics capture is enabled."""
-    capture_metrics = environ.get(
-        OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS, "true"
-    )
-    return capture_metrics.lower() == "true"
 
 
 def get_agent_operation_name(operation: str) -> str:
@@ -102,9 +75,3 @@ def normalize_output_type(output_type: Optional[str]) -> str:
     }:
         return o
     return GenAIOutputType.TEXT  # default for unknown
-
-
-def should_emit_operation_details() -> bool:
-    """Check if operation details event should be emitted."""
-    raw = environ.get(_EMIT_OP_DETAILS_ENV, "true")
-    return raw.lower() not in {"0", "false", "no"}

@@ -48,12 +48,8 @@ It provides detailed tracing information including:
 Configuration
 -------------
 
-Environment variables:
-
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT``: ``true`` to
-    capture request/response content (default ``false``).
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS``: ``true`` to
-    capture metrics (default ``true``).
+Content, metrics, and events are captured by default with no environment configuration.
+This library assumes full capture is desired when installed.
 """
 
 import logging

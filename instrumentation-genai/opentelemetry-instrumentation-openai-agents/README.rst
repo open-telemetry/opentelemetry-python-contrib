@@ -1,5 +1,5 @@
 OpenTelemetry OpenAI Agents Instrumentation
-==========================================
+===========================================
 
 |pypi|
 
@@ -44,12 +44,10 @@ API
 The `opentelemetry-instrumentation-openai-agents` package provides automatic instrumentation for the OpenAI Agents framework.
 
 Configuration
--------------
+--------------
 
-The following environment variables can be used to configure the instrumentation:
-
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT``: Set to ``true`` to capture the content of the requests and responses. Default is ``false``.
-- ``OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS``: Set to ``true`` to capture metrics. Default is ``true``.
+This instrumentation captures content, metrics, and events by default with no additional configuration required.
+If you are installing and setting up this tracing library, the assumption is you want full capture.
 
 References
 ----------

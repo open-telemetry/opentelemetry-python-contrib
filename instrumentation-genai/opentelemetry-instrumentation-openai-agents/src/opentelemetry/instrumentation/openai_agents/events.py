@@ -7,23 +7,17 @@ spec-defined GenAI events:
 - gen_ai.evaluation.result (helper only; actual evaluation may happen
   externally – e.g. offline evaluator script)
 
-Environment toggles:
-- OTEL_GENAI_EMIT_OPERATION_DETAILS (default: true)
-- OTEL_GENAI_EMIT_EVALUATION_RESULTS (default: true)
+All GenAI events are emitted by default.
 """
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, Optional
 
 from opentelemetry._events import Event
 
 OP_DETAILS_EVENT = "gen_ai.client.inference.operation.details"
 EVAL_RESULT_EVENT = "gen_ai.evaluation.result"
-
-_OP_DETAILS_ENABLED_ENV = "OTEL_GENAI_EMIT_OPERATION_DETAILS"
-_EVAL_RESULTS_ENABLED_ENV = "OTEL_GENAI_EMIT_EVALUATION_RESULTS"
 
 # Attribute allowlist subset to avoid dumping huge blobs blindly.
 # (Large content already controlled by capture-content env var.)
@@ -45,13 +39,6 @@ _OPERATION_DETAILS_CORE_KEYS = {
 _MAX_VALUE_LEN = 4000  # defensive truncation
 
 
-def _enabled(env_name: str, default_true: bool = True) -> bool:
-    raw = os.getenv(env_name)
-    if raw is None:
-        return default_true
-    return raw.lower() not in {"0", "false", "no"}
-
-
 def emit_operation_details_event(
     event_logger,
     span_attributes: Dict[str, Any],
@@ -66,8 +53,7 @@ def emit_operation_details_event(
     """
     if not event_logger:
         return
-    if not _enabled(_OP_DETAILS_ENABLED_ENV, True):
-        return
+    # Always enabled
 
     attrs: Dict[str, Any] = {}
     for k in _OPERATION_DETAILS_CORE_KEYS:
@@ -114,8 +100,7 @@ def emit_evaluation_result_event(
     """
     if not event_logger:
         return
-    if not _enabled(_EVAL_RESULTS_ENABLED_ENV, True):
-        return
+    # Always enabled
 
     attrs: Dict[str, Any] = {"gen_ai.evaluation.name": name}
     if score_value is not None:
