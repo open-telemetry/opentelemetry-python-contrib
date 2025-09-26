@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Iterator, Optional, Sequence
 from urllib.parse import urlparse
@@ -224,25 +223,14 @@ class GenAISemanticProcessor(TracingProcessor):
         self.base_url = base_url
         self.emit_legacy = emit_legacy
 
-        # Agent information - prefer environment variables, then init parameters
-        self.agent_name = os.getenv("OTEL_GENAI_AGENT_NAME", agent_name)
-        self.agent_id = os.getenv("OTEL_GENAI_AGENT_ID", agent_id)
-        self.agent_description = os.getenv(
-            "OTEL_GENAI_AGENT_DESCRIPTION", agent_description
-        )
+        # Agent information - use init parameters or defaults
+        self.agent_name = agent_name or "agent"
+        self.agent_id = agent_id or "unknown"
+        self.agent_description = agent_description or "instrumented agent"
 
-        # Server information - prefer environment variables, then init parameters, then base_url
-        self.server_address = os.getenv(
-            "OTEL_GENAI_SERVER_ADDRESS", server_address
-        )
-        self.server_port = os.getenv("OTEL_GENAI_SERVER_PORT")
-        if self.server_port:
-            try:
-                self.server_port = int(self.server_port)
-            except ValueError:
-                self.server_port = None
-        else:
-            self.server_port = server_port
+        # Server information - use init parameters, then base_url inference
+        self.server_address = server_address
+        self.server_port = server_port
 
         # If server info not provided, try to extract from base_url
         if (not self.server_address or not self.server_port) and base_url:
