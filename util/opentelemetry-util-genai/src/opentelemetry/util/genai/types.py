@@ -23,7 +23,6 @@ from typing_extensions import TypeAlias
 
 from opentelemetry.context import Context
 from opentelemetry.trace import Span
-from opentelemetry.util.types import AttributeValue
 
 ContextToken: TypeAlias = Token[Context]
 
@@ -115,8 +114,8 @@ class LLMInvocation:
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
-    input_tokens: Optional[AttributeValue] = None
-    output_tokens: Optional[AttributeValue] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
 
 
