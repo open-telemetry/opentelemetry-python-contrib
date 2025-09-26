@@ -73,6 +73,15 @@ from opentelemetry.instrumentation.openai_agents.package import _instruments
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
+__all__ = [
+    "OpenAIAgentsInstrumentor",
+    "GenAIProvider",
+    "GenAIOperationName",
+    "GenAIToolType",
+    "GenAIOutputType",
+    "GenAIEvaluationAttributes",
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,9 +90,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """Instruments the OpenAI library for agent frameworks."""
-        # TODO: Implement your instrumentation logic here
-        # This is a stub implementation - add your custom instrumentation code
-
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
@@ -104,17 +110,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
                 tracer=tracer,
                 event_logger=event_logger,
             )
-        )
-
-        # Expose constants via module attributes for convenience
-        globals().update(
-            {
-                "GenAIProvider": GenAIProvider,
-                "GenAIOperationName": GenAIOperationName,
-                "GenAIToolType": GenAIToolType,
-                "GenAIOutputType": GenAIOutputType,
-                "GenAIEvaluationAttributes": GenAIEvaluationAttributes,
-            }
         )
 
     def _uninstrument(self, **kwargs):
