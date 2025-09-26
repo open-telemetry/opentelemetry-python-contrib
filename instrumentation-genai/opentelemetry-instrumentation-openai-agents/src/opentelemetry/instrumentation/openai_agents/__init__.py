@@ -70,6 +70,9 @@ from opentelemetry.instrumentation.openai_agents.constants import (
     GenAIProvider,
     GenAIToolType,
 )
+from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import (
+    GenAISemanticProcessor,
+)
 from opentelemetry.instrumentation.openai_agents.package import _instruments
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
