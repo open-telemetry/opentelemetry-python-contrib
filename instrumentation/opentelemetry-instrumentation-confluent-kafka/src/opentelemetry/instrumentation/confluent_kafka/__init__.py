@@ -132,8 +132,8 @@ class AutoInstrumentedProducer(Producer):
 
 
 class AutoInstrumentedConsumer(Consumer):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._current_consume_span = None
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
