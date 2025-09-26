@@ -1,9 +1,3 @@
-################################
-# pip install git+https://github.com/singankit/opentelemetry-python-contrib.git@main#subdirectory=instrumentation-genai/opentelemetry-instrumentation-openai-agents
-# pip install azure-monitor-opentelemetry openai-agents
-#################################
-
-
 from __future__ import annotations as _annotations
 
 import asyncio

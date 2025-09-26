@@ -4,6 +4,7 @@ This directory contains examples of how to use the OpenAI Agents instrumentation
 
 ## Files
 
+- `quickstart.py` - Minimal OpenTelemetry setup and OpenAI chat sample using `OpenAIAgentsInstrumentor`
 - `basic_usage.py` - Basic example showing how to enable and use the instrumentation
 - `.env.example` - Example environment variables configuration
 
@@ -21,7 +22,7 @@ This directory contains examples of how to use the OpenAI Agents instrumentation
 
 3. Run the basic example:
    ```bash
-   python basic_usage.py
+   python examples/quickstart.py
    ```
 
 ## Configuration
