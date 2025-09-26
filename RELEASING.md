@@ -27,7 +27,6 @@
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
-> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general release.
 
