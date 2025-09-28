@@ -29,12 +29,12 @@ import fsspec
 from opentelemetry._logs import LogRecord
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
-    FsspecUploadHook,
+from opentelemetry.util.genai._fsspec_upload.completion_hook import (
+    FsspecUploadCompletionHook,
 )
-from opentelemetry.util.genai.upload_hook import (
-    _NoOpUploadHook,
-    load_upload_hook,
+from opentelemetry.util.genai.completion_hook import (
+    _NoOpCompletionHook,
+    load_completion_hook,
 )
 
 # Use MemoryFileSystem for testing
@@ -45,14 +45,16 @@ BASE_PATH = "memory://"
 @patch.dict(
     "os.environ",
     {
-        "OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK": "fsspec",
+        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "fsspec_upload",
         "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": BASE_PATH,
     },
     clear=True,
 )
 class TestFsspecEntryPoint(TestCase):
     def test_fsspec_entry_point(self):
-        self.assertIsInstance(load_upload_hook(), FsspecUploadHook)
+        self.assertIsInstance(
+            load_completion_hook(), FsspecUploadCompletionHook
+        )
 
     def test_fsspec_entry_point_no_fsspec(self):
         """Tests that the a no-op uploader is used when fsspec is not installed"""
@@ -62,10 +64,10 @@ class TestFsspecEntryPoint(TestCase):
         # Simulate fsspec imports failing
         with patch.dict(
             sys.modules,
-            {"opentelemetry.util.genai._fsspec_upload.fsspec_hook": None},
+            {"opentelemetry.util.genai._fsspec_upload.completion_hook": None},
         ):
             importlib.reload(_fsspec_upload)
-            self.assertIsInstance(load_upload_hook(), _NoOpUploadHook)
+            self.assertIsInstance(load_completion_hook(), _NoOpCompletionHook)
 
 
 MAXSIZE = 5
@@ -95,15 +97,15 @@ class ThreadSafeMagicMock(MagicMock):
             super()._increment_mock_call(*args, **kwargs)
 
 
-class TestFsspecUploadHook(TestCase):
+class TestFsspecUploadCompletionHook(TestCase):
     def setUp(self):
         self._fsspec_patcher = patch(
-            "opentelemetry.util.genai._fsspec_upload.fsspec_hook.fsspec"
+            "opentelemetry.util.genai._fsspec_upload.completion_hook.fsspec"
         )
         self.mock_fsspec = self._fsspec_patcher.start()
         self.mock_fsspec.open = ThreadSafeMagicMock()
 
-        self.hook = FsspecUploadHook(
+        self.hook = FsspecUploadCompletionHook(
             base_path=BASE_PATH,
             max_size=MAXSIZE,
         )
@@ -130,7 +132,7 @@ class TestFsspecUploadHook(TestCase):
         self.hook.shutdown()
 
     def test_upload_then_shutdown(self):
-        self.hook.upload(
+        self.hook.on_completion(
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -148,7 +150,7 @@ class TestFsspecUploadHook(TestCase):
         with self.block_upload():
             # fill the queue
             for _ in range(MAXSIZE):
-                self.hook.upload(
+                self.hook.on_completion(
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -161,7 +163,7 @@ class TestFsspecUploadHook(TestCase):
             )
 
             with self.assertLogs(level=logging.WARNING) as logs:
-                self.hook.upload(
+                self.hook.on_completion(
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -173,7 +175,7 @@ class TestFsspecUploadHook(TestCase):
 
     def test_shutdown_timeout(self):
         with self.block_upload():
-            self.hook.upload(
+            self.hook.on_completion(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -186,7 +188,7 @@ class TestFsspecUploadHook(TestCase):
         self.mock_fsspec.open.side_effect = RuntimeError("failed to upload")
 
         with self.assertLogs(level=logging.ERROR) as logs:
-            self.hook.upload(
+            self.hook.on_completion(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -198,21 +200,21 @@ class TestFsspecUploadHook(TestCase):
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
         with self.assertLogs(level=logging.INFO) as logs:
-            self.hook.upload(
+            self.hook.on_completion(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
             )
         self.assertEqual(len(logs.output), 3)
         self.assertIn(
-            "attempting to upload file after FsspecUploadHook.shutdown() was already called",
+            "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called",
             logs.output[0],
         )
 
 
 class FsspecUploaderTest(TestCase):
     def test_upload(self):
-        FsspecUploadHook._do_upload(
+        FsspecUploadCompletionHook._do_upload(
             "memory://my_path",
             lambda: [asdict(fake_input) for fake_input in FAKE_INPUTS],
         )
@@ -224,10 +226,10 @@ class FsspecUploaderTest(TestCase):
             )
 
 
-class TestFsspecUploadHookIntegration(TestBase):
+class TestFsspecUploadCompletionHookIntegration(TestBase):
     def setUp(self):
         super().setUp()
-        self.hook = FsspecUploadHook(base_path=BASE_PATH)
+        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
 
     def tearDown(self):
         super().tearDown()
@@ -242,7 +244,7 @@ class TestFsspecUploadHookIntegration(TestBase):
         log_record = LogRecord()
 
         with tracer.start_as_current_span("chat mymodel") as span:
-            self.hook.upload(
+            self.hook.on_completion(
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -282,7 +284,7 @@ class TestFsspecUploadHookIntegration(TestBase):
 
     def test_stamps_empty_log(self):
         log_record = LogRecord()
-        self.hook.upload(
+        self.hook.on_completion(
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
@@ -296,7 +298,7 @@ class TestFsspecUploadHookIntegration(TestBase):
 
     def test_upload_bytes(self) -> None:
         log_record = LogRecord()
-        self.hook.upload(
+        self.hook.on_completion(
             inputs=[
                 types.InputMessage(
                     role="user",
