@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `opentelemetry-instrumentation-flask` Fixed an issue where http_server_request_duration metrics was being recorded for excluded urls.
+  ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
 
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
