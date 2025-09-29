@@ -78,11 +78,9 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[str, Callable[[], JsonEncodeable]]
 
 
-def fsspec_open(
-    urlpath: str, mode: Literal["w"], *args: Any, **kwargs: Any
-) -> TextIO:
+def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
     """typed wrapper around `fsspec.open`"""
-    return cast(TextIO, fsspec.open(urlpath, mode, *args, **kwargs))  # pyright: ignore[reportUnknownMemberType]
+    return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
 
 
 class FsspecUploadCompletionHook(CompletionHook):
@@ -181,8 +179,10 @@ class FsspecUploadCompletionHook(CompletionHook):
         self, path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
         if self._format == "json":
+            # output as a single line with the json messages array
             message_lines = [json_encodeable()]
         else:
+            # output as one line per message in the array
             message_lines = json_encodeable()
             # add an index for streaming readers of jsonl
             for message_idx, line in enumerate(message_lines):
