@@ -54,7 +54,7 @@ from opentelemetry.util.genai.types import (
     InputMessage,
     OutputMessage,
 )
-from opentelemetry.util.genai.upload_hook import UploadHook
+from opentelemetry.util.genai.completion_hook import CompletionHook
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -290,14 +290,14 @@ class _GenerateContentInstrumentationHelper:
         models_object: Union[Models, AsyncModels],
         otel_wrapper: OTelWrapper,
         model: str,
-        upload_hook: UploadHook,
+        completion_hook: CompletionHook,
         generate_content_config_key_allowlist: Optional[AllowList] = None,
     ):
         self._start_time = time.time_ns()
         self._otel_wrapper = otel_wrapper
         self._genai_system = _determine_genai_system(models_object)
         self._genai_request_model = model
-        self.upload_hook = upload_hook
+        self.completion_hook = completion_hook
         self._finish_reasons_set = set()
         self._error_type = None
         self._input_tokens = 0
@@ -492,7 +492,7 @@ class _GenerateContentInstrumentationHelper:
             event = Event(
                 name="gen_ai.client.inference.operation.details", attributes=attributes
             )
-            self.upload_hook.upload(
+            self.completion_hook.on_completion(
                 inputs=input_messages,
                 outputs=output_messages,
                 system_instruction=system_instructions,
@@ -689,7 +689,7 @@ class _GenerateContentInstrumentationHelper:
 def _create_instrumented_generate_content(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
-    upload_hook: UploadHook,
+    completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.generate_content
@@ -707,7 +707,7 @@ def _create_instrumented_generate_content(
             self,
             otel_wrapper,
             model,
-            upload_hook,
+            completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -748,7 +748,7 @@ def _create_instrumented_generate_content(
 def _create_instrumented_generate_content_stream(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
-    upload_hook: UploadHook,
+    completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.generate_content_stream
@@ -766,7 +766,7 @@ def _create_instrumented_generate_content_stream(
             self,
             otel_wrapper,
             model,
-            upload_hook,
+            completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -807,7 +807,7 @@ def _create_instrumented_generate_content_stream(
 def _create_instrumented_async_generate_content(
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
-    upload_hook: UploadHook,
+    completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.async_generate_content
@@ -825,7 +825,7 @@ def _create_instrumented_async_generate_content(
             self,
             otel_wrapper,
             model,
-            upload_hook,
+            completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -867,7 +867,7 @@ def _create_instrumented_async_generate_content(
 def _create_instrumented_async_generate_content_stream(  # type: ignore
     snapshot: _MethodsSnapshot,
     otel_wrapper: OTelWrapper,
-    upload_hook: UploadHook,
+    completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ):
     wrapped_func = snapshot.async_generate_content_stream
@@ -885,7 +885,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             self,
             otel_wrapper,
             model,
-            upload_hook,
+            completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -944,33 +944,33 @@ def uninstrument_generate_content(snapshot: object):
 
 def instrument_generate_content(
     otel_wrapper: OTelWrapper,
-    upload_hook: UploadHook,
+    completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ) -> object:
     snapshot = _MethodsSnapshot()
     Models.generate_content = _create_instrumented_generate_content(
         snapshot,
         otel_wrapper,
-        upload_hook,
+        completion_hook,
         generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     Models.generate_content_stream = _create_instrumented_generate_content_stream(
         snapshot,
         otel_wrapper,
-        upload_hook,
+        completion_hook,
         generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     AsyncModels.generate_content = _create_instrumented_async_generate_content(
         snapshot,
         otel_wrapper,
-        upload_hook,
+        completion_hook,
         generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     AsyncModels.generate_content_stream = (
         _create_instrumented_async_generate_content_stream(
             snapshot,
             otel_wrapper,
-            upload_hook,
+            completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
     )
