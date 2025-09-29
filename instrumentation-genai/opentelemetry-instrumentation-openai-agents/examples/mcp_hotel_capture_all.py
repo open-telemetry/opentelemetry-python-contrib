@@ -7,7 +7,6 @@ import logging
 import os
 from dataclasses import dataclass
 from typing import Callable
-from urllib.parse import urlparse
 
 import azure.identity
 import openai
@@ -48,34 +47,8 @@ class _ApiConfig:
 
 
 def _set_capture_env(provider: str, base_url: str) -> None:
-    """Enable all GenAI capture toggles before instrumentation hooks."""
-
-    capture_defaults = {
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT": "true",
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS": "true",
-        "OTEL_GENAI_CAPTURE_MESSAGES": "true",
-        "OTEL_GENAI_CAPTURE_SYSTEM_INSTRUCTIONS": "true",
-        "OTEL_GENAI_CAPTURE_TOOL_DEFINITIONS": "true",
-        "OTEL_GENAI_EMIT_OPERATION_DETAILS": "true",
-        "OTEL_GENAI_AGENT_NAME": os.getenv(
-            "OTEL_GENAI_AGENT_NAME", "MCP Hotel Assistant"
-        ),
-        "OTEL_GENAI_AGENT_DESCRIPTION": os.getenv(
-            "OTEL_GENAI_AGENT_DESCRIPTION",
-            "Agent orchestrator that uses MCP to find hotels matching user criteria",
-        ),
-        "OTEL_GENAI_AGENT_ID": os.getenv(
-            "OTEL_GENAI_AGENT_ID", "mcp-hotel-assistant"
-        ),
-    }
-    for env_key, value in capture_defaults.items():
-        os.environ.setdefault(env_key, value)
-
-    parsed = urlparse(base_url)
-    if parsed.hostname:
-        os.environ.setdefault("OTEL_GENAI_SERVER_ADDRESS", parsed.hostname)
-    if parsed.port:
-        os.environ.setdefault("OTEL_GENAI_SERVER_PORT", str(parsed.port))
+    """Deprecated: capture is always on; keep for backward compatibility."""
+    return
 
 
 def _resolve_api_config() -> _ApiConfig:
@@ -126,30 +99,13 @@ def _resolve_api_config() -> _ApiConfig:
             provider="azure.ai.openai",
         )
 
-    if host == "ollama":
-        base_url = os.getenv(
-            "OLLAMA_BASE_URL", "http://localhost:11434/v1"
-        ).rstrip("/")
-        model_name = os.getenv("OLLAMA_MODEL", "llama3.1:latest")
-        api_key = os.getenv("OLLAMA_API_KEY", "none")
-
-        def _build_client() -> openai.AsyncOpenAI:
-            return openai.AsyncOpenAI(base_url=base_url, api_key=api_key)
-
-        return _ApiConfig(
-            build_client=_build_client,
-            model_name=model_name,
-            base_url=base_url,
-            provider="self.hosted",
-        )
+    # Removed ollama path to simplify sample
 
     raise ValueError(f"Unsupported API_HOST '{host}'")
 
 
 def _configure_otel() -> None:
-    """Configure the tracer provider and exporters."""
-
-    conn = os.getenv("APPLICATION_INSIGHTS_CONNECTION_STRING")
+    """Configure tracer provider with console exporter (no Azure Monitor)."""
     resource = Resource.create(
         {
             "service.name": "mcp-hotel-finder-service",
@@ -157,39 +113,10 @@ def _configure_otel() -> None:
             "service.version": os.getenv("SERVICE_VERSION", "1.0.0"),
         }
     )
-
     tracer_provider = TracerProvider(resource=resource)
-
-    if conn:
-        try:
-            from azure.monitor.opentelemetry.exporter import (  # type: ignore import-not-found
-                AzureMonitorTraceExporter,
-            )
-        except ImportError:  # pragma: no cover - optional dependency
-            print(
-                "Warning: Azure Monitor exporter not installed. "
-                "Install with: pip install azure-monitor-opentelemetry-exporter",
-            )
-            tracer_provider.add_span_processor(
-                BatchSpanProcessor(ConsoleSpanExporter())
-            )
-        else:
-            tracer_provider.add_span_processor(
-                BatchSpanProcessor(
-                    AzureMonitorTraceExporter.from_connection_string(conn)
-                )
-            )
-            print("[otel] Azure Monitor trace exporter configured")
-    else:
-        tracer_provider.add_span_processor(
-            BatchSpanProcessor(ConsoleSpanExporter())
-        )
-        print("[otel] Console span exporter configured")
-        print(
-            "[otel] Set APPLICATION_INSIGHTS_CONNECTION_STRING to export to "
-            "Application Insights instead of the console",
-        )
-
+    tracer_provider.add_span_processor(
+        BatchSpanProcessor(ConsoleSpanExporter())
+    )
     trace.set_tracer_provider(tracer_provider)
 
 

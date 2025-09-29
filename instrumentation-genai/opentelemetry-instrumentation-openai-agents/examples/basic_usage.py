@@ -23,7 +23,6 @@ from agents import (
     trace,
 )
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from azure.monitor.opentelemetry import configure_azure_monitor
 from dotenv import load_dotenv
 from openai import AsyncAzureOpenAI
 from pydantic import BaseModel
@@ -34,9 +33,6 @@ from opentelemetry.instrumentation.openai_agents import (
 
 load_dotenv()
 
-configure_azure_monitor(
-    connection_string=os.environ["APPLICATION_INSIGHTS_CONNECTION_STRING"]
-)
 
 OpenAIAgentsInstrumentor().instrument()
 

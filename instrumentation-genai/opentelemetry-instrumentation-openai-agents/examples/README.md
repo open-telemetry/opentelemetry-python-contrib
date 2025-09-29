@@ -4,9 +4,12 @@ This directory contains examples of how to use the OpenAI Agents instrumentation
 
 ## Files
 
-- `quickstart.py` - Minimal OpenTelemetry setup and OpenAI chat sample using `OpenAIAgentsInstrumentor`
-- `basic_usage.py` - Basic example showing how to enable and use the instrumentation
-- `.env.example` - Example environment variables configuration
+- `quickstart.py` - Minimal OpenTelemetry setup and OpenAI chat sample.
+- `basic_usage.py` - Tool-calling airline demo (no Azure Monitor).
+- `mcp_hotel_capture_all.py` - MCP HTTP hotel finder sample (no Azure Monitor).
+- `enhanced_travel_planner.py` - Complex orchestration travel planner (console exporter).
+- `trace_collectors.py` - Showcase of Console, OTLP gRPC/HTTP, and Azure Monitor exporters.
+- `.env.example` - Example environment variables configuration.
 
 ## Basic Usage
 
@@ -27,10 +30,7 @@ This directory contains examples of how to use the OpenAI Agents instrumentation
 
 ## Configuration
 
-The instrumentation can be configured using environment variables:
-
-- `OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT` - Enable/disable content capture (default: false)
-- `OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS` - Enable/disable metrics collection (default: true)
+Content, metrics, and events are captured by default.
 
 ## Integration with Agent Frameworks
 

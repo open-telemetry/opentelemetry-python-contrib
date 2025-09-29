@@ -9,6 +9,19 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+# Azure Monitor exporter removed for this sample
+from agents import (
+    Agent,
+    HandoffInputData,
+    OpenAIChatCompletionsModel,
+    Runner,
+    function_tool,
+    handoff,
+)
+from agents import (
+    trace as agents_trace,
+)
+from agents.extensions import handoff_filters
 from dotenv import load_dotenv
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -26,24 +39,6 @@ from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,
     ConsoleSpanExporter,
 )
-
-try:
-    from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
-except ImportError:
-    AzureMonitorTraceExporter = None
-
-from agents import (
-    Agent,
-    HandoffInputData,
-    OpenAIChatCompletionsModel,
-    Runner,
-    function_tool,
-    handoff,
-)
-from agents import (
-    trace as agents_trace,
-)
-from agents.extensions import handoff_filters
 
 TRACER = trace.get_tracer(__name__)
 
@@ -112,10 +107,6 @@ class CompleteTravelPlan(BaseModel):
 
 def _configure_otel(session_id: str) -> GenAISemanticProcessor:
     """Configure OpenTelemetry with GenAI semantic processor."""
-    conn = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING") or os.getenv(
-        "APPLICATION_INSIGHTS_CONNECTION_STRING"
-    )
-
     resource = Resource.create(
         {
             "service.name": "openai-agents-enhanced-travel-planner",
@@ -129,15 +120,7 @@ def _configure_otel(session_id: str) -> GenAISemanticProcessor:
     )
 
     tp = TracerProvider(resource=resource)
-
-    if conn and AzureMonitorTraceExporter:
-        tp.add_span_processor(
-            BatchSpanProcessor(
-                AzureMonitorTraceExporter.from_connection_string(conn)
-            )
-        )
-    else:
-        tp.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+    tp.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     trace.set_tracer_provider(tp)
 
@@ -166,30 +149,18 @@ def _configure_otel(session_id: str) -> GenAISemanticProcessor:
         tracer=tracer,
         event_logger=None,
         system_name=provider,
-        include_sensitive_data=os.getenv(
-            "OTEL_GENAI_INCLUDE_SENSITIVE", "false"
-        ).lower()
-        == "true",
+        include_sensitive_data=True,
         base_url=base_url,
-        emit_legacy=os.getenv("OTEL_GENAI_EMIT_LEGACY", "false").lower()
-        == "true",
-        agent_name=os.getenv("OTEL_GENAI_AGENT_NAME", AGENT_SYSTEM_NAME),
-        agent_id=os.getenv("OTEL_GENAI_AGENT_ID", agent_id),
-        agent_description=os.getenv(
-            "OTEL_GENAI_AGENT_DESCRIPTION",
-            "Multi-agent travel planning system with 6 specialized agents: Travel Coordinator, Flight Specialist, Hotel Specialist, Activity Specialist, Budget Analyst, and Plan Synthesizer",
+        emit_legacy=False,
+        agent_name=AGENT_SYSTEM_NAME,
+        agent_id=agent_id,
+        agent_description=(
+            "Multi-agent travel planning system with specialized agents: "
+            "Coordinator, Flight Specialist, Hotel Specialist, Activity Specialist, Budget Analyst, and Plan Synthesizer"
         ),
         server_address=None,
         server_port=None,
     )
-
-    if os.getenv("ENABLE_GENAI_CAPTURE_ALL", "false").lower() == "true":
-        os.environ["OTEL_GENAI_CAPTURE_SYSTEM_INSTRUCTIONS"] = "true"
-        os.environ["OTEL_GENAI_CAPTURE_MESSAGES"] = "true"
-        os.environ["OTEL_GENAI_CAPTURE_TOOL_DEFINITIONS"] = "true"
-
-    if os.getenv("OTEL_GENAI_METRICS_ENABLED", "true").lower() == "true":
-        os.environ["OTEL_GENAI_METRICS_ENABLED"] = "true"
 
     return genai_processor
 
