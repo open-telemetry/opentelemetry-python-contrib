@@ -395,31 +395,35 @@ def _rewrapped_app(
             return start_response(status, response_headers, *args, **kwargs)
 
         result = wsgi_app(wrapped_app_environ, _start_response)
-        duration_s = default_timer() - start
-        if duration_histogram_old:
-            duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                attributes, _StabilityMode.DEFAULT
-            )
+        if flask.request and (
+                excluded_urls is None
+                or not excluded_urls.url_disabled(flask.request.url)
+            ):
+            duration_s = default_timer() - start
+            if duration_histogram_old:
+                duration_attrs_old = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.DEFAULT
+                )
 
-            if request_route:
-                # http.target to be included in old semantic conventions
-                duration_attrs_old[HTTP_TARGET] = str(request_route)
+                if request_route:
+                    # http.target to be included in old semantic conventions
+                    duration_attrs_old[HTTP_TARGET] = str(request_route)
 
-            duration_histogram_old.record(
-                max(round(duration_s * 1000), 0), duration_attrs_old
-            )
-        if duration_histogram_new:
-            duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                attributes, _StabilityMode.HTTP
-            )
+                duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0), duration_attrs_old
+                )
+            if duration_histogram_new:
+                duration_attrs_new = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.HTTP
+                )
 
-            if request_route:
-                duration_attrs_new[HTTP_ROUTE] = str(request_route)
+                if request_route:
+                    duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-            duration_histogram_new.record(
-                max(duration_s, 0), duration_attrs_new
-            )
-        active_requests_counter.add(-1, active_requests_count_attrs)
+                duration_histogram_new.record(
+                    max(duration_s, 0), duration_attrs_new
+                )
+            active_requests_counter.add(-1, active_requests_count_attrs)
         return result
 
     return _wrapped_app
