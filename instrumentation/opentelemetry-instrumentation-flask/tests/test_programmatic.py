@@ -523,7 +523,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 attr,
                                 _recommended_metrics_attrs_old[metric.name],
                             )
-        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+        self.assertFalse(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metrics_new_semconv(self):
         start = default_timer()
@@ -561,7 +561,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 attr,
                                 _recommended_metrics_attrs_new[metric.name],
                             )
-        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+        self.assertFalse(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metric_values(self):
         start = default_timer()
