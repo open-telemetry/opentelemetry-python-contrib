@@ -41,6 +41,9 @@ from opentelemetry.instrumentation.vertexai.utils import (
     request_to_events,
     response_to_events,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai.types import ContentCapturingMode
 
@@ -147,17 +150,11 @@ class MethodWrappers:
     ):
         params = _extract_params(*args, **kwargs)
         api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
-        span_attributes = {
-            **get_genai_request_attributes(False, params),
-            **get_server_attributes(api_endpoint),
-        }
-
-        span_name = get_span_name(span_attributes)
-
+        request_attributes = get_genai_request_attributes(True, params)
+        server_attributes = get_server_attributes(api_endpoint)
         with self.tracer.start_as_current_span(
-            name=span_name,
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}",
             kind=SpanKind.CLIENT,
-            attributes=span_attributes,
         ) as span:
 
             def handle_response(
@@ -165,14 +162,23 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
                 | None,
             ) -> None:
+                response_attributes = (
+                    {}
+                    if not response
+                    else get_genai_response_attributes(response)
+                )
                 if span.is_recording() and response:
                     # When streaming, this is called multiple times so attributes would be
                     # overwritten. In practice, it looks the API only returns the interesting
                     # attributes on the last streamed response. However, I couldn't find
                     # documentation for this and setting attributes shouldn't be too expensive.
                     span.set_attributes(
-                        get_genai_response_attributes(response)
+                        **response_attributes,
+                        **server_attributes,
+                        **request_attributes,
                     )
+                # event = Event(name="gen_ai.client.inference.operation.details")
+
                 self.event_logger.emit(
                     create_operation_details_event(
                         api_endpoint=api_endpoint,
