@@ -1,5 +1,5 @@
 version = 1
-revision = 1
+revision = 2
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -11,6 +11,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "opentelemetry-exporter-credential-provider-gcp",
     "opentelemetry-exporter-prometheus-remote-write",
     "opentelemetry-exporter-richconsole",
     "opentelemetry-instrumentation",
@@ -2400,6 +2401,22 @@ source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdire
 dependencies = [
     { name = "importlib-metadata" },
     { name = "typing-extensions" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-credential-provider-gcp"
+source = { editable = "exporter/opentelemetry-exporter-credential-provider-gcp" }
+dependencies = [
+    { name = "google-auth" },
+    { name = "grpcio" },
+    { name = "requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "google-auth", specifier = ">=2.25" },
+    { name = "grpcio", specifier = ">=1.67.0" },
+    { name = "requests", specifier = ">=2.7" },
 ]
 
 [[package]]
