@@ -396,9 +396,9 @@ def _rewrapped_app(
 
         result = wsgi_app(wrapped_app_environ, _start_response)
         if flask.request and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
-            ):
+            excluded_urls is None
+            or not excluded_urls.url_disabled(flask.request.url)
+        ):
             duration_s = default_timer() - start
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(
