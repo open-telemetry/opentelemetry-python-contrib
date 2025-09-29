@@ -423,7 +423,7 @@ def _rewrapped_app(
                 duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
                 )
-            active_requests_counter.add(-1, active_requests_count_attrs)
+        active_requests_counter.add(-1, active_requests_count_attrs)
         return result
 
     return _wrapped_app
