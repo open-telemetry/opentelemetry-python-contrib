@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Fixed
+- `opentelemetry-instrumentation-flask` Fixed an issue where http_server_request_duration metrics was being recorded for excluded urls.
 
 ### Added
 - `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
