@@ -227,7 +227,7 @@ exclude = [
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
-  "opamp/opentelemetry-opamp-client/src/opentelemetry/*/proto/*.py",
+  "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
 
 [dependency-groups]
