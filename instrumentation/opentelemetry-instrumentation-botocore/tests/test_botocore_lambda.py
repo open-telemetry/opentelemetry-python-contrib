@@ -228,6 +228,7 @@ class TestLambdaExtension(TestBase):
         function_arn = span.attributes.get(AWS_LAMBDA_FUNCTION_ARN)
         self.assertIsNotNone(function_arn)
         self.assertIn("lambda-function-name-foo", function_arn)
+        self.assertIsNone(span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID))
 
     @mock_aws
     def test_create_event_source_mapping(self):
@@ -292,3 +293,5 @@ class TestLambdaExtension(TestBase):
         uuid = span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID)
         self.assertIsNotNone(uuid)
         self.assertEqual(expected_uuid, uuid)
+        self.assertIsNone(span.attributes.get(AWS_LAMBDA_FUNCTION_ARN))
+        self.assertIsNone(span.attributes.get(AWS_LAMBDA_FUNCTION_NAME))
