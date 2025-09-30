@@ -1,0 +1,17 @@
+flask
+waitress
+langchain==0.3.21 #todo: find the lowest compatible version
+langchain_openai
+
+opentelemetry-api==1.36.0
+opentelemetry-sdk~=1.36.0
+opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+opentelemetry-semantic-conventions==0.57b0
+opentelemetry-proto==1.36.0
+opentelemetry-instrumentation-flask
+# traceloop-sdk~=0.43.0
+python-dotenv[cli]
+deepeval
+
+# For local developmen: `pip install -e /path/to/opentelemetry-instrumentation-langchain`
+

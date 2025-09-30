@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: otel-genai-eval-event
+  namespace: eval
+spec:
+  schedule: "*/5 * * * *" 
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: otel-genai-eval-event
+              image: pranair2800/otel-genai-eval-event:1.11
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: OTEL_SERVICE_NAME
+                  value: "otel-genai-eval-event"
+                - name: OTEL_RESOURCE_ATTRIBUTES
+                  value: "deployment.environment=o11y-inframon-ai"
+                - name: OTEL_LOGS_EXPORTER
+                  value: "otlp"
+                - name: SPLUNK_OTEL_AGENT
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.hostIP
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: "http://$(SPLUNK_OTEL_AGENT):4317"
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: "grpc"
+                - name: OTEL_PYTHON_EXCLUDED_URLS
+                  value: "^(https?://)?[^/]+(/)?$"
+                - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+                  value: "true"
+                - name: OTEL_PYTHON_LOG_CORRELATION
+                  value: "true"
+                - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+                  value: "true"
+                - name: OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT
+                  value: "true"
+                - name: SPLUNK_PROFILER_ENABLED
+                  value: "true"
+                - name: CISCO_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: cisco-oauth-secrets
+                      key: client-id
+                - name: CISCO_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: cisco-oauth-secrets
+                      key: client-secret
+                - name: CISCO_APP_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: cisco-oauth-secrets
+                      key: app-key
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+                - name: OTEL_GENAI_EVALUATION_SAMPLING_RATE
+                  value: "1"
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "200m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "1000m"
+          restartPolicy: OnFailure

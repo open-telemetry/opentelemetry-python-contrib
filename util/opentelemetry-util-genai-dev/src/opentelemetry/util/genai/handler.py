@@ -1,0 +1,389 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Telemetry handler for GenAI invocations.
+
+This module exposes the `TelemetryHandler` class, which manages the lifecycle of
+GenAI (Generative AI) invocations and emits telemetry data (spans and related attributes).
+It supports starting, stopping, and failing LLM invocations.
+
+Classes:
+    - TelemetryHandler: Manages GenAI invocation lifecycles and emits telemetry.
+
+Functions:
+    - get_telemetry_handler: Returns a singleton `TelemetryHandler` instance.
+
+Usage:
+    handler = get_telemetry_handler()
+
+    # Create an invocation object with your request data
+    invocation = LLMInvocation(
+        request_model="my-model",
+        input_messages=[...],
+        provider="my-provider",
+        attributes={"custom": "attr"},
+    )
+
+    # Start the invocation (opens a span)
+    handler.start_llm(invocation)
+
+    # Populate outputs and any additional attributes, then stop (closes the span)
+    invocation.output_messages = [...]
+    invocation.attributes.update({"more": "attrs"})
+    handler.stop_llm(invocation)
+
+    # Or, in case of error
+    # handler.fail_llm(invocation, Error(type="...", message="..."))
+"""
+
+import time
+from typing import Any, Optional
+
+from opentelemetry import _events as _otel_events
+from opentelemetry import metrics as _metrics
+from opentelemetry import trace as _trace_mod
+from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.emitters import (
+    CompositeGenerator,
+    ContentEventsEmitter,
+    MetricsEmitter,
+    SpanEmitter,
+)
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    EmbeddingInvocation,
+    Error,
+    EvaluationResult,
+    LLMInvocation,
+    ToolCall,
+)
+from opentelemetry.util.genai.utils import get_content_capturing_mode
+from opentelemetry.util.genai.version import __version__
+
+from .config import parse_env
+from .evaluators.manager import EvaluationManager
+
+
+class TelemetryHandler:
+    """
+    High-level handler managing GenAI invocation lifecycles and emitting
+    them as spans, metrics, and events. Evaluation execution & emission is
+    delegated to EvaluationManager for extensibility (mirrors emitter design).
+    """
+
+    def __init__(self, **kwargs: Any):
+        tracer_provider = kwargs.get("tracer_provider")
+        # Store provider reference for later identity comparison (test isolation)
+        from opentelemetry import trace as _trace_mod_local
+
+        self._tracer_provider_ref = (
+            tracer_provider or _trace_mod_local.get_tracer_provider()
+        )
+        self._tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url=Schemas.V1_36_0.value,
+        )
+        self._event_logger = _otel_events.get_event_logger(__name__)
+        meter_provider = kwargs.get("meter_provider")
+        self._meter_provider = meter_provider  # store for flushing in tests
+        if meter_provider is not None:
+            meter = meter_provider.get_meter(__name__)
+        else:
+            meter = _metrics.get_meter(__name__)
+        # Single histogram for all evaluation scores (name stable across metrics)
+        self._evaluation_histogram = meter.create_histogram(
+            name="gen_ai.evaluation.score",
+            unit="1",
+            description="Scores produced by GenAI evaluators in [0,1] when applicable",
+        )
+
+        # Configuration: parse env only once
+        settings = parse_env()
+        # store settings for evaluation config
+        self._settings = settings
+        self._generator_kind = settings.generator_kind
+        capture_span = settings.capture_content_span
+        capture_events = settings.capture_content_events
+
+        # Compose emitters based on parsed settings
+        if settings.only_traceloop_compat:
+            # Only traceloop compat requested
+            from opentelemetry.util.genai.emitters import (
+                TraceloopCompatEmitter,
+            )
+
+            traceloop_emitter = TraceloopCompatEmitter(
+                tracer=self._tracer, capture_content=capture_span
+            )
+            emitters = [traceloop_emitter]
+        else:
+            if settings.generator_kind == "span_metric_event":
+                span_emitter = SpanEmitter(
+                    tracer=self._tracer,
+                    capture_content=False,  # keep span lean
+                )
+                metrics_emitter = MetricsEmitter(meter=meter)
+                content_emitter = ContentEventsEmitter(
+                    capture_content=capture_events,
+                )
+                emitters = [span_emitter, metrics_emitter, content_emitter]
+            elif settings.generator_kind == "span_metric":
+                span_emitter = SpanEmitter(
+                    tracer=self._tracer,
+                    capture_content=capture_span,
+                )
+                metrics_emitter = MetricsEmitter(meter=meter)
+                emitters = [span_emitter, metrics_emitter]
+            else:
+                span_emitter = SpanEmitter(
+                    tracer=self._tracer,
+                    capture_content=capture_span,
+                )
+                emitters = [span_emitter]
+            # Append extra emitters if requested
+            if "traceloop_compat" in settings.extra_emitters:
+                try:
+                    from opentelemetry.util.genai.emitters import (
+                        TraceloopCompatEmitter,
+                    )
+
+                    traceloop_emitter = TraceloopCompatEmitter(
+                        tracer=self._tracer, capture_content=capture_span
+                    )
+                    emitters.append(traceloop_emitter)
+                except Exception:  # pragma: no cover
+                    pass
+        # Phase 1: wrap in composite (single element) to prepare for multi-emitter
+        self._generator = CompositeGenerator(emitters)  # type: ignore[arg-type]
+
+        # Instantiate evaluation manager (extensible evaluation pipeline)
+        self._evaluation_manager = EvaluationManager(
+            settings=settings,
+            tracer=self._tracer,
+            event_logger=self._event_logger,
+            histogram=self._evaluation_histogram,
+        )
+
+    def _refresh_capture_content(
+        self,
+    ):  # re-evaluate env each start in case singleton created before patching
+        try:
+            mode = get_content_capturing_mode()
+            emitters = getattr(self._generator, "_generators", [])  # type: ignore[attr-defined]
+            # Determine new values for span-like emitters
+            new_value_span = mode in (
+                ContentCapturingMode.SPAN_ONLY,
+                ContentCapturingMode.SPAN_AND_EVENT,
+            )
+            # For span_metric_event flavor we always keep span lean (never capture on span)
+            if getattr(self, "_generator_kind", None) == "span_metric_event":
+                new_value_span = False
+            new_value_events = mode in (
+                ContentCapturingMode.EVENT_ONLY,
+                ContentCapturingMode.SPAN_AND_EVENT,
+            )
+            for em in emitters:
+                role = getattr(em, "role", None)
+                if role == "content_event" and hasattr(em, "_capture_content"):
+                    try:
+                        em._capture_content = new_value_events  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                elif role in ("span", "traceloop_compat") and hasattr(
+                    em, "set_capture_content"
+                ):
+                    try:
+                        em.set_capture_content(new_value_span)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    def start_llm(
+        self,
+        invocation: LLMInvocation,
+    ) -> LLMInvocation:
+        """Start an LLM invocation and create a pending span entry."""
+        # Ensure capture content settings are current
+        self._refresh_capture_content()
+        # Start invocation span; tracer context propagation handles parent/child links
+        self._generator.start(invocation)
+        return invocation
+
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Finalize an LLM invocation successfully and end its span."""
+        invocation.end_time = time.time()
+        self._generator.finish(invocation)
+        # Automatic async evaluation sampling (non-blocking)
+        try:
+            if getattr(self, "_evaluation_manager", None):
+                sampling_map = self._evaluation_manager.offer(invocation)  # type: ignore[attr-defined]
+                # Expose sampling decision for callers (per evaluator) under a single attr
+                if sampling_map:
+                    invocation.attributes.setdefault(
+                        "gen_ai.evaluation.sampled", sampling_map
+                    )
+        except Exception:
+            pass
+        # Force flush metrics if a custom provider with force_flush is present
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover - defensive
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        return invocation
+
+    def fail_llm(
+        self, invocation: LLMInvocation, error: Error
+    ) -> LLMInvocation:
+        """Fail an LLM invocation and end its span with error status."""
+        invocation.end_time = time.time()
+        self._generator.error(error, invocation)
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        return invocation
+
+    def start_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Start an embedding invocation and create a pending span entry."""
+        self._generator.start(invocation)
+        return invocation
+
+    def stop_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Finalize an embedding invocation successfully and end its span."""
+        invocation.end_time = time.time()
+        self._generator.finish(invocation)
+        return invocation
+
+    def fail_embedding(
+        self, invocation: EmbeddingInvocation, error: Error
+    ) -> EmbeddingInvocation:
+        """Fail an embedding invocation and end its span with error status."""
+        invocation.end_time = time.time()
+        self._generator.error(error, invocation)
+        return invocation
+
+    # ToolCall lifecycle --------------------------------------------------
+    def start_tool_call(self, invocation: ToolCall) -> ToolCall:
+        """Start a tool call invocation and create a pending span entry."""
+        self._generator.start(invocation)
+        return invocation
+
+    def stop_tool_call(self, invocation: ToolCall) -> ToolCall:
+        """Finalize a tool call invocation successfully and end its span."""
+        invocation.end_time = time.time()
+        self._generator.finish(invocation)
+        return invocation
+
+    def fail_tool_call(self, invocation: ToolCall, error: Error) -> ToolCall:
+        """Fail a tool call invocation and end its span with error status."""
+        invocation.end_time = time.time()
+        self._generator.error(error, invocation)
+        return invocation
+
+    def evaluate_llm(
+        self,
+        invocation: LLMInvocation,
+        evaluators: Optional[list[str]] = None,
+    ) -> list[EvaluationResult]:
+        """Proxy to EvaluationManager for running evaluators.
+
+        Retained public signature for backward compatibility. The underlying
+        implementation has been refactored into EvaluationManager to allow
+        pluggable emission similar to emitters.
+        """
+        return self._evaluation_manager.evaluate(invocation, evaluators)  # type: ignore[arg-type]
+
+    def process_evaluations(self):
+        """Manually trigger one evaluation processing cycle (async queues).
+
+        Useful in tests or deterministic flushing scenarios where waiting for the
+        background thread interval is undesirable.
+        """
+        try:
+            if getattr(self, "_evaluation_manager", None):
+                self._evaluation_manager.process_once()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    # Generic lifecycle API ------------------------------------------------
+    def start(self, obj: Any) -> Any:
+        """Generic start method for any invocation type."""
+        if isinstance(obj, LLMInvocation):
+            return self.start_llm(obj)
+        if isinstance(obj, EmbeddingInvocation):
+            return self.start_embedding(obj)
+        if isinstance(obj, ToolCall):
+            return self.start_tool_call(obj)
+        # Future types (e.g., ToolCall) handled here
+        return obj
+
+    def finish(self, obj: Any) -> Any:
+        """Generic finish method for any invocation type."""
+        if isinstance(obj, LLMInvocation):
+            return self.stop_llm(obj)
+        if isinstance(obj, EmbeddingInvocation):
+            return self.stop_embedding(obj)
+        if isinstance(obj, ToolCall):
+            return self.stop_tool_call(obj)
+        return obj
+
+    def fail(self, obj: Any, error: Error) -> Any:
+        """Generic fail method for any invocation type."""
+        if isinstance(obj, LLMInvocation):
+            return self.fail_llm(obj, error)
+        if isinstance(obj, EmbeddingInvocation):
+            return self.fail_embedding(obj, error)
+        if isinstance(obj, ToolCall):
+            return self.fail_tool_call(obj, error)
+        return obj
+
+
+def get_telemetry_handler(**kwargs: Any) -> TelemetryHandler:
+    """
+    Returns a singleton TelemetryHandler instance. If the global tracer provider
+    has changed since the handler was created, a new handler is instantiated so that
+    spans are recorded with the active provider (important for test isolation).
+    """
+    handler: Optional[TelemetryHandler] = getattr(
+        get_telemetry_handler, "_default_handler", None
+    )
+    current_provider = _trace_mod.get_tracer_provider()
+    recreate = False
+    if handler is not None:
+        # Recreate if provider changed or handler lacks provider reference (older instance)
+        if not hasattr(handler, "_tracer_provider_ref"):
+            recreate = True
+        elif handler._tracer_provider_ref is not current_provider:  # type: ignore[attr-defined]
+            recreate = True
+    if handler is None or recreate:
+        handler = TelemetryHandler(**kwargs)
+        setattr(get_telemetry_handler, "_default_handler", handler)
+    return handler

@@ -1,0 +1,84 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {"content": "You are a helpful assistant!", "role": "system"},
+          {"content": "What is the capital of France?", "role": "user"}
+        ],
+        "model": "gpt-4o-mini",
+        "stream": false,
+        "temperature": 0.0,
+        "user": "{\"appkey\": \"test-app-key\"}"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      api-key:
+      - test-api-key
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '227'
+      content-type:
+      - application/json
+      host:
+      - chat-ai.cisco.com
+      user-agent:
+      - OpenAI/Python 1.108.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.108.1
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.10
+    method: POST
+    uri: https://chat-ai.cisco.com/openai/deployments/gpt-4o-mini/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-util-1",
+          "object": "chat.completion",
+          "created": 1690000003,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {"role": "assistant", "content": "The capital of France is Paris."},
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {"prompt_tokens": 10, "completion_tokens": 7, "total_tokens": 17}
+        }
+    headers:
+      content-type:
+      - application/json
+      date:
+      - Sun, 21 Sep 2025 04:09:42 GMT
+      openai-organization:
+      - test_openai_org_id
+      x-request-id:
+      - 3022b94e-6b32-4e6d-8b0e-66bfddaa556e
+      content-length:
+      - '310'
+    status:
+      code: 200
+      message: OK
+version: 1

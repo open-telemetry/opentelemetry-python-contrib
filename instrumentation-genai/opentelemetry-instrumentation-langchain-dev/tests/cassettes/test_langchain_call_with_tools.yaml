@@ -1,0 +1,213 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "content": "Please add 2 and 3, then multiply 2 and 3.",
+            "role": "user"
+          }
+        ],
+        "model": "gpt-4o-mini",
+        "stream": false,
+        "temperature": 0.1,
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "add",
+              "description": "Add two integers together.",
+              "parameters": {
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+                "type": "object"
+              }
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "multiply",
+              "description": "Multiply two integers together.",
+              "parameters": {
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+                "type": "object"
+              }
+            }
+          }
+        ],
+        "user": "{\"appkey\": \"test-app-key\"}"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      api-key:
+      - test-api-key
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '604'
+      content-type:
+      - application/json
+      host:
+      - chat-ai.cisco.com
+      user-agent:
+      - OpenAI/Python 1.108.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.108.1
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.10
+    method: POST
+    uri: https://chat-ai.cisco.com/openai/deployments/gpt-4o-mini/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-tools-1",
+          "object": "chat.completion",
+          "created": 1690000001,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {"id": "call_add", "type": "function", "function": {"name": "add", "arguments": "{\"a\":2,\"b\":3}"}},
+                  {"id": "call_multiply", "type": "function", "function": {"name": "multiply", "arguments": "{\"a\":2,\"b\":3}"}}
+                ]
+              },
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {"prompt_tokens": 20, "completion_tokens": 0, "total_tokens": 20}
+        }
+    headers:
+      content-type:
+      - application/json
+      date:
+      - Sun, 21 Sep 2025 04:09:41 GMT
+      openai-organization:
+      - test_openai_org_id
+      x-request-id:
+      - 55c50888-46f7-4639-abd7-06735d6e333a
+      content-length:
+      - '525'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "messages": [
+          {"content": "Please add 2 and 3, then multiply 2 and 3.", "role": "user"},
+          {"content": null, "role": "assistant", "tool_calls": [
+            {"id": "call_add", "type": "function", "function": {"name": "add", "arguments": "{\"a\":2,\"b\":3}"}},
+            {"id": "call_multiply", "type": "function", "function": {"name": "multiply", "arguments": "{\"a\":2,\"b\":3}"}}
+          ]},
+          {"content": "5", "name": "add", "role": "tool", "tool_call_id": "call_add"},
+          {"content": "6", "name": "multiply", "role": "tool", "tool_call_id": "call_multiply"}
+        ],
+        "model": "gpt-4o-mini",
+        "stream": false,
+        "temperature": 0.1,
+        "tools": [
+          {"type": "function", "function": {"name": "add", "description": "Add two integers together.", "parameters": {"properties": {"a": {"type": "integer"}, "b": {"type": "integer"}}, "required": ["a", "b"], "type": "object"}}},
+          {"type": "function", "function": {"name": "multiply", "description": "Multiply two integers together.", "parameters": {"properties": {"a": {"type": "integer"}, "b": {"type": "integer"}}, "required": ["a", "b"], "type": "object"}}}
+        ],
+        "user": "{\"appkey\": \"test-app-key\"}"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate, zstd
+      api-key:
+      - test-api-key
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '1180'
+      content-type:
+      - application/json
+      host:
+      - chat-ai.cisco.com
+      user-agent:
+      - OpenAI/Python 1.108.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.108.1
+      x-stainless-raw-response:
+      - 'true'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.12.10
+    method: POST
+    uri: https://chat-ai.cisco.com/openai/deployments/gpt-4o-mini/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-tools-2",
+          "object": "chat.completion",
+            "created": 1690000002,
+            "model": "gpt-4o-mini-2024-07-18",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "Addition result is 5 and multiplication result is 6."
+                },
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 12, "total_tokens": 62}
+        }
+    headers:
+      content-type:
+      - application/json
+      date:
+      - Sun, 21 Sep 2025 04:09:42 GMT
+      openai-organization:
+      - test_openai_org_id
+      x-request-id:
+      - 66c50888-46f7-4639-abd7-06735d6e444b
+      content-length:
+      - '390'
+    status:
+      code: 200
+      message: OK
+version: 1
