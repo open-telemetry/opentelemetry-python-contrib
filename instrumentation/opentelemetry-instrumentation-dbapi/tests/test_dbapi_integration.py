@@ -279,7 +279,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -312,7 +312,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -420,7 +420,7 @@ class TestDBApiIntegration(TestBase):
     ):
         connect_module = mock.MagicMock()
         connect_module.__version__ = mock.MagicMock()
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -564,6 +564,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "psycopg2"
         connect_module.__version__ = "1.2.3"
+        connect_module.pq.version.side_effect = AttributeError
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
@@ -597,6 +598,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "psycopg2"
         connect_module.__version__ = "1.2.3"
+        connect_module.pq.version.side_effect = AttributeError
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
@@ -934,7 +936,7 @@ class TestDBApiIntegration(TestBase):
         sqlcommenter_context = context.set_value(
             "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
         )
-        context.attach(sqlcommenter_context)
+        token = context.attach(sqlcommenter_context)
 
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -953,16 +955,13 @@ class TestDBApiIntegration(TestBase):
             "Select 1;",
         )
 
-        clear_context = context.set_value(
-            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {}, current_context
-        )
-        context.attach(clear_context)
+        context.detach(token)
 
     def test_executemany_flask_integration_comment_stmt_enabled(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -979,7 +978,7 @@ class TestDBApiIntegration(TestBase):
         sqlcommenter_context = context.set_value(
             "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
         )
-        context.attach(sqlcommenter_context)
+        token = context.attach(sqlcommenter_context)
 
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -998,10 +997,7 @@ class TestDBApiIntegration(TestBase):
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',flask=1,libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
-        clear_context = context.set_value(
-            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {}, current_context
-        )
-        context.attach(clear_context)
+        context.detach(token)
 
     def test_callproc(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -1126,7 +1122,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = "1.0"
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = "2.0"
         connect_module.threadsafety = 1
         connect_module.paramstyle = "test"
