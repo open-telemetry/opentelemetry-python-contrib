@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add jsonlines support to fsspec uploader
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3791](#3791))
+
+## Version 0.1b0 (2025-09-24)
+
 - Add completion hook to genai utils to implement semconv v1.37.
 
   Includes a hook implementation using
