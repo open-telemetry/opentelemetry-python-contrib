@@ -1,0 +1,83 @@
+interactions:
+- request:
+    body: "{\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\":
+      [\n        {\n          \"text\": \"Get weather details in New Delhi and San
+      Francisco?\"\n        }\n      ]\n    },\n    {\n      \"role\": \"model\",\n
+      \     \"parts\": [\n        {\n          \"functionCall\": {\n            \"name\":
+      \"get_current_weather\",\n            \"args\": {\n              \"location\":
+      \"New Delhi\"\n            }\n          }\n        },\n        {\n          \"functionCall\":
+      {\n            \"name\": \"get_current_weather\",\n            \"args\": {\n
+      \             \"location\": \"San Francisco\"\n            }\n          }\n
+      \       }\n      ]\n    },\n    {\n      \"role\": \"user\",\n      \"parts\":
+      [\n        {\n          \"functionResponse\": {\n            \"name\": \"get_current_weather\",\n
+      \           \"response\": {\n              \"content\": \"{\\\"temperature\\\":
+      35, \\\"unit\\\": \\\"C\\\"}\"\n            }\n          }\n        },\n        {\n
+      \         \"functionResponse\": {\n            \"name\": \"get_current_weather\",\n
+      \           \"response\": {\n              \"content\": \"{\\\"temperature\\\":
+      25, \\\"unit\\\": \\\"C\\\"}\"\n            }\n          }\n        }\n      ]\n
+      \   }\n  ],\n  \"tools\": [\n    {\n      \"functionDeclarations\": [\n        {\n
+      \         \"name\": \"get_current_weather\",\n          \"description\": \"Get
+      the current weather in a given location\",\n          \"parameters\": {\n            \"type\":
+      6,\n            \"properties\": {\n              \"location\": {\n                \"type\":
+      1,\n                \"description\": \"The location for which to get the weather.
+      It can be a city name, a city name and state, or a zip code. Examples: 'San
+      Francisco', 'San Francisco, CA', '95616', etc.\"\n              }\n            },\n
+      \           \"propertyOrdering\": [\n              \"location\"\n            ]\n
+      \         }\n        }\n      ]\n    }\n  ]\n}"
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1731'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+      x-goog-api-client:
+      - model-builder/1.79.0+top_google_constructor_method+vertexai.generative_models.GenerativeModel.generate_content
+        gl-python/3.11.9 grpc/1.68.1 gax/2.23.0 gapic/1.79.0+top_google_constructor_method+vertexai.generative_models.GenerativeModel.generate_content
+      x-goog-request-params:
+      - model=projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAC/91TwU7rMBC89ytWPRcHECdOVG3EqwQFkXJCCBlnSRccb7A3BYT679ghQODAgeM7
+        OTueHc+OndcRwBi9Zz8+hNdYxNJwibE62N2bvAM1hqCrhI0v8LHFIEABagqBXAU+QuSxBN3KGp2Q
+        0ULswEQsldoqyJ8bNBI5Z9NIgn3QxkRREH5ANwHLFcUG5gdCYA8chTxstKVfVQtEWIs04TDLStyg
+        5QZ9UBVzZVEZrjPquPKSBarcDrnsCW8T1bALbHGn8XwfjalxP2kQLW1Ig14up5erf/lytZhNV/n8
+        g1CiaLKJcdUB0IfWbR7JS9OllNbehm4odFZ6V74xao63bbVwd9yrDpT/54z7WbeTvyeXp5f6MzmP
+        OrBL3bOLfJ6ubHpS3JwuimKxPP4WMdeaOuL3E4acOl5DqUV//g5f+JrLr15lLLel0tRYLXfsa7XZ
+        U+cxODIpwwL9hgyqY3ToteCMncSYBiel1/ZOSqIDnR/ePhu2o+F6PUpf29EbabJOVcEDAAA=
+    headers:
+      Content-Encoding:
+      - gzip
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Tue, 30 Sep 2025 15:27:34 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      WWW-Authenticate:
+      - Bearer realm="https://accounts.google.com/"
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 401
+      message: Unauthorized
+version: 1

@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
+import json
 from contextlib import contextmanager
+from dataclasses import asdict
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,13 +29,14 @@ from typing import (
     overload,
 )
 
-from opentelemetry._events import EventLogger
+from opentelemetry._events import Event, EventLogger
 from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
-    create_operation_details_event,
+    convert_content_to_message,
+    convert_response_to_output_messages,
     get_genai_request_attributes,
     get_genai_response_attributes,
     get_server_attributes,
@@ -45,7 +48,11 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import SpanKind, Tracer
-from opentelemetry.util.genai.types import ContentCapturingMode
+from opentelemetry.util.genai.completion_hook import CompletionHook
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    Text,
+)
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.services.prediction_service import client
@@ -113,6 +120,7 @@ class MethodWrappers:
         sem_conv_opt_in_mode: Literal[
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         ],
+        completion_hook: CompletionHook,
     ) -> None: ...
 
     @overload
@@ -122,6 +130,7 @@ class MethodWrappers:
         event_logger: EventLogger,
         capture_content: bool,
         sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT],
+        completion_hook: CompletionHook,
     ) -> None: ...
 
     def __init__(
@@ -133,11 +142,13 @@ class MethodWrappers:
             Literal[_StabilityMode.DEFAULT],
             Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
         ],
+        completion_hook: CompletionHook,
     ) -> None:
         self.tracer = tracer
         self.event_logger = event_logger
         self.capture_content = capture_content
         self.sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self.completion_hook = completion_hook
 
     @contextmanager
     def _with_new_instrumentation(
@@ -149,11 +160,9 @@ class MethodWrappers:
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
-        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
         request_attributes = get_genai_request_attributes(True, params)
-        server_attributes = get_server_attributes(api_endpoint)
         with self.tracer.start_as_current_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}",
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}".strip(),
             kind=SpanKind.CLIENT,
         ) as span:
 
@@ -162,30 +171,69 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
                 | None,
             ) -> None:
-                response_attributes = (
-                    {}
-                    if not response
-                    else get_genai_response_attributes(response)
+                attributes = (
+                    get_server_attributes(instance.api_endpoint)  # type: ignore[reportUnknownMemberType]
+                    | request_attributes
+                    | get_genai_response_attributes(response)
                 )
-                if span.is_recording() and response:
-                    # When streaming, this is called multiple times so attributes would be
-                    # overwritten. In practice, it looks the API only returns the interesting
-                    # attributes on the last streamed response. However, I couldn't find
-                    # documentation for this and setting attributes shouldn't be too expensive.
-                    span.set_attributes(
-                        **response_attributes,
-                        **server_attributes,
-                        **request_attributes,
-                    )
-                # event = Event(name="gen_ai.client.inference.operation.details")
-
-                self.event_logger.emit(
-                    create_operation_details_event(
-                        api_endpoint=api_endpoint,
-                        params=params,
-                        capture_content=capture_content,
-                        response=response,
-                    )
+                system_instructions, inputs, outputs = [], [], []
+                if params.system_instruction:
+                    system_instructions = [
+                        Text(
+                            content="\n".join(
+                                part.text
+                                for part in params.system_instruction.parts
+                            )
+                        )
+                    ]
+                if params.contents:
+                    inputs = [
+                        convert_content_to_message(content)
+                        for content in params.contents
+                    ]
+                if response:
+                    outputs = convert_response_to_output_messages(response)
+                content = {
+                    k: [asdict(x) for x in v]
+                    for k, v in [
+                        (
+                            GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
+                            system_instructions,
+                        ),
+                        (GenAI.GEN_AI_INPUT_MESSAGES, inputs),
+                        (GenAI.GEN_AI_OUTPUT_MESSAGES, outputs),
+                    ]
+                    if v
+                }
+                if span.is_recording():
+                    span.set_attributes(attributes)
+                    if capture_content in frozenset(
+                        [
+                            ContentCapturingMode.SPAN_AND_EVENT,
+                            ContentCapturingMode.SPAN_ONLY,
+                        ]
+                    ):
+                        span.set_attributes(
+                            {k: json.dumps(v) for k, v in content.items()}
+                        )
+                event = Event(
+                    name="gen_ai.client.inference.operation.details",
+                )
+                event.attributes = attributes
+                if capture_content in frozenset(
+                    [
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                        ContentCapturingMode.EVENT_ONLY,
+                    ]
+                ):
+                    event.attributes |= content
+                self.event_logger.emit(event)
+                self.completion_hook.on_completion(
+                    inputs=inputs,
+                    outputs=outputs,
+                    system_instruction=system_instructions,
+                    span=span,
+                    log_record=event,
                 )
 
             yield handle_response

@@ -191,6 +191,35 @@ def instrument_with_experimental_semconvs(
 
 
 @pytest.fixture(scope="function")
+def instrument_with_upload_hook(
+    tracer_provider, event_logger_provider, meter_provider, request
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "fsspec_upload",
+            "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": "memory://",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT",
+        }
+    )
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        event_logger_provider=event_logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", None)
+    os.environ.pop("OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH", None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
 def instrument_with_content(
     tracer_provider, event_logger_provider, meter_provider, request
 ):
