@@ -460,6 +460,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.side_effect = AttributeError
         connect_module.__libpq_version__ = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
@@ -528,7 +529,8 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
         connect_module.__version__ = mock.MagicMock()
-        connect_module.pq = mock.MagicMock()
+        connect_module.pq.version.side_effect = AttributeError
+        connect_module.__libpq_version__ = None
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -629,8 +631,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "psycopg"
         connect_module.__version__ = "1.2.3"
-        connect_module.pq = mock.MagicMock()
-        connect_module.pq.__build_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -663,8 +664,7 @@ class TestDBApiIntegration(TestBase):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "psycopg"
         connect_module.__version__ = "1.2.3"
-        connect_module.pq = mock.MagicMock()
-        connect_module.pq.__build_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
@@ -918,8 +918,7 @@ class TestDBApiIntegration(TestBase):
     def test_executemany_flask_integration_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
-        connect_module.__version__ = mock.MagicMock()
-        connect_module.__libpq_version__ = 123
+        connect_module.pq.version.return_value = 123
         connect_module.apilevel = 123
         connect_module.threadsafety = 123
         connect_module.paramstyle = "test"
