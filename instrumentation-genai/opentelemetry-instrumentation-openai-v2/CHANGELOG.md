@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Record prompt and completion events regardless of span sampling decision.
   ([#3226](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3226))
+- Filter out attributes with the value of NOT_GIVEN for chat.completions.create.
+  ([#3760](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3760))
 
 ## Version 2.1b0 (2025-01-18)
 
