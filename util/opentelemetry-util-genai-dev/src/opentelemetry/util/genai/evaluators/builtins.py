@@ -48,7 +48,9 @@ class LengthEvaluator(Evaluator):
     Label tiers: short (<50 chars), medium (50-200), long (>200).
     """
 
-    def evaluate(self, invocation: LLMInvocation) -> EvaluationResult:
+    def evaluate_invocation(
+        self, invocation: LLMInvocation
+    ) -> EvaluationResult:  # renamed method
         content = _extract_text(invocation)
         length = len(content)
         if length == 0:
@@ -79,7 +81,7 @@ class DeepevalEvaluator(Evaluator):
     placeholder result when the dependency is present.
     """
 
-    def evaluate(self, invocation: LLMInvocation):  # type: ignore[override]
+    def evaluate_invocation(self, invocation: LLMInvocation):  # type: ignore[override]
         try:
             import deepeval  # noqa: F401
         except Exception as exc:  # pragma: no cover - environment dependent
@@ -87,7 +89,6 @@ class DeepevalEvaluator(Evaluator):
                 metric_name="deepeval",
                 error=Error(message="deepeval not installed", type=type(exc)),
             )
-        # Real integration would go here; we create a neutral stub.
         return EvaluationResult(
             metric_name="deepeval",
             score=None,
@@ -99,7 +100,7 @@ class DeepevalEvaluator(Evaluator):
 class SentimentEvaluator(Evaluator):
     """Simple sentiment evaluator using nltk's VADER analyzer if available."""
 
-    def evaluate(self, invocation: LLMInvocation):  # type: ignore[override]
+    def evaluate_invocation(self, invocation: LLMInvocation):  # type: ignore[override]
         try:
             from nltk.sentiment import (
                 SentimentIntensityAnalyzer,  # type: ignore
@@ -119,7 +120,6 @@ class SentimentEvaluator(Evaluator):
         analyzer = SentimentIntensityAnalyzer()
         scores = analyzer.polarity_scores(content)
         compound = scores.get("compound", 0.0)
-        # Map compound [-1,1] -> [0,1]
         score = (compound + 1) / 2
         if compound >= 0.2:
             label = "positive"

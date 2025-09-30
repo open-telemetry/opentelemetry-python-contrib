@@ -41,7 +41,7 @@ class _DummyEvaluator(Evaluator):
         self._name = name
         self._score = score
 
-    def evaluate(
+    def evaluate_invocation(
         self, invocation: LLMInvocation
     ):  # pragma: no cover - trivial
         return EvaluationResult(
@@ -226,7 +226,7 @@ class _SpanModeDummyEvaluator(Evaluator):
         self._name = name
         self._score = score
 
-    def evaluate(
+    def evaluate_invocation(
         self, invocation: LLMInvocation
     ):  # pragma: no cover - trivial
         return EvaluationResult(
@@ -343,7 +343,7 @@ class TestDeepEvalDynamicLoading(unittest.TestCase):
     def test_deepeval_dynamic_import(self):
         # Simulate external module
         class DummyDeepEval(Evaluator):
-            def evaluate(self, invocation):
+            def evaluate_invocation(self, invocation):
                 return EvaluationResult(
                     metric_name="deepeval", score=0.75, label="ok"
                 )

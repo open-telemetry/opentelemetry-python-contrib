@@ -76,11 +76,11 @@ class TestVersion(unittest.TestCase):
         assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
     @patch_env_vars(stability_mode="default", content_capturing="True")
-    def test_get_content_capturing_mode_raises_exception_when_semconv_stability_default(
+    def test_get_content_capturing_mode_defaults_to_no_content_when_semconv_stability_default(
         self,
     ):  # pylint: disable=no-self-use
-        with self.assertRaises(ValueError):
-            get_content_capturing_mode()
+        # Default to NO_CONTENT when not in experimental mode
+        assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
@@ -243,12 +243,12 @@ class TestTelemetryHandler(unittest.TestCase):
     )
     def test_span_metric_event_generator_event_only_no_span_messages(self):
         from opentelemetry.util.genai.environment_variables import (
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS,
         )
 
         with patch.dict(
             os.environ,
-            {OTEL_INSTRUMENTATION_GENAI_GENERATOR: "span_metric_event"},
+            {OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span_metric_event"},
         ):
             # Reset singleton to pick up generator env var
             if hasattr(get_telemetry_handler, "_default_handler"):
@@ -287,12 +287,12 @@ class TestTelemetryHandler(unittest.TestCase):
         self,
     ):
         from opentelemetry.util.genai.environment_variables import (
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS,
         )
 
         with patch.dict(
             os.environ,
-            {OTEL_INSTRUMENTATION_GENAI_GENERATOR: "span_metric_event"},
+            {OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span_metric_event"},
         ):
             if hasattr(get_telemetry_handler, "_default_handler"):
                 delattr(get_telemetry_handler, "_default_handler")
@@ -329,12 +329,12 @@ class TestTelemetryHandler(unittest.TestCase):
         self,
     ):
         from opentelemetry.util.genai.environment_variables import (
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS,
         )
 
         with patch.dict(
             os.environ,
-            {OTEL_INSTRUMENTATION_GENAI_GENERATOR: "span_metric_event"},
+            {OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span_metric_event"},
         ):
             if hasattr(get_telemetry_handler, "_default_handler"):
                 delattr(get_telemetry_handler, "_default_handler")
@@ -366,11 +366,11 @@ class TestTelemetryHandler(unittest.TestCase):
     def test_span_generator_span_and_event_mode_adds_messages(self):
         # span flavor should capture on span when SPAN_AND_EVENT
         from opentelemetry.util.genai.environment_variables import (
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS,
         )
 
         with patch.dict(
-            os.environ, {OTEL_INSTRUMENTATION_GENAI_GENERATOR: "span"}
+            os.environ, {OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span"}
         ):
             if hasattr(get_telemetry_handler, "_default_handler"):
                 delattr(get_telemetry_handler, "_default_handler")
@@ -399,11 +399,11 @@ class TestTelemetryHandler(unittest.TestCase):
     )
     def test_span_generator_event_only_mode_does_not_add_messages(self):
         from opentelemetry.util.genai.environment_variables import (
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS,
         )
 
         with patch.dict(
-            os.environ, {OTEL_INSTRUMENTATION_GENAI_GENERATOR: "span"}
+            os.environ, {OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span"}
         ):
             if hasattr(get_telemetry_handler, "_default_handler"):
                 delattr(get_telemetry_handler, "_default_handler")

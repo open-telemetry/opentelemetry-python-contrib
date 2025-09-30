@@ -1,70 +1,94 @@
-# Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+import dataclasses
+import datetime
+import importlib.util
+import json
 import logging
 import os
 import traceback
 
-logger = logging.getLogger(__name__)
-
-# By default, we do not record prompt or completion content. Set this
-# environment variable to "true" to enable collection of message text.
-OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT"
+from opentelemetry import context as context_api
+from opentelemetry._events import EventLogger
+from opentelemetry.instrumentation.langchain.config import Config
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
 )
+from pydantic import BaseModel
 
-OTEL_INSTRUMENTATION_GENAI_EXPORTER = "OTEL_INSTRUMENTATION_GENAI_EXPORTER"
+TRACELOOP_TRACE_CONTENT = "TRACELOOP_TRACE_CONTENT"
 
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK"
-)
-
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE"
-)
+EVENT_ATTRIBUTES = {GenAIAttributes.GEN_AI_SYSTEM: "langchain"}
 
 
-def should_collect_content() -> bool:
-    val = os.getenv(
-        OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT, "false"
-    )
-    return val.strip().lower() == "true"
+class CallbackFilteredJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, dict):
+            if "callbacks" in o:
+                del o["callbacks"]
+                return o
+
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+
+        if hasattr(o, "to_json"):
+            return o.to_json()
+
+        if isinstance(o, BaseModel) and hasattr(o, "model_dump_json"):
+            return o.model_dump_json()
+
+        if isinstance(o, datetime.datetime):
+            return o.isoformat()
+
+        try:
+            return str(o)
+        except Exception:
+            logger = logging.getLogger(__name__)
+            logger.debug("Failed to serialize object of type: %s", type(o).__name__)
+            return ""
+
+
+def should_send_prompts():
+    return (
+        os.getenv(TRACELOOP_TRACE_CONTENT) or "true"
+    ).lower() == "true" or context_api.get_value("override_enable_content_tracing")
+
+
+def dont_throw(func):
+    """
+    A decorator that wraps the passed in function and logs exceptions instead of throwing them.
+
+    @param func: The function to wrap
+    @return: The wrapper function
+    """
+    # Obtain a logger specific to the function's module
+    logger = logging.getLogger(func.__module__)
+
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.debug(
+                "OpenLLMetry failed to trace in %s, error: %s",
+                func.__name__,
+                traceback.format_exc(),
+            )
+            if Config.exception_logger:
+                Config.exception_logger(e)
+
+    return wrapper
 
 
 def should_emit_events() -> bool:
-    val = os.getenv(
-        OTEL_INSTRUMENTATION_GENAI_EXPORTER, "SpanMetricEventExporter"
+    """
+    Checks if the instrumentation isn't using the legacy attributes
+    and if the event logger is not None.
+    """
+    return not Config.use_legacy_attributes and isinstance(
+        Config.event_logger, EventLogger
     )
-    if val.strip().lower() == "spanmetriceventexporter":
-        return True
-    elif val.strip().lower() == "spanmetricexporter":
-        return False
-    else:
-        raise ValueError(f"Unknown exporter_type: {val}")
 
 
-def should_enable_evaluation() -> bool:
-    val = os.getenv(OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE, "True")
-    return val.strip().lower() == "true"
-
-
-def get_evaluation_framework_name() -> str:
-    val = os.getenv(
-        OTEL_INSTRUMENTATION_GENAI_EVALUATION_FRAMEWORK, "Deepeval"
-    )
-    return val.strip().lower()
-
+def is_package_available(package_name):
+    return importlib.util.find_spec(package_name) is not None
 
 def get_property_value(obj, property_name):
     if isinstance(obj, dict):
@@ -72,26 +96,3 @@ def get_property_value(obj, property_name):
 
     return getattr(obj, property_name, None)
 
-
-def dont_throw(func):
-    """
-    Decorator that catches and logs exceptions, rather than re-raising them,
-    to avoid interfering with user code if instrumentation fails.
-    """
-
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.debug(
-                "OpenTelemetry instrumentation for LangChain encountered an error in %s: %s",
-                func.__name__,
-                traceback.format_exc(),
-            )
-            from opentelemetry.instrumentation.langchain.config import Config
-
-            if Config.exception_logger:
-                Config.exception_logger(e)
-            return None
-
-    return wrapper

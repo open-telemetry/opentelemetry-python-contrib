@@ -20,13 +20,10 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID, uuid4
 
-from typing_extensions import TypeAlias
-
-from opentelemetry.context import Context
 from opentelemetry.trace import Span
 from opentelemetry.util.types import AttributeValue
 
-ContextToken: TypeAlias = Token[Context]
+ContextToken = Token  # simple alias; avoid TypeAlias warning tools
 
 
 class ContentCapturingMode(Enum):
@@ -40,12 +37,33 @@ class ContentCapturingMode(Enum):
     SPAN_AND_EVENT = 3
 
 
+def _new_input_messages() -> list["InputMessage"]:  # quotes for forward ref
+    return []
+
+
+def _new_output_messages() -> list["OutputMessage"]:  # quotes for forward ref
+    return []
+
+
+def _new_str_any_dict() -> dict[str, Any]:
+    return {}
+
+
 @dataclass()
 class ToolCall:
+    """Represents a single tool call invocation (Phase 4)."""
+
     arguments: Any
     name: str
     id: Optional[str]
     type: Literal["tool_call"] = "tool_call"
+    # Optional fields for telemetry
+    provider: Optional[str] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
 
 
 @dataclass()
@@ -82,18 +100,6 @@ class OutputMessage:
     finish_reason: Union[str, FinishReason]
 
 
-def _new_input_messages() -> list[InputMessage]:
-    return []
-
-
-def _new_output_messages() -> list[OutputMessage]:
-    return []
-
-
-def _new_str_any_dict() -> dict[str, Any]:
-    return {}
-
-
 @dataclass
 class LLMInvocation:
     """
@@ -113,11 +119,25 @@ class LLMInvocation:
     output_messages: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
+    # Added in composite refactor Phase 1 for backward compatibility with
+    # generators that previously stashed normalized lists dynamically.
+    # "messages" mirrors input_messages at start; "chat_generations" mirrors
+    # output_messages. They can be overwritten by generators as needed without
+    # risking AttributeError during lifecycle hooks.
+    messages: List[InputMessage] = field(default_factory=_new_input_messages)
+    chat_generations: List[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
     provider: Optional[str] = None
+    # Semantic-convention framework attribute (gen_ai.framework)
+    framework: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None
     output_tokens: Optional[AttributeValue] = None
+    # Structured function/tool definitions for semantic convention emission
+    request_functions: list[dict[str, Any]] = field(default_factory=list)
+    # All non-semantic-convention or extended attributes (traceloop.*, request params, tool defs, etc.)
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
     # Ahead of upstream
     run_id: UUID = field(default_factory=uuid4)
@@ -146,6 +166,25 @@ class EvaluationResult:
     attributes: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class EmbeddingInvocation:
+    """Represents a single embedding model invocation (Phase 4 introduction).
+
+    Kept intentionally minimal; shares a subset of fields with LLMInvocation so
+    emitters can branch on isinstance without a separate protocol yet.
+    """
+
+    request_model: str
+    input_texts: list[str] = field(default_factory=list)
+    vector_dimensions: Optional[int] = None
+    provider: Optional[str] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
+
+
 __all__ = [
     # existing exports intentionally implicit before; making explicit for new additions
     "ContentCapturingMode",
@@ -155,6 +194,8 @@ __all__ = [
     "InputMessage",
     "OutputMessage",
     "LLMInvocation",
+    "EmbeddingInvocation",
     "Error",
     "EvaluationResult",
+    # backward compatibility normalization helpers
 ]

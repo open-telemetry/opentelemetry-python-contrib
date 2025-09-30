@@ -15,6 +15,20 @@
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+
+true / false (default: false)
+"""
+
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE = (
+    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE
+One of ``SPAN_ONLY``, ``EVENT_ONLY``, ``SPAN_AND_EVENT`` (default: ``SPAN_ONLY``).
+
+"""
 
 OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK = (
     "OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK"
@@ -67,31 +81,63 @@ Comma-separated list of evaluator names to run (e.g. ``deepeval,sentiment``). If
 and explicit names are not passed to ``evaluate_llm``, no evaluators are run.
 """
 
+OTEL_INSTRUMENTATION_GENAI_EMITTERS = "OTEL_INSTRUMENTATION_GENAI_EMITTERS"
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EMITTERS
+
+Comma-separated list of generators names to run (e.g. ``span,traceloop_compat``).
+
+Select telemetry flavor (composed emitters). Accepted baseline values (case-insensitive):
+
+* ``span`` (default) - spans only
+* ``span_metric`` - spans + metrics
+* ``span_metric_event`` - spans + metrics + content events
+
+Additional extender emitters:
+* ``traceloop_compat`` - adds a Traceloop-compatible LLM span. If specified *alone*, only the compat span is emitted. If combined (e.g. ``span,traceloop_compat``) both semconv and compat spans are produced.
+
+Invalid or unset values fallback to ``span``.
+"""
+
 OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE = (
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE"
 )
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE
 
-Controls creation of evaluation spans. Accepted values:
-
-* ``off`` (default): No evaluation spans are created.
-* ``aggregated``: A single span summarizing all evaluator results (implemented).
-* ``per_metric``: One span per evaluation metric (implemented).
+Controls evaluation span creation strategy. Accepted values:
+* ``off`` (default) - no evaluation spans
+* ``aggregated`` - single span summarizing all evaluation metrics
+* ``per_metric`` - one span per evaluation metric
 """
 
-OTEL_INSTRUMENTATION_GENAI_GENERATOR = "OTEL_INSTRUMENTATION_GENAI_GENERATOR"
+# Evaluation async processing interval (seconds, float). Default: 5.0
+OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL"
+)
 """
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_GENERATOR
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL
 
-Select telemetry generator strategy. Accepted values (case-insensitive):
-
-* ``span`` (default) - spans only (SpanGenerator)
-* ``span_metric`` - spans + metrics (SpanMetricGenerator)
-* ``span_metric_event`` - spans + metrics + events (SpanMetricEventGenerator)
-
-Invalid or unset values fallback to ``span``.
+Evaluation async processing interval in seconds (default: 5.0).
 """
+
+# Per-evaluator max sampled invocations per minute (integer). Blank/0 = unlimited.
+OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE
+
+Per-evaluator max sampled invocations per minute. Set to 0 or leave blank for unlimited.
+"""
+
+# Backward/defensive: ensure evaluation span mode constant exists even if edits race
+try:  # pragma: no cover - defensive
+    OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE
+except NameError:  # pragma: no cover
+    OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE = (
+        "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE"
+    )
 
 __all__ = [
     # existing
@@ -102,6 +148,8 @@ __all__ = [
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE",
     "OTEL_INSTRUMENTATION_GENAI_EVALUATORS",
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE",
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL",
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE",
     # generator selection
-    "OTEL_INSTRUMENTATION_GENAI_GENERATOR",
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS",
 ]

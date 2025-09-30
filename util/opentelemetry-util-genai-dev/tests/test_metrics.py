@@ -17,7 +17,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
-    OTEL_INSTRUMENTATION_GENAI_GENERATOR,
+    OTEL_INSTRUMENTATION_GENAI_EMITTERS,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
@@ -58,7 +58,7 @@ class TestMetricsEmission(unittest.TestCase):
     def _invoke(self, generator: str, capture_mode: str):
         env = {
             **STABILITY_EXPERIMENTAL,
-            OTEL_INSTRUMENTATION_GENAI_GENERATOR: generator,
+            OTEL_INSTRUMENTATION_GENAI_EMITTERS: generator,
             OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: capture_mode,
         }
         with patch.dict(os.environ, env, clear=False):

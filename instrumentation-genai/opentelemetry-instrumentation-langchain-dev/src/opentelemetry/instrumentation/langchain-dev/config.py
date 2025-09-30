@@ -12,24 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 
-from ..types import Error, LLMInvocation
-
-
-class BaseTelemetryGenerator(ABC):
+class Config:
     """
-    Abstract base for emitters mapping GenAI types -> OpenTelemetry.
+    Shared static config for LangChain OTel instrumentation.
     """
 
-    @abstractmethod
-    def start(self, invocation: LLMInvocation) -> None:
-        pass
+    # Logger to handle exceptions during instrumentation
+    exception_logger = None
 
-    @abstractmethod
-    def finish(self, invocation: LLMInvocation) -> None:
-        pass
+    # Globally suppress instrumentation
+    _suppress_instrumentation = False
 
-    @abstractmethod
-    def error(self, error: Error, invocation: LLMInvocation) -> None:
-        pass
+    @classmethod
+    def suppress_instrumentation(cls, suppress: bool = True):
+        cls._suppress_instrumentation = suppress
+
+    @classmethod
+    def is_instrumentation_suppressed(cls) -> bool:
+        return cls._suppress_instrumentation
