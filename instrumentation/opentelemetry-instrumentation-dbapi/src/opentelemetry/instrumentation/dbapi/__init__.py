@@ -350,11 +350,25 @@ class DatabaseApiIntegration:
         }
 
         if self.database_system == "postgresql":
-            if hasattr(self.connect_module, "__libpq_version__"):
-                libpq_version = self.connect_module.__libpq_version__
-            else:
-                libpq_version = self.connect_module.pq.__build_version__
-            commenter_data.update({"libpq_version": libpq_version})
+            libpq_version = None
+            # psycopg
+            if hasattr(self.connect_module, "pq"):
+                try:
+                    libpq_version = self.connect_module.pq.version()
+                except Exception:
+                    pass
+
+            # psycopg2
+            if libpq_version is None:
+                # this the libpq version the client has been built against
+                libpq_version = getattr(
+                    self.connect_module, "__libpq_version__", None
+                )
+
+            # psycopg also instrument modules that are not the root one, in that case you
+            # won't get the libpq_version
+            if libpq_version is not None:
+                commenter_data.update({"libpq_version": libpq_version})
         elif self.database_system == "mysql":
             mysqlc_version = ""
             if db_driver == "MySQLdb":
