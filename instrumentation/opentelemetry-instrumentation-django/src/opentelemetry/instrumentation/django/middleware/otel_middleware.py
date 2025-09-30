@@ -135,7 +135,7 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class DjangoMiddleware(MiddlewareMixin):
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -291,9 +291,9 @@ class _DjangoMiddleware(MiddlewareMixin):
         if token:
             request.META[self._environ_token] = token
 
-        if _DjangoMiddleware._otel_request_hook:
+        if DjangoMiddleware._otel_request_hook:
             try:
-                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
                     span, request
                 )
             except Exception:  # pylint: disable=broad-exception-caught
@@ -409,9 +409,9 @@ class _DjangoMiddleware(MiddlewareMixin):
             # record any exceptions raised while processing the request
             exception = request.META.pop(self._environ_exception_key, None)
 
-            if _DjangoMiddleware._otel_response_hook:
+            if DjangoMiddleware._otel_response_hook:
                 try:
-                    _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                    DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
                         span, request, response
                     )
                 except Exception:  # pylint: disable=broad-exception-caught
