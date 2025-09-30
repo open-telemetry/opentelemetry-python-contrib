@@ -222,5 +222,5 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
-  "opamp/opentelemetry-opamp-client/src/opentelemetry/*/proto/*.py",
+  "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
