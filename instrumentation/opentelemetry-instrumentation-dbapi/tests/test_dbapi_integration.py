@@ -523,7 +523,7 @@ class TestDBApiIntegration(TestBase):
             "Select 1;",
         )
 
-    def test_no_build_version_where_we_dont_instrument_the_root_module(
+    def test_no_libpq_version_when_we_dont_instrument_the_root_module(
         self,
     ):
         connect_module = mock.MagicMock()
