@@ -49,7 +49,7 @@ def _apply_common_span_attributes(
     request_model = invocation.request_model
     provider = invocation.provider
     span.update_name(
-        f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}"
+        f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}".strip()
     )
     span.set_attribute(
         GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
@@ -72,11 +72,11 @@ def _apply_common_span_attributes(
         )
     if invocation.response_id is not None:
         span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, invocation.response_id)
-    if isinstance(invocation.input_tokens, (int, float)):
+    if invocation.input_tokens is not None:
         span.set_attribute(
             GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens
         )
-    if isinstance(invocation.output_tokens, (int, float)):
+    if invocation.output_tokens is not None:
         span.set_attribute(
             GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens
         )
@@ -104,7 +104,7 @@ def _maybe_set_span_messages(
         )
 
 
-def _maybe_set_span_extra_attributes(
+def _set_span_extra_attributes(
     span: Span,
     attributes: Dict[str, Any],
 ) -> None:
@@ -118,7 +118,7 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
     _maybe_set_span_messages(
         span, invocation.input_messages, invocation.output_messages
     )
-    _maybe_set_span_extra_attributes(span, invocation.attributes)
+    _set_span_extra_attributes(span, invocation.attributes)
 
 
 def _apply_error_attributes(span: Span, error: Error) -> None:
