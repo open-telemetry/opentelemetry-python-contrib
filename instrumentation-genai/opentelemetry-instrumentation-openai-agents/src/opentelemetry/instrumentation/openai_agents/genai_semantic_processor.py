@@ -594,7 +594,16 @@ class GenAISemanticProcessor(TracingProcessor):
             # Collect text content
             output_text = getattr(response, "output_text", None)
             if isinstance(output_text, str) and output_text:
-                parts.append({"type": "text", "content": output_text})
+                parts.append(
+                    {
+                        "type": "text",
+                        "content": (
+                            "readacted"
+                            if not self.include_sensitive_data
+                            else output_text
+                        ),
+                    }
+                )
             else:
                 output = getattr(response, "output", None)
                 if isinstance(output, Sequence):
@@ -602,11 +611,27 @@ class GenAISemanticProcessor(TracingProcessor):
                         # ResponseOutputMessage may have a string representation
                         txt = getattr(item, "content", None)
                         if isinstance(txt, str) and txt:
-                            parts.append({"type": "text", "content": txt})
+                            parts.append(
+                                {
+                                    "type": "text",
+                                    "content": (
+                                        "readacted"
+                                        if not self.include_sensitive_data
+                                        else txt
+                                    ),
+                                }
+                            )
                         else:
                             # Fallback: stringified
                             parts.append(
-                                {"type": "text", "content": str(item)}
+                                {
+                                    "type": "text",
+                                    "content": (
+                                        "readacted"
+                                        if not self.include_sensitive_data
+                                        else str(item)
+                                    ),
+                                }
                             )
                         # Capture finish_reason from parts when present
                         fr = getattr(item, "finish_reason", None)
@@ -622,25 +647,66 @@ class GenAISemanticProcessor(TracingProcessor):
                         if item.get("type") == "text":
                             txt = item.get("content") or item.get("text")
                             if isinstance(txt, str) and txt:
-                                parts.append({"type": "text", "content": txt})
+                                parts.append(
+                                    {
+                                        "type": "text",
+                                        "content": (
+                                            "readacted"
+                                            if not self.include_sensitive_data
+                                            else txt
+                                        ),
+                                    }
+                                )
                         elif "content" in item and isinstance(
                             item["content"], str
                         ):
                             parts.append(
-                                {"type": "text", "content": item["content"]}
+                                {
+                                    "type": "text",
+                                    "content": (
+                                        "readacted"
+                                        if not self.include_sensitive_data
+                                        else item["content"]
+                                    ),
+                                }
                             )
                         else:
                             parts.append(
-                                {"type": "text", "content": str(item)}
+                                {
+                                    "type": "text",
+                                    "content": (
+                                        "readacted"
+                                        if not self.include_sensitive_data
+                                        else str(item)
+                                    ),
+                                }
                             )
                         if not finish_reason and isinstance(
                             item.get("finish_reason"), str
                         ):
                             finish_reason = item.get("finish_reason")
                     elif isinstance(item, str):
-                        parts.append({"type": "text", "content": item})
+                        parts.append(
+                            {
+                                "type": "text",
+                                "content": (
+                                    "readacted"
+                                    if not self.include_sensitive_data
+                                    else item
+                                ),
+                            }
+                        )
                     else:
-                        parts.append({"type": "text", "content": str(item)})
+                        parts.append(
+                            {
+                                "type": "text",
+                                "content": (
+                                    "readacted"
+                                    if not self.include_sensitive_data
+                                    else str(item)
+                                ),
+                            }
+                        )
 
         # Build assistant message
         msg: dict[str, Any] = {"role": "assistant", "parts": parts}
