@@ -357,20 +357,66 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _collect_system_instructions(
         self, messages: Sequence[Any] | None
-    ) -> list[str]:
-        """Return list of system/ai role message contents."""
+    ) -> list[dict[str, str]]:
+        """Return system/ai role instructions as typed text objects.
+
+        Enforces format: [{"type": "text", "content": "..."}].
+        Handles message content that may be a string, list of parts,
+        or a dict with text/content fields.
+        """
         if not messages:
             return []
-        out: list[str] = []
+        out: list[dict[str, str]] = []
         for m in messages:
             if not isinstance(m, dict):
                 continue
             role = m.get("role")
             if role in {"system", "ai"}:
                 content = m.get("content")
-                if content is not None:
-                    out.append(str(content))
+                out.extend(self._normalize_to_text_parts(content))
         return out
+
+    def _normalize_to_text_parts(self, content: Any) -> list[dict[str, str]]:
+        """Normalize arbitrary content into typed text parts.
+
+        - String -> [{type: text, content: <string>}]
+        - List/Tuple -> map each item to a text part (string/dict supported)
+        - Dict -> use 'text' or 'content' field when available; else str(dict)
+        - Other -> str(value)
+        """
+        parts: list[dict[str, str]] = []
+        if content is None:
+            return parts
+        if isinstance(content, str):
+            parts.append({"type": "text", "content": content})
+            return parts
+        if isinstance(content, (list, tuple)):
+            for item in content:
+                if isinstance(item, str):
+                    parts.append({"type": "text", "content": item})
+                elif isinstance(item, dict):
+                    txt = item.get("text") or item.get("content")
+                    if isinstance(txt, str) and txt:
+                        parts.append({"type": "text", "content": txt})
+                    else:
+                        parts.append({"type": "text", "content": str(item)})
+                else:
+                    parts.append({"type": "text", "content": str(item)})
+            return parts
+        if isinstance(content, dict):
+            txt = content.get("text") or content.get("content")
+            if isinstance(txt, str) and txt:
+                parts.append({"type": "text", "content": txt})
+            else:
+                parts.append({"type": "text", "content": str(content)})
+            return parts
+        # Fallback for other types
+        parts.append({"type": "text", "content": str(content)})
+        return parts
+
+    def _redacted_text_parts(self) -> list[dict[str, str]]:
+        """Return a single redacted text part for system instructions."""
+        return [{"type": "text", "content": "readacted"}]
 
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
@@ -746,7 +792,12 @@ class GenAISemanticProcessor(TracingProcessor):
 
             # System instructions
             if self._capture_system_instructions and span_data.input:
-                sys_instr = self._collect_system_instructions(span_data.input)
+                if self.include_sensitive_data:
+                    sys_instr = self._collect_system_instructions(
+                        span_data.input
+                    )
+                else:
+                    sys_instr = self._redacted_text_parts()
                 if sys_instr:
                     yield (
                         GEN_AI_SYSTEM_INSTRUCTIONS,
@@ -808,7 +859,7 @@ class GenAISemanticProcessor(TracingProcessor):
             try:
                 defs = span_data.agent_definitions
                 if isinstance(defs, (list, tuple)):
-                    collected: list[str] = []
+                    collected: list[dict[str, str]] = []
                     for d in defs:
                         if isinstance(d, dict):
                             msgs = d.get("messages") or d.get(
@@ -955,7 +1006,12 @@ class GenAISemanticProcessor(TracingProcessor):
 
             # System instructions
             if self._capture_system_instructions and span_data.input:
-                sys_instr = self._collect_system_instructions(span_data.input)
+                if self.include_sensitive_data:
+                    sys_instr = self._collect_system_instructions(
+                        span_data.input
+                    )
+                else:
+                    sys_instr = self._redacted_text_parts()
                 if sys_instr:
                     yield (
                         GEN_AI_SYSTEM_INSTRUCTIONS,

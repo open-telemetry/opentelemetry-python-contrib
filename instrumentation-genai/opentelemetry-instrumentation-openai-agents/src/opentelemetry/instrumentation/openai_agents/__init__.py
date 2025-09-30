@@ -115,6 +115,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         """Uninstruments the OpenAI library for agent frameworks."""
         # No-op: optional processor registry may not be present.
+        # TODO: maintain the old list of processors and restore it upon _uninstrument.
         return
 
     def instrumentation_dependencies(self) -> Collection[str]:
