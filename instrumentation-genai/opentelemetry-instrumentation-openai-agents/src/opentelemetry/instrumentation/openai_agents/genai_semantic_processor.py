@@ -31,9 +31,6 @@ from agents.tracing.span_data import (
     SpeechSpanData,
     TranscriptionSpanData,
 )
-from openai.types.responses import (
-    ResponseOutputMessage,
-)
 
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
@@ -579,6 +576,81 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return normalized
 
+    def _normalize_output_messages_to_role_parts(
+        self, span_data: Any
+    ) -> list[dict[str, Any]]:
+        """Normalize output messages to enforced role+parts schema.
+
+        Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}],
+                    optional "finish_reason": "..." }]
+        """
+        messages: list[dict[str, Any]] = []
+        parts: list[dict[str, Any]] = []
+        finish_reason: Optional[str] = None
+
+        # Response span: prefer consolidated output_text
+        response = getattr(span_data, "response", None)
+        if response is not None:
+            # Collect text content
+            output_text = getattr(response, "output_text", None)
+            if isinstance(output_text, str) and output_text:
+                parts.append({"type": "text", "content": output_text})
+            else:
+                output = getattr(response, "output", None)
+                if isinstance(output, Sequence):
+                    for item in output:
+                        # ResponseOutputMessage may have a string representation
+                        txt = getattr(item, "content", None)
+                        if isinstance(txt, str) and txt:
+                            parts.append({"type": "text", "content": txt})
+                        else:
+                            # Fallback: stringified
+                            parts.append(
+                                {"type": "text", "content": str(item)}
+                            )
+                        # Capture finish_reason from parts when present
+                        fr = getattr(item, "finish_reason", None)
+                        if isinstance(fr, str) and not finish_reason:
+                            finish_reason = fr
+
+        # Generation span: use span_data.output
+        if not parts:
+            output = getattr(span_data, "output", None)
+            if isinstance(output, Sequence):
+                for item in output:
+                    if isinstance(item, dict):
+                        if item.get("type") == "text":
+                            txt = item.get("content") or item.get("text")
+                            if isinstance(txt, str) and txt:
+                                parts.append({"type": "text", "content": txt})
+                        elif "content" in item and isinstance(
+                            item["content"], str
+                        ):
+                            parts.append(
+                                {"type": "text", "content": item["content"]}
+                            )
+                        else:
+                            parts.append(
+                                {"type": "text", "content": str(item)}
+                            )
+                        if not finish_reason and isinstance(
+                            item.get("finish_reason"), str
+                        ):
+                            finish_reason = item.get("finish_reason")
+                    elif isinstance(item, str):
+                        parts.append({"type": "text", "content": item})
+                    else:
+                        parts.append({"type": "text", "content": str(item)})
+
+        # Build assistant message
+        msg: dict[str, Any] = {"role": "assistant", "parts": parts}
+        if finish_reason:
+            msg["finish_reason"] = finish_reason
+        # Only include if there is content
+        if parts:
+            messages.append(msg)
+        return messages
+
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
         if isinstance(span_data, FunctionSpanData):
@@ -960,9 +1032,18 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(sys_instr),
                     )
 
-            # Output messages (leave as-is; not normalized here)
-            if self._capture_messages and span_data.output:
-                yield GEN_AI_OUTPUT_MESSAGES, safe_json_dumps(span_data.output)
+            # Output messages (normalized to role+parts)
+            if self._capture_messages and (
+                span_data.output or getattr(span_data, "response", None)
+            ):
+                normalized_out = self._normalize_output_messages_to_role_parts(
+                    span_data
+                )
+                if normalized_out:
+                    yield (
+                        GEN_AI_OUTPUT_MESSAGES,
+                        safe_json_dumps(normalized_out),
+                    )
 
         # Output type
         yield (
@@ -1165,27 +1246,17 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(sys_instr),
                     )
 
-            # Output messages (leave as-is; not normalized here)
+            # Output messages (normalized to role+parts)
             if self._capture_messages:
-                output_messages = getattr(
-                    getattr(span_data, "response", None), "output", None
+                # normalized from span_data response/output
+                normalized_out = self._normalize_output_messages_to_role_parts(
+                    span_data
                 )
-                if output_messages:
-                    collected = []
-                    for part in output_messages:
-                        if isinstance(part, ResponseOutputMessage):
-                            content = getattr(
-                                getattr(span_data, "response", None),
-                                "output_text",
-                                None,
-                            )
-                            if content:
-                                collected.append(content)
-                    if collected:
-                        yield (
-                            GEN_AI_OUTPUT_MESSAGES,
-                            safe_json_dumps(collected),
-                        )
+                if normalized_out:
+                    yield (
+                        GEN_AI_OUTPUT_MESSAGES,
+                        safe_json_dumps(normalized_out),
+                    )
 
         yield (
             GEN_AI_OUTPUT_TYPE,
