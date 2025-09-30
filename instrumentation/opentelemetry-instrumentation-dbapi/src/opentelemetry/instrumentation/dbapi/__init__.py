@@ -355,7 +355,7 @@ class DatabaseApiIntegration:
             if hasattr(self.connect_module, "pq"):
                 try:
                     libpq_version = self.connect_module.pq.version()
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-raised
                     pass
 
             # psycopg2
