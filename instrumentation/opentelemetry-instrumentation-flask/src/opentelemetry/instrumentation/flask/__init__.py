@@ -540,6 +540,7 @@ def _wrapped_teardown_request(
 
         if flask.request.environ.get(_ENVIRON_TOKEN, None):
             context.detach(flask.request.environ.get(_ENVIRON_TOKEN))
+            flask.request.environ[_ENVIRON_TOKEN] = None
 
     return _teardown_request
 
