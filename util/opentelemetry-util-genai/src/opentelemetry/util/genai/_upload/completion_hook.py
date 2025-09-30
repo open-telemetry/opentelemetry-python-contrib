@@ -83,17 +83,17 @@ def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
     return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
 
 
-class FsspecUploadCompletionHook(CompletionHook):
+class UploadCompletionHook(CompletionHook):
     """An completion hook using ``fsspec`` to upload to external storage
 
     This function can be used as the
     :func:`~opentelemetry.util.genai.completion_hook.load_completion_hook` implementation by
-    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK` to ``fsspec_upload``.
+    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK` to ``upload``.
     :envvar:`OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH` must be configured to specify the
     base path for uploads.
 
     Both the ``fsspec`` and ``opentelemetry-sdk`` packages should be installed, or a no-op
-    implementation will be used instead. You can use ``opentelemetry-util-genai[fsspec]``
+    implementation will be used instead. You can use ``opentelemetry-util-genai[upload]``
     as a requirement to achieve this.
     """
 
@@ -133,7 +133,7 @@ class FsspecUploadCompletionHook(CompletionHook):
             try:
                 future.result()
             except Exception:  # pylint: disable=broad-except
-                _logger.exception("fsspec uploader failed")
+                _logger.exception("uploader failed")
             finally:
                 self._semaphore.release()
 
@@ -141,7 +141,7 @@ class FsspecUploadCompletionHook(CompletionHook):
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
-                    "fsspec upload queue is full, dropping upload %s",
+                    "upload queue is full, dropping upload %s",
                     path,
                 )
                 continue
@@ -153,7 +153,7 @@ class FsspecUploadCompletionHook(CompletionHook):
                 fut.add_done_callback(done)
             except RuntimeError:
                 _logger.info(
-                    "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called"
+                    "attempting to upload file after UploadCompletionHook.shutdown() was already called"
                 )
                 self._semaphore.release()
 
