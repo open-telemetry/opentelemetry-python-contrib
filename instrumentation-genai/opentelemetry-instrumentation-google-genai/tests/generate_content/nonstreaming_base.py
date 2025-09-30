@@ -16,6 +16,7 @@ import json
 import unittest
 from unittest.mock import patch
 
+from google.genai.types import GenerateContentConfig
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -188,7 +189,7 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
 
-    def test_new_semconv_record_response_as_log(self):
+    def test_new_semconv_record_completion_as_log(self):
         for mode in ContentCapturingMode:
             patched_environ = patch.dict(
                 "os.environ",
@@ -218,7 +219,42 @@ class NonStreamingTestCase(TestCase):
                         self.otel.assert_has_event_named("gen_ai.client.inference.operation.details")
 
                 self.tearDown()
- 
+
+    def test_new_semconv_record_completion_in_span(self):
+        for mode in ContentCapturingMode:
+            patched_environ = patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                },
+            )
+            patched_otel_mapping = patch.dict(
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
+            )
+            with self.subTest(f'mode: {mode}', patched_environ=patched_environ):
+                self.setUp()
+                with patched_environ, patched_otel_mapping:
+                    self.configure_valid_response(text="Some response content")
+                    self.generate_content(model="gemini-2.0-flash", contents="Some input", config=GenerateContentConfig(system_instruction="System instruction"))
+                    span = self.otel.get_span_named("generate_content gemini-2.0-flash")
+                    if mode in [
+                        ContentCapturingMode.SPAN_ONLY,
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                    ]:
+                        self.assertEqual(span.attributes["gen_ai.input.messages"], '[{"role": "user", "parts": [{"content": "Some input", "type": "text"}]}]')
+                        self.assertEqual(span.attributes["gen_ai.output.messages"], '[{"role": "assistant", "parts": [{"content": "Some response content", "type": "text"}], "finish_reason": ""}]')
+                        self.assertEqual(span.attributes["gen_ai.system_instructions"], '[{"content": "System instruction", "type": "text"}]')
+                    else:
+                        self.assertNotIn("gen_ai.input.messages", span.attributes)
+                        self.assertNotIn("gen_ai.output.messages", span.attributes)
+                        self.assertNotIn("gen_ai.system_instructions", span.attributes)
+
+                self.tearDown()
+
     def test_records_metrics_data(self):
         self.configure_valid_response()
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
