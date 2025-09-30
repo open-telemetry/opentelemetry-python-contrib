@@ -66,6 +66,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         timeout: timeout for remote write requests in seconds, defaults to 30 (Optional)
         proxies: dict mapping request proxy protocols to proxy urls (Optional)
         tls_config: configuration for remote write TLS settings (Optional)
+        auth: auth tuple or callable to enable Basic/Digest/Custom HTTP Auth (Optional)
     """
 
     def __init__(
@@ -79,6 +80,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         resources_as_labels: bool = True,
         preferred_temporality: Dict[type, AggregationTemporality] = None,
         preferred_aggregation: Dict = None,
+        auth = None,
     ):
         self.endpoint = endpoint
         self.basic_auth = basic_auth
@@ -87,6 +89,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         self.tls_config = tls_config
         self.proxies = proxies
         self.resources_as_labels = resources_as_labels
+        self.auth = auth
 
         if not preferred_temporality:
             preferred_temporality = {
@@ -180,6 +183,14 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     @headers.setter
     def headers(self, headers: Dict):
         self._headers = headers
+
+    @property
+    def auth(self):
+        return self._auth
+    
+    @auth.setter
+    def auth(self, auth):
+        self._auth = auth
 
     def export(
         self,
@@ -372,6 +383,8 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         auth = None
         if self.basic_auth:
             auth = (self.basic_auth["username"], self.basic_auth["password"])
+        elif self.auth:
+            auth = self.auth
 
         cert = None
         verify = True
