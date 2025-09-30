@@ -251,7 +251,8 @@ def test_tool_events_no_content(
 
 
 def assert_fsspec_equal(path: str, value: Any) -> None:
-    __tracebackhide__ = True
+    # Hide this function and its calls from traceback.
+    __tracebackhide__ = True  # pylint: disable=unused-variable
     with fsspec.open(path, "r") as file:
         assert json.load(file) == value
 
