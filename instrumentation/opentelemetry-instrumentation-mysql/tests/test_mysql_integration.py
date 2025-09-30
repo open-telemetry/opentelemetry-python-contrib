@@ -57,7 +57,7 @@ class TestMysqlIntegration(TestBase):
             span, opentelemetry.instrumentation.mysql
         )
 
-        # check that no spans are generated after uninstrumen
+        # check that no spans are generated after uninstrument
         MySQLInstrumentor().uninstrument()
 
         connect_and_execute_query()
