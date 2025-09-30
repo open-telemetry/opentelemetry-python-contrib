@@ -19,7 +19,6 @@ import logging
 import sys
 import threading
 from contextlib import contextmanager
-from dataclasses import asdict
 from typing import Any
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -75,6 +74,24 @@ FAKE_INPUTS = [
     types.InputMessage(
         role="user",
         parts=[types.Text(content="What is the capital of France?")],
+    ),
+    types.InputMessage(
+        role="assistant",
+        parts=[
+            types.ToolCall(
+                id="get_capital_0",
+                name="get_capital",
+                arguments={"city": "Paris"},
+            )
+        ],
+    ),
+    types.InputMessage(
+        role="user",
+        parts=[
+            types.ToolCallResponse(
+                id="get_capital_0", response={"capital": "Paris"}
+            )
+        ],
     ),
 ]
 FAKE_OUTPUTS = [
@@ -197,6 +214,44 @@ class TestFsspecUploadCompletionHook(TestCase):
 
         self.assertIn("fsspec uploader failed", logs.output[0])
 
+    def test_invalid_upload_format(self):
+        with self.assertRaisesRegex(ValueError, "Invalid upload_format"):
+            FsspecUploadCompletionHook(
+                base_path=BASE_PATH, upload_format="invalid"
+            )
+
+    def test_parse_upload_format_envvar(self):
+        for envvar_value, expect in (
+            ("", "json"),
+            ("json", "json"),
+            ("invalid", "json"),
+            ("jsonl", "jsonl"),
+            ("jSoNl", "jsonl"),
+        ):
+            with patch.dict(
+                "os.environ",
+                {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value},
+                clear=True,
+            ):
+                hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+                self.addCleanup(hook.shutdown)
+                self.assertEqual(
+                    hook._format,
+                    expect,
+                    f"expected upload format {expect=} with {envvar_value=} got {hook._format}",
+                )
+
+        with patch.dict(
+            "os.environ",
+            {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": "json"},
+            clear=True,
+        ):
+            hook = FsspecUploadCompletionHook(
+                base_path=BASE_PATH, upload_format="jsonl"
+            )
+            self.addCleanup(hook.shutdown)
+            self.assertEqual(hook._format, "jsonl")
+
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
         with self.assertLogs(level=logging.INFO) as logs:
@@ -212,24 +267,14 @@ class TestFsspecUploadCompletionHook(TestCase):
         )
 
 
-class FsspecUploaderTest(TestCase):
-    def test_upload(self):
-        FsspecUploadCompletionHook._do_upload(
-            "memory://my_path",
-            lambda: [asdict(fake_input) for fake_input in FAKE_INPUTS],
-        )
-
-        with fsspec.open("memory://my_path", "r") as file:
-            self.assertEqual(
-                file.read(),
-                '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]}]',
-            )
-
-
 class TestFsspecUploadCompletionHookIntegration(TestBase):
     def setUp(self):
         super().setUp()
         self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+
+    def create_hook(self) -> FsspecUploadCompletionHook:
+        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+        return self.hook
 
     def tearDown(self):
         super().tearDown()
@@ -271,15 +316,15 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
 
         self.assert_fsspec_equal(
             span.attributes["gen_ai.input.messages_ref"],
-            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]}]',
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}]},{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}]}]\n',
         )
         self.assert_fsspec_equal(
             span.attributes["gen_ai.output.messages_ref"],
-            '[{"role":"assistant","parts":[{"content":"Paris","type":"text"}],"finish_reason":"stop"}]',
+            '[{"role":"assistant","parts":[{"content":"Paris","type":"text"}],"finish_reason":"stop"}]\n',
         )
         self.assert_fsspec_equal(
             span.attributes["gen_ai.system_instructions_ref"],
-            '[{"content":"You are a helpful assistant.","type":"text"}]',
+            '[{"content":"You are a helpful assistant.","type":"text"}]\n',
         )
 
     def test_stamps_empty_log(self):
@@ -316,5 +361,59 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
 
         self.assert_fsspec_equal(
             log_record.attributes["gen_ai.input.messages_ref"],
-            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"},{"type":"generic_bytes","bytes":"aGVsbG8="}]}]',
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"},{"type":"generic_bytes","bytes":"aGVsbG8="}]}]\n',
+        )
+
+    def test_upload_json(self) -> None:
+        hook = FsspecUploadCompletionHook(
+            base_path=BASE_PATH, upload_format="json"
+        )
+        self.addCleanup(hook.shutdown)
+        log_record = LogRecord()
+
+        hook.on_completion(
+            inputs=FAKE_INPUTS,
+            outputs=FAKE_OUTPUTS,
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
+        )
+        hook.shutdown()
+
+        ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
+        self.assertTrue(
+            ref_uri.endswith(".json"), f"{ref_uri=} does not end with .json"
+        )
+
+        self.assert_fsspec_equal(
+            ref_uri,
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}]},{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}]}]\n',
+        )
+
+    def test_upload_jsonlines(self) -> None:
+        hook = FsspecUploadCompletionHook(
+            base_path=BASE_PATH, upload_format="jsonl"
+        )
+        self.addCleanup(hook.shutdown)
+        log_record = LogRecord()
+
+        hook.on_completion(
+            inputs=FAKE_INPUTS,
+            outputs=FAKE_OUTPUTS,
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
+        )
+        hook.shutdown()
+
+        ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
+        self.assertTrue(
+            ref_uri.endswith(".jsonl"), f"{ref_uri=} does not end with .jsonl"
+        )
+
+        self.assert_fsspec_equal(
+            ref_uri,
+            """\
+{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}],"index":0}
+{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}],"index":1}
+{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}],"index":2}
+""",
         )
