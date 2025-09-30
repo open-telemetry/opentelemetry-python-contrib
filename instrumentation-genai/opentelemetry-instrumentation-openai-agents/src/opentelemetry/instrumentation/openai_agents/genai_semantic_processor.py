@@ -105,12 +105,7 @@ from .utils import (
 if TYPE_CHECKING:
     pass
 
-# Legacy attribute names for backward compatibility
-GEN_AI_SYSTEM_LEGACY = "gen_ai.system"
-GEN_AI_PROMPT_LEGACY = "gen_ai.prompt"
-GEN_AI_COMPLETION_LEGACY = "gen_ai.completion"
-GEN_AI_TOOL_INPUT_LEGACY = "gen_ai.tool.input"
-GEN_AI_TOOL_OUTPUT_LEGACY = "gen_ai.tool.output"
+# Legacy attributes removed
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +216,8 @@ class GenAISemanticProcessor(TracingProcessor):
         self.system_name = normalize_provider(system_name) or system_name
         self.include_sensitive_data = include_sensitive_data
         self.base_url = base_url
-        self.emit_legacy = emit_legacy
+        # Legacy emission removed; parameter retained for compatibility but unused
+        self.emit_legacy = False
 
         # Agent information - use init parameters or defaults
         self.agent_name = agent_name or "agent"
@@ -418,6 +414,171 @@ class GenAISemanticProcessor(TracingProcessor):
         """Return a single redacted text part for system instructions."""
         return [{"type": "text", "content": "readacted"}]
 
+    def _normalize_messages_to_role_parts(
+        self, messages: Sequence[Any] | None
+    ) -> list[dict[str, Any]]:
+        """Normalize input messages to enforced role+parts schema.
+
+        Each message becomes: {"role": <role>, "parts": [ {"type": ..., ...} ]}
+        Redaction: when include_sensitive_data is False, replace text content,
+        tool_call arguments, and tool_call_response result with "readacted".
+        """
+        if not messages:
+            return []
+        normalized: list[dict[str, Any]] = []
+        for m in messages:
+            if not isinstance(m, dict):
+                # Fallback: treat as user text
+                normalized.append(
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "type": "text",
+                                "content": "readacted"
+                                if not self.include_sensitive_data
+                                else str(m),
+                            }
+                        ],
+                    }
+                )
+                continue
+
+            role = m.get("role") or "user"
+            parts: list[dict[str, Any]] = []
+
+            # Existing parts array
+            if isinstance(m.get("parts"), (list, tuple)):
+                for p in m["parts"]:
+                    if isinstance(p, dict):
+                        ptype = p.get("type") or "text"
+                        newp: dict[str, Any] = {"type": ptype}
+                        if ptype == "text":
+                            txt = p.get("content") or p.get("text")
+                            newp["content"] = (
+                                "readacted"
+                                if not self.include_sensitive_data
+                                else (txt if isinstance(txt, str) else str(p))
+                            )
+                        elif ptype == "tool_call":
+                            newp["id"] = p.get("id")
+                            newp["name"] = p.get("name")
+                            args = p.get("arguments")
+                            newp["arguments"] = (
+                                "readacted"
+                                if not self.include_sensitive_data
+                                else args
+                            )
+                        elif ptype == "tool_call_response":
+                            newp["id"] = p.get("id") or m.get("tool_call_id")
+                            result = p.get("result") or p.get("content")
+                            newp["result"] = (
+                                "readacted"
+                                if not self.include_sensitive_data
+                                else result
+                            )
+                        else:
+                            newp["content"] = (
+                                "readacted"
+                                if not self.include_sensitive_data
+                                else str(p)
+                            )
+                        parts.append(newp)
+                    else:
+                        parts.append(
+                            {
+                                "type": "text",
+                                "content": "readacted"
+                                if not self.include_sensitive_data
+                                else str(p),
+                            }
+                        )
+
+            # OpenAI content
+            content = m.get("content")
+            if isinstance(content, str):
+                parts.append(
+                    {
+                        "type": "text",
+                        "content": "readacted"
+                        if not self.include_sensitive_data
+                        else content,
+                    }
+                )
+            elif isinstance(content, (list, tuple)):
+                for item in content:
+                    if isinstance(item, dict):
+                        itype = item.get("type") or "text"
+                        if itype == "text":
+                            txt = item.get("text") or item.get("content")
+                            parts.append(
+                                {
+                                    "type": "text",
+                                    "content": "readacted"
+                                    if not self.include_sensitive_data
+                                    else (
+                                        txt
+                                        if isinstance(txt, str)
+                                        else str(item)
+                                    ),
+                                }
+                            )
+                        else:
+                            # Fallback for other part types
+                            parts.append(
+                                {
+                                    "type": "text",
+                                    "content": "readacted"
+                                    if not self.include_sensitive_data
+                                    else str(item),
+                                }
+                            )
+                    else:
+                        parts.append(
+                            {
+                                "type": "text",
+                                "content": "readacted"
+                                if not self.include_sensitive_data
+                                else str(item),
+                            }
+                        )
+
+            # Assistant tool_calls
+            if role == "assistant" and isinstance(
+                m.get("tool_calls"), (list, tuple)
+            ):
+                for tc in m["tool_calls"]:
+                    if not isinstance(tc, dict):
+                        continue
+                    p = {"type": "tool_call"}
+                    p["id"] = tc.get("id")
+                    fn = tc.get("function") or {}
+                    if isinstance(fn, dict):
+                        p["name"] = fn.get("name")
+                        args = fn.get("arguments")
+                        p["arguments"] = (
+                            "readacted"
+                            if not self.include_sensitive_data
+                            else args
+                        )
+                    parts.append(p)
+
+            # Tool call response
+            if role in {"tool", "function"}:
+                p = {"type": "tool_call_response"}
+                p["id"] = m.get("tool_call_id") or m.get("id")
+                result = m.get("result") or m.get("content")
+                p["result"] = (
+                    "readacted" if not self.include_sensitive_data else result
+                )
+                parts.append(p)
+
+            normalized.append(
+                {"role": role, "parts": parts or self._redacted_text_parts()}
+            )
+
+        return normalized
+
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
         if isinstance(span_data, FunctionSpanData):
@@ -483,8 +644,7 @@ class GenAISemanticProcessor(TracingProcessor):
             attributes = {
                 GEN_AI_PROVIDER_NAME: self.system_name,
             }
-            if self.emit_legacy:
-                attributes[GEN_AI_SYSTEM_LEGACY] = self.system_name
+            # Legacy emission removed
 
             # Add configured agent and server attributes
             if self.agent_name:
@@ -544,8 +704,7 @@ class GenAISemanticProcessor(TracingProcessor):
             GEN_AI_PROVIDER_NAME: self.system_name,
             GEN_AI_OPERATION_NAME: operation_name,
         }
-        if self.emit_legacy:
-            attributes[GEN_AI_SYSTEM_LEGACY] = self.system_name
+        # Legacy emission removed
 
         # Add configured agent and server attributes
         if self.agent_name:
@@ -682,8 +841,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Base attributes
         yield GEN_AI_PROVIDER_NAME, self.system_name
-        if self.emit_legacy:
-            yield GEN_AI_SYSTEM_LEGACY, self.system_name
+        # Legacy emission removed
 
         # Add configured agent attributes (always include when set)
         if self.agent_name:
@@ -781,14 +939,12 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Sensitive data capture
         if self.include_sensitive_data:
-            # Input messages
+            # Input messages (normalized to role+parts)
             if self._capture_messages and span_data.input:
-                yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(span_data.input)
-                if self.emit_legacy:
-                    yield (
-                        GEN_AI_PROMPT_LEGACY,
-                        safe_json_dumps(span_data.input),
-                    )
+                normalized_in = self._normalize_messages_to_role_parts(
+                    span_data.input
+                )
+                yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(normalized_in)
 
             # System instructions
             if self._capture_system_instructions and span_data.input:
@@ -804,14 +960,9 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(sys_instr),
                     )
 
-            # Output messages
+            # Output messages (leave as-is; not normalized here)
             if self._capture_messages and span_data.output:
                 yield GEN_AI_OUTPUT_MESSAGES, safe_json_dumps(span_data.output)
-                if self.emit_legacy:
-                    yield (
-                        GEN_AI_COMPLETION_LEGACY,
-                        safe_json_dumps(span_data.output),
-                    )
 
         # Output type
         yield (
@@ -920,8 +1071,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     else str(span_data.input)
                 )
                 yield GEN_AI_TOOL_CALL_ARGUMENTS, arg_val
-                if self.emit_legacy:
-                    yield GEN_AI_TOOL_INPUT_LEGACY, arg_val
+                # Legacy emission removed
 
             if span_data.output is not None:
                 res_val = (
@@ -930,8 +1080,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     else str(span_data.output)
                 )
                 yield GEN_AI_TOOL_CALL_RESULT, res_val
-                if self.emit_legacy:
-                    yield GEN_AI_TOOL_OUTPUT_LEGACY, res_val
+                # Legacy emission removed
 
         yield (
             GEN_AI_OUTPUT_TYPE,
@@ -995,14 +1144,12 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Input/output messages
         if self.include_sensitive_data:
-            # Input messages
+            # Input messages (normalized to role+parts)
             if self._capture_messages and span_data.input:
-                yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(span_data.input)
-                if self.emit_legacy:
-                    yield (
-                        GEN_AI_PROMPT_LEGACY,
-                        safe_json_dumps(span_data.input),
-                    )
+                normalized_in = self._normalize_messages_to_role_parts(
+                    span_data.input
+                )
+                yield GEN_AI_INPUT_MESSAGES, safe_json_dumps(normalized_in)
 
             # System instructions
             if self._capture_system_instructions and span_data.input:
@@ -1018,7 +1165,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         safe_json_dumps(sys_instr),
                     )
 
-            # Output messages
+            # Output messages (leave as-is; not normalized here)
             if self._capture_messages:
                 output_messages = getattr(
                     getattr(span_data, "response", None), "output", None
@@ -1039,11 +1186,6 @@ class GenAISemanticProcessor(TracingProcessor):
                             GEN_AI_OUTPUT_MESSAGES,
                             safe_json_dumps(collected),
                         )
-                        if self.emit_legacy:
-                            yield (
-                                GEN_AI_COMPLETION_LEGACY,
-                                safe_json_dumps(collected),
-                            )
 
         yield (
             GEN_AI_OUTPUT_TYPE,
