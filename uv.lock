@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -4019,22 +4019,22 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-fsspec = [
-    { name = "fsspec" },
-]
 test = [
     { name = "pytest" },
+]
+upload = [
+    { name = "fsspec" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fsspec", marker = "extra == 'fsspec'", specifier = ">=2025.9.0" },
+    { name = "fsspec", marker = "extra == 'upload'", specifier = ">=2025.9.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
 ]
-provides-extras = ["fsspec", "test"]
+provides-extras = ["test", "upload"]
 
 [[package]]
 name = "opentelemetry-util-http"

@@ -28,8 +28,8 @@ import fsspec
 from opentelemetry._logs import LogRecord
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload.completion_hook import (
-    FsspecUploadCompletionHook,
+from opentelemetry.util.genai._upload.completion_hook import (
+    UploadCompletionHook,
 )
 from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
@@ -44,28 +44,26 @@ BASE_PATH = "memory://"
 @patch.dict(
     "os.environ",
     {
-        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "fsspec_upload",
+        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
         "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": BASE_PATH,
     },
     clear=True,
 )
-class TestFsspecEntryPoint(TestCase):
-    def test_fsspec_entry_point(self):
-        self.assertIsInstance(
-            load_completion_hook(), FsspecUploadCompletionHook
-        )
+class TestUploadEntryPoint(TestCase):
+    def test_upload_entry_point(self):
+        self.assertIsInstance(load_completion_hook(), UploadCompletionHook)
 
-    def test_fsspec_entry_point_no_fsspec(self):
+    def test_upload_entry_point_no_fsspec(self):
         """Tests that the a no-op uploader is used when fsspec is not installed"""
 
-        from opentelemetry.util.genai import _fsspec_upload
+        from opentelemetry.util.genai import _upload
 
         # Simulate fsspec imports failing
         with patch.dict(
             sys.modules,
-            {"opentelemetry.util.genai._fsspec_upload.completion_hook": None},
+            {"opentelemetry.util.genai._upload.completion_hook": None},
         ):
-            importlib.reload(_fsspec_upload)
+            importlib.reload(_upload)
             self.assertIsInstance(load_completion_hook(), _NoOpCompletionHook)
 
 
@@ -114,15 +112,15 @@ class ThreadSafeMagicMock(MagicMock):
             super()._increment_mock_call(*args, **kwargs)
 
 
-class TestFsspecUploadCompletionHook(TestCase):
+class TestUploadCompletionHook(TestCase):
     def setUp(self):
         self._fsspec_patcher = patch(
-            "opentelemetry.util.genai._fsspec_upload.completion_hook.fsspec"
+            "opentelemetry.util.genai._upload.completion_hook.fsspec"
         )
         self.mock_fsspec = self._fsspec_patcher.start()
         self.mock_fsspec.open = ThreadSafeMagicMock()
 
-        self.hook = FsspecUploadCompletionHook(
+        self.hook = UploadCompletionHook(
             base_path=BASE_PATH,
             max_size=MAXSIZE,
         )
@@ -187,7 +185,7 @@ class TestFsspecUploadCompletionHook(TestCase):
                 )
 
             self.assertIn(
-                "fsspec upload queue is full, dropping upload", logs.output[0]
+                "upload queue is full, dropping upload", logs.output[0]
             )
 
     def test_shutdown_timeout(self):
@@ -212,13 +210,11 @@ class TestFsspecUploadCompletionHook(TestCase):
             )
             self.hook.shutdown()
 
-        self.assertIn("fsspec uploader failed", logs.output[0])
+        self.assertIn("uploader failed", logs.output[0])
 
     def test_invalid_upload_format(self):
         with self.assertRaisesRegex(ValueError, "Invalid upload_format"):
-            FsspecUploadCompletionHook(
-                base_path=BASE_PATH, upload_format="invalid"
-            )
+            UploadCompletionHook(base_path=BASE_PATH, upload_format="invalid")
 
     def test_parse_upload_format_envvar(self):
         for envvar_value, expect in (
@@ -233,7 +229,7 @@ class TestFsspecUploadCompletionHook(TestCase):
                 {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value},
                 clear=True,
             ):
-                hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+                hook = UploadCompletionHook(base_path=BASE_PATH)
                 self.addCleanup(hook.shutdown)
                 self.assertEqual(
                     hook._format,
@@ -246,7 +242,7 @@ class TestFsspecUploadCompletionHook(TestCase):
             {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": "json"},
             clear=True,
         ):
-            hook = FsspecUploadCompletionHook(
+            hook = UploadCompletionHook(
                 base_path=BASE_PATH, upload_format="jsonl"
             )
             self.addCleanup(hook.shutdown)
@@ -262,18 +258,18 @@ class TestFsspecUploadCompletionHook(TestCase):
             )
         self.assertEqual(len(logs.output), 3)
         self.assertIn(
-            "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called",
+            "attempting to upload file after UploadCompletionHook.shutdown() was already called",
             logs.output[0],
         )
 
 
-class TestFsspecUploadCompletionHookIntegration(TestBase):
+class TestUploadCompletionHookIntegration(TestBase):
     def setUp(self):
         super().setUp()
-        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+        self.hook = UploadCompletionHook(base_path=BASE_PATH)
 
-    def create_hook(self) -> FsspecUploadCompletionHook:
-        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+    def create_hook(self) -> UploadCompletionHook:
+        self.hook = UploadCompletionHook(base_path=BASE_PATH)
         return self.hook
 
     def tearDown(self):
@@ -365,9 +361,7 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
         )
 
     def test_upload_json(self) -> None:
-        hook = FsspecUploadCompletionHook(
-            base_path=BASE_PATH, upload_format="json"
-        )
+        hook = UploadCompletionHook(base_path=BASE_PATH, upload_format="json")
         self.addCleanup(hook.shutdown)
         log_record = LogRecord()
 
@@ -390,9 +384,7 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
         )
 
     def test_upload_jsonlines(self) -> None:
-        hook = FsspecUploadCompletionHook(
-            base_path=BASE_PATH, upload_format="jsonl"
-        )
+        hook = UploadCompletionHook(base_path=BASE_PATH, upload_format="jsonl")
         self.addCleanup(hook.shutdown)
         log_record = LogRecord()
 
