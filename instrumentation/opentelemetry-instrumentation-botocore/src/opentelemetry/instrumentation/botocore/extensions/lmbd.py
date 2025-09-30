@@ -16,17 +16,26 @@ import abc
 import inspect
 import json
 import re
-from typing import Dict
+from typing import Dict, Final
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
     _BotocoreInstrumentorContext,
+    _BotoResultT,
 )
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.aws_attributes import (
+    AWS_LAMBDA_RESOURCE_MAPPING_ID,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.span import Span
+
+# Work is underway to add these two keys to the SemConv AWS registry, in line with other AWS resources.
+# https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/aws.md#amazon-lambda-attributes
+AWS_LAMBDA_FUNCTION_ARN: Final = "aws.lambda.function.arn"
+AWS_LAMBDA_FUNCTION_NAME: Final = "aws.lambda.function.name"
 
 
 class _LambdaOperation(abc.ABC):
@@ -68,12 +77,16 @@ class _OpInvoke(_LambdaOperation):
         )
         attributes[SpanAttributes.FAAS_INVOKED_REGION] = call_context.region
 
-    @classmethod
-    def _parse_function_name(cls, call_context: _AwsSdkCallContext):
+    @staticmethod
+    def _parse_function_name(call_context: _AwsSdkCallContext):
         function_name_or_arn = call_context.params.get("FunctionName")
-        matches = cls.ARN_LAMBDA_PATTERN.match(function_name_or_arn)
-        function_name = matches.group(1)
-        return function_name_or_arn if function_name is None else function_name
+        if function_name_or_arn is None:
+            return None
+        matches = _OpInvoke.ARN_LAMBDA_PATTERN.match(function_name_or_arn)
+        if matches:
+            function_name = matches.group(1)
+            return function_name if function_name else function_name_or_arn
+        return function_name_or_arn
 
     @classmethod
     def before_service_call(cls, call_context: _AwsSdkCallContext, span: Span):
@@ -115,6 +128,13 @@ class _LambdaExtension(_AwsSdkExtension):
         self._op = _OPERATION_MAPPING.get(call_context.operation)
 
     def extract_attributes(self, attributes: _AttributeMapT):
+        function_name = _OpInvoke._parse_function_name(self._call_context)
+        if function_name:
+            attributes[AWS_LAMBDA_FUNCTION_NAME] = function_name
+        resource_mapping_id = self._call_context.params.get("UUID")
+        if resource_mapping_id:
+            attributes[AWS_LAMBDA_RESOURCE_MAPPING_ID] = resource_mapping_id
+
         if self._op is None:
             return
 
@@ -127,3 +147,20 @@ class _LambdaExtension(_AwsSdkExtension):
             return
 
         self._op.before_service_call(self._call_context, span)
+
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
+        resource_mapping_id = result.get("UUID")
+        if resource_mapping_id:
+            span.set_attribute(
+                AWS_LAMBDA_RESOURCE_MAPPING_ID, resource_mapping_id
+            )
+
+        lambda_configuration = result.get("Configuration", {})
+        function_arn = lambda_configuration.get("FunctionArn")
+        if function_arn:
+            span.set_attribute(AWS_LAMBDA_FUNCTION_ARN, function_arn)
