@@ -20,18 +20,147 @@ Python Database API Specification v2.0.
 Usage
 -----
 
+The DB-API instrumentor and its utilities provide common, core functionality for
+database framework or object relation mapper (ORM) instrumentations. Users will
+typically instrument database client code with those framework/ORM-specific
+instrumentations, instead of directly using this DB-API integration. Features
+such as sqlcommenter can be configured at framework/ORM level as well. See full
+list at `instrumentation`_.
+
+.. _instrumentation: https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation
+
+If an instrumentation for your needs does not exist, then DB-API integration can
+be used directly as follows.
+
+
 .. code-block:: python
 
     import mysql.connector
     import pyodbc
 
-    from opentelemetry.instrumentation.dbapi import trace_integration
+    from opentelemetry.instrumentation.dbapi import (
+        trace_integration,
+        wrap_connect,
+    )
 
-
-    # Ex: mysql.connector
+    # Example: mysql.connector
     trace_integration(mysql.connector, "connect", "mysql")
-    # Ex: pyodbc
+    # Example: pyodbc
     trace_integration(pyodbc, "Connection", "odbc")
+
+    # Or, directly call wrap_connect for more configurability.
+    wrap_connect(__name__, mysql.connector, "connect", "mysql")
+    wrap_connect(__name__, pyodbc, "Connection", "odbc")
+
+
+Configuration
+-------------
+
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration.
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+    )
+
+
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration.
+    # Opts out of tags for libpq_version, db_driver.
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+        commenter_options={
+            "libpq_version": False,
+            "db_driver": False,
+        }
+    )
+
+Available commenter_options
+###########################
+
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
+
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version.                        | ``mysql.connector=2.2.9``                                                 |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level=2.0``                                                       |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``libpq_version``         | PostgreSQL libpq version (checked for PostgreSQL only).   | ``libpq_version=140001``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``mysql_client_version``  | MySQL client version (checked for MySQL only).            | ``mysql_client_version='123'``                                            |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
 
 API
 ---
