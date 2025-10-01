@@ -19,6 +19,8 @@ from enum import Enum
 
 from google.genai import types as genai_types
 from opentelemetry.util.genai.types import (
+    BlobPart,
+    FileDataPart,
     FinishReason,
     InputMessage,
     MessagePart,
@@ -94,6 +96,16 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
 
     if (text := part.text) is not None:
         return Text(content=text)
+
+    if data := part.inline_data:
+        return BlobPart(
+            mime_type=data.mime_type or "", data=data.data or b""
+        )
+
+    if data := part.file_data:
+        return FileDataPart(
+            mime_type=data.mime_type or "", uri=data.file_uri or ""
+        )
 
     if call := part.function_call:
         return ToolCall(
