@@ -24,10 +24,9 @@ from opentelemetry.util.genai.types import EvaluationResult, LLMInvocation
 class DeepevalEvaluator(Evaluator):
     """Deepeval evaluator"""
 
-    def __init__(self, handler):  # pragma: no cover - simple init
+    def __init__(self):  # pragma: no cover - simple init
         # self._queue = deque()  # type: ignore[var-annotated]
         self._sample_timestamps: list[float] = []  # per-minute rate limiting
-        self._handler: TelemetryHandler = handler
 
     def should_sample(
         self, invocation: LLMInvocation

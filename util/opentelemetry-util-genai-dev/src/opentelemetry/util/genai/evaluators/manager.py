@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 import importlib
 import time
 from threading import Event, Thread
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from opentelemetry import _events as _otel_events
 from opentelemetry.trace import Tracer
@@ -18,10 +19,12 @@ from .evaluation_emitters import (
     EvaluationSpansEmitter,
 )
 from .registry import get_evaluator, register_evaluator
-
+from opentelemetry.util._importlib_metadata import (
+    entry_points,  # pyright: ignore[reportUnknownVariableType]
+)
 # NOTE: Type checker warns about heterogeneous list (metrics + events + spans) passed
 # to CompositeEvaluationEmitter due to generic inference; safe at runtime.
-
+_logger = logging.getLogger(__name__)
 
 class EvaluationManager:
     """Coordinates evaluator discovery, execution, and telemetry emission.
@@ -93,19 +96,22 @@ class EvaluationManager:
             return inst
         # try dynamic (deepeval) first for this name
         if key == "deepeval":
-            try:
-                ext_mod = importlib.import_module(
-                    "opentelemetry.util.genai.evals.deepeval"
-                )
-                if hasattr(ext_mod, "DeepEvalEvaluator"):
-                    register_evaluator(
-                        "deepeval",
-                        lambda: ext_mod.DeepEvalEvaluator(
-                            self._event_logger, self._tracer
-                        ),
+            for entry_point in entry_points(
+                group="opentelemetry_utils_evaluator"):  # pyright: ignore[reportUnknownVariableType]
+                name = cast(str, entry_point.name)  # pyright: ignore[reportUnknownMemberType]
+                try:
+                    evaluator = entry_point.load()()  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+                    if not isinstance(evaluator, Evaluator):
+                        _logger.debug("%s is not a valid Evaluator. Using noop", name)
+                        continue
+
+                    _logger.debug("Using Evaluator %s", name)
+                    return evaluator
+
+                except Exception as e:  # pylint: disable=broad-except
+                    _logger.exception(
+                        "Evaluator %s configuration failed. Using noop", name
                     )
-            except Exception:
-                pass
         try:
             factory_inst = get_evaluator(name)
         except Exception:
