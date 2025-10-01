@@ -352,11 +352,10 @@ class DatabaseApiIntegration:
         if self.database_system == "postgresql":
             libpq_version = None
             # psycopg
-            if hasattr(self.connect_module, "pq"):
-                try:
-                    libpq_version = self.connect_module.pq.version()
-                except Exception:  # pylint: disable=broad-exception-caught
-                    pass
+            try:
+                libpq_version = self.connect_module.pq.version()
+            except AttributeError:
+                pass
 
             # psycopg2
             if libpq_version is None:
@@ -365,7 +364,7 @@ class DatabaseApiIntegration:
                     self.connect_module, "__libpq_version__", None
                 )
 
-            # psycopg also instrument modules that are not the root one, in that case you
+            # we instrument psycopg modules that are not the root one, in that case you
             # won't get the libpq_version
             if libpq_version is not None:
                 commenter_data.update({"libpq_version": libpq_version})
