@@ -70,7 +70,9 @@ from opentelemetry.util.genai.types import (
 from opentelemetry.util.genai.types import (
     Text as UtilText,
 )
-
+from opentelemetry.instrumentation.langchain.callback_handler import (
+    OpenTelemetryLangChainCallbackHandler,
+)
 # from opentelemetry.instrumentation.langchain.version import __version__
 
 
@@ -110,6 +112,13 @@ class LangChainInstrumentor(BaseInstrumentor):
         self._telemetry_handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+        )
+        otel_callback_handler = OpenTelemetryLangChainCallbackHandler()
+
+        wrap_function_wrapper(
+            module="langchain_core.callbacks",
+            name="BaseCallbackManager.__init__",
+            wrapper=_BaseCallbackManagerInitWrapper(otel_callback_handler),
         )
 
         def _build_input_messages(messages):
@@ -393,3 +402,21 @@ class LangChainInstrumentor(BaseInstrumentor):
         unwrap(
             "langchain_openai.chat_models.base", "BaseChatOpenAI._agenerate"
         )
+
+class _BaseCallbackManagerInitWrapper:
+    """
+    Wrap the BaseCallbackManager __init__ to insert
+    custom callback handler in the manager's handlers list.
+    """
+
+    def __init__(self, callback_handler):
+        self._otel_handler = callback_handler
+
+    def __call__(self, wrapped, instance, args, kwargs):
+        wrapped(*args, **kwargs)
+        # Ensure our OTel callback is present if not already.
+        for handler in instance.inheritable_handlers:
+            if isinstance(handler, type(self._otel_handler)):
+                break
+        else:
+            instance.add_handler(self._otel_handler, inherit=True)
