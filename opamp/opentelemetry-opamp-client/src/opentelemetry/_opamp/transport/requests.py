@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Mapping
 
 import requests
@@ -21,6 +22,8 @@ import requests
 from opentelemetry._opamp import messages
 from opentelemetry._opamp.transport.base import HttpTransport, base_headers
 from opentelemetry._opamp.transport.exceptions import OpAMPException
+
+logger = logging.getLogger(__name__)
 
 
 class RequestsTransport(HttpTransport):
@@ -41,7 +44,8 @@ class RequestsTransport(HttpTransport):
                 url, headers=headers, data=data, timeout=timeout
             )
             response.raise_for_status()
-        except Exception:
+        except Exception as exc:
+            logger.error(str(exc))
             raise OpAMPException
 
         message = messages.decode_message(response.content)
