@@ -249,15 +249,7 @@ class OpAMPAgent:
                 "Stopping OpAMPAgent: failed to send AgentDisconnect message"
             )
 
-        logger.debug("Stopping OpAMPAgent: cancelling jobs")
-        # Clear pending jobs
-        while True:
-            try:
-                self._queue.get_nowait()
-                self._queue.task_done()
-            except queue.Empty:
-                break
-
+        logger.debug("Stopping OpAMPAgent: signaling threads")
         # Signal threads to exit
         self._stop.set()
         # don't crash if the user calls stop() before start() or calls stop() multiple times
