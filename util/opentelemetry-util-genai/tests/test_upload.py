@@ -21,7 +21,7 @@ import threading
 from contextlib import contextmanager
 from typing import Any
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import fsspec
 
@@ -117,8 +117,9 @@ class TestUploadCompletionHook(TestCase):
         self._fsspec_patcher = patch(
             "opentelemetry.util.genai._upload.completion_hook.fsspec"
         )
-        self.mock_fsspec = self._fsspec_patcher.start()
-        self.mock_fsspec.open = ThreadSafeMagicMock()
+        mock_fsspec = self._fsspec_patcher.start()
+        self.mock_fs = ThreadSafeMagicMock()
+        mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
 
         self.hook = UploadCompletionHook(
             base_path=BASE_PATH,
@@ -133,12 +134,12 @@ class TestUploadCompletionHook(TestCase):
     def block_upload(self):
         unblock_upload = threading.Event()
 
-        def blocked_upload(*args: Any):
+        def blocked_upload(*args: Any, **kwargs: Any):
             unblock_upload.wait()
             return MagicMock()
 
         try:
-            self.mock_fsspec.open.side_effect = blocked_upload
+            self.mock_fs.open.side_effect = blocked_upload
             yield
         finally:
             unblock_upload.set()
@@ -156,7 +157,7 @@ class TestUploadCompletionHook(TestCase):
         self.hook.shutdown()
 
         self.assertEqual(
-            self.mock_fsspec.open.call_count,
+            self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
         )
@@ -172,7 +173,7 @@ class TestUploadCompletionHook(TestCase):
                 )
 
             self.assertLessEqual(
-                self.mock_fsspec.open.call_count,
+                self.mock_fs.open.call_count,
                 MAXSIZE,
                 f"uploader should only be called {MAXSIZE=} times",
             )
@@ -200,7 +201,7 @@ class TestUploadCompletionHook(TestCase):
             self.hook.shutdown(timeout_sec=0.01)
 
     def test_failed_upload_logs(self):
-        self.mock_fsspec.open.side_effect = RuntimeError("failed to upload")
+        self.mock_fs.open.side_effect = RuntimeError("failed to upload")
 
         with self.assertLogs(level=logging.ERROR) as logs:
             self.hook.on_completion(
@@ -215,6 +216,27 @@ class TestUploadCompletionHook(TestCase):
     def test_invalid_upload_format(self):
         with self.assertRaisesRegex(ValueError, "Invalid upload_format"):
             UploadCompletionHook(base_path=BASE_PATH, upload_format="invalid")
+
+    def test_upload_format_sets_content_type(self):
+        for upload_format, expect_content_type in (
+            ("json", "application/json"),
+            ("jsonl", "application/jsonl"),
+        ):
+            hook = UploadCompletionHook(
+                base_path=BASE_PATH, upload_format=upload_format
+            )
+            self.addCleanup(hook.shutdown)
+
+            hook.on_completion(
+                inputs=FAKE_INPUTS,
+                outputs=FAKE_OUTPUTS,
+                system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            )
+            hook.shutdown()
+
+            self.mock_fs.open.assert_called_with(
+                ANY, "w", content_type=expect_content_type
+            )
 
     def test_parse_upload_format_envvar(self):
         for envvar_value, expect in (
@@ -246,7 +268,11 @@ class TestUploadCompletionHook(TestCase):
                 base_path=BASE_PATH, upload_format="jsonl"
             )
             self.addCleanup(hook.shutdown)
-            self.assertEqual(hook._format, "jsonl")
+            self.assertEqual(
+                hook._format,
+                "jsonl",
+                "upload_format kwarg should take precedence",
+            )
 
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
@@ -408,4 +434,27 @@ class TestUploadCompletionHookIntegration(TestBase):
 {"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}],"index":1}
 {"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}],"index":2}
 """,
+        )
+
+    def test_upload_chained_filesystem_ref(self) -> None:
+        """Using a chained filesystem like simplecache should refer to the final remote destination"""
+        hook = UploadCompletionHook(
+            base_path="simplecache::memory",
+            upload_format="jsonl",
+        )
+        self.addCleanup(hook.shutdown)
+        log_record = LogRecord()
+
+        hook.on_completion(
+            inputs=FAKE_INPUTS,
+            outputs=FAKE_OUTPUTS,
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
+        )
+        hook.shutdown()
+
+        ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
+        self.assertTrue(
+            ref_uri.startswith("memory://"),
+            f"{ref_uri=} does not start with final destination uri memory://",
         )
