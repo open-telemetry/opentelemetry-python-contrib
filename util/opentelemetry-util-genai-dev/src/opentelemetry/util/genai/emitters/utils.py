@@ -18,10 +18,17 @@ from opentelemetry.util.types import AttributeValue
 
 from ..attributes import (
     GEN_AI_FRAMEWORK,
-    GEN_AI_INPUT_MESSAGES,
     GEN_AI_PROVIDER_NAME,
 )
-from ..types import InputMessage, LLMInvocation, OutputMessage, Text
+from ..types import (
+    Agent,
+    LLMInvocation,
+    Task,
+    Text,
+    ToolCall,
+    ToolCallResponse,
+    Workflow,
+)
 
 
 def _serialize_messages(messages) -> Optional[str]:
@@ -92,66 +99,198 @@ def _apply_llm_finish_semconv(
         pass
 
 
-def _message_to_log_record(
-    message: InputMessage,
-    provider_name: Optional[str],
-    framework: Optional[str],
+def _llm_invocation_to_log_record(
+    invocation: LLMInvocation,
     capture_content: bool,
 ) -> Optional[SDKLogRecord]:
-    body = asdict(message)
-    if not capture_content and body and body.get("parts"):
-        for part in body.get("parts", []):
-            if part.get("content"):
-                part["content"] = ""
-
+    """Create a log record for an LLM invocation"""
     attributes: Dict[str, Any] = {
-        GEN_AI_FRAMEWORK: framework,
-        GEN_AI_PROVIDER_NAME: provider_name,
         "event.name": "gen_ai.client.inference.operation.details",
     }
+    if invocation.attributes.get("framework"):
+        attributes[GEN_AI_FRAMEWORK] = invocation.attributes.get("framework")
+    if invocation.provider:
+        attributes[GEN_AI_PROVIDER_NAME] = invocation.provider
+    if invocation.request_model:
+        attributes["gen_ai.request.model"] = invocation.request_model
 
-    if capture_content:
-        attributes[GEN_AI_INPUT_MESSAGES] = body
+    # Optional attributes from semantic conventions table
+    if invocation.response_model_name:
+        attributes["gen_ai.response.model"] = invocation.response_model_name
+    if invocation.response_id:
+        attributes["gen_ai.response.id"] = invocation.response_id
+    if invocation.input_tokens is not None:
+        attributes["gen_ai.usage.input_tokens"] = invocation.input_tokens
+    if invocation.output_tokens is not None:
+        attributes["gen_ai.usage.output_tokens"] = invocation.output_tokens
+    attr_mappings = {
+        "gen_ai.request.id": "gen_ai.request.id",
+        "gen_ai.request.max_tokens": "gen_ai.request.max_tokens",
+        "gen_ai.request.temperature": "gen_ai.request.temperature",
+        "gen_ai.request.top_p": "gen_ai.request.top_p",
+        "gen_ai.request.top_k": "gen_ai.request.top_k",
+        "gen_ai.request.frequency_penalty": "gen_ai.request.frequency_penalty",
+        "gen_ai.request.presence_penalty": "gen_ai.request.presence_penalty",
+        "gen_ai.request.stop_sequences": "gen_ai.request.stop_sequences",
+        "gen_ai.response.finish_reasons": "gen_ai.response.finish_reasons",
+        "gen_ai.request.choice.count": "gen_ai.request.choice.count",
+    }
+
+    for attr_key, semconv_key in attr_mappings.items():
+        if attr_key in invocation.attributes:
+            attributes[semconv_key] = invocation.attributes[attr_key]
+
+    # If choice count not in attributes, infer from output_messages length
+    if (
+        "gen_ai.request.choice.count" not in attributes
+        and invocation.output_messages
+        and len(invocation.output_messages) != 1
+    ):
+        attributes["gen_ai.request.choice.count"] = len(
+            invocation.output_messages
+        )
+
+    # Add agent context if available
+    if invocation.agent_name:
+        attributes["gen_ai.agent.name"] = invocation.agent_name
+    if invocation.agent_id:
+        attributes["gen_ai.agent.id"] = invocation.agent_id
+
+    body: Dict[str, Any] = {}
+    system_instructions = []
+
+    if invocation.input_messages:
+        input_msgs = []
+        for msg in invocation.input_messages:
+            if msg.role == "system":
+                for part in msg.parts:
+                    if isinstance(part, Text):
+                        part_dict = {
+                            "type": "text",
+                            "content": part.content if capture_content else "",
+                        }
+                        system_instructions.append(part_dict)
+                    else:
+                        try:
+                            part_dict = (
+                                asdict(part)
+                                if hasattr(part, "__dataclass_fields__")
+                                else part
+                            )
+                            if (
+                                not capture_content
+                                and isinstance(part_dict, dict)
+                                and "content" in part_dict
+                            ):
+                                part_dict["content"] = ""
+                            system_instructions.append(part_dict)
+                        except Exception:
+                            pass
+                continue  # Don't include in input_messages
+
+            # Message structure: role and parts array
+            input_msg = {"role": msg.role, "parts": []}
+
+            # Process parts (text, tool_call, tool_call_response)
+            for part in msg.parts:
+                if isinstance(part, Text):
+                    part_dict = {
+                        "type": "text",
+                        "content": part.content if capture_content else "",
+                    }
+                    input_msg["parts"].append(part_dict)
+                elif isinstance(part, ToolCall):
+                    tool_dict = {
+                        "type": "tool_call",
+                        "id": part.id,
+                        "name": part.name,
+                        "arguments": part.arguments if capture_content else {},
+                    }
+                    input_msg["parts"].append(tool_dict)
+                elif isinstance(part, ToolCallResponse):
+                    tool_response_dict = {
+                        "type": "tool_call_response",
+                        "id": part.id,
+                        "result": part.response if capture_content else "",
+                    }
+                    input_msg["parts"].append(tool_response_dict)
+                else:
+                    try:
+                        part_dict = (
+                            asdict(part)
+                            if hasattr(part, "__dataclass_fields__")
+                            else part
+                        )
+                        if not capture_content and isinstance(part_dict, dict):
+                            # Clear content fields
+                            if "content" in part_dict:
+                                part_dict["content"] = ""
+                            if "arguments" in part_dict:
+                                part_dict["arguments"] = {}
+                            if "response" in part_dict:
+                                part_dict["response"] = ""
+                        input_msg["parts"].append(part_dict)
+                    except Exception:
+                        pass
+
+            input_msgs.append(input_msg)
+
+        if input_msgs:
+            body["gen_ai.input.messages"] = input_msgs
+
+    if system_instructions:
+        body["gen_ai.system.instructions"] = system_instructions
+
+    if invocation.output_messages:
+        output_msgs = []
+
+        for msg in invocation.output_messages:
+            output_msg = {
+                "role": msg.role,
+                "parts": [],
+                "finish_reason": msg.finish_reason or "stop",
+            }
+
+            # Process parts (text, tool_calls, etc.)
+            for part in msg.parts:
+                if isinstance(part, Text):
+                    part_dict = {
+                        "type": "text",
+                        "content": part.content if capture_content else "",
+                    }
+                    output_msg["parts"].append(part_dict)
+                elif isinstance(part, ToolCall):
+                    tool_dict = {
+                        "type": "tool_call",
+                        "id": part.id,
+                        "name": part.name,
+                        "arguments": part.arguments if capture_content else {},
+                    }
+                    output_msg["parts"].append(tool_dict)
+                else:
+                    try:
+                        part_dict = (
+                            asdict(part)
+                            if hasattr(part, "__dataclass_fields__")
+                            else part
+                        )
+                        if not capture_content and isinstance(part_dict, dict):
+                            # Clear content fields
+                            if "content" in part_dict:
+                                part_dict["content"] = ""
+                            if "arguments" in part_dict:
+                                part_dict["arguments"] = {}
+                        output_msg["parts"].append(part_dict)
+                    except Exception:
+                        pass
+
+            output_msgs.append(output_msg)
+        body["gen_ai.output.messages"] = output_msgs
 
     return SDKLogRecord(
         body=body or None,
         attributes=attributes,
         event_name="gen_ai.client.inference.operation.details",
-    )
-
-
-def _chat_generation_to_log_record(
-    chat_generation: OutputMessage,
-    index: int,
-    provider_name: Optional[str],
-    framework: Optional[str],
-    capture_content: bool,
-) -> Optional[SDKLogRecord]:
-    if not chat_generation:
-        return None
-    attributes = {
-        GEN_AI_FRAMEWORK: framework,
-        GEN_AI_PROVIDER_NAME: provider_name,
-        "event.name": "gen_ai.choice",
-    }
-    content: Optional[str] = None
-    for part in chat_generation.parts:
-        if isinstance(part, Text):
-            content = part.content
-            break
-    message = {"type": chat_generation.role}
-    if capture_content and content is not None:
-        message["content"] = content
-
-    body = {
-        "index": index,
-        "finish_reason": chat_generation.finish_reason or "error",
-        "message": message,
-    }
-    return SDKLogRecord(
-        body=body or None,
-        attributes=attributes,
-        event_name="gen_ai.choice",
     )
 
 
@@ -206,3 +345,107 @@ def _record_duration(
     if invocation.end_time is not None:
         elapsed: float = invocation.end_time - invocation.start_time
         duration_histogram.record(elapsed, attributes=metric_attributes)
+
+
+# Helper functions for agentic types
+def _workflow_to_log_record(
+    workflow: Workflow, capture_content: bool
+) -> Optional[SDKLogRecord]:
+    """Create a log record for a workflow event."""
+    attributes: Dict[str, Any] = {
+        "event.name": "gen_ai.client.workflow.operation.details",
+        "gen_ai.workflow.name": workflow.name,
+    }
+
+    if workflow.workflow_type:
+        attributes["gen_ai.workflow.type"] = workflow.workflow_type
+    if workflow.description:
+        attributes["gen_ai.workflow.description"] = workflow.description
+    if workflow.framework:
+        attributes[GEN_AI_FRAMEWORK] = workflow.framework
+
+    body: Dict[str, Any] = {}
+
+    if capture_content:
+        if workflow.initial_input:
+            body["initial_input"] = workflow.initial_input
+        if workflow.final_output:
+            body["final_output"] = workflow.final_output
+
+    return SDKLogRecord(
+        body=body or None,
+        attributes=attributes,
+        event_name="gen_ai.client.workflow.operation.details",
+    )
+
+
+def _agent_to_log_record(
+    agent: Agent, capture_content: bool
+) -> Optional[SDKLogRecord]:
+    """Create a log record for agent event"""
+    if not capture_content or not agent.system_instructions:
+        return None
+
+    attributes: Dict[str, Any] = {
+        "event.name": "gen_ai.client.agent.operation.details",
+        GEN_AI_FRAMEWORK: agent.framework,
+    }
+
+    attributes["gen_ai.agent.name"] = agent.name
+    attributes["gen_ai.agent.id"] = str(agent.run_id)
+
+    body = agent.system_instructions
+
+    return SDKLogRecord(
+        body=body,
+        attributes=attributes,
+        event_name="gen_ai.client.agent.operation.details",
+    )
+
+
+def _task_to_log_record(
+    task: Task, capture_content: bool
+) -> Optional[SDKLogRecord]:
+    """Create a log record for a task event.
+
+    Note: Task events are not yet in semantic conventions but follow
+    the message structure pattern for consistency.
+    """
+    # Attributes contain metadata (not content)
+    attributes: Dict[str, Any] = {
+        "event.name": "gen_ai.client.task.operation.details",
+        "gen_ai.task.name": task.name,
+    }
+
+    if task.task_type:
+        attributes["gen_ai.task.type"] = task.task_type
+    if task.objective:
+        attributes["gen_ai.task.objective"] = task.objective
+    if task.source:
+        attributes["gen_ai.task.source"] = task.source
+    if task.assigned_agent:
+        attributes["gen_ai.agent.name"] = task.assigned_agent
+    if task.status:
+        attributes["gen_ai.task.status"] = task.status
+
+    # Body contains messages/content only (following semantic conventions pattern)
+    # If capture_content is disabled, emit empty content (like LLM messages do)
+    body: Dict[str, Any] = {}
+
+    if capture_content:
+        if task.input_data:
+            body["input_data"] = task.input_data
+        if task.output_data:
+            body["output_data"] = task.output_data
+    else:
+        # Emit structure with empty content when capture is disabled
+        if task.input_data:
+            body["input_data"] = ""
+        if task.output_data:
+            body["output_data"] = ""
+
+    return SDKLogRecord(
+        body=body or None,
+        attributes=attributes,
+        event_name="gen_ai.client.task.operation.details",
+    )

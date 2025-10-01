@@ -4,8 +4,13 @@ from typing import Any, Optional
 
 from opentelemetry._logs import Logger, get_logger
 
-from ..types import Error, LLMInvocation
-from .utils import _chat_generation_to_log_record, _message_to_log_record
+from ..types import Agent, Error, LLMInvocation, Task, Workflow
+from .utils import (
+    _agent_to_log_record,
+    _llm_invocation_to_log_record,
+    _task_to_log_record,
+    _workflow_to_log_record,
+)
 
 
 class ContentEventsEmitter:
@@ -31,49 +36,69 @@ class ContentEventsEmitter:
         self._capture_content = capture_content
 
     def start(self, obj: Any) -> None:
-        if not isinstance(obj, LLMInvocation) or not self._capture_content:
+        # LLM events are emitted in finish() when we have both input and output
+        return None
+
+    def finish(self, obj: Any) -> None:
+        if not self._capture_content:
             return
-        invocation = obj
-        if not invocation.input_messages:
-            return
-        for msg in invocation.input_messages:
+
+        # if isinstance(obj, Workflow):
+        #     self._emit_workflow_event(obj)
+        #     return
+        # if isinstance(obj, Agent):
+        #     self._emit_agent_event(obj)
+        #     return
+        # if isinstance(obj, Task):
+        #     self._emit_task_event(obj)
+        #     return
+
+        if isinstance(obj, LLMInvocation):
+            # Emit a single event for the entire LLM invocation
             try:
-                record = _message_to_log_record(
-                    msg,
-                    provider_name=invocation.provider,
-                    framework=invocation.attributes.get("framework"),
-                    capture_content=self._capture_content,
+                record = _llm_invocation_to_log_record(
+                    obj,
+                    self._capture_content,
                 )
                 if record and self._logger:
                     self._logger.emit(record)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
 
-    def finish(self, obj: Any) -> None:
-        if not isinstance(obj, LLMInvocation) or not self._capture_content:
-            return
-        invocation = obj
-        if invocation.span is None or not invocation.output_messages:
-            return
-        for index, msg in enumerate(invocation.output_messages):
-            try:
-                record = _chat_generation_to_log_record(
-                    msg,
-                    index,
-                    invocation.provider,
-                    invocation.attributes.get("framework"),
-                    self._capture_content,
+                logging.getLogger(__name__).warning(
+                    f"Failed to emit LLM invocation event: {e}", exc_info=True
                 )
-                if record:
-                    try:
-                        self._logger.emit(record)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
 
     def error(self, error: Error, obj: Any) -> None:
         return None
 
     def handles(self, obj: Any) -> bool:
-        return isinstance(obj, LLMInvocation)
+        return isinstance(obj, (LLMInvocation, Workflow, Agent, Task))
+
+    # Helper methods for new agentic types
+    def _emit_workflow_event(self, workflow: Workflow) -> None:
+        """Emit an event for a workflow."""
+        try:
+            record = _workflow_to_log_record(workflow, self._capture_content)
+            if record and self._logger:
+                self._logger.emit(record)
+        except Exception:
+            pass
+
+    def _emit_agent_event(self, agent: Agent) -> None:
+        """Emit an event for an agent operation."""
+        try:
+            record = _agent_to_log_record(agent, self._capture_content)
+            if record and self._logger:
+                self._logger.emit(record)
+        except Exception:
+            pass
+
+    def _emit_task_event(self, task: Task) -> None:
+        """Emit an event for a task."""
+        try:
+            record = _task_to_log_record(task, self._capture_content)
+            if record and self._logger:
+                self._logger.emit(record)
+        except Exception:
+            pass

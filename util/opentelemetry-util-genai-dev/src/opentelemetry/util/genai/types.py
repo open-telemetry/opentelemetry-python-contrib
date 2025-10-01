@@ -64,6 +64,9 @@ class ToolCall:
     end_time: Optional[float] = None
     span: Optional[Span] = None
     context_token: Optional[ContextToken] = None
+    # Agent context
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
 
 
 @dataclass()
@@ -142,6 +145,9 @@ class LLMInvocation:
     # Ahead of upstream
     run_id: UUID = field(default_factory=uuid4)
     parent_run_id: Optional[UUID] = None
+    # Agent context
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
 
 
 @dataclass
@@ -183,6 +189,109 @@ class EmbeddingInvocation:
     end_time: Optional[float] = None
     span: Optional[Span] = None
     context_token: Optional[ContextToken] = None
+    # Agent context (for agentic applications)
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
+
+
+@dataclass
+class Workflow:
+    """Represents a workflow orchestrating multiple agents and tasks.
+
+    A workflow is the top-level orchestration unit in agentic AI systems,
+    coordinating agents and tasks to achieve a complex goal. Workflows are optional
+    and typically used in multi-agent or multi-step scenarios.
+
+    Attributes:
+        name: Identifier for the workflow (e.g., "customer_support_pipeline")
+        workflow_type: Type of orchestration (e.g., "sequential", "parallel", "graph", "dynamic")
+        description: Human-readable description of the workflow's purpose
+        framework: Framework implementing the workflow (e.g., "langgraph", "crewai", "autogen")
+        initial_input: User's initial query/request that triggered the workflow
+        final_output: Final response/result produced by the workflow
+        attributes: Additional custom attributes for workflow-specific metadata
+        start_time: Timestamp when workflow started
+        end_time: Timestamp when workflow completed
+        span: OpenTelemetry span associated with this workflow
+        context_token: Context token for span management
+        run_id: Unique identifier for this workflow execution
+        parent_run_id: Optional parent workflow/trace identifier
+    """
+
+    name: str
+    workflow_type: Optional[str] = None  # sequential, parallel, graph, dynamic
+    description: Optional[str] = None
+    framework: Optional[str] = None  # langgraph, crewai, autogen, etc.
+    initial_input: Optional[str] = None  # User's initial query/request
+    final_output: Optional[str] = None  # Final response/result
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
+    run_id: UUID = field(default_factory=uuid4)
+    parent_run_id: Optional[UUID] = None
+
+
+@dataclass
+class Agent:
+    """Represents an agent in an agentic AI system.
+
+    An agent is an autonomous entity with capabilities (tools, models) that can
+    execute tasks. This dataclass supports both agent creation (initialization)
+    and agent invocation (execution) phases.
+    """
+
+    name: str
+    operation: Literal["create", "invoke"]  # create_agent or invoke_agent
+    agent_type: Optional[str] = (
+        None  # researcher, planner, executor, critic, etc.
+    )
+    description: Optional[str] = None
+    framework: Optional[str] = None  # langchain, autogen, crewai, etc.
+    model: Optional[str] = None  # primary model if applicable
+    tools: list[str] = field(default_factory=list)  # available tool names
+    system_instructions: Optional[str] = None  # System prompt/instructions
+    input_context: Optional[str] = None  # Input for invoke operations
+    output_result: Optional[str] = None  # Output for invoke operations
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
+    run_id: UUID = field(default_factory=uuid4)
+    parent_run_id: Optional[UUID] = None
+
+
+@dataclass
+class Task:
+    """Represents a discrete unit of work in an agentic AI system.
+
+    Tasks can be orchestrated at the workflow level (assigned to agents) or
+    decomposed internally by agents during execution. This design supports both
+    scenarios through flexible parent relationships.
+    """
+
+    name: str
+    objective: Optional[str] = None  # what the task aims to achieve
+    task_type: Optional[str] = (
+        None  # planning, execution, reflection, tool_use, etc.
+    )
+    source: Optional[Literal["workflow", "agent"]] = (
+        None  # where task originated
+    )
+    assigned_agent: Optional[str] = None  # for workflow-assigned tasks
+    status: Optional[str] = None  # pending, in_progress, completed, failed
+    description: Optional[str] = None
+    input_data: Optional[str] = None  # Input data/context for the task
+    output_data: Optional[str] = None  # Output data/result from the task
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
+    run_id: UUID = field(default_factory=uuid4)
+    parent_run_id: Optional[UUID] = None
 
 
 __all__ = [
@@ -197,5 +306,9 @@ __all__ = [
     "EmbeddingInvocation",
     "Error",
     "EvaluationResult",
+    # agentic AI types
+    "Workflow",
+    "Agent",
+    "Task",
     # backward compatibility normalization helpers
 ]

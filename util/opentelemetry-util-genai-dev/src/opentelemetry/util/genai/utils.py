@@ -30,11 +30,19 @@ logger = logging.getLogger(__name__)
 
 
 def is_experimental_mode() -> bool:
+    # Workaround: Check environment variable directly since the stability class
+    # initialization seems unreliable (can be initialized before env vars are set)
+    opt_in = os.environ.get("OTEL_SEMCONV_STABILITY_OPT_IN", "")
+    if "gen_ai_latest_experimental" in opt_in.lower():
+        return True
+
+    # Fallback to the official check
+    # TODO stability mode is being set to default even after setting OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
     return (
         _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(  # noqa: SLF001
             _OpenTelemetryStabilitySignalType.GEN_AI,
         )
-        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
     )
 
 
@@ -65,16 +73,16 @@ def get_content_capturing_mode() -> (
             return ContentCapturingMode.SPAN_ONLY
         return None
 
-    # Direct mode token or boolean alias
-    prim_mode = _convert(primary)
-    if prim_mode is not None:
-        return prim_mode
-
-    # Boolean primary with secondary override
-    if primary.lower() in ("true", "1", "yes") and secondary:
+    # If secondary mode is specified, it takes precedence
+    if secondary:
         sec_mode = _convert(secondary)
         if sec_mode is not None:
             return sec_mode
+
+    # Otherwise use primary mode
+    prim_mode = _convert(primary)
+    if prim_mode is not None:
+        return prim_mode
 
     logger.warning(
         "%s is not a valid option for `%s` environment variable. Must be one of %s. Defaulting to `NO_CONTENT`.",

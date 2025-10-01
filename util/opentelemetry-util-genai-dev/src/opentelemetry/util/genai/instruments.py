@@ -31,3 +31,19 @@ class Instruments:
             unit="tokens",
             description="Token usage for GenAI operations",
         )
+        # Agentic AI metrics
+        self.workflow_duration_histogram: Histogram = meter.create_histogram(
+            name="gen_ai.workflow.duration",
+            unit="s",
+            description="Duration of GenAI workflows",
+        )
+        self.agent_duration_histogram: Histogram = meter.create_histogram(
+            name="gen_ai.agent.duration",
+            unit="s",
+            description="Duration of agent operations",
+        )
+        self.task_duration_histogram: Histogram = meter.create_histogram(
+            name="gen_ai.task.duration",
+            unit="s",
+            description="Duration of task executions",
+        )

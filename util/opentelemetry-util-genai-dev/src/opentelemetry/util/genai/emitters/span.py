@@ -16,11 +16,40 @@ from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 from ..attributes import (
+    GEN_AI_AGENT_DESCRIPTION,
+    GEN_AI_AGENT_ID,
+    GEN_AI_AGENT_INPUT_CONTEXT,
+    GEN_AI_AGENT_NAME,
+    GEN_AI_AGENT_OUTPUT_RESULT,
+    GEN_AI_AGENT_SYSTEM_INSTRUCTIONS,
+    GEN_AI_AGENT_TOOLS,
+    GEN_AI_AGENT_TYPE,
     GEN_AI_INPUT_MESSAGES,
     GEN_AI_OUTPUT_MESSAGES,
     GEN_AI_PROVIDER_NAME,
+    GEN_AI_TASK_ASSIGNED_AGENT,
+    GEN_AI_TASK_INPUT_DATA,
+    GEN_AI_TASK_NAME,
+    GEN_AI_TASK_OBJECTIVE,
+    GEN_AI_TASK_OUTPUT_DATA,
+    GEN_AI_TASK_SOURCE,
+    GEN_AI_TASK_STATUS,
+    GEN_AI_TASK_TYPE,
+    GEN_AI_WORKFLOW_DESCRIPTION,
+    GEN_AI_WORKFLOW_FINAL_OUTPUT,
+    GEN_AI_WORKFLOW_INITIAL_INPUT,
+    GEN_AI_WORKFLOW_NAME,
+    GEN_AI_WORKFLOW_TYPE,
 )
-from ..types import EmbeddingInvocation, Error, LLMInvocation, ToolCall
+from ..types import (
+    Agent,
+    EmbeddingInvocation,
+    Error,
+    LLMInvocation,
+    Task,
+    ToolCall,
+    Workflow,
+)
 from .utils import (
     _apply_function_definitions,
     _apply_llm_finish_semconv,
@@ -84,6 +113,13 @@ class SpanEmitter:
         # function definitions (semantic conv derived from structured list)
         if isinstance(invocation, LLMInvocation):
             _apply_function_definitions(span, invocation.request_functions)
+        # Agent context
+        agent_name = getattr(invocation, "agent_name", None)
+        if agent_name:
+            span.set_attribute(GEN_AI_AGENT_NAME, agent_name)
+        agent_id = getattr(invocation, "agent_id", None)
+        if agent_id:
+            span.set_attribute(GEN_AI_AGENT_ID, agent_id)
         # Backward compatibility: copy non-semconv, non-traceloop attributes present at start
         if isinstance(invocation, LLMInvocation):
             for k, v in invocation.attributes.items():
@@ -132,37 +168,136 @@ class SpanEmitter:
 
     # ---- lifecycle -------------------------------------------------------
     def start(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
-        if isinstance(invocation, ToolCall):
+        # Handle new agentic types
+        if isinstance(invocation, Workflow):
+            self._start_workflow(invocation)
+        elif isinstance(invocation, Agent):
+            self._start_agent(invocation)
+        elif isinstance(invocation, Task):
+            self._start_task(invocation)
+        # Handle existing types
+        elif isinstance(invocation, ToolCall):
             span_name = f"tool {invocation.name}"
+            cm = self._tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, end_on_exit=False
+            )
+            span = cm.__enter__()
+            invocation.span = span  # type: ignore[assignment]
+            invocation.context_token = cm  # type: ignore[assignment]
+            self._apply_start_attrs(invocation)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = f"embedding {invocation.request_model}"
+            cm = self._tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, end_on_exit=False
+            )
+            span = cm.__enter__()
+            invocation.span = span  # type: ignore[assignment]
+            invocation.context_token = cm  # type: ignore[assignment]
+            self._apply_start_attrs(invocation)
         else:
             span_name = f"chat {invocation.request_model}"
-        cm = self._tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, end_on_exit=False
-        )
-        span = cm.__enter__()
-        invocation.span = span  # type: ignore[assignment]
-        invocation.context_token = cm  # type: ignore[assignment]
-        self._apply_start_attrs(invocation)
+            cm = self._tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, end_on_exit=False
+            )
+            span = cm.__enter__()
+            invocation.span = span  # type: ignore[assignment]
+            invocation.context_token = cm  # type: ignore[assignment]
+            self._apply_start_attrs(invocation)
 
     def finish(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
-        span = getattr(invocation, "span", None)
-        if span is None:
-            return
-        self._apply_finish_attrs(invocation)
-        token = getattr(invocation, "context_token", None)
-        if token is not None and hasattr(token, "__exit__"):
-            try:  # pragma: no cover
-                token.__exit__(None, None, None)  # type: ignore[misc]
-            except Exception:  # pragma: no cover
-                pass
-        span.end()
+        if isinstance(invocation, Workflow):
+            self._finish_workflow(invocation)
+        elif isinstance(invocation, Agent):
+            self._finish_agent(invocation)
+        elif isinstance(invocation, Task):
+            self._finish_task(invocation)
+        else:
+            span = getattr(invocation, "span", None)
+            if span is None:
+                return
+            self._apply_finish_attrs(invocation)
+            token = getattr(invocation, "context_token", None)
+            if token is not None and hasattr(token, "__exit__"):
+                try:  # pragma: no cover
+                    token.__exit__(None, None, None)  # type: ignore[misc]
+                except Exception:  # pragma: no cover
+                    pass
+            span.end()
 
     def error(
         self, error: Error, invocation: LLMInvocation | EmbeddingInvocation
     ) -> None:  # type: ignore[override]
-        span = getattr(invocation, "span", None)
+        if isinstance(invocation, Workflow):
+            self._error_workflow(error, invocation)
+        elif isinstance(invocation, Agent):
+            self._error_agent(error, invocation)
+        elif isinstance(invocation, Task):
+            self._error_task(error, invocation)
+        else:
+            span = getattr(invocation, "span", None)
+            if span is None:
+                return
+            span.set_status(Status(StatusCode.ERROR, error.message))
+            if span.is_recording():
+                span.set_attribute(
+                    ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+                )
+            self._apply_finish_attrs(invocation)
+            token = getattr(invocation, "context_token", None)
+            if token is not None and hasattr(token, "__exit__"):
+                try:  # pragma: no cover
+                    token.__exit__(None, None, None)  # type: ignore[misc]
+                except Exception:  # pragma: no cover
+                    pass
+            span.end()
+
+    # ---- Workflow lifecycle ----------------------------------------------
+    def _start_workflow(self, workflow: Workflow) -> None:
+        """Start a workflow span."""
+        span_name = f"gen_ai.workflow {workflow.name}"
+        cm = self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, end_on_exit=False
+        )
+        span = cm.__enter__()
+        workflow.span = span
+        workflow.context_token = cm
+
+        # Set workflow attributes
+        span.set_attribute(GEN_AI_WORKFLOW_NAME, workflow.name)
+        if workflow.workflow_type:
+            span.set_attribute(GEN_AI_WORKFLOW_TYPE, workflow.workflow_type)
+        if workflow.description:
+            span.set_attribute(
+                GEN_AI_WORKFLOW_DESCRIPTION, workflow.description
+            )
+        if workflow.framework:
+            span.set_attribute("gen_ai.framework", workflow.framework)
+        if workflow.initial_input and self._capture_content:
+            span.set_attribute(
+                GEN_AI_WORKFLOW_INITIAL_INPUT, workflow.initial_input
+            )
+
+    def _finish_workflow(self, workflow: Workflow) -> None:
+        """Finish a workflow span."""
+        span = workflow.span
+        if span is None:
+            return
+        # Set final output if capture_content enabled
+        if workflow.final_output and self._capture_content:
+            span.set_attribute(
+                GEN_AI_WORKFLOW_FINAL_OUTPUT, workflow.final_output
+            )
+        token = workflow.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
+        span.end()
+
+    def _error_workflow(self, error: Error, workflow: Workflow) -> None:
+        """Fail a workflow span with error status."""
+        span = workflow.span
         if span is None:
             return
         span.set_status(Status(StatusCode.ERROR, error.message))
@@ -170,11 +305,151 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
-        self._apply_finish_attrs(invocation)
-        token = getattr(invocation, "context_token", None)
+        token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
-            try:  # pragma: no cover
+            try:
                 token.__exit__(None, None, None)  # type: ignore[misc]
-            except Exception:  # pragma: no cover
+            except Exception:
+                pass
+        span.end()
+
+    # ---- Agent lifecycle -------------------------------------------------
+    def _start_agent(self, agent: Agent) -> None:
+        """Start an agent span (create or invoke)."""
+        # Span name per semantic conventions
+        if agent.operation == "create":
+            span_name = f"create_agent {agent.name}"
+        else:
+            span_name = f"invoke_agent {agent.name}"
+
+        cm = self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, end_on_exit=False
+        )
+        span = cm.__enter__()
+        agent.span = span
+        agent.context_token = cm
+
+        # Required attributes per semantic conventions
+        span.set_attribute(
+            GenAI.GEN_AI_OPERATION_NAME,
+            GenAI.GenAiOperationNameValues.CHAT.value,
+        )
+        span.set_attribute(GEN_AI_AGENT_NAME, agent.name)
+        span.set_attribute(GEN_AI_AGENT_ID, str(agent.run_id))
+
+        # Optional attributes
+        if agent.agent_type:
+            span.set_attribute(GEN_AI_AGENT_TYPE, agent.agent_type)
+        if agent.description:
+            span.set_attribute(GEN_AI_AGENT_DESCRIPTION, agent.description)
+        if agent.framework:
+            span.set_attribute("gen_ai.framework", agent.framework)
+        if agent.model:
+            span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, agent.model)
+        if agent.tools:
+            span.set_attribute(GEN_AI_AGENT_TOOLS, agent.tools)
+        if agent.system_instructions and self._capture_content:
+            span.set_attribute(
+                GEN_AI_AGENT_SYSTEM_INSTRUCTIONS, agent.system_instructions
+            )
+        if agent.input_context and self._capture_content:
+            span.set_attribute(GEN_AI_AGENT_INPUT_CONTEXT, agent.input_context)
+
+    def _finish_agent(self, agent: Agent) -> None:
+        """Finish an agent span."""
+        span = agent.span
+        if span is None:
+            return
+        # Set output result if capture_content enabled
+        if agent.output_result and self._capture_content:
+            span.set_attribute(GEN_AI_AGENT_OUTPUT_RESULT, agent.output_result)
+        token = agent.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
+        span.end()
+
+    def _error_agent(self, error: Error, agent: Agent) -> None:
+        """Fail an agent span with error status."""
+        span = agent.span
+        if span is None:
+            return
+        span.set_status(Status(StatusCode.ERROR, error.message))
+        if span.is_recording():
+            span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+            )
+        token = agent.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
+        span.end()
+
+    # ---- Task lifecycle --------------------------------------------------
+    def _start_task(self, task: Task) -> None:
+        """Start a task span."""
+        span_name = f"gen_ai.task {task.name}"
+        cm = self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, end_on_exit=False
+        )
+        span = cm.__enter__()
+        task.span = span
+        task.context_token = cm
+
+        # Set task attributes
+        span.set_attribute(GEN_AI_TASK_NAME, task.name)
+        if task.task_type:
+            span.set_attribute(GEN_AI_TASK_TYPE, task.task_type)
+        if task.objective:
+            span.set_attribute(GEN_AI_TASK_OBJECTIVE, task.objective)
+        if task.source:
+            span.set_attribute(GEN_AI_TASK_SOURCE, task.source)
+        if task.assigned_agent:
+            span.set_attribute(GEN_AI_TASK_ASSIGNED_AGENT, task.assigned_agent)
+        if task.status:
+            span.set_attribute(GEN_AI_TASK_STATUS, task.status)
+        if task.input_data and self._capture_content:
+            span.set_attribute(GEN_AI_TASK_INPUT_DATA, task.input_data)
+
+    def _finish_task(self, task: Task) -> None:
+        """Finish a task span."""
+        span = task.span
+        if span is None:
+            return
+        # Set output data if capture_content enabled
+        if task.output_data and self._capture_content:
+            span.set_attribute(GEN_AI_TASK_OUTPUT_DATA, task.output_data)
+        # Update status if changed
+        if task.status:
+            span.set_attribute(GEN_AI_TASK_STATUS, task.status)
+        token = task.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
+        span.end()
+
+    def _error_task(self, error: Error, task: Task) -> None:
+        """Fail a task span with error status."""
+        span = task.span
+        if span is None:
+            return
+        span.set_status(Status(StatusCode.ERROR, error.message))
+        if span.is_recording():
+            span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+            )
+        # Update status to failed
+        span.set_attribute(GEN_AI_TASK_STATUS, "failed")
+        token = task.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
                 pass
         span.end()
