@@ -60,9 +60,9 @@ _logger = logging.getLogger(__name__)
 
 @dataclass
 class Completion:
-    inputs: list[types.InputMessage]
-    outputs: list[types.OutputMessage]
-    system_instruction: list[types.MessagePart]
+    inputs: list[types.InputMessage] | None
+    outputs: list[types.OutputMessage] | None
+    system_instruction: list[types.MessagePart] | None
 
 
 @dataclass
@@ -203,17 +203,19 @@ class UploadCompletionHook(CompletionHook):
     def on_completion(
         self,
         *,
-        inputs: list[types.InputMessage],
-        outputs: list[types.OutputMessage],
-        system_instruction: list[types.MessagePart],
+        inputs: list[types.InputMessage] | None = None,
+        outputs: list[types.OutputMessage] | None = None,
+        system_instruction: list[types.MessagePart] | None = None,
         span: Span | None = None,
         log_record: LogRecord | None = None,
         **kwargs: Any,
     ) -> None:
+        if not any([inputs, outputs, system_instruction]):
+            return
         completion = Completion(
-            inputs=inputs,
-            outputs=outputs,
-            system_instruction=system_instruction,
+            inputs=inputs or None,
+            outputs=outputs or None,
+            system_instruction=system_instruction or None,
         )
         # generate the paths to upload to
         ref_names = self._calculate_ref_path()
@@ -225,23 +227,36 @@ class UploadCompletionHook(CompletionHook):
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 
+        references = [
+            (ref_name, ref, ref_attr)
+            for ref_name, ref, ref_attr in [
+                (
+                    ref_names.inputs_ref,
+                    completion.inputs,
+                    GEN_AI_INPUT_MESSAGES_REF,
+                ),
+                (
+                    ref_names.outputs_ref,
+                    completion.outputs,
+                    GEN_AI_OUTPUT_MESSAGES_REF,
+                ),
+                (
+                    ref_names.system_instruction_ref,
+                    completion.system_instruction,
+                    GEN_AI_SYSTEM_INSTRUCTIONS_REF,
+                ),
+            ]
+            if ref
+        ]
         self._submit_all(
             {
-                # Use partial to defer as much as possible to the background threads
-                ref_names.inputs_ref: partial(to_dict, completion.inputs),
-                ref_names.outputs_ref: partial(to_dict, completion.outputs),
-                ref_names.system_instruction_ref: partial(
-                    to_dict, completion.system_instruction
-                ),
-            },
+                ref_name: partial(to_dict, ref)
+                for ref_name, ref, _ in references
+            }
         )
 
         # stamp the refs on telemetry
-        references = {
-            GEN_AI_INPUT_MESSAGES_REF: ref_names.inputs_ref,
-            GEN_AI_OUTPUT_MESSAGES_REF: ref_names.outputs_ref,
-            GEN_AI_SYSTEM_INSTRUCTIONS_REF: ref_names.system_instruction_ref,
-        }
+        references = {ref_attr: name for name, _, ref_attr in references}
         if span:
             span.set_attributes(references)
         if log_record:

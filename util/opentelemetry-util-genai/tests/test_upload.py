@@ -162,6 +162,21 @@ class TestUploadCompletionHook(TestCase):
             "should have uploaded 3 files",
         )
 
+    def test_upload_when_inputs_outputs_empty(self):
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+        )
+        # all items should be consumed
+        self.hook.shutdown()
+
+        self.assertEqual(
+            self.mock_fs.open.call_count,
+            1,
+            "should have uploaded 1 file",
+        )
+
     def test_upload_blocked(self):
         with self.block_upload():
             # fill the queue
