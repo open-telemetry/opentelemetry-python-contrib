@@ -54,7 +54,7 @@ Usage
 
 
     def opamp_handler(agent: OpAMPAgent, client: OpAMPClient, message: opamp_pb2.ServerToAgent):
-        for config_filename, config in client.decode_remote_config(message.remote_config):
+        for config_filename, config in message.remote_config.config.config_map.items():
             print("do something")
 
 
