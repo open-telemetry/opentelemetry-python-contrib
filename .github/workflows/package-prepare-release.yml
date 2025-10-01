@@ -61,7 +61,7 @@ jobs:
 
           version=${version_dev%.dev}
 
-          version_file=$(find $path -type f -path "*version*.py")
+          version_file=$(find $path -type f -path "**/version.py")
           file_count=$(echo "$version_file" | wc -l)
 
           if [ "$file_count" -ne 1 ]; then

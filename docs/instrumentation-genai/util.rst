@@ -26,6 +26,6 @@ OpenTelemetry Python - GenAI Util
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: opentelemetry.util.genai._fsspec_upload
+.. automodule:: opentelemetry.util.genai._upload
     :members:
     :show-inheritance:

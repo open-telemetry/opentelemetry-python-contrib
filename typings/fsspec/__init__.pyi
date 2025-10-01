@@ -12,4 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.2b0.dev"
+"""Handwritten stubs for fsspec usage in opentelemetry-util-genai"""
+
+from __future__ import annotations
+
+import io
+from typing import Any, Literal
+
+from fsspec.spec import (
+    AbstractFileSystem as RealAbstractFileSystem,
+)
+
+class AbstractFileSystem(RealAbstractFileSystem):
+    def open(
+        self, path: str, mode: Literal["w"], *args: Any, **kwargs: Any
+    ) -> io.TextIOWrapper: ...
+
+def url_to_fs(url: str) -> tuple[AbstractFileSystem, str]: ...

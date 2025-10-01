@@ -25,12 +25,12 @@ from opentelemetry.util.genai.environment_variables import (
 )
 
 
-def fsspec_completion_upload_hook() -> CompletionHook:
+def upload_completion_hook() -> CompletionHook:
     # If fsspec is not installed the hook will be a no-op.
     try:
         # pylint: disable=import-outside-toplevel
-        from opentelemetry.util.genai._fsspec_upload.completion_hook import (
-            FsspecUploadCompletionHook,
+        from opentelemetry.util.genai._upload.completion_hook import (
+            UploadCompletionHook,
         )
     except ImportError:
         return _NoOpCompletionHook()
@@ -39,4 +39,4 @@ def fsspec_completion_upload_hook() -> CompletionHook:
     if not base_path:
         return _NoOpCompletionHook()
 
-    return FsspecUploadCompletionHook(base_path=base_path)
+    return UploadCompletionHook(base_path=base_path)
