@@ -158,7 +158,7 @@ class OpAMPAgent:
 
     def _run_scheduler(self) -> None:
         """
-        After me made a connection periodically enqueue “heartbeat” jobs until stop is signaled.
+        After we made a connection, periodically enqueue “heartbeat” jobs until stop is signaled.
         """
         while not self._stop.wait(self._interval):
             if self._schedule:
@@ -240,16 +240,16 @@ class OpAMPAgent:
 
         # Before exiting send signal the server we are disconnecting to free our resources
         # This is not required by the spec but is helpful in practice
-        logger.debug("Stopping OpAMPClient: sending AgentDisconnect")
+        logger.debug("Stopping OpAMPAgent: sending AgentDisconnect")
         payload = self._client.build_agent_disconnect_message()
         try:
             self._client.send(payload)
         except Exception:  # pylint: disable=broad-exception-caught
             logger.debug(
-                "Stopping OpAMPClient: failed to send AgentDisconnect message"
+                "Stopping OpAMPAgent: failed to send AgentDisconnect message"
             )
 
-        logger.debug("Stopping OpAMPClient: cancelling jobs")
+        logger.debug("Stopping OpAMPAgent: cancelling jobs")
         # Clear pending jobs
         while True:
             try:
@@ -265,12 +265,12 @@ class OpAMPAgent:
             self._worker.join()
         except RuntimeError as exc:
             logger.warning(
-                "Stopping OpAMPClient: worker thread failed to join %s", exc
+                "Stopping OpAMPAgent: worker thread failed to join %s", exc
             )
         try:
             self._scheduler.join()
         except RuntimeError as exc:
             logger.warning(
-                "Stopping OpAMPClient: scheduler thread failed to join %s", exc
+                "Stopping OpAMPAgent: scheduler thread failed to join %s", exc
             )
-        logger.debug("OpAMPClient stopped")
+        logger.debug("OpAMPAgent stopped")
