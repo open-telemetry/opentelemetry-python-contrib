@@ -16,7 +16,7 @@
 OpenTelemetry Python - OpAMP client
 -----------------------------------
 
-This package provides a bunch of classes that can be used by OpenTelemetry distributions implementers
+This package provides a bunch of classes that can be used by OpenTelemetry distributions implementors
 to implement remote config support via the `OpAMP protocol`_.
 
 The client implements the following capabilities:
