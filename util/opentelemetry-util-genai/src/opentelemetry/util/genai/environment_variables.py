@@ -39,9 +39,6 @@ information, see
 * `Configuration
   <https://filesystem-spec.readthedocs.io/en/latest/features.html#configuration>`_ for
   configuring a backend with environment variables.
-*  `URL Chaining
-   <https://filesystem-spec.readthedocs.io/en/latest/features.html#url-chaining>`_ for advanced
-   use cases.
 """
 
 OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT = (
