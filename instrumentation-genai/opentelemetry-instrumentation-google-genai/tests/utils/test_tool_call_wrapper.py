@@ -307,7 +307,6 @@ class TestCase(unittest.TestCase):
 
                     span = self.otel.get_span_named("execute_tool somefunction")
 
-                    print(mode)
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,
                         ContentCapturingMode.EVENT_ONLY,
