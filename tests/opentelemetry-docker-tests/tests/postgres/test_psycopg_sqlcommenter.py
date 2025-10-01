@@ -95,7 +95,7 @@ class TestFunctionalPsycopg(TestBase):
         cursor.execute("SELECT  1;")
         self.assertRegex(
             cursor._query.query.decode("ascii"),
-            r"SELECT  1 /\*db_driver='psycopg(.*)',dbapi_level='\d.\d',dbapi_threadsafety=\d,driver_paramstyle=(.*),traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+            r"SELECT  1 /\*db_driver='Connection%%3Aunknown',dbapi_level='\d.\d',dbapi_threadsafety='unknown',driver_paramstyle='unknown',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
         cursor.close()
