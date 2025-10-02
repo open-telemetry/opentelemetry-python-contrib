@@ -24,8 +24,9 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
+from os import environ
 from time import time
-from typing import Any, Callable, Final, Literal, TextIO, cast
+from typing import Any, Callable, Final, Literal
 from uuid import uuid4
 
 import fsspec
@@ -35,6 +36,9 @@ from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
+)
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
     gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
@@ -46,15 +50,19 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
     gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
 )
 
+_MESSAGE_INDEX_KEY = "index"
+
+Format = Literal["json", "jsonl"]
+_FORMATS: tuple[Format, ...] = ("json", "jsonl")
 
 _logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Completion:
-    inputs: list[types.InputMessage]
-    outputs: list[types.OutputMessage]
-    system_instruction: list[types.MessagePart]
+    inputs: list[types.InputMessage] | None
+    outputs: list[types.OutputMessage] | None
+    system_instruction: list[types.MessagePart] | None
 
 
 @dataclass
@@ -70,22 +78,17 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[str, Callable[[], JsonEncodeable]]
 
 
-def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
-    """typed wrapper around `fsspec.open`"""
-    return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
-
-
-class FsspecUploadCompletionHook(CompletionHook):
+class UploadCompletionHook(CompletionHook):
     """An completion hook using ``fsspec`` to upload to external storage
 
     This function can be used as the
     :func:`~opentelemetry.util.genai.completion_hook.load_completion_hook` implementation by
-    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK` to ``fsspec_upload``.
+    setting :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK` to ``upload``.
     :envvar:`OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH` must be configured to specify the
     base path for uploads.
 
     Both the ``fsspec`` and ``opentelemetry-sdk`` packages should be installed, or a no-op
-    implementation will be used instead. You can use ``opentelemetry-util-genai[fsspec]``
+    implementation will be used instead. You can use ``opentelemetry-util-genai[upload]``
     as a requirement to achieve this.
     """
 
@@ -94,9 +97,27 @@ class FsspecUploadCompletionHook(CompletionHook):
         *,
         base_path: str,
         max_size: int = 20,
+        upload_format: Format | None = None,
     ) -> None:
-        self._base_path = base_path
         self._max_size = max_size
+        self._fs, base_path = fsspec.url_to_fs(base_path)
+        self._base_path = self._fs.unstrip_protocol(base_path)
+
+        if upload_format not in _FORMATS + (None,):
+            raise ValueError(
+                f"Invalid {upload_format=}. Must be one of {_FORMATS}"
+            )
+
+        if upload_format is None:
+            environ_format = environ.get(
+                OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT, "json"
+            ).lower()
+            if environ_format not in _FORMATS:
+                upload_format = "json"
+            else:
+                upload_format = environ_format
+
+        self._format: Final[Literal["json", "jsonl"]] = upload_format
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
@@ -108,7 +129,7 @@ class FsspecUploadCompletionHook(CompletionHook):
             try:
                 future.result()
             except Exception:  # pylint: disable=broad-except
-                _logger.exception("fsspec uploader failed")
+                _logger.exception("uploader failed")
             finally:
                 self._semaphore.release()
 
@@ -116,7 +137,7 @@ class FsspecUploadCompletionHook(CompletionHook):
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
-                    "fsspec upload queue is full, dropping upload %s",
+                    "upload queue is full, dropping upload %s",
                     path,
                 )
                 continue
@@ -128,7 +149,7 @@ class FsspecUploadCompletionHook(CompletionHook):
                 fut.add_done_callback(done)
             except RuntimeError:
                 _logger.info(
-                    "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called"
+                    "attempting to upload file after UploadCompletionHook.shutdown() was already called"
                 )
                 self._semaphore.release()
 
@@ -139,27 +160,45 @@ class FsspecUploadCompletionHook(CompletionHook):
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
-                self._base_path, f"{uuid_str}_inputs.json"
+                self._base_path, f"{uuid_str}_inputs.{self._format}"
             ),
             outputs_ref=posixpath.join(
-                self._base_path, f"{uuid_str}_outputs.json"
+                self._base_path, f"{uuid_str}_outputs.{self._format}"
             ),
             system_instruction_ref=posixpath.join(
-                self._base_path, f"{uuid_str}_system_instruction.json"
+                self._base_path,
+                f"{uuid_str}_system_instruction.{self._format}",
             ),
         )
 
-    @staticmethod
     def _do_upload(
-        path: str, json_encodeable: Callable[[], JsonEncodeable]
+        self, path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
-        with fsspec_open(path, "w") as file:
-            json.dump(
-                json_encodeable(),
-                file,
-                separators=(",", ":"),
-                cls=Base64JsonEncoder,
-            )
+        if self._format == "json":
+            # output as a single line with the json messages array
+            message_lines = [json_encodeable()]
+        else:
+            # output as one line per message in the array
+            message_lines = json_encodeable()
+            # add an index for streaming readers of jsonl
+            for message_idx, line in enumerate(message_lines):
+                line[_MESSAGE_INDEX_KEY] = message_idx
+
+        content_type = (
+            "application/json"
+            if self._format == "json"
+            else "application/jsonl"
+        )
+
+        with self._fs.open(path, "w", content_type=content_type) as file:
+            for message in message_lines:
+                json.dump(
+                    message,
+                    file,
+                    separators=(",", ":"),
+                    cls=Base64JsonEncoder,
+                )
+                file.write("\n")
 
     def on_completion(
         self,
@@ -171,10 +210,13 @@ class FsspecUploadCompletionHook(CompletionHook):
         log_record: LogRecord | None = None,
         **kwargs: Any,
     ) -> None:
+        if not any([inputs, outputs, system_instruction]):
+            return
+        # An empty list will not be uploaded.
         completion = Completion(
-            inputs=inputs,
-            outputs=outputs,
-            system_instruction=system_instruction,
+            inputs=inputs or None,
+            outputs=outputs or None,
+            system_instruction=system_instruction or None,
         )
         # generate the paths to upload to
         ref_names = self._calculate_ref_path()
@@ -186,23 +228,36 @@ class FsspecUploadCompletionHook(CompletionHook):
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 
+        references = [
+            (ref_name, ref, ref_attr)
+            for ref_name, ref, ref_attr in [
+                (
+                    ref_names.inputs_ref,
+                    completion.inputs,
+                    GEN_AI_INPUT_MESSAGES_REF,
+                ),
+                (
+                    ref_names.outputs_ref,
+                    completion.outputs,
+                    GEN_AI_OUTPUT_MESSAGES_REF,
+                ),
+                (
+                    ref_names.system_instruction_ref,
+                    completion.system_instruction,
+                    GEN_AI_SYSTEM_INSTRUCTIONS_REF,
+                ),
+            ]
+            if ref
+        ]
         self._submit_all(
             {
-                # Use partial to defer as much as possible to the background threads
-                ref_names.inputs_ref: partial(to_dict, completion.inputs),
-                ref_names.outputs_ref: partial(to_dict, completion.outputs),
-                ref_names.system_instruction_ref: partial(
-                    to_dict, completion.system_instruction
-                ),
-            },
+                ref_name: partial(to_dict, ref)
+                for ref_name, ref, _ in references
+            }
         )
 
         # stamp the refs on telemetry
-        references = {
-            GEN_AI_INPUT_MESSAGES_REF: ref_names.inputs_ref,
-            GEN_AI_OUTPUT_MESSAGES_REF: ref_names.outputs_ref,
-            GEN_AI_SYSTEM_INSTRUCTIONS_REF: ref_names.system_instruction_ref,
-        }
+        references = {ref_attr: name for name, _, ref_attr in references}
         if span:
             span.set_attributes(references)
         if log_record:
