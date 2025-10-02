@@ -61,6 +61,7 @@ from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .message import (
+    Base64JsonEncoder,
     to_input_messages,
     to_output_messages,
     to_system_instructions,
@@ -279,7 +280,7 @@ def _create_completion_details_attributes(
         ]
 
     if as_str:
-        return {k: json.dumps(v) for k, v in attributes.items()}
+        return {k: json.dumps(v, cls=Base64JsonEncoder) for k, v in attributes.items()}
 
     return attributes
 
