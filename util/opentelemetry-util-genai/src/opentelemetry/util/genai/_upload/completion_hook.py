@@ -33,11 +33,12 @@ import fsspec
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
-from opentelemetry.util.genai import Base64JsonEncoder, types
+from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
 )
+from opentelemetry.util.genai.utils import Base64JsonEncoder
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
     gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
