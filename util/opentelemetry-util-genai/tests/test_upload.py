@@ -21,15 +21,15 @@ import threading
 from contextlib import contextmanager
 from typing import Any
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import fsspec
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload.completion_hook import (
-    FsspecUploadCompletionHook,
+from opentelemetry.util.genai._upload.completion_hook import (
+    UploadCompletionHook,
 )
 from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
@@ -44,28 +44,26 @@ BASE_PATH = "memory://"
 @patch.dict(
     "os.environ",
     {
-        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "fsspec_upload",
+        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
         "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": BASE_PATH,
     },
     clear=True,
 )
-class TestFsspecEntryPoint(TestCase):
-    def test_fsspec_entry_point(self):
-        self.assertIsInstance(
-            load_completion_hook(), FsspecUploadCompletionHook
-        )
+class TestUploadEntryPoint(TestCase):
+    def test_upload_entry_point(self):
+        self.assertIsInstance(load_completion_hook(), UploadCompletionHook)
 
-    def test_fsspec_entry_point_no_fsspec(self):
+    def test_upload_entry_point_no_fsspec(self):
         """Tests that the a no-op uploader is used when fsspec is not installed"""
 
-        from opentelemetry.util.genai import _fsspec_upload
+        from opentelemetry.util.genai import _upload
 
         # Simulate fsspec imports failing
         with patch.dict(
             sys.modules,
-            {"opentelemetry.util.genai._fsspec_upload.completion_hook": None},
+            {"opentelemetry.util.genai._upload.completion_hook": None},
         ):
-            importlib.reload(_fsspec_upload)
+            importlib.reload(_upload)
             self.assertIsInstance(load_completion_hook(), _NoOpCompletionHook)
 
 
@@ -114,15 +112,16 @@ class ThreadSafeMagicMock(MagicMock):
             super()._increment_mock_call(*args, **kwargs)
 
 
-class TestFsspecUploadCompletionHook(TestCase):
+class TestUploadCompletionHook(TestCase):
     def setUp(self):
         self._fsspec_patcher = patch(
-            "opentelemetry.util.genai._fsspec_upload.completion_hook.fsspec"
+            "opentelemetry.util.genai._upload.completion_hook.fsspec"
         )
-        self.mock_fsspec = self._fsspec_patcher.start()
-        self.mock_fsspec.open = ThreadSafeMagicMock()
+        mock_fsspec = self._fsspec_patcher.start()
+        self.mock_fs = ThreadSafeMagicMock()
+        mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
 
-        self.hook = FsspecUploadCompletionHook(
+        self.hook = UploadCompletionHook(
             base_path=BASE_PATH,
             max_size=MAXSIZE,
         )
@@ -135,12 +134,12 @@ class TestFsspecUploadCompletionHook(TestCase):
     def block_upload(self):
         unblock_upload = threading.Event()
 
-        def blocked_upload(*args: Any):
+        def blocked_upload(*args: Any, **kwargs: Any):
             unblock_upload.wait()
             return MagicMock()
 
         try:
-            self.mock_fsspec.open.side_effect = blocked_upload
+            self.mock_fs.open.side_effect = blocked_upload
             yield
         finally:
             unblock_upload.set()
@@ -158,10 +157,37 @@ class TestFsspecUploadCompletionHook(TestCase):
         self.hook.shutdown()
 
         self.assertEqual(
-            self.mock_fsspec.open.call_count,
+            self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
         )
+
+    def test_upload_when_inputs_outputs_empty(self):
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
+        )
+        # all items should be consumed
+        self.hook.shutdown()
+
+        self.assertEqual(
+            self.mock_fs.open.call_count,
+            1,
+            "should have uploaded 1 file",
+        )
+        assert record.attributes is not None
+        for ref_key in [
+            "gen_ai.input.messages_ref",
+            "gen_ai.output.messages_ref",
+            "gen_ai.system_instructions_ref",
+        ]:
+            if ref_key == "gen_ai.system_instructions_ref":
+                self.assertIn(ref_key, record.attributes)
+            else:
+                self.assertNotIn(ref_key, record.attributes)
 
     def test_upload_blocked(self):
         with self.block_upload():
@@ -174,7 +200,7 @@ class TestFsspecUploadCompletionHook(TestCase):
                 )
 
             self.assertLessEqual(
-                self.mock_fsspec.open.call_count,
+                self.mock_fs.open.call_count,
                 MAXSIZE,
                 f"uploader should only be called {MAXSIZE=} times",
             )
@@ -187,7 +213,7 @@ class TestFsspecUploadCompletionHook(TestCase):
                 )
 
             self.assertIn(
-                "fsspec upload queue is full, dropping upload", logs.output[0]
+                "upload queue is full, dropping upload", logs.output[0]
             )
 
     def test_shutdown_timeout(self):
@@ -202,7 +228,7 @@ class TestFsspecUploadCompletionHook(TestCase):
             self.hook.shutdown(timeout_sec=0.01)
 
     def test_failed_upload_logs(self):
-        self.mock_fsspec.open.side_effect = RuntimeError("failed to upload")
+        self.mock_fs.open.side_effect = RuntimeError("failed to upload")
 
         with self.assertLogs(level=logging.ERROR) as logs:
             self.hook.on_completion(
@@ -212,12 +238,31 @@ class TestFsspecUploadCompletionHook(TestCase):
             )
             self.hook.shutdown()
 
-        self.assertIn("fsspec uploader failed", logs.output[0])
+        self.assertIn("uploader failed", logs.output[0])
 
     def test_invalid_upload_format(self):
         with self.assertRaisesRegex(ValueError, "Invalid upload_format"):
-            FsspecUploadCompletionHook(
-                base_path=BASE_PATH, upload_format="invalid"
+            UploadCompletionHook(base_path=BASE_PATH, upload_format="invalid")
+
+    def test_upload_format_sets_content_type(self):
+        for upload_format, expect_content_type in (
+            ("json", "application/json"),
+            ("jsonl", "application/jsonl"),
+        ):
+            hook = UploadCompletionHook(
+                base_path=BASE_PATH, upload_format=upload_format
+            )
+            self.addCleanup(hook.shutdown)
+
+            hook.on_completion(
+                inputs=FAKE_INPUTS,
+                outputs=FAKE_OUTPUTS,
+                system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            )
+            hook.shutdown()
+
+            self.mock_fs.open.assert_called_with(
+                ANY, "w", content_type=expect_content_type
             )
 
     def test_parse_upload_format_envvar(self):
@@ -233,7 +278,7 @@ class TestFsspecUploadCompletionHook(TestCase):
                 {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value},
                 clear=True,
             ):
-                hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+                hook = UploadCompletionHook(base_path=BASE_PATH)
                 self.addCleanup(hook.shutdown)
                 self.assertEqual(
                     hook._format,
@@ -246,11 +291,15 @@ class TestFsspecUploadCompletionHook(TestCase):
             {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": "json"},
             clear=True,
         ):
-            hook = FsspecUploadCompletionHook(
+            hook = UploadCompletionHook(
                 base_path=BASE_PATH, upload_format="jsonl"
             )
             self.addCleanup(hook.shutdown)
-            self.assertEqual(hook._format, "jsonl")
+            self.assertEqual(
+                hook._format,
+                "jsonl",
+                "upload_format kwarg should take precedence",
+            )
 
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
@@ -262,18 +311,18 @@ class TestFsspecUploadCompletionHook(TestCase):
             )
         self.assertEqual(len(logs.output), 3)
         self.assertIn(
-            "attempting to upload file after FsspecUploadCompletionHook.shutdown() was already called",
+            "attempting to upload file after UploadCompletionHook.shutdown() was already called",
             logs.output[0],
         )
 
 
-class TestFsspecUploadCompletionHookIntegration(TestBase):
+class TestUploadCompletionHookIntegration(TestBase):
     def setUp(self):
         super().setUp()
-        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+        self.hook = UploadCompletionHook(base_path=BASE_PATH)
 
-    def create_hook(self) -> FsspecUploadCompletionHook:
-        self.hook = FsspecUploadCompletionHook(base_path=BASE_PATH)
+    def create_hook(self) -> UploadCompletionHook:
+        self.hook = UploadCompletionHook(base_path=BASE_PATH)
         return self.hook
 
     def tearDown(self):
@@ -365,9 +414,7 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
         )
 
     def test_upload_json(self) -> None:
-        hook = FsspecUploadCompletionHook(
-            base_path=BASE_PATH, upload_format="json"
-        )
+        hook = UploadCompletionHook(base_path=BASE_PATH, upload_format="json")
         self.addCleanup(hook.shutdown)
         log_record = LogRecord()
 
@@ -390,9 +437,7 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
         )
 
     def test_upload_jsonlines(self) -> None:
-        hook = FsspecUploadCompletionHook(
-            base_path=BASE_PATH, upload_format="jsonl"
-        )
+        hook = UploadCompletionHook(base_path=BASE_PATH, upload_format="jsonl")
         self.addCleanup(hook.shutdown)
         log_record = LogRecord()
 
@@ -416,4 +461,27 @@ class TestFsspecUploadCompletionHookIntegration(TestBase):
 {"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}],"index":1}
 {"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}],"index":2}
 """,
+        )
+
+    def test_upload_chained_filesystem_ref(self) -> None:
+        """Using a chained filesystem like simplecache should refer to the final remote destination"""
+        hook = UploadCompletionHook(
+            base_path="simplecache::memory",
+            upload_format="jsonl",
+        )
+        self.addCleanup(hook.shutdown)
+        log_record = LogRecord()
+
+        hook.on_completion(
+            inputs=FAKE_INPUTS,
+            outputs=FAKE_OUTPUTS,
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=log_record,
+        )
+        hook.shutdown()
+
+        ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
+        self.assertTrue(
+            ref_uri.startswith("memory://"),
+            f"{ref_uri=} does not start with final destination uri memory://",
         )
