@@ -50,7 +50,7 @@ class TraceloopCompatEmitter:
     def _apply_semconv_start(self, invocation: LLMInvocation, span):
         """Apply semantic convention attributes at start."""
         try:  # pragma: no cover - defensive
-            span.set_attribute("gen_ai.operation.name", "chat")
+            span.set_attribute("gen_ai.operation.name", invocation.operation)
             span.set_attribute(
                 "gen_ai.request.model", invocation.request_model
             )

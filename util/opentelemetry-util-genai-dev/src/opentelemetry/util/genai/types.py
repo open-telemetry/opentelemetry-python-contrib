@@ -134,6 +134,8 @@ class LLMInvocation:
     provider: Optional[str] = None
     # Semantic-convention framework attribute (gen_ai.framework)
     framework: Optional[str] = None
+    # Operation type: chat, text_completion, embeddings, etc.
+    operation: str = "chat"
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None
