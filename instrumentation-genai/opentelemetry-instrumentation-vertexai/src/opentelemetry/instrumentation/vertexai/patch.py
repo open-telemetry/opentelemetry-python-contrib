@@ -53,6 +53,7 @@ from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Text,
 )
+from opentelemetry.util.genai.utils import Base64JsonEncoder
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.services.prediction_service import client
@@ -213,7 +214,7 @@ class MethodWrappers:
                     ):
                         span.set_attributes(
                             {
-                                k: json.dumps(v)
+                                k: json.dumps(v, cls=Base64JsonEncoder)
                                 for k, v in content_attributes.items()
                             }
                         )

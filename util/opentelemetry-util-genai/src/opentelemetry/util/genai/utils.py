@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
+from base64 import b64encode
+from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
@@ -54,3 +57,10 @@ def get_content_capturing_mode() -> ContentCapturingMode:
             ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
+
+
+class Base64JsonEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return b64encode(o).decode()
+        return super().default(o)

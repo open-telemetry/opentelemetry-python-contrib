@@ -19,7 +19,6 @@ import json
 import logging
 import posixpath
 import threading
-from base64 import b64encode
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
@@ -34,7 +33,7 @@ import fsspec
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
-from opentelemetry.util.genai import types
+from opentelemetry.util.genai import Base64JsonEncoder, types
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
@@ -281,10 +280,3 @@ class UploadCompletionHook(CompletionHook):
 
             # Queue is flushed and blocked, start shutdown
             self._executor.shutdown(wait=False)
-
-
-class Base64JsonEncoder(json.JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            return b64encode(o).decode()
-        return super().default(o)

@@ -192,7 +192,7 @@ def instrument_with_experimental_semconvs(
 
 @pytest.fixture(scope="function")
 def instrument_with_upload_hook(
-    tracer_provider, event_logger_provider, meter_provider, request
+    tracer_provider, event_logger_provider, meter_provider
 ):
     # Reset global state..
     _OpenTelemetrySemanticConventionStability._initialized = False
