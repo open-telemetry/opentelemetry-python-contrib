@@ -161,7 +161,7 @@ def decode_remote_config(
                 config_data = json.loads(body)
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 raise OpAMPRemoteConfigDecodeException(
-                    f"Failed to decode {config_file} with content type {config_file.content_type}: {exc}"
+                    f"Failed to decode {config_file_name} with content type {config_file.content_type}: {exc}"
                 )
 
             yield config_file_name, config_data
