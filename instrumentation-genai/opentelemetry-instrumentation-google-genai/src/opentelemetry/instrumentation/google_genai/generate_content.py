@@ -467,7 +467,17 @@ class _GenerateContentInstrumentationHelper:
         input_messages = to_input_messages(contents=transformers.t_contents(request))
         output_messages = to_output_messages(candidates=response.candidates or [])
 
-        span = None
+        span = trace.get_current_span()
+        event = Event(
+            name="gen_ai.client.inference.operation.details", attributes=attributes
+        )
+        self.completion_hook.on_completion(
+            inputs=input_messages,
+            outputs=output_messages,
+            system_instruction=system_instructions,
+            span=span,
+            log_record=event,
+        )
         if self._content_recording_enabled in [
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
@@ -478,7 +488,6 @@ class _GenerateContentInstrumentationHelper:
                 system_instructions,
                 as_str=True,
             )
-            span = trace.get_current_span()
             span.set_attributes(completion_details_attributes)
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
@@ -489,18 +498,11 @@ class _GenerateContentInstrumentationHelper:
                 output_messages,
                 system_instructions,
             )
-            attributes.update(completion_details_attributes)
-            event = Event(
-                name="gen_ai.client.inference.operation.details", attributes=attributes
-            )
-            self.completion_hook.on_completion(
-                inputs=input_messages,
-                outputs=output_messages,
-                system_instruction=system_instructions,
-                span=span,
-                log_record=event,
-            )
-            self._otel_wrapper.log_completion_details(event=event)
+            event.attributes = {
+                **(event.attributes or {}),
+                **completion_details_attributes,
+            }
+        self._otel_wrapper.log_completion_details(event=event)
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
