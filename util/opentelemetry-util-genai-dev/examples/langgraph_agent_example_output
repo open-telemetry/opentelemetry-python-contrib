@@ -1,0 +1,1784 @@
+
+================================================================================
+QUESTION: What is the capital of Brazil?
+================================================================================
+
+
+================================================================================
+Creating ReAct agent...
+================================================================================
+
+{
+    "name": "create_agent capital_agent",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0x43931e676a89ba40",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0x1d34316ef18ed189",
+    "start_time": "2025-10-02T16:32:02.550047Z",
+    "end_time": "2025-10-02T16:32:02.680766Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+        "gen_ai.agent.type": "react",
+        "gen_ai.agent.description": "ReAct agent that can look up capital cities",
+        "gen_ai.framework": "langgraph",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.agent.tools": [
+            "get_capital"
+        ]
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+
+================================================================================
+Invoking agent...
+================================================================================
+
+
+--- Step 1 ---
+Message type: HumanMessage
+{
+    "name": "gen_ai.task step_1",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0xc4da02597b38fefd",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xf01495e086701773",
+    "start_time": "2025-10-02T16:32:02.682041Z",
+    "end_time": "2025-10-02T16:32:02.682088Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.task.name": "step_1",
+        "gen_ai.task.type": "processing",
+        "gen_ai.task.objective": "Process message",
+        "gen_ai.task.source": "agent",
+        "gen_ai.task.assigned_agent": "capital_agent",
+        "gen_ai.task.status": "completed"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+
+--- Step 2 ---
+Message type: AIMessage
+AI Response: (tool call)...
+Tool calls: ['get_capital']
+Token Usage: Input=78, Output=16
+Model: gpt-4-0613, Finish Reason: tool_calls
+{
+    "body": {
+        "gen_ai.input.messages": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "type": "text",
+                        "content": "What is the capital of Brazil?"
+                    }
+                ]
+            }
+        ],
+        "gen_ai.output.messages": [
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "tool_call",
+                        "id": "call_TvOVcKc0UFwkwl3lqJsuHm1c",
+                        "name": "get_capital",
+                        "arguments": {
+                            "country": "Brazil"
+                        }
+                    }
+                ],
+                "finish_reason": "tool_calls"
+            }
+        ]
+    },
+    "severity_number": null,
+    "severity_text": null,
+    "attributes": {
+        "event.name": "gen_ai.client.inference.operation.details",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.response.model": "gpt-4-0613",
+        "gen_ai.usage.input_tokens": 78,
+        "gen_ai.usage.output_tokens": 16,
+        "gen_ai.request.temperature": 0.0,
+        "gen_ai.response.finish_reasons": [
+            "tool_calls"
+        ],
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2025-10-02T16:32:05.046754Z",
+    "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+    "span_id": "0x854a29d8bcdd7141",
+    "trace_flags": 1,
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    },
+    "event_name": "gen_ai.client.inference.operation.details"
+}
+{
+    "name": "chat gpt-4",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0x854a29d8bcdd7141",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xf2db733f70c78589",
+    "start_time": "2025-10-02T16:32:05.046394Z",
+    "end_time": "2025-10-02T16:32:05.047924Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.framework": "langgraph",
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+        "gen_ai.response.model": "gpt-4-0613",
+        "gen_ai.usage.input_tokens": 78,
+        "gen_ai.usage.output_tokens": 16
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "gen_ai.task tool_planning",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0xf2db733f70c78589",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xf01495e086701773",
+    "start_time": "2025-10-02T16:32:05.046227Z",
+    "end_time": "2025-10-02T16:32:05.048178Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.task.name": "tool_planning",
+        "gen_ai.task.type": "planning",
+        "gen_ai.task.objective": "Decide to call tool: get_capital",
+        "gen_ai.task.source": "agent",
+        "gen_ai.task.assigned_agent": "capital_agent",
+        "gen_ai.task.status": "completed"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+Tool called: get_capital(Brazil) -> Brasília
+
+--- Step 3 ---
+Message type: ToolMessage
+Tool result: Brasília
+{
+    "name": "gen_ai.task tool_execution",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0x7defcde36943c728",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xf01495e086701773",
+    "start_time": "2025-10-02T16:32:05.049751Z",
+    "end_time": "2025-10-02T16:32:05.049820Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.task.name": "tool_execution",
+        "gen_ai.task.type": "execution",
+        "gen_ai.task.objective": "Execute tool and return result",
+        "gen_ai.task.source": "agent",
+        "gen_ai.task.assigned_agent": "capital_agent",
+        "gen_ai.task.status": "completed"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+
+--- Step 4 ---
+Message type: AIMessage
+AI Response: The capital of Brazil is Brasília....
+Token Usage: Input=103, Output=9
+Model: gpt-4-0613, Finish Reason: stop
+{
+    "body": {
+        "gen_ai.input.messages": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "type": "text",
+                        "content": "What is the capital of Brazil?"
+                    }
+                ]
+            },
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "tool_call",
+                        "id": "call_TvOVcKc0UFwkwl3lqJsuHm1c",
+                        "name": "get_capital",
+                        "arguments": {
+                            "country": "Brazil"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "parts": [
+                    {
+                        "type": "tool_call_response",
+                        "id": "call_TvOVcKc0UFwkwl3lqJsuHm1c",
+                        "result": "Bras\u00edlia"
+                    }
+                ]
+            }
+        ],
+        "gen_ai.output.messages": [
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "text",
+                        "content": "The capital of Brazil is Bras\u00edlia."
+                    }
+                ],
+                "finish_reason": "stop"
+            }
+        ]
+    },
+    "severity_number": null,
+    "severity_text": null,
+    "attributes": {
+        "event.name": "gen_ai.client.inference.operation.details",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.response.model": "gpt-4-0613",
+        "gen_ai.usage.input_tokens": 103,
+        "gen_ai.usage.output_tokens": 9,
+        "gen_ai.request.temperature": 0.0,
+        "gen_ai.response.finish_reasons": [
+            "stop"
+        ],
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+    },
+    "dropped_attributes": 0,
+    "timestamp": null,
+    "observed_timestamp": "2025-10-02T16:32:06.245253Z",
+    "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+    "span_id": "0x44d2b2900d9f1062",
+    "trace_flags": 1,
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    },
+    "event_name": "gen_ai.client.inference.operation.details"
+}
+{
+    "name": "chat gpt-4",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0x44d2b2900d9f1062",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xeb58f5bcc7656b6a",
+    "start_time": "2025-10-02T16:32:06.244947Z",
+    "end_time": "2025-10-02T16:32:06.246794Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gpt-4",
+        "gen_ai.provider.name": "openai",
+        "gen_ai.framework": "langgraph",
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+        "gen_ai.response.model": "gpt-4-0613",
+        "gen_ai.usage.input_tokens": 103,
+        "gen_ai.usage.output_tokens": 9
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "gen_ai.task final_response",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0xeb58f5bcc7656b6a",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0xf01495e086701773",
+    "start_time": "2025-10-02T16:32:06.244689Z",
+    "end_time": "2025-10-02T16:32:06.247235Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.task.name": "final_response",
+        "gen_ai.task.type": "generation",
+        "gen_ai.task.objective": "Generate final response to user",
+        "gen_ai.task.source": "agent",
+        "gen_ai.task.assigned_agent": "capital_agent",
+        "gen_ai.task.status": "completed"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "invoke_agent capital_agent",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0xf01495e086701773",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": "0x1d34316ef18ed189",
+    "start_time": "2025-10-02T16:32:02.681417Z",
+    "end_time": "2025-10-02T16:32:06.247894Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.operation.name": "chat",
+        "gen_ai.agent.name": "capital_agent",
+        "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+        "gen_ai.agent.type": "react",
+        "gen_ai.framework": "langgraph",
+        "gen_ai.request.model": "gpt-4"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "gen_ai.workflow capital_question_workflow",
+    "context": {
+        "trace_id": "0x56121ed0b4f95b36f8cc533a1921dd6d",
+        "span_id": "0x1d34316ef18ed189",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.CLIENT",
+    "parent_id": null,
+    "start_time": "2025-10-02T16:32:02.549992Z",
+    "end_time": "2025-10-02T16:32:06.248383Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "gen_ai.workflow.name": "capital_question_workflow",
+        "gen_ai.workflow.type": "react_agent",
+        "gen_ai.workflow.description": "LangGraph ReAct agent answering capital city questions",
+        "gen_ai.framework": "langgraph"
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.38.0.dev0",
+            "service.name": "unknown_service"
+        },
+        "schema_url": ""
+    }
+}
+
+================================================================================
+Telemetry Summary:
+  LLM calls captured: 2
+  Tool calls captured: 1
+    - get_capital: {'country': 'Brazil'} -> content='Brasília' name='get_capital' id='e7351613-a1ea-4a40-a891-ebf2e57d722e' tool_call_id='call_TvOVcKc0UFwkwl3lqJsuHm1c'
+  Chain/Graph executions: 12
+================================================================================
+
+
+================================================================================
+FINAL ANSWER: The capital of Brazil is Brasília.
+================================================================================
+
+
+================================================================================
+Waiting for metrics export...
+================================================================================
+
+{
+    "resource_metrics": [
+        {
+            "resource": {
+                "attributes": {
+                    "telemetry.sdk.language": "python",
+                    "telemetry.sdk.name": "opentelemetry",
+                    "telemetry.sdk.version": "1.38.0.dev0",
+                    "service.name": "unknown_service"
+                },
+                "schema_url": ""
+            },
+            "scope_metrics": [
+                {
+                    "scope": {
+                        "name": "opentelemetry.util.genai.handler",
+                        "version": "",
+                        "schema_url": "",
+                        "attributes": null
+                    },
+                    "metrics": [
+                        {
+                            "name": "gen_ai.agent.duration",
+                            "description": "Duration of agent operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+                                            "gen_ai.agent.type": "react",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422722680734000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 0.13064789772033691,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.13064789772033691,
+                                        "max": 0.13064789772033691,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.13064789772033691,
+                                                "time_unix_nano": 1759422722680678000,
+                                                "span_id": 4869269051635513920,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+                                            "gen_ai.agent.type": "react",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422726247813000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 3.5663468837738037,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 3.5663468837738037,
+                                        "max": 3.5663468837738037,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 3.5663468837738037,
+                                                "time_unix_nano": 1759422726247775000,
+                                                "span_id": 17299616860197623667,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.task.duration",
+                            "description": "Duration of task executions",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "step_1",
+                                            "gen_ai.task.type": "processing",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422722682073000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 4.291534423828125e-05,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 4.291534423828125e-05,
+                                        "max": 4.291534423828125e-05,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 4.291534423828125e-05,
+                                                "time_unix_nano": 1759422722682060000,
+                                                "span_id": 14184652559699476221,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "tool_planning",
+                                            "gen_ai.task.type": "planning",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422725048146000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 0.0021898746490478516,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0021898746490478516,
+                                        "max": 0.0021898746490478516,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.0021898746490478516,
+                                                "time_unix_nano": 1759422725048135000,
+                                                "span_id": 17499707493390452105,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "tool_execution",
+                                            "gen_ai.task.type": "execution",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422725049794000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 9.012222290039062e-05,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9.012222290039062e-05,
+                                        "max": 9.012222290039062e-05,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 9.012222290039062e-05,
+                                                "time_unix_nano": 1759422725049787000,
+                                                "span_id": 9074698150782158632,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "final_response",
+                                            "gen_ai.task.type": "generation",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422726247145000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 0.0026340484619140625,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0026340484619140625,
+                                        "max": 0.0026340484619140625,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.0026340484619140625,
+                                                "time_unix_nano": 1759422726247114000,
+                                                "span_id": 16958574588011572074,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.token.usage",
+                            "description": "Token usage for GenAI operations",
+                            "unit": "tokens",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046577000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 2,
+                                        "sum": 181,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 78,
+                                        "max": 103,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 78,
+                                                "time_unix_nano": 1759422725046463000,
+                                                "span_id": 9604535166179307841,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            },
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 103,
+                                                "time_unix_nano": 1759422726245035000,
+                                                "span_id": 4959222471461900386,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046616000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 2,
+                                        "sum": 25,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            1,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9,
+                                        "max": 16,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 9,
+                                                "time_unix_nano": 1759422726245102000,
+                                                "span_id": 4959222471461900386,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            },
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 16,
+                                                "time_unix_nano": 1759422725046610000,
+                                                "span_id": 9604535166179307841,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.operation.duration",
+                            "description": "Duration of GenAI operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046645000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 2,
+                                        "sum": 0.00025916099548339844,
+                                        "bucket_counts": [
+                                            0,
+                                            2,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9.703636169433594e-05,
+                                        "max": 0.0001621246337890625,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.0001621246337890625,
+                                                "time_unix_nano": 1759422726245120000,
+                                                "span_id": 4959222471461900386,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.workflow.duration",
+                            "description": "Duration of GenAI workflows",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "capital_question_workflow",
+                                            "gen_ai.workflow.type": "react_agent",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422726248348000,
+                                        "time_unix_nano": 1759422727550473000,
+                                        "count": 1,
+                                        "sum": 3.6983680725097656,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 3.6983680725097656,
+                                        "max": 3.6983680725097656,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 3.6983680725097656,
+                                                "time_unix_nano": 1759422726248316000,
+                                                "span_id": 2104361278457696649,
+                                                "trace_id": 114407693988711059530463965871358467437
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        }
+                    ],
+                    "schema_url": ""
+                }
+            ],
+            "schema_url": ""
+        }
+    ]
+}
+{
+    "resource_metrics": [
+        {
+            "resource": {
+                "attributes": {
+                    "telemetry.sdk.language": "python",
+                    "telemetry.sdk.name": "opentelemetry",
+                    "telemetry.sdk.version": "1.38.0.dev0",
+                    "service.name": "unknown_service"
+                },
+                "schema_url": ""
+            },
+            "scope_metrics": [
+                {
+                    "scope": {
+                        "name": "opentelemetry.util.genai.handler",
+                        "version": "",
+                        "schema_url": "",
+                        "attributes": null
+                    },
+                    "metrics": [
+                        {
+                            "name": "gen_ai.agent.duration",
+                            "description": "Duration of agent operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+                                            "gen_ai.agent.type": "react",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422722680734000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 0.13064789772033691,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.13064789772033691,
+                                        "max": 0.13064789772033691,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3",
+                                            "gen_ai.agent.type": "react",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422726247813000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 3.5663468837738037,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 3.5663468837738037,
+                                        "max": 3.5663468837738037,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.task.duration",
+                            "description": "Duration of task executions",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "step_1",
+                                            "gen_ai.task.type": "processing",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422722682073000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 4.291534423828125e-05,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 4.291534423828125e-05,
+                                        "max": 4.291534423828125e-05,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "tool_planning",
+                                            "gen_ai.task.type": "planning",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422725048146000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 0.0021898746490478516,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0021898746490478516,
+                                        "max": 0.0021898746490478516,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "tool_execution",
+                                            "gen_ai.task.type": "execution",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422725049794000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 9.012222290039062e-05,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9.012222290039062e-05,
+                                        "max": 9.012222290039062e-05,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "final_response",
+                                            "gen_ai.task.type": "generation",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "capital_agent"
+                                        },
+                                        "start_time_unix_nano": 1759422726247145000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 0.0026340484619140625,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0026340484619140625,
+                                        "max": 0.0026340484619140625,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.token.usage",
+                            "description": "Token usage for GenAI operations",
+                            "unit": "tokens",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046577000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 2,
+                                        "sum": 181,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 78,
+                                        "max": 103,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046616000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 2,
+                                        "sum": 25,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            1,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9,
+                                        "max": 16,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.operation.duration",
+                            "description": "Duration of GenAI operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.response.model": "gpt-4-0613",
+                                            "gen_ai.agent.name": "capital_agent",
+                                            "gen_ai.agent.id": "30f52b9e-b80b-4465-8779-6d48d8fd4bb3"
+                                        },
+                                        "start_time_unix_nano": 1759422725046645000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 2,
+                                        "sum": 0.00025916099548339844,
+                                        "bucket_counts": [
+                                            0,
+                                            2,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 9.703636169433594e-05,
+                                        "max": 0.0001621246337890625,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.workflow.duration",
+                            "description": "Duration of GenAI workflows",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "capital_question_workflow",
+                                            "gen_ai.workflow.type": "react_agent",
+                                            "gen_ai.framework": "langgraph"
+                                        },
+                                        "start_time_unix_nano": 1759422726248348000,
+                                        "time_unix_nano": 1759422732254490000,
+                                        "count": 1,
+                                        "sum": 3.6983680725097656,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 3.6983680725097656,
+                                        "max": 3.6983680725097656,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        }
+                    ],
+                    "schema_url": ""
+                }
+            ],
+            "schema_url": ""
+        }
+    ]
+}

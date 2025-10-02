@@ -14,7 +14,7 @@ This example shows:
 import time
 
 from opentelemetry import _logs as logs
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     ConsoleLogExporter,
@@ -58,6 +58,7 @@ def setup_telemetry():
         ConsoleMetricExporter(), export_interval_millis=5000
     )
     meter_provider = MeterProvider(metric_readers=[metric_reader])
+    metrics.set_meter_provider(meter_provider)
 
     # Set up logging (for events)
     logger_provider = LoggerProvider()
