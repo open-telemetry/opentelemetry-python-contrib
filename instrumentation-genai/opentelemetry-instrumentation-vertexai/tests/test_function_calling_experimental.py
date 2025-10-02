@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Any
 
 import fsspec
@@ -271,6 +272,8 @@ def test_tool_events_with_completion_hook(
     assert len(spans) == 1
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
+    # File upload takes a few seconds sometimes.
+    time.sleep(3)
     assert_fsspec_equal(
         spans[0].attributes["gen_ai.output.messages_ref"],
         [
