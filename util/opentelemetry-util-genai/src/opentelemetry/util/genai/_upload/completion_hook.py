@@ -203,15 +203,16 @@ class UploadCompletionHook(CompletionHook):
     def on_completion(
         self,
         *,
-        inputs: list[types.InputMessage] | None = None,
-        outputs: list[types.OutputMessage] | None = None,
-        system_instruction: list[types.MessagePart] | None = None,
+        inputs: list[types.InputMessage],
+        outputs: list[types.OutputMessage],
+        system_instruction: list[types.MessagePart],
         span: Span | None = None,
         log_record: LogRecord | None = None,
         **kwargs: Any,
     ) -> None:
         if not any([inputs, outputs, system_instruction]):
             return
+        # An empty list will not be uploaded.
         completion = Completion(
             inputs=inputs or None,
             outputs=outputs or None,

@@ -163,10 +163,12 @@ class TestUploadCompletionHook(TestCase):
         )
 
     def test_upload_when_inputs_outputs_empty(self):
+        record = LogRecord()
         self.hook.on_completion(
             inputs=[],
             outputs=[],
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
         )
         # all items should be consumed
         self.hook.shutdown()
@@ -176,6 +178,16 @@ class TestUploadCompletionHook(TestCase):
             1,
             "should have uploaded 1 file",
         )
+        assert record.attributes is not None
+        for ref_key in [
+            "gen_ai.input.messages_ref",
+            "gen_ai.output.messages_ref",
+            "gen_ai.system_instructions_ref",
+        ]:
+            if ref_key == "gen_ai.system_instructions_ref":
+                self.assertIn(ref_key, record.attributes)
+            else:
+                self.assertNotIn(ref_key, record.attributes)
 
     def test_upload_blocked(self):
         with self.block_upload():
