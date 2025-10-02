@@ -191,10 +191,8 @@ from weakref import WeakSet as _WeakSet
 import fastapi
 from starlette.applications import Starlette
 from starlette.middleware.errors import ServerErrorMiddleware
-
 from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
-
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,

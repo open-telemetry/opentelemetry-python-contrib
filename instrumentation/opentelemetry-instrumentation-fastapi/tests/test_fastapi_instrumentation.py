@@ -20,7 +20,7 @@ import unittest
 import weakref as _weakref
 from contextlib import ExitStack
 from timeit import default_timer
-from typing import Any, cast
+from typing import Any, Final, cast
 from unittest.mock import Mock, call, patch
 
 import fastapi
@@ -341,15 +341,27 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             span.attributes[HTTP_URL],
         )
 
-
     def test_custom_api_router(self):
         """
         This test is to ensure that custom API routers the OpenTelemetryMiddleware does not cause issues with
         custom API routers that depend on non-standard fields on the ASGI scope.
         """
-        resp = self._client.get("/custom-router/success")
-        self.assertEqual(resp.status_code, 200)
-
+        resp: Final = self._client.get("/custom-router/success")
+        spans: Final = self.memory_exporter.get_finished_spans()
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+        self.assertEqual(200, resp.status_code)
+        for span in spans_with_http_attributes:
+            self.assertEqual(
+                "/custom-router/success", span.attributes[HTTP_TARGET]
+            )
+            self.assertEqual(
+                "https://testserver/custom-router/success",
+                span.attributes[HTTP_URL],
+            )
 
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
