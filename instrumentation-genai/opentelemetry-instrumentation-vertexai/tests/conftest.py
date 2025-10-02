@@ -199,7 +199,7 @@ def instrument_with_upload_hook(
     os.environ.update(
         {
             OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
-            "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "fsspec_upload",
+            "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
             "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": "memory://",
             OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT",
         }

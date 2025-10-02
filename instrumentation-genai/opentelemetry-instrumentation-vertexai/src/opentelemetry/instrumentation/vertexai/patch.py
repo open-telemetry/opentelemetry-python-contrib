@@ -193,7 +193,7 @@ class MethodWrappers:
                     ]
                 if response:
                     outputs = convert_response_to_output_messages(response)
-                content = {
+                content_attributes = {
                     k: [asdict(x) for x in v]
                     for k, v in [
                         (
@@ -207,26 +207,25 @@ class MethodWrappers:
                 }
                 if span.is_recording():
                     span.set_attributes(attributes)
-                    if capture_content in frozenset(
-                        [
-                            ContentCapturingMode.SPAN_AND_EVENT,
-                            ContentCapturingMode.SPAN_ONLY,
-                        ]
+                    if capture_content in (
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                        ContentCapturingMode.SPAN_ONLY,
                     ):
                         span.set_attributes(
-                            {k: json.dumps(v) for k, v in content.items()}
+                            {
+                                k: json.dumps(v)
+                                for k, v in content_attributes.items()
+                            }
                         )
                 event = Event(
                     name="gen_ai.client.inference.operation.details",
                 )
                 event.attributes = attributes
-                if capture_content in frozenset(
-                    [
-                        ContentCapturingMode.SPAN_AND_EVENT,
-                        ContentCapturingMode.EVENT_ONLY,
-                    ]
+                if capture_content in (
+                    ContentCapturingMode.SPAN_AND_EVENT,
+                    ContentCapturingMode.EVENT_ONLY,
                 ):
-                    event.attributes |= content
+                    event.attributes |= content_attributes
                 self.event_logger.emit(event)
                 self.completion_hook.on_completion(
                     inputs=inputs,
