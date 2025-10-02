@@ -1,5 +1,5 @@
 OpenTelemetry <REPLACE ME> Instrumentation
-===========================
+==========================================
 
 |pypi|
 
@@ -20,5 +20,5 @@ Installation
 References
 ----------
 
-* `OpenTelemetry <REPLACE ME>/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/<REPLACE ME>/<REPLACE ME>.html>`_
+* `OpenTelemetry REPLACE ME/ Tracing <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/REPLACE ME/REPLACE ME.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
