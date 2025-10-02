@@ -26,7 +26,7 @@ from dataclasses import asdict, dataclass
 from functools import partial
 from os import environ
 from time import time
-from typing import Any, Callable, Final, Literal, TextIO, cast
+from typing import Any, Callable, Final, Literal
 from uuid import uuid4
 
 import fsspec
@@ -78,11 +78,6 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[str, Callable[[], JsonEncodeable]]
 
 
-def fsspec_open(urlpath: str, mode: Literal["w"]) -> TextIO:
-    """typed wrapper around `fsspec.open`"""
-    return cast(TextIO, fsspec.open(urlpath, mode))  # pyright: ignore[reportUnknownMemberType]
-
-
 class UploadCompletionHook(CompletionHook):
     """An completion hook using ``fsspec`` to upload to external storage
 
@@ -104,8 +99,9 @@ class UploadCompletionHook(CompletionHook):
         max_size: int = 20,
         upload_format: Format | None = None,
     ) -> None:
-        self._base_path = base_path
         self._max_size = max_size
+        self._fs, base_path = fsspec.url_to_fs(base_path)
+        self._base_path = self._fs.unstrip_protocol(base_path)
 
         if upload_format not in _FORMATS + (None,):
             raise ValueError(
@@ -188,7 +184,13 @@ class UploadCompletionHook(CompletionHook):
             for message_idx, line in enumerate(message_lines):
                 line[_MESSAGE_INDEX_KEY] = message_idx
 
-        with fsspec_open(path, "w") as file:
+        content_type = (
+            "application/json"
+            if self._format == "json"
+            else "application/jsonl"
+        )
+
+        with self._fs.open(path, "w", content_type=content_type) as file:
             for message in message_lines:
                 json.dump(
                     message,
