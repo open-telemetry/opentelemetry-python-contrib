@@ -13,4 +13,4 @@
 # limitations under the License.
 
 _instruments = ("openai-agents >= 0.3.2",)
-_supports_metrics = True
+_supports_metrics = False

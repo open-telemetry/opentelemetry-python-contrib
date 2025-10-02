@@ -12,112 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-OpenAI Agents instrumentation supporting `openai` in agent frameworks.
-Enable with ``OpenAIAgentsInstrumentor``.
+"""Barebones OpenAI Agents instrumentation package.
 
-.. _openai: https://pypi.org/project/openai/
-
-Usage
------
-
-.. code:: python
-
-    from openai import OpenAI
-    from opentelemetry.instrumentation.openai_agents import (
-        OpenAIAgentsInstrumentor,
-    )
-
-    OpenAIAgentsInstrumentor().instrument()
-
-    # Your OpenAI agents code here
-    client = OpenAI()
-
-API
----
-
-This instrumentation captures spans for OpenAI API calls made within
-agent frameworks.
-It provides detailed tracing information including:
-
-- Request and response content (if configured)
-- Token usage metrics
-- Model information
-- Error handling
-
-Configuration
--------------
-
-Content, metrics, and events are captured by default with no environment configuration.
-This library assumes full capture is desired when installed.
+This branch provides only the minimal package skeleton:
+- Instrumentor class stub
+- Version module
+- Packaging metadata/entry point
 """
 
-import logging
 from typing import Collection
 
-from agents.tracing import add_trace_processor
-
-from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.openai_agents.constants import (
-    GenAIEvaluationAttributes,
-    GenAIOperationName,
-    GenAIOutputType,
-    GenAIProvider,
-    GenAIToolType,
-)
-from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import (
-    GenAISemanticProcessor,
-)
-from opentelemetry.instrumentation.openai_agents.package import _instruments
-from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.trace import get_tracer
+
+from .package import _instruments
+from .version import __version__  # noqa: F401
 
 __all__ = [
     "OpenAIAgentsInstrumentor",
-    "GenAIProvider",
-    "GenAIOperationName",
-    "GenAIToolType",
-    "GenAIOutputType",
-    "GenAIEvaluationAttributes",
 ]
-
-logger = logging.getLogger(__name__)
 
 
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
-    """An instrumentor for OpenAI Agents frameworks."""
+    """Minimal instrumentor stub (no-op)."""
 
-    def _instrument(self, **kwargs):
-        """Instruments the OpenAI library for agent frameworks."""
-        tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(
-            __name__,
-            "",
-            tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
-            __name__,
-            "",
-            schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_logger_provider,
-        )
+    def _instrument(self, **kwargs) -> None:  # pragma: no cover - stub
+        return
 
-        add_trace_processor(
-            GenAISemanticProcessor(
-                tracer=tracer,
-                event_logger=event_logger,
-            )
-        )
-
-    def _uninstrument(self, **kwargs):
-        """Uninstruments the OpenAI library for agent frameworks."""
-        # No-op: optional processor registry may not be present.
-        # TODO: maintain the old list of processors and restore it upon _uninstrument.
+    def _uninstrument(self, **kwargs) -> None:  # pragma: no cover - stub
         return
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        """Return list of python packages with versions instrumented."""
         return _instruments

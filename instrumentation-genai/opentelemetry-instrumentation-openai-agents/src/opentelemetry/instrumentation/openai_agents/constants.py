@@ -1,48 +1,41 @@
-"""Centralized semantic convention constants for GenAI instrumentation.
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Consolidates provider names, operation names, tool types, output types,
-evaluation attributes, and helper maps so other modules can import from
-one place. Keeping strings in one module reduces drift as the spec evolves.
+"""GenAI semantic attribute constants and enums (attributes-only).
+
+This module centralizes the attribute keys and common enum-like values
+used by GenAI instrumentation so they can be referenced consistently.
 """
 
 from __future__ import annotations
 
 
-# Provider names (superset for forward compatibility)
 class GenAIProvider:
     OPENAI = "openai"
-    GCP_GEN_AI = "gcp.gen_ai"
-    GCP_VERTEX_AI = "gcp.vertex_ai"
-    GCP_GEMINI = "gcp.gemini"
+    AZURE_AI_OPENAI = "azure.ai.openai"
+    AZURE_AI_INFERENCE = "azure.ai.inference"
     ANTHROPIC = "anthropic"
     COHERE = "cohere"
-    AZURE_AI_INFERENCE = "azure.ai.inference"
-    AZURE_AI_OPENAI = "azure.ai.openai"
-    IBM_WATSONX_AI = "ibm.watsonx.ai"
     AWS_BEDROCK = "aws.bedrock"
+    GCP_VERTEX_AI = "gcp.vertex_ai"
+    GCP_GEMINI = "gcp.gemini"
+    IBM_WATSONX_AI = "ibm.watsonx.ai"
+    MISTRAL_AI = "mistral_ai"
+    GROQ = "groq"
     PERPLEXITY = "perplexity"
     X_AI = "x_ai"
     DEEPSEEK = "deepseek"
-    GROQ = "groq"
-    MISTRAL_AI = "mistral_ai"
-
-    ALL = {
-        OPENAI,
-        GCP_GEN_AI,
-        GCP_VERTEX_AI,
-        GCP_GEMINI,
-        ANTHROPIC,
-        COHERE,
-        AZURE_AI_INFERENCE,
-        AZURE_AI_OPENAI,
-        IBM_WATSONX_AI,
-        AWS_BEDROCK,
-        PERPLEXITY,
-        X_AI,
-        DEEPSEEK,
-        GROQ,
-        MISTRAL_AI,
-    }
 
 
 class GenAIOperationName:
@@ -57,15 +50,7 @@ class GenAIOperationName:
     SPEECH = "speech_generation"
     GUARDRAIL = "guardrail_check"
     HANDOFF = "agent_handoff"
-    RESPONSE = "response"  # internal aggregator in current processor
-
-    # Mapping of span data class (lower) to default op (heuristic)
-    CLASS_FALLBACK = {
-        "generationspan": CHAT,
-        "responsespan": RESPONSE,
-        "functionspan": EXECUTE_TOOL,
-        "agentspan": INVOKE_AGENT,
-    }
+    RESPONSE = "response"
 
 
 class GenAIOutputType:
@@ -73,15 +58,12 @@ class GenAIOutputType:
     JSON = "json"
     IMAGE = "image"
     SPEECH = "speech"
-    # existing custom inference types retained for backward compatibility
 
 
 class GenAIToolType:
     FUNCTION = "function"
     EXTENSION = "extension"
     DATASTORE = "datastore"
-
-    ALL = {FUNCTION, EXTENSION, DATASTORE}
 
 
 class GenAIEvaluationAttributes:
@@ -91,7 +73,7 @@ class GenAIEvaluationAttributes:
     EXPLANATION = "gen_ai.evaluation.explanation"
 
 
-# Complete list of GenAI semantic convention attribute keys
+# Attribute keys
 GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
 GEN_AI_REQUEST_MODEL = "gen_ai.request.model"
