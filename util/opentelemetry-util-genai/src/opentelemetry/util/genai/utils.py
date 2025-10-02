@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
 from base64 import b64encode
-from json import encoder
 from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
@@ -59,7 +59,9 @@ def get_content_capturing_mode() -> ContentCapturingMode:
         return ContentCapturingMode.NO_CONTENT
 
 
-class Base64JsonEncoder(encoder.JSONEncoder):
+class Base64JsonEncoder(json.JSONEncoder):
+    """Should be used to serialize python objects to json that may contain bytes."""
+
     def default(self, o: Any) -> Any:
         if isinstance(o, bytes):
             return b64encode(o).decode()
