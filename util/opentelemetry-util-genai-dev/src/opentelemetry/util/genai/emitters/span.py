@@ -198,7 +198,10 @@ class SpanEmitter:
             invocation.context_token = cm  # type: ignore[assignment]
             self._apply_start_attrs(invocation)
         else:
-            span_name = f"chat {invocation.request_model}"
+            # Use operation field for span name (defaults to "chat")
+            operation = getattr(invocation, "operation", "chat")
+            model_name = invocation.request_model
+            span_name = f"{operation} {model_name}"
             cm = self._tracer.start_as_current_span(
                 span_name, kind=SpanKind.CLIENT, end_on_exit=False
             )
