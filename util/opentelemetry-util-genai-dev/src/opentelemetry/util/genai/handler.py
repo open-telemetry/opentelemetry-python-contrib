@@ -63,6 +63,10 @@ from opentelemetry.util.genai.emitters import (
     MetricsEmitter,
     SpanEmitter,
 )
+from opentelemetry.util.genai.plugins import (
+    PluginEmitterBundle,
+    load_emitter_plugin,
+)
 from opentelemetry.util.genai.types import (
     Agent,
     ContentCapturingMode,
@@ -127,6 +131,24 @@ class TelemetryHandler:
         capture_events = settings.capture_content_events
 
         # Compose emitters based on parsed settings
+        plugin_bundles: list[PluginEmitterBundle] = []
+        replace_default_emitters = False
+        for plugin_name in settings.extra_emitters:
+            if plugin_name == "traceloop_compat":
+                continue
+            bundle = load_emitter_plugin(
+                plugin_name,
+                tracer=self._tracer,
+                meter=meter,
+                event_logger=self._event_logger,
+                settings=settings,
+            )
+            if bundle:
+                plugin_bundles.append(bundle)
+                if bundle.replace_default_emitters:
+                    replace_default_emitters = True
+
+        emitters = []
         if settings.only_traceloop_compat:
             # Only traceloop compat requested
             from opentelemetry.util.genai.emitters import (
@@ -136,32 +158,35 @@ class TelemetryHandler:
             traceloop_emitter = TraceloopCompatEmitter(
                 tracer=self._tracer, capture_content=capture_span
             )
-            emitters = [traceloop_emitter]
+            emitters.append(traceloop_emitter)
         else:
-            if settings.generator_kind == "span_metric_event":
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=False,  # keep span lean
-                )
-                metrics_emitter = MetricsEmitter(meter=meter)
-                content_emitter = ContentEventsEmitter(
-                    logger=self._content_logger,
-                    capture_content=capture_events,
-                )
-                emitters = [span_emitter, metrics_emitter, content_emitter]
-            elif settings.generator_kind == "span_metric":
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=capture_span,
-                )
-                metrics_emitter = MetricsEmitter(meter=meter)
-                emitters = [span_emitter, metrics_emitter]
-            else:
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=capture_span,
-                )
-                emitters = [span_emitter]
+            if not replace_default_emitters:
+                if settings.generator_kind == "span_metric_event":
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=False,  # keep span lean
+                    )
+                    metrics_emitter = MetricsEmitter(meter=meter)
+                    content_emitter = ContentEventsEmitter(
+                        logger=self._content_logger,
+                        capture_content=capture_events,
+                    )
+                    emitters.extend(
+                        [span_emitter, metrics_emitter, content_emitter]
+                    )
+                elif settings.generator_kind == "span_metric":
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=capture_span,
+                    )
+                    metrics_emitter = MetricsEmitter(meter=meter)
+                    emitters.extend([span_emitter, metrics_emitter])
+                else:
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=capture_span,
+                    )
+                    emitters.append(span_emitter)
             # Append extra emitters if requested
             if "traceloop_compat" in settings.extra_emitters:
                 try:
@@ -175,6 +200,9 @@ class TelemetryHandler:
                     emitters.append(traceloop_emitter)
                 except Exception:  # pragma: no cover
                     pass
+        for bundle in plugin_bundles:
+            if bundle.emitters:
+                emitters.extend(bundle.emitters)
         # Phase 1: wrap in composite (single element) to prepare for multi-emitter
         self._generator = CompositeGenerator(emitters)  # type: ignore[arg-type]
 

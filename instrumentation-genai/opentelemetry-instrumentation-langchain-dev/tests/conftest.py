@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 
 from opentelemetry.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.instrumentation.langchain.utils import (
-    OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT,
+    set_prompt_capture_enabled,
 )
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
@@ -108,9 +108,7 @@ def vcr_config():
 def instrument_no_content(
     tracer_provider, event_logger_provider, meter_provider
 ):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT: "False"}
-    )
+    set_prompt_capture_enabled(False)
 
     instrumentor = LangChainInstrumentor()
     instrumentor.instrument(
@@ -120,9 +118,7 @@ def instrument_no_content(
     )
 
     yield instrumentor
-    os.environ.pop(
-        OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT, None
-    )
+    set_prompt_capture_enabled(True)
     instrumentor.uninstrument()
 
 
@@ -130,9 +126,7 @@ def instrument_no_content(
 def instrument_with_content(
     tracer_provider, event_logger_provider, meter_provider
 ):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT: "True"}
-    )
+    set_prompt_capture_enabled(True)
     instrumentor = LangChainInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -141,9 +135,7 @@ def instrument_with_content(
     )
 
     yield instrumentor
-    os.environ.pop(
-        OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT, None
-    )
+    set_prompt_capture_enabled(True)
     instrumentor.uninstrument()
 
 
@@ -151,9 +143,7 @@ def instrument_with_content(
 def instrument_with_content_unsampled(
     span_exporter, event_logger_provider, meter_provider
 ):
-    os.environ.update(
-        {OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT: "True"}
-    )
+    set_prompt_capture_enabled(True)
 
     tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
     tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
@@ -166,9 +156,7 @@ def instrument_with_content_unsampled(
     )
 
     yield instrumentor
-    os.environ.pop(
-        OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT, None
-    )
+    set_prompt_capture_enabled(True)
     instrumentor.uninstrument()
 
 
@@ -176,11 +164,10 @@ def instrument_with_content_unsampled(
 def instrument_with_content_util(
     tracer_provider, event_logger_provider, meter_provider
 ):
+    set_prompt_capture_enabled(True)
     os.environ.update(
         {
-            OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT: "True",  # capture content for spans/logs
             OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_ONLY",  # util-genai content gate
-            # Removed deprecated OTEL_INSTRUMENTATION_LANGCHAIN_USE_UTIL_GENAI toggle (util-genai is always used)
         }
     )
     instrumentor = LangChainInstrumentor()
@@ -190,11 +177,8 @@ def instrument_with_content_util(
         meter_provider=meter_provider,
     )
     yield instrumentor
-    for k in (
-        OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGE_CONTENT,
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
-    ):
-        os.environ.pop(k, None)
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    set_prompt_capture_enabled(True)
     instrumentor.uninstrument()
 
 

@@ -12,6 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pkgutil import extend_path
+"""Evaluator scaffolding (Phase 1).
 
-__path__ = extend_path(__path__, __name__)
+Provides a minimal pluggable registry for GenAI evaluators. Future phases will
+add concrete implementations (e.g., deepeval) and telemetry emission.
+"""
+
+from . import (
+    builtins as _builtins,  # noqa: E402,F401  (auto-registration side effects)
+)
+from .base import Evaluator
+from .registry import get_evaluator, list_evaluators, register_evaluator
+
+__all__ = [
+    "Evaluator",
+    "register_evaluator",
+    "get_evaluator",
+    "list_evaluators",
+]

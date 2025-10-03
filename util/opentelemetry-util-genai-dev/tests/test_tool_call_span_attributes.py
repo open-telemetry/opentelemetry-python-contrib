@@ -1,3 +1,4 @@
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -6,7 +7,7 @@ from opentelemetry.util.genai.types import ToolCall
 
 
 def test_tool_call_span_attributes():
-    handler = get_telemetry_handler()
+    handler = get_telemetry_handler(tracer_provider=TracerProvider())
     call = ToolCall(
         name="summarize",
         id="tool-1",

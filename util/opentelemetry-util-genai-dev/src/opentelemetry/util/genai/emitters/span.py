@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json  # noqa: F401 (kept for backward compatibility if external code relies on this module re-exporting json)
 from dataclasses import asdict  # noqa: F401
-from typing import Optional
+from typing import Any, Optional
 
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import (
@@ -12,7 +12,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
-from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 from ..attributes import (
@@ -55,6 +55,51 @@ from .utils import (
     _apply_llm_finish_semconv,
     _serialize_messages,
 )
+
+
+def _sanitize_span_attribute_value(value: Any) -> Optional[Any]:
+    """Cast arbitrary invocation attribute values to OTEL-compatible types."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (str, int, float)):
+        return value
+    if isinstance(value, (list, tuple)):
+        sanitized_items: list[Any] = []
+        for item in value:
+            sanitized = _sanitize_span_attribute_value(item)
+            if sanitized is None:
+                continue
+            if isinstance(sanitized, list):
+                sanitized_items.append(str(sanitized))
+            else:
+                sanitized_items.append(sanitized)
+        return sanitized_items
+    if isinstance(value, dict):
+        try:
+            return json.dumps(value, default=str)
+        except Exception:  # pragma: no cover - defensive
+            return str(value)
+    return str(value)
+
+
+def _apply_gen_ai_semconv_attributes(
+    span: Span, attributes: Optional[dict[str, Any]]
+) -> None:
+    if not attributes:
+        return
+    for key, value in attributes.items():
+        if not isinstance(key, str) or not key.startswith("gen_ai."):
+            continue
+        sanitized = _sanitize_span_attribute_value(value)
+        if sanitized is None:
+            continue
+        try:
+            span.set_attribute(key, sanitized)
+        except Exception:  # pragma: no cover - defensive
+            pass
 
 
 class SpanEmitter:
@@ -120,15 +165,9 @@ class SpanEmitter:
         agent_id = getattr(invocation, "agent_id", None)
         if agent_id:
             span.set_attribute(GEN_AI_AGENT_ID, agent_id)
-        # Backward compatibility: copy non-semconv, non-traceloop attributes present at start
-        if isinstance(invocation, LLMInvocation):
-            for k, v in invocation.attributes.items():
-                if k.startswith("gen_ai.") or k.startswith("traceloop."):
-                    continue
-                try:
-                    span.set_attribute(k, v)
-                except Exception:  # pragma: no cover
-                    pass
+        _apply_gen_ai_semconv_attributes(
+            span, getattr(invocation, "attributes", None)
+        )
 
     def _apply_finish_attrs(
         self, invocation: LLMInvocation | EmbeddingInvocation
@@ -149,14 +188,11 @@ class SpanEmitter:
         # Finish-time semconv attributes (response + usage tokens + functions)
         if isinstance(invocation, LLMInvocation):
             _apply_llm_finish_semconv(span, invocation)
-            # Copy (or update) custom non-semconv, non-traceloop attributes added during invocation
-            for k, v in invocation.attributes.items():
-                if k.startswith("gen_ai.") or k.startswith("traceloop."):
-                    continue
-                try:
-                    span.set_attribute(k, v)
-                except Exception:  # pragma: no cover
-                    pass
+            _apply_gen_ai_semconv_attributes(span, invocation.attributes)
+        else:
+            _apply_gen_ai_semconv_attributes(
+                span, getattr(invocation, "attributes", None)
+            )
         if (
             self._capture_content
             and isinstance(invocation, LLMInvocation)
@@ -276,6 +312,7 @@ class SpanEmitter:
             span.set_attribute(
                 GEN_AI_WORKFLOW_INITIAL_INPUT, workflow.initial_input
             )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
 
     def _finish_workflow(self, workflow: Workflow) -> None:
         """Finish a workflow span."""
@@ -287,6 +324,7 @@ class SpanEmitter:
             span.set_attribute(
                 GEN_AI_WORKFLOW_FINAL_OUTPUT, workflow.final_output
             )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -305,6 +343,7 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -354,6 +393,7 @@ class SpanEmitter:
             )
         if agent.input_context and self._capture_content:
             span.set_attribute(GEN_AI_AGENT_INPUT_CONTEXT, agent.input_context)
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
 
     def _finish_agent(self, agent: Agent) -> None:
         """Finish an agent span."""
@@ -363,6 +403,7 @@ class SpanEmitter:
         # Set output result if capture_content enabled
         if agent.output_result and self._capture_content:
             span.set_attribute(GEN_AI_AGENT_OUTPUT_RESULT, agent.output_result)
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -381,6 +422,7 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -414,6 +456,7 @@ class SpanEmitter:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
         if task.input_data and self._capture_content:
             span.set_attribute(GEN_AI_TASK_INPUT_DATA, task.input_data)
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
 
     def _finish_task(self, task: Task) -> None:
         """Finish a task span."""
@@ -426,6 +469,7 @@ class SpanEmitter:
         # Update status if changed
         if task.status:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -446,6 +490,7 @@ class SpanEmitter:
             )
         # Update status to failed
         span.set_attribute(GEN_AI_TASK_STATUS, "failed")
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:

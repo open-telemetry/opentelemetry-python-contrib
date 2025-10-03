@@ -1,7 +1,7 @@
 """OpenTelemetry Langchain instrumentation"""
 
 import logging
-from typing import Collection
+from typing import Any, Collection
 
 from opentelemetry import context as context_api
 
@@ -74,8 +74,17 @@ class LangchainInstrumentor(BaseInstrumentor):
                 __name__, __version__, event_logger_provider=event_logger_provider
             )
 
+        telemetry_handler_kwargs: dict[str, Any] = {}
+        if tracer_provider is not None:
+            telemetry_handler_kwargs["tracer_provider"] = tracer_provider
+        if meter_provider is not None:
+            telemetry_handler_kwargs["meter_provider"] = meter_provider
+
         traceloopCallbackHandler = TraceloopCallbackHandler(
-            tracer, duration_histogram, token_histogram
+            tracer,
+            duration_histogram,
+            token_histogram,
+            telemetry_handler_kwargs=telemetry_handler_kwargs or None,
         )
         wrap_function_wrapper(
             module="langchain_core.callbacks",
@@ -183,6 +192,10 @@ class LangchainInstrumentor(BaseInstrumentor):
                 unwrap("langchain_openai.chat_models.base", "BaseOpenAI._agenerate")
                 # unwrap("langchain_openai.chat_models.base", "BaseOpenAI._stream")
                 # unwrap("langchain_openai.chat_models.base", "BaseOpenAI._astream")
+
+
+# Backwards-compatible alias for older import casing
+LangChainInstrumentor = LangchainInstrumentor
 
 
 class _BaseCallbackManagerInitWrapper:

@@ -14,6 +14,10 @@ an alias first.
 
 from __future__ import annotations
 
+from pkgutil import extend_path
+
+__path__ = extend_path(__path__, __name__)
+
 from .composite import CompositeGenerator  # noqa: F401
 from .content_events import ContentEventsEmitter  # noqa: F401
 from .metrics import MetricsEmitter  # noqa: F401
