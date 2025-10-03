@@ -3,21 +3,21 @@ Creating agent: classifier_agent
 {
     "name": "create_agent classifier_agent",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x470ecf3992c2c796",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0xb787f0f436cfd99e",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xafb6a5a3056ec366",
-    "start_time": "2025-10-01T21:53:38.198307Z",
-    "end_time": "2025-10-01T21:53:38.253484Z",
+    "parent_id": "0xa503eb89eb36355c",
+    "start_time": "2025-10-03T22:42:57.691182Z",
+    "end_time": "2025-10-03T22:42:57.747168Z",
     "status": {
         "status_code": "UNSET"
     },
     "attributes": {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": "create_agent",
         "gen_ai.agent.name": "classifier_agent",
-        "gen_ai.agent.id": "7aa72174-317a-460f-8c4a-19c2a0980726",
+        "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
         "gen_ai.agent.type": "classifier",
         "gen_ai.agent.description": "Classifies customer intents",
         "gen_ai.framework": "custom",
@@ -32,8 +32,9 @@ Creating agent: classifier_agent
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -82,20 +83,21 @@ LLM call with agent context
         "gen_ai.usage.input_tokens": 45,
         "gen_ai.usage.output_tokens": 8,
         "gen_ai.agent.name": "classifier_agent",
-        "gen_ai.agent.id": "7aa72174-317a-460f-8c4a-19c2a0980726"
+        "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2025-10-01T21:53:38.517121Z",
-    "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-    "span_id": "0x63795c7cd2681fbe",
+    "observed_timestamp": "2025-10-03T22:42:58.013832Z",
+    "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+    "span_id": "0x6e8fc2a573fa15ac",
     "trace_flags": 1,
     "resource": {
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     },
@@ -104,14 +106,14 @@ LLM call with agent context
 {
     "name": "chat gpt-4",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x63795c7cd2681fbe",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x6e8fc2a573fa15ac",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xbfdeb9fc023a9f82",
-    "start_time": "2025-10-01T21:53:38.413571Z",
-    "end_time": "2025-10-01T21:53:38.518106Z",
+    "parent_id": "0xba9e92b58852ef2f",
+    "start_time": "2025-10-03T22:42:57.909044Z",
+    "end_time": "2025-10-03T22:42:58.016061Z",
     "status": {
         "status_code": "UNSET"
     },
@@ -121,7 +123,7 @@ LLM call with agent context
         "gen_ai.provider.name": "openai",
         "gen_ai.framework": "custom",
         "gen_ai.agent.name": "classifier_agent",
-        "gen_ai.agent.id": "7aa72174-317a-460f-8c4a-19c2a0980726",
+        "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
         "gen_ai.usage.input_tokens": 45,
         "gen_ai.usage.output_tokens": 8
     },
@@ -131,8 +133,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -140,14 +143,14 @@ LLM call with agent context
 {
     "name": "gen_ai.task classify_intent",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0xbfdeb9fc023a9f82",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0xba9e92b58852ef2f",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0x155599fc5a2170ad",
-    "start_time": "2025-10-01T21:53:38.360136Z",
-    "end_time": "2025-10-01T21:53:38.518371Z",
+    "parent_id": "0x61f4825c19fdc7a9",
+    "start_time": "2025-10-03T22:42:57.853704Z",
+    "end_time": "2025-10-03T22:42:58.016814Z",
     "status": {
         "status_code": "UNSET"
     },
@@ -164,8 +167,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -173,21 +177,21 @@ LLM call with agent context
 {
     "name": "invoke_agent classifier_agent",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x155599fc5a2170ad",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x61f4825c19fdc7a9",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xafb6a5a3056ec366",
-    "start_time": "2025-10-01T21:53:38.254476Z",
-    "end_time": "2025-10-01T21:53:38.518639Z",
+    "parent_id": "0xa503eb89eb36355c",
+    "start_time": "2025-10-03T22:42:57.748305Z",
+    "end_time": "2025-10-03T22:42:58.017159Z",
     "status": {
         "status_code": "UNSET"
     },
     "attributes": {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": "invoke_agent",
         "gen_ai.agent.name": "classifier_agent",
-        "gen_ai.agent.id": "7aa72174-317a-460f-8c4a-19c2a0980726",
+        "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
         "gen_ai.agent.type": "classifier",
         "gen_ai.framework": "custom",
         "gen_ai.request.model": "gpt-4"
@@ -198,8 +202,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -208,21 +213,21 @@ Creating agent: support_agent
 {
     "name": "create_agent support_agent",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0xdde7396052acdee3",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x988de53d45a8c00f",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xafb6a5a3056ec366",
-    "start_time": "2025-10-01T21:53:38.518831Z",
-    "end_time": "2025-10-01T21:53:38.573965Z",
+    "parent_id": "0xa503eb89eb36355c",
+    "start_time": "2025-10-03T22:42:58.017647Z",
+    "end_time": "2025-10-03T22:42:58.068838Z",
     "status": {
         "status_code": "UNSET"
     },
     "attributes": {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": "create_agent",
         "gen_ai.agent.name": "support_agent",
-        "gen_ai.agent.id": "5f6f5ad6-c7cd-4904-9038-9120f1b1a910",
+        "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
         "gen_ai.agent.type": "support",
         "gen_ai.agent.description": "Handles customer support requests",
         "gen_ai.framework": "custom",
@@ -238,8 +243,9 @@ Creating agent: support_agent
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -320,20 +326,21 @@ LLM call with agent context
         "gen_ai.usage.input_tokens": 52,
         "gen_ai.usage.output_tokens": 28,
         "gen_ai.agent.name": "support_agent",
-        "gen_ai.agent.id": "5f6f5ad6-c7cd-4904-9038-9120f1b1a910"
+        "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
     },
     "dropped_attributes": 0,
     "timestamp": null,
-    "observed_timestamp": "2025-10-01T21:53:38.831291Z",
-    "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-    "span_id": "0x20f88a6b0d5c2d36",
+    "observed_timestamp": "2025-10-03T22:42:58.330036Z",
+    "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+    "span_id": "0x2a1e94e09ed4f8d6",
     "trace_flags": 1,
     "resource": {
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     },
@@ -342,14 +349,14 @@ LLM call with agent context
 {
     "name": "chat gpt-4",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x20f88a6b0d5c2d36",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x2a1e94e09ed4f8d6",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0x045bf4494d41bf7e",
-    "start_time": "2025-10-01T21:53:38.730395Z",
-    "end_time": "2025-10-01T21:53:38.833102Z",
+    "parent_id": "0x9965233a81c98378",
+    "start_time": "2025-10-03T22:42:58.227658Z",
+    "end_time": "2025-10-03T22:42:58.332715Z",
     "status": {
         "status_code": "UNSET"
     },
@@ -359,7 +366,7 @@ LLM call with agent context
         "gen_ai.provider.name": "openai",
         "gen_ai.framework": "custom",
         "gen_ai.agent.name": "support_agent",
-        "gen_ai.agent.id": "5f6f5ad6-c7cd-4904-9038-9120f1b1a910",
+        "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
         "gen_ai.usage.input_tokens": 52,
         "gen_ai.usage.output_tokens": 28
     },
@@ -369,8 +376,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -378,14 +386,14 @@ LLM call with agent context
 {
     "name": "gen_ai.task handle_request",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x045bf4494d41bf7e",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x9965233a81c98378",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0x96b79936208e70bb",
-    "start_time": "2025-10-01T21:53:38.677780Z",
-    "end_time": "2025-10-01T21:53:38.833598Z",
+    "parent_id": "0x37f0d93f3400e71c",
+    "start_time": "2025-10-03T22:42:58.175552Z",
+    "end_time": "2025-10-03T22:42:58.333311Z",
     "status": {
         "status_code": "UNSET"
     },
@@ -403,8 +411,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -412,21 +421,21 @@ LLM call with agent context
 {
     "name": "invoke_agent support_agent",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0x96b79936208e70bb",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0x37f0d93f3400e71c",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xafb6a5a3056ec366",
-    "start_time": "2025-10-01T21:53:38.574273Z",
-    "end_time": "2025-10-01T21:53:38.833857Z",
+    "parent_id": "0xa503eb89eb36355c",
+    "start_time": "2025-10-03T22:42:58.069910Z",
+    "end_time": "2025-10-03T22:42:58.333638Z",
     "status": {
         "status_code": "UNSET"
     },
     "attributes": {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": "invoke_agent",
         "gen_ai.agent.name": "support_agent",
-        "gen_ai.agent.id": "5f6f5ad6-c7cd-4904-9038-9120f1b1a910",
+        "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
         "gen_ai.agent.type": "support",
         "gen_ai.framework": "custom",
         "gen_ai.request.model": "gpt-4"
@@ -437,8 +446,9 @@ LLM call with agent context
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -447,14 +457,14 @@ Completing workflow
 {
     "name": "gen_ai.workflow customer_support_pipeline",
     "context": {
-        "trace_id": "0x12a32e3932826dc973cd24cb3267648a",
-        "span_id": "0xafb6a5a3056ec366",
+        "trace_id": "0xfb966ec08a3eb16a1757a5d3ef6fc432",
+        "span_id": "0xa503eb89eb36355c",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
     "parent_id": null,
-    "start_time": "2025-10-01T21:53:38.093058Z",
-    "end_time": "2025-10-01T21:53:38.834071Z",
+    "start_time": "2025-10-03T22:42:57.589144Z",
+    "end_time": "2025-10-03T22:42:58.333915Z",
     "status": {
         "status_code": "UNSET"
     },
@@ -470,8 +480,9 @@ Completing workflow
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -493,22 +504,22 @@ ERROR HANDLING EXAMPLE
 {
     "name": "invoke_agent error_agent",
     "context": {
-        "trace_id": "0x1560af9befaf5d4a1714f59fa89f76a6",
-        "span_id": "0x3141fd9c548a813c",
+        "trace_id": "0x0d21e4580596bd5de420553bdc0a2fb6",
+        "span_id": "0xab29dea9ad655bb0",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
-    "parent_id": "0xadcce16ecc985077",
-    "start_time": "2025-10-01T21:53:39.840335Z",
-    "end_time": "2025-10-01T21:53:39.840616Z",
+    "parent_id": "0xee33503412f13cf4",
+    "start_time": "2025-10-03T22:42:59.336656Z",
+    "end_time": "2025-10-03T22:42:59.336880Z",
     "status": {
         "status_code": "ERROR",
         "description": "Simulated agent failure"
     },
     "attributes": {
-        "gen_ai.operation.name": "chat",
+        "gen_ai.operation.name": "invoke_agent",
         "gen_ai.agent.name": "error_agent",
-        "gen_ai.agent.id": "208f534d-59be-49c1-8032-052da2f8af21",
+        "gen_ai.agent.id": "b7e1113c-ac3a-42f3-b192-168b4bb4474c",
         "gen_ai.agent.type": "test",
         "gen_ai.framework": "custom",
         "error.type": "RuntimeError"
@@ -519,8 +530,9 @@ ERROR HANDLING EXAMPLE
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
@@ -528,14 +540,14 @@ ERROR HANDLING EXAMPLE
 {
     "name": "gen_ai.workflow failing_workflow",
     "context": {
-        "trace_id": "0x1560af9befaf5d4a1714f59fa89f76a6",
-        "span_id": "0xadcce16ecc985077",
+        "trace_id": "0x0d21e4580596bd5de420553bdc0a2fb6",
+        "span_id": "0xee33503412f13cf4",
         "trace_state": "[]"
     },
     "kind": "SpanKind.CLIENT",
     "parent_id": null,
-    "start_time": "2025-10-01T21:53:39.839978Z",
-    "end_time": "2025-10-01T21:53:39.841664Z",
+    "start_time": "2025-10-03T22:42:59.336472Z",
+    "end_time": "2025-10-03T22:42:59.337495Z",
     "status": {
         "status_code": "ERROR",
         "description": "Simulated agent failure"
@@ -553,11 +565,1816 @@ ERROR HANDLING EXAMPLE
         "attributes": {
             "telemetry.sdk.language": "python",
             "telemetry.sdk.name": "opentelemetry",
-            "telemetry.sdk.version": "1.38.0.dev0",
-            "service.name": "unknown_service"
+            "telemetry.sdk.version": "1.37.0",
+            "deployment.environment\\": "agent-utils-genai-demo",
+            "service.name": "langgraph-agent"
         },
         "schema_url": ""
     }
 }
 Error handling demonstrated - check spans for error status
 
+{
+    "resource_metrics": [
+        {
+            "resource": {
+                "attributes": {
+                    "telemetry.sdk.language": "python",
+                    "telemetry.sdk.name": "opentelemetry",
+                    "telemetry.sdk.version": "1.37.0",
+                    "deployment.environment\\": "agent-utils-genai-demo",
+                    "service.name": "langgraph-agent"
+                },
+                "schema_url": ""
+            },
+            "scope_metrics": [
+                {
+                    "scope": {
+                        "name": "opentelemetry.util.genai.handler",
+                        "version": "",
+                        "schema_url": "",
+                        "attributes": null
+                    },
+                    "metrics": [
+                        {
+                            "name": "gen_ai.agent.duration",
+                            "description": "Duration of agent operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
+                                            "gen_ai.agent.type": "classifier",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531377747031000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.05542612075805664,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.05542612075805664,
+                                        "max": 0.05542612075805664,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.05542612075805664,
+                                                "time_unix_nano": 1759531377746392000,
+                                                "span_id": 13224803762479028638,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
+                                            "gen_ai.agent.type": "classifier",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378017116000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.26886606216430664,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.26886606216430664,
+                                        "max": 0.26886606216430664,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.26886606216430664,
+                                                "time_unix_nano": 1759531378017101000,
+                                                "span_id": 7058409848081074089,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
+                                            "gen_ai.agent.type": "support",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378068632000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.05096912384033203,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.05096912384033203,
+                                        "max": 0.05096912384033203,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.05096912384033203,
+                                                "time_unix_nano": 1759531378068526000,
+                                                "span_id": 10992694316805701647,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
+                                            "gen_ai.agent.type": "support",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378333601000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.2638819217681885,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.2638819217681885,
+                                        "max": 0.2638819217681885,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.2638819217681885,
+                                                "time_unix_nano": 1759531378333586000,
+                                                "span_id": 4030960531975235356,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "error_agent",
+                                            "gen_ai.agent.id": "b7e1113c-ac3a-42f3-b192-168b4bb4474c",
+                                            "gen_ai.agent.type": "test",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531379336761000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.00014495849609375,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.00014495849609375,
+                                        "max": 0.00014495849609375,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.00014495849609375,
+                                                "time_unix_nano": 1759531379336736000,
+                                                "span_id": 12333633874870754224,
+                                                "trace_id": 17455941104733147676908979660918501302
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.token.usage",
+                            "description": "Token usage for GenAI operations",
+                            "unit": "tokens",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013313000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 45,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 45,
+                                        "max": 45,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 45,
+                                                "time_unix_nano": 1759531378013025000,
+                                                "span_id": 7966800281712858540,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013470000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 8,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 8,
+                                        "max": 8,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 8,
+                                                "time_unix_nano": 1759531378013451000,
+                                                "span_id": 7966800281712858540,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329501000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 52,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 52,
+                                        "max": 52,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 52,
+                                                "time_unix_nano": 1759531378329385000,
+                                                "span_id": 3035026891352635606,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329691000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 28,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 28,
+                                        "max": 28,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 28,
+                                                "time_unix_nano": 1759531378329670000,
+                                                "span_id": 3035026891352635606,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.operation.duration",
+                            "description": "Duration of GenAI operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013533000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.10396695137023926,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.10396695137023926,
+                                        "max": 0.10396695137023926,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.10396695137023926,
+                                                "time_unix_nano": 1759531378013510000,
+                                                "span_id": 7966800281712858540,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329758000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.10205221176147461,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.10205221176147461,
+                                        "max": 0.10205221176147461,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.10205221176147461,
+                                                "time_unix_nano": 1759531378329739000,
+                                                "span_id": 3035026891352635606,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.task.duration",
+                            "description": "Duration of task executions",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "classify_intent",
+                                            "gen_ai.task.type": "classification",
+                                            "gen_ai.task.source": "agent"
+                                        },
+                                        "start_time_unix_nano": 1759531378016755000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.16321301460266113,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.16321301460266113,
+                                        "max": 0.16321301460266113,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.16321301460266113,
+                                                "time_unix_nano": 1759531378016689000,
+                                                "span_id": 13447346845748752175,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "handle_request",
+                                            "gen_ai.task.type": "execution",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "support_agent"
+                                        },
+                                        "start_time_unix_nano": 1759531378333242000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.15815305709838867,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.15815305709838867,
+                                        "max": 0.15815305709838867,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.15815305709838867,
+                                                "time_unix_nano": 1759531378333217000,
+                                                "span_id": 11053279594643293048,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.workflow.duration",
+                            "description": "Duration of GenAI workflows",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "customer_support_pipeline",
+                                            "gen_ai.workflow.type": "sequential",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378333880000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.7447538375854492,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.7447538375854492,
+                                        "max": 0.7447538375854492,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.7447538375854492,
+                                                "time_unix_nano": 1759531378333849000,
+                                                "span_id": 11890606418777486684,
+                                                "trace_id": 334417317790442435237700660286616224818
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "failing_workflow",
+                                            "gen_ai.workflow.type": "sequential",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531379337439000,
+                                        "time_unix_nano": 1759531382593590000,
+                                        "count": 1,
+                                        "sum": 0.0012061595916748047,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0012061595916748047,
+                                        "max": 0.0012061595916748047,
+                                        "exemplars": [
+                                            {
+                                                "filtered_attributes": {},
+                                                "value": 0.0012061595916748047,
+                                                "time_unix_nano": 1759531379337422000,
+                                                "span_id": 17164150789425413364,
+                                                "trace_id": 17455941104733147676908979660918501302
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        }
+                    ],
+                    "schema_url": ""
+                }
+            ],
+            "schema_url": ""
+        }
+    ]
+}
+{
+    "resource_metrics": [
+        {
+            "resource": {
+                "attributes": {
+                    "telemetry.sdk.language": "python",
+                    "telemetry.sdk.name": "opentelemetry",
+                    "telemetry.sdk.version": "1.37.0",
+                    "deployment.environment\\": "agent-utils-genai-demo",
+                    "service.name": "langgraph-agent"
+                },
+                "schema_url": ""
+            },
+            "scope_metrics": [
+                {
+                    "scope": {
+                        "name": "opentelemetry.util.genai.handler",
+                        "version": "",
+                        "schema_url": "",
+                        "attributes": null
+                    },
+                    "metrics": [
+                        {
+                            "name": "gen_ai.agent.duration",
+                            "description": "Duration of agent operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
+                                            "gen_ai.agent.type": "classifier",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531377747031000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.05542612075805664,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.05542612075805664,
+                                        "max": 0.05542612075805664,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869",
+                                            "gen_ai.agent.type": "classifier",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378017116000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.26886606216430664,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.26886606216430664,
+                                        "max": 0.26886606216430664,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.create",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
+                                            "gen_ai.agent.type": "support",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378068632000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.05096912384033203,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.05096912384033203,
+                                        "max": 0.05096912384033203,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648",
+                                            "gen_ai.agent.type": "support",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378333601000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.2638819217681885,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.2638819217681885,
+                                        "max": 0.2638819217681885,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.operation.name": "agent.invoke",
+                                            "gen_ai.agent.name": "error_agent",
+                                            "gen_ai.agent.id": "b7e1113c-ac3a-42f3-b192-168b4bb4474c",
+                                            "gen_ai.agent.type": "test",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531379336761000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.00014495849609375,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.00014495849609375,
+                                        "max": 0.00014495849609375,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.token.usage",
+                            "description": "Token usage for GenAI operations",
+                            "unit": "tokens",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013313000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 45,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 45,
+                                        "max": 45,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013470000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 8,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 8,
+                                        "max": 8,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "input",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329501000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 52,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 52,
+                                        "max": 52,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.token.type": "output",
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329691000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 28,
+                                        "bucket_counts": [
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 28,
+                                        "max": 28,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.operation.duration",
+                            "description": "Duration of GenAI operations",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "classifier_agent",
+                                            "gen_ai.agent.id": "f80dbd16-dd50-4418-acb5-1b7a4a583869"
+                                        },
+                                        "start_time_unix_nano": 1759531378013533000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.10396695137023926,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.10396695137023926,
+                                        "max": 0.10396695137023926,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.provider.name": "openai",
+                                            "gen_ai.operation.name": "chat",
+                                            "gen_ai.request.model": "gpt-4",
+                                            "gen_ai.agent.name": "support_agent",
+                                            "gen_ai.agent.id": "72d2ca53-596f-46e8-8440-4f91b45d8648"
+                                        },
+                                        "start_time_unix_nano": 1759531378329758000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.10205221176147461,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.10205221176147461,
+                                        "max": 0.10205221176147461,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.task.duration",
+                            "description": "Duration of task executions",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "classify_intent",
+                                            "gen_ai.task.type": "classification",
+                                            "gen_ai.task.source": "agent"
+                                        },
+                                        "start_time_unix_nano": 1759531378016755000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.16321301460266113,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.16321301460266113,
+                                        "max": 0.16321301460266113,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.task.name": "handle_request",
+                                            "gen_ai.task.type": "execution",
+                                            "gen_ai.task.source": "agent",
+                                            "gen_ai.agent.name": "support_agent"
+                                        },
+                                        "start_time_unix_nano": 1759531378333242000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.15815305709838867,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.15815305709838867,
+                                        "max": 0.15815305709838867,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        },
+                        {
+                            "name": "gen_ai.workflow.duration",
+                            "description": "Duration of GenAI workflows",
+                            "unit": "s",
+                            "data": {
+                                "data_points": [
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "customer_support_pipeline",
+                                            "gen_ai.workflow.type": "sequential",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531378333880000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.7447538375854492,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.7447538375854492,
+                                        "max": 0.7447538375854492,
+                                        "exemplars": []
+                                    },
+                                    {
+                                        "attributes": {
+                                            "gen_ai.workflow.name": "failing_workflow",
+                                            "gen_ai.workflow.type": "sequential",
+                                            "gen_ai.framework": "custom"
+                                        },
+                                        "start_time_unix_nano": 1759531379337439000,
+                                        "time_unix_nano": 1759531385340039000,
+                                        "count": 1,
+                                        "sum": 0.0012061595916748047,
+                                        "bucket_counts": [
+                                            0,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0
+                                        ],
+                                        "explicit_bounds": [
+                                            0.0,
+                                            5.0,
+                                            10.0,
+                                            25.0,
+                                            50.0,
+                                            75.0,
+                                            100.0,
+                                            250.0,
+                                            500.0,
+                                            750.0,
+                                            1000.0,
+                                            2500.0,
+                                            5000.0,
+                                            7500.0,
+                                            10000.0
+                                        ],
+                                        "min": 0.0012061595916748047,
+                                        "max": 0.0012061595916748047,
+                                        "exemplars": []
+                                    }
+                                ],
+                                "aggregation_temporality": 2
+                            }
+                        }
+                    ],
+                    "schema_url": ""
+                }
+            ],
+            "schema_url": ""
+        }
+    ]
+}

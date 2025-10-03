@@ -38,7 +38,9 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 # Import GenAI telemetry utilities
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
-    Agent,
+    AgentInvocation as Agent,
+)
+from opentelemetry.util.genai.types import (
     InputMessage,
     LLMInvocation,
     OutputMessage,
@@ -390,7 +392,7 @@ if model:
     agent = create_react_agent(
         model=model,
         tools=[get_weather],
-        prompt="You are a helpful weather assistant powered by Cisco AI. Use the weather tool to provide accurate, current weather information for any city requested.",
+        prompt="You are a helpful weather assistant powered by Cisco AI. Use the weather tool to provide accurate, current weather information for any city requested. After providing the weather data, always add a brief one-line personal commentary about the weather conditions (e.g., whether it's pleasant, extreme, unusual, etc.). Be expressive and opinionated in your commentary.",
     )
 
 
@@ -572,6 +574,7 @@ async def process_weather_request(city: str) -> str:
         model="gpt-4o-mini",
         tools=["get_weather"],
         description="Weather assistant using MCP tool",
+        system_instructions="You are a helpful weather assistant powered by Cisco AI. Use the weather tool to provide accurate, current weather information for any city requested. After providing the weather data, always add a brief one-line personal commentary about the weather conditions (e.g., whether it's pleasant, extreme, unusual, etc.). Be expressive and opinionated in your commentary.",
     )
     handler.start_agent(agent_create)
     handler.stop_agent(agent_create)

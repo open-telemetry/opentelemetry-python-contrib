@@ -52,7 +52,9 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
-    Agent,
+    AgentInvocation as Agent,
+)
+from opentelemetry.util.genai.types import (
     InputMessage,
     LLMInvocation,
     OutputMessage,

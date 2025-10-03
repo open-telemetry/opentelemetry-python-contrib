@@ -18,26 +18,19 @@ from opentelemetry.trace.status import Status, StatusCode
 from ..attributes import (
     GEN_AI_AGENT_DESCRIPTION,
     GEN_AI_AGENT_ID,
-    GEN_AI_AGENT_INPUT_CONTEXT,
     GEN_AI_AGENT_NAME,
-    GEN_AI_AGENT_OUTPUT_RESULT,
-    GEN_AI_AGENT_SYSTEM_INSTRUCTIONS,
     GEN_AI_AGENT_TOOLS,
     GEN_AI_AGENT_TYPE,
     GEN_AI_INPUT_MESSAGES,
     GEN_AI_OUTPUT_MESSAGES,
     GEN_AI_PROVIDER_NAME,
     GEN_AI_TASK_ASSIGNED_AGENT,
-    GEN_AI_TASK_INPUT_DATA,
     GEN_AI_TASK_NAME,
     GEN_AI_TASK_OBJECTIVE,
-    GEN_AI_TASK_OUTPUT_DATA,
     GEN_AI_TASK_SOURCE,
     GEN_AI_TASK_STATUS,
     GEN_AI_TASK_TYPE,
     GEN_AI_WORKFLOW_DESCRIPTION,
-    GEN_AI_WORKFLOW_FINAL_OUTPUT,
-    GEN_AI_WORKFLOW_INITIAL_INPUT,
     GEN_AI_WORKFLOW_NAME,
     GEN_AI_WORKFLOW_TYPE,
 )
@@ -53,6 +46,7 @@ from ..types import (
 from .utils import (
     _apply_function_definitions,
     _apply_llm_finish_semconv,
+    _extract_system_instructions,
     _serialize_messages,
 )
 
@@ -178,16 +172,29 @@ class SpanEmitter:
         span = getattr(invocation, "span", None)
         if span is None:
             return
-        # Backfill input messages if capture was enabled late (e.g., refresh after span start)
+
+        # Capture input messages and system instructions if enabled
         if (
             self._capture_content
             and isinstance(invocation, LLMInvocation)
-            and GEN_AI_INPUT_MESSAGES not in span.attributes  # type: ignore[attr-defined]
             and invocation.input_messages
         ):
-            serialized_in = _serialize_messages(invocation.input_messages)
+            # Extract and set system instructions separately
+            system_instructions = _extract_system_instructions(
+                invocation.input_messages
+            )
+            if system_instructions is not None:
+                span.set_attribute(
+                    "gen_ai.system.instructions", system_instructions
+                )
+
+            # Serialize input messages (excluding system messages)
+            serialized_in = _serialize_messages(
+                invocation.input_messages, exclude_system=True
+            )
             if serialized_in is not None:
                 span.set_attribute(GEN_AI_INPUT_MESSAGES, serialized_in)
+
         # Finish-time semconv attributes (response + usage tokens + functions)
         if isinstance(invocation, LLMInvocation):
             _apply_llm_finish_semconv(span, invocation)
@@ -196,6 +203,8 @@ class SpanEmitter:
             _apply_gen_ai_semconv_attributes(
                 span, getattr(invocation, "attributes", None)
             )
+
+        # Capture output messages if enabled
         if (
             self._capture_content
             and isinstance(invocation, LLMInvocation)
@@ -315,8 +324,15 @@ class SpanEmitter:
         if workflow.framework:
             span.set_attribute("gen_ai.framework", workflow.framework)
         if workflow.initial_input and self._capture_content:
+            # Format as a message with text content
+            import json
+
+            input_msg = {
+                "role": "user",
+                "parts": [{"type": "text", "content": workflow.initial_input}],
+            }
             span.set_attribute(
-                GEN_AI_WORKFLOW_INITIAL_INPUT, workflow.initial_input
+                "gen_ai.input.messages", json.dumps([input_msg])
             )
         _apply_gen_ai_semconv_attributes(span, workflow.attributes)
 
@@ -327,8 +343,15 @@ class SpanEmitter:
             return
         # Set final output if capture_content enabled
         if workflow.final_output and self._capture_content:
+            import json
+
+            output_msg = {
+                "role": "assistant",
+                "parts": [{"type": "text", "content": workflow.final_output}],
+                "finish_reason": "stop",
+            }
             span.set_attribute(
-                GEN_AI_WORKFLOW_FINAL_OUTPUT, workflow.final_output
+                "gen_ai.output.messages", json.dumps([output_msg])
             )
         _apply_gen_ai_semconv_attributes(span, workflow.attributes)
         token = workflow.context_token
@@ -396,11 +419,24 @@ class SpanEmitter:
         if agent.tools:
             span.set_attribute(GEN_AI_AGENT_TOOLS, agent.tools)
         if agent.system_instructions and self._capture_content:
+            import json
+
+            system_parts = [
+                {"type": "text", "content": agent.system_instructions}
+            ]
             span.set_attribute(
-                GEN_AI_AGENT_SYSTEM_INSTRUCTIONS, agent.system_instructions
+                "gen_ai.system.instructions", json.dumps(system_parts)
             )
         if agent.input_context and self._capture_content:
-            span.set_attribute(GEN_AI_AGENT_INPUT_CONTEXT, agent.input_context)
+            import json
+
+            input_msg = {
+                "role": "user",
+                "parts": [{"type": "text", "content": agent.input_context}],
+            }
+            span.set_attribute(
+                "gen_ai.input.messages", json.dumps([input_msg])
+            )
         _apply_gen_ai_semconv_attributes(span, agent.attributes)
 
     def _finish_agent(self, agent: AgentInvocation) -> None:
@@ -410,7 +446,16 @@ class SpanEmitter:
             return
         # Set output result if capture_content enabled
         if agent.output_result and self._capture_content:
-            span.set_attribute(GEN_AI_AGENT_OUTPUT_RESULT, agent.output_result)
+            import json
+
+            output_msg = {
+                "role": "assistant",
+                "parts": [{"type": "text", "content": agent.output_result}],
+                "finish_reason": "stop",
+            }
+            span.set_attribute(
+                "gen_ai.output.messages", json.dumps([output_msg])
+            )
         _apply_gen_ai_semconv_attributes(span, agent.attributes)
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
@@ -463,7 +508,15 @@ class SpanEmitter:
         if task.status:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
         if task.input_data and self._capture_content:
-            span.set_attribute(GEN_AI_TASK_INPUT_DATA, task.input_data)
+            import json
+
+            input_msg = {
+                "role": "user",
+                "parts": [{"type": "text", "content": task.input_data}],
+            }
+            span.set_attribute(
+                "gen_ai.input.messages", json.dumps([input_msg])
+            )
         _apply_gen_ai_semconv_attributes(span, task.attributes)
 
     def _finish_task(self, task: Task) -> None:
@@ -473,7 +526,16 @@ class SpanEmitter:
             return
         # Set output data if capture_content enabled
         if task.output_data and self._capture_content:
-            span.set_attribute(GEN_AI_TASK_OUTPUT_DATA, task.output_data)
+            import json
+
+            output_msg = {
+                "role": "assistant",
+                "parts": [{"type": "text", "content": task.output_data}],
+                "finish_reason": "stop",
+            }
+            span.set_attribute(
+                "gen_ai.output.messages", json.dumps([output_msg])
+            )
         # Update status if changed
         if task.status:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
