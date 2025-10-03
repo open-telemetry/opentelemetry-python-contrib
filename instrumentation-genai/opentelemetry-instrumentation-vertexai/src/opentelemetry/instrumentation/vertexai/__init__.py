@@ -60,6 +60,7 @@ from opentelemetry.instrumentation.vertexai.patch import MethodWrappers
 from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
 
 
 def _methods_to_wrap(
@@ -109,6 +110,9 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
+        completion_hook = (
+            kwargs.get("completion_hook") or load_completion_hook()
+        )
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI,
         )
@@ -141,6 +145,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 event_logger,
                 is_content_enabled(sem_conv_opt_in_mode),
                 sem_conv_opt_in_mode,
+                completion_hook,
             )
         elif sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
             # Type checker now knows it's the other literal
@@ -149,6 +154,7 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 event_logger,
                 is_content_enabled(sem_conv_opt_in_mode),
                 sem_conv_opt_in_mode,
+                completion_hook,
             )
         else:
             raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
@@ -53,9 +53,7 @@ from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     FinishReason,
-    InputMessage,
     MessagePart,
-    OutputMessage,
     Text,
     ToolCall,
     ToolCallResponse,
@@ -192,8 +190,11 @@ def get_genai_request_attributes(  # pylint: disable=too-many-branches
 
 def get_genai_response_attributes(
     response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse,
+    | prediction_service_v1beta1.GenerateContentResponse
+    | None,
 ) -> dict[str, AttributeValue]:
+    if not response:
+        return {}
     finish_reasons: list[str] = [
         _map_finish_reason(candidate.finish_reason)
         for candidate in response.candidates
@@ -307,68 +308,9 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
-def create_operation_details_event(
-    *,
-    api_endpoint: str,
-    response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse
-    | None,
-    params: GenerateContentParams,
-    capture_content: ContentCapturingMode,
-) -> Event:
-    event = Event(name="gen_ai.client.inference.operation.details")
-    attributes: dict[str, AnyValue] = {
-        **get_genai_request_attributes(True, params),
-        **get_server_attributes(api_endpoint),
-        **(get_genai_response_attributes(response) if response else {}),
-    }
-    event.attributes = attributes
-    if capture_content in {
-        ContentCapturingMode.NO_CONTENT,
-        ContentCapturingMode.SPAN_ONLY,
-    }:
-        return event
-    if params.system_instruction:
-        attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS] = [
-            {
-                "type": "text",
-                "content": "\n".join(
-                    part.text for part in params.system_instruction.parts
-                ),
-            }
-        ]
-    if params.contents:
-        attributes[GenAIAttributes.GEN_AI_INPUT_MESSAGES] = [
-            asdict(_convert_content_to_message(content))
-            for content in params.contents
-        ]
-    if response and response.candidates:
-        attributes[GenAIAttributes.GEN_AI_OUTPUT_MESSAGES] = [
-            asdict(x) for x in _convert_response_to_output_messages(response)
-        ]
-    return event
-
-
-def _convert_response_to_output_messages(
-    response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse,
-) -> list[OutputMessage]:
-    output_messages: list[OutputMessage] = []
-    for candidate in response.candidates:
-        message = _convert_content_to_message(candidate.content)
-        output_messages.append(
-            OutputMessage(
-                finish_reason=_map_finish_reason(candidate.finish_reason),
-                role=message.role,
-                parts=message.parts,
-            )
-        )
-    return output_messages
-
-
-def _convert_content_to_message(
+def convert_content_to_message_parts(
     content: content.Content | content_v1beta1.Content,
-) -> InputMessage:
+) -> list[MessagePart]:
     parts: MessagePart = []
     for idx, part in enumerate(content.parts):
         if "function_response" in part:
@@ -398,7 +340,7 @@ def _convert_content_to_message(
             )
             dict_part["type"] = type(part)
             parts.append(dict_part)
-    return InputMessage(role=content.role, parts=parts)
+    return parts
 
 
 def response_to_events(
