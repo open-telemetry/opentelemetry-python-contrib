@@ -17,10 +17,14 @@ import unittest
 from unittest.mock import patch
 
 from google.genai.types import GenerateContentConfig
+from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 
@@ -204,20 +208,33 @@ class NonStreamingTestCase(TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
-            with self.subTest(f'mode: {mode}', patched_environ=patched_environ):
+            content = "Some input"
+            output = "Some response content"
+            sys_instr = "System instruction"
+            with self.subTest(f"mode: {mode}", patched_environ=patched_environ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
-                    self.configure_valid_response(text="Some response content")
-                    self.generate_content(model="gemini-2.0-flash", contents="Some input")
-
+                    self.configure_valid_response(text=output)
+                    self.generate_content(model="gemini-2.0-flash", contents=content, config=GenerateContentConfig(system_instruction=sys_instr))
+                    self.otel.assert_has_event_named("gen_ai.client.inference.operation.details")
+                    event = self.otel.get_event_named("gen_ai.client.inference.operation.details")
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,
                         ContentCapturingMode.SPAN_ONLY,
                     ]:
-                        self.otel.assert_does_not_have_event_named("gen_ai.client.inference.operation.details")
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_INPUT_MESSAGES, event.attributes)
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES, event.attributes)
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS, event.attributes)
                     else:
-                        self.otel.assert_has_event_named("gen_ai.client.inference.operation.details")
-
+                        attrs = {
+                            gen_ai_attributes.GEN_AI_INPUT_MESSAGES: ({"role": "user", "parts": ({"content": content, "type": "text"},)},),
+                            gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES: ({"role": "assistant", "parts": ({"content": output, "type": "text"},), "finish_reason": ""},),
+                            gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS: ({"content": sys_instr, "type": "text"},)
+                        }
+                        expected_event = Event("gen_ai.client.inference.operation.details", attributes=attrs)
+                        self.assertEqual(event.attributes[gen_ai_attributes.GEN_AI_INPUT_MESSAGES], expected_event.attributes[gen_ai_attributes.GEN_AI_INPUT_MESSAGES])
+                        self.assertEqual(event.attributes[gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES], expected_event.attributes[gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES])
+                        self.assertEqual(event.attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS], expected_event.attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS])
                 self.tearDown()
 
     def test_new_semconv_record_completion_in_span(self):
@@ -245,13 +262,13 @@ class NonStreamingTestCase(TestCase):
                         ContentCapturingMode.SPAN_ONLY,
                         ContentCapturingMode.SPAN_AND_EVENT,
                     ]:
-                        self.assertEqual(span.attributes["gen_ai.input.messages"], '[{"role": "user", "parts": [{"content": "Some input", "type": "text"}]}]')
-                        self.assertEqual(span.attributes["gen_ai.output.messages"], '[{"role": "assistant", "parts": [{"content": "Some response content", "type": "text"}], "finish_reason": ""}]')
-                        self.assertEqual(span.attributes["gen_ai.system_instructions"], '[{"content": "System instruction", "type": "text"}]')
+                        self.assertEqual(span.attributes[gen_ai_attributes.GEN_AI_INPUT_MESSAGES], '[{"role": "user", "parts": [{"content": "Some input", "type": "text"}]}]')
+                        self.assertEqual(span.attributes[gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES], '[{"role": "assistant", "parts": [{"content": "Some response content", "type": "text"}], "finish_reason": ""}]')
+                        self.assertEqual(span.attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS], '[{"content": "System instruction", "type": "text"}]')
                     else:
-                        self.assertNotIn("gen_ai.input.messages", span.attributes)
-                        self.assertNotIn("gen_ai.output.messages", span.attributes)
-                        self.assertNotIn("gen_ai.system_instructions", span.attributes)
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_INPUT_MESSAGES, span.attributes)
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES, span.attributes)
+                        self.assertNotIn(gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS, span.attributes)
 
                 self.tearDown()
 
