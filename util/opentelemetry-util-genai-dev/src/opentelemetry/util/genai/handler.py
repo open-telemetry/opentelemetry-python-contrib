@@ -524,12 +524,14 @@ def get_telemetry_handler(**kwargs: Any) -> TelemetryHandler:
         get_telemetry_handler, "_default_handler", None
     )
     current_provider = _trace_mod.get_tracer_provider()
+    requested_provider = kwargs.get("tracer_provider")
+    target_provider = requested_provider or current_provider
     recreate = False
     if handler is not None:
         # Recreate if provider changed or handler lacks provider reference (older instance)
         if not hasattr(handler, "_tracer_provider_ref"):
             recreate = True
-        elif handler._tracer_provider_ref is not current_provider:  # type: ignore[attr-defined]
+        elif handler._tracer_provider_ref is not target_provider:  # type: ignore[attr-defined]
             recreate = True
     if handler is None or recreate:
         handler = TelemetryHandler(**kwargs)
