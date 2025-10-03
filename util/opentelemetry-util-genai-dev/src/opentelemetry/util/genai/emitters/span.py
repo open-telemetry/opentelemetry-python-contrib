@@ -42,7 +42,7 @@ from ..attributes import (
     GEN_AI_WORKFLOW_TYPE,
 )
 from ..types import (
-    Agent,
+    AgentInvocation,
     EmbeddingInvocation,
     Error,
     LLMInvocation,
@@ -207,7 +207,7 @@ class SpanEmitter:
         # Handle new agentic types
         if isinstance(invocation, Workflow):
             self._start_workflow(invocation)
-        elif isinstance(invocation, Agent):
+        elif isinstance(invocation, AgentInvocation):
             self._start_agent(invocation)
         elif isinstance(invocation, Task):
             self._start_task(invocation)
@@ -243,7 +243,7 @@ class SpanEmitter:
     def finish(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
         if isinstance(invocation, Workflow):
             self._finish_workflow(invocation)
-        elif isinstance(invocation, Agent):
+        elif isinstance(invocation, AgentInvocation):
             self._finish_agent(invocation)
         elif isinstance(invocation, Task):
             self._finish_task(invocation)
@@ -265,7 +265,7 @@ class SpanEmitter:
     ) -> None:  # type: ignore[override]
         if isinstance(invocation, Workflow):
             self._error_workflow(error, invocation)
-        elif isinstance(invocation, Agent):
+        elif isinstance(invocation, AgentInvocation):
             self._error_agent(error, invocation)
         elif isinstance(invocation, Task):
             self._error_task(error, invocation)
@@ -353,7 +353,7 @@ class SpanEmitter:
         span.end()
 
     # ---- Agent lifecycle -------------------------------------------------
-    def _start_agent(self, agent: Agent) -> None:
+    def _start_agent(self, agent: AgentInvocation) -> None:
         """Start an agent span (create or invoke)."""
         # Span name per semantic conventions
         if agent.operation == "create":
@@ -395,7 +395,7 @@ class SpanEmitter:
             span.set_attribute(GEN_AI_AGENT_INPUT_CONTEXT, agent.input_context)
         _apply_gen_ai_semconv_attributes(span, agent.attributes)
 
-    def _finish_agent(self, agent: Agent) -> None:
+    def _finish_agent(self, agent: AgentInvocation) -> None:
         """Finish an agent span."""
         span = agent.span
         if span is None:
@@ -412,7 +412,9 @@ class SpanEmitter:
                 pass
         span.end()
 
-    def _error_agent(self, error: Error, agent: Agent) -> None:
+    def _error_agent(
+        self, error: Error, agent: AgentInvocation
+    ) -> None:
         """Fail an agent span with error status."""
         span = agent.span
         if span is None:

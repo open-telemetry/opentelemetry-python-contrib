@@ -137,31 +137,22 @@ Environment variable ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` sele
 | SPAN_AND_EVENT   | Messages on spans             | Messages as events (span kept lean)         |
 +------------------+-------------------------------+---------------------------------------------+
 
-Evaluation (Asynchronous Model)
--------------------------------
-**Goal**: Avoid blocking request latency while still emitting quality / compliance / guardrail metrics.
+Evaluation Pipeline
+-------------------
+**Goal**: Emit quality / compliance / guardrail telemetry without complicated background workers.
+
 
 Flow:
+1. ``stop_llm`` finalizes the span and closes timing data.
+2. ``EvaluationManager.should_evaluate`` checks whether evaluations are enabled and which evaluators apply.
+3. ``offer`` immediately invokes each evaluator and, when any results are produced, records ``invocation.attributes['gen_ai.evaluation.executed'] = True``.
+4. Returned ``EvaluationResult`` objects feed the histogram metric (``gen_ai.evaluation.score``), aggregated event (``gen_ai.evaluations``), and optional spans depending on configuration.
 
-1. ``stop_llm`` is called.
-2. Each configured evaluator *samples* the invocation (rate limit + custom logic via ``should_sample``).
-3. Sampled invocations are enqueued (very fast). Sampling decisions are recorded under ``invocation.attributes['gen_ai.evaluation.sampled']``.
-4. A background thread (interval = ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL``) drains queues and calls ``evaluate_invocation`` per item.
-5. Results → histogram metric (``gen_ai.evaluation.score``) + aggregated event (``gen_ai.evaluations``) + optional spans.
-
-Synchronous (legacy / ad hoc): ``TelemetryHandler.evaluate_llm(invocation)`` executes evaluators immediately.
-
-Manual Flush (e.g., short‑lived scripts / tests):
-
-.. code-block:: python
-
-   handler.process_evaluations()  # one drain cycle
+Need to run a specific subset (e.g., scripted benchmarks)? Call ``TelemetryHandler.evaluate_llm(invocation, evaluators=["my_evaluator"])`` directly.
 
 Sampling & Rate Limiting
 ~~~~~~~~~~~~~~~~~~~~~~~~
-* Per‑evaluator sliding window rate limiting: set ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE``.
-* Zero / unset → unlimited.
-* Implement ``Evaluator.should_sample(invocation)`` for custom (probability / attribute / content–based) policies.
+Evaluators decide their own sampling. Provide evaluators that perform probability checks, attribute filters, or other heuristics before emitting results.
 
 Evaluator Interface (Current)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -171,14 +162,12 @@ Evaluator Interface (Current)
    from opentelemetry.util.genai.types import LLMInvocation, EvaluationResult
 
    class MyEvaluator(Evaluator):
-       def should_sample(self, invocation: LLMInvocation) -> bool:
-           return True  # or custom logic
+      def evaluate_llm(self, invocation: LLMInvocation):
+         if some_custom_condition(invocation):
+            return EvaluationResult(metric_name="custom", score=0.87, label="ok")
+         return None
 
-       def evaluate_invocation(self, invocation: LLMInvocation):
-           # heavy work here
-           return EvaluationResult(metric_name="custom", score=0.87, label="ok")
-
-Register via ``register_evaluator("custom", lambda: MyEvaluator())``.
+Register via ``register_evaluator("custom", lambda metrics=None: MyEvaluator())``.
 
 Traceloop Compatibility
 -----------------------
@@ -211,10 +200,7 @@ Minimal synchronous example (no async flush – good for services):
    handler.start_llm(inv)
    # ... call model ...
    inv.output_messages.append(OutputMessage(role="assistant", parts=[Text(content="Hi!")], finish_reason="stop"))
-   handler.stop_llm(inv)  # schedules async evaluation if enabled
-
-   # Optional: force evaluation processing (e.g., short script)
-   handler.process_evaluations()
+   handler.stop_llm(inv)  # runs evaluation immediately when enabled
 
 Environment Variables
 ---------------------
@@ -227,10 +213,8 @@ Core / Flavor / Content:
 Evaluation:
 
 * ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE`` – ``true`` / ``false``.
-* ``OTEL_INSTRUMENTATION_GENAI_EVALUATORS`` – comma list (e.g. ``length,sentiment,deepeval``).
+* ``OTEL_INSTRUMENTATION_GENAI_EVALUATORS`` – comma list (e.g. ``length,sentiment,deepeval``) optionally with metric overrides via ``name(metric_a,metric_b)``.
 * ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE`` – ``off`` | ``aggregated`` | ``per_metric``.
-* ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL`` – background drain interval (seconds, default 5.0).
-* ``OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE`` – per‑evaluator sample cap (0 = unlimited).
 
 Upload / Artifacts:
 
@@ -239,8 +223,8 @@ Upload / Artifacts:
 
 Advanced Use Cases
 ------------------
-* **High‑volume inference service** – Set flavor to ``span_metric_event`` + message capture via events to keep spans small; enable sampling with a low rate limit for costlier external evaluators.
-* **Local benchmarking / quality lab** – Use synchronous ``evaluate_llm`` in a harness script for deterministic comparisons, or call ``process_evaluations`` at controlled checkpoints.
+* **High‑volume inference service** – Set flavor to ``span_metric_event`` + message capture via events to keep spans small; enable only lightweight evaluators in production environments or gate heavy ones behind configuration.
+* **Local benchmarking / quality lab** – Use synchronous ``evaluate_llm`` in a harness script for deterministic comparisons, optionally passing an explicit evaluator list.
 * **Migration from Traceloop** – Run ``span_metric_event,traceloop_compat`` and compare spans side‑by‑side before removing the compat emitter.
 * **Selective evaluation** – Override ``should_sample`` to only evaluate certain models, routes, or request sizes.
 
@@ -260,16 +244,16 @@ Extensibility Summary
 
 Troubleshooting
 ---------------
-* **Missing evaluation data** – Ensure async drain occurred (call ``process_evaluations`` in short scripts).
+* **Missing evaluation data** – Confirm ``should_evaluate`` returns ``True`` (evaluation enabled, evaluators configured, and invocation type supported).
 * **Score always None (deepeval)** – External integration not installed; you’re seeing the placeholder.
 * **High span size** – Switch to ``span_metric_event`` so message bodies move to events.
 * **Sampling too aggressive** – Increase rate limit or adjust custom ``should_sample`` logic.
 
 Migration Notes (from earlier synchronous-only evaluation versions)
 -------------------------------------------------------------------
-* ``evaluate_llm(invocation)`` still works and returns immediate results.
-* Automatic evaluation now *queues*; rely on metrics/events after the worker drains.
-* Add explicit ``handler.process_evaluations()`` in unit tests that assert on evaluation telemetry.
+* ``evaluate_llm(invocation)`` remains available for ad hoc execution (subset selection, local testing).
+* Automatic evaluation now executes synchronously during ``stop_llm`` and emits telemetry immediately.
+* Tests can assert evaluation outputs directly without scheduling background drains.
 
 Stability Disclaimer
 --------------------

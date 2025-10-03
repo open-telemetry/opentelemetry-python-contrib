@@ -9,7 +9,7 @@ from opentelemetry.semconv._incubating.attributes import (
 
 from ..attributes import GEN_AI_AGENT_ID, GEN_AI_AGENT_NAME
 from ..instruments import Instruments
-from ..types import Agent, Error, LLMInvocation, Task, Workflow
+from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow
 from .utils import (
     _get_metric_attributes,
     _record_duration,
@@ -50,7 +50,7 @@ class MetricsEmitter:
         if isinstance(obj, Workflow):
             self._record_workflow_metrics(obj)
             return
-        if isinstance(obj, Agent):
+        if isinstance(obj, AgentInvocation):
             self._record_agent_metrics(obj)
             return
         if isinstance(obj, Task):
@@ -108,7 +108,7 @@ class MetricsEmitter:
         if isinstance(obj, Workflow):
             self._record_workflow_metrics(obj)
             return
-        if isinstance(obj, Agent):
+        if isinstance(obj, AgentInvocation):
             self._record_agent_metrics(obj)
             return
         if isinstance(obj, Task):
@@ -160,7 +160,8 @@ class MetricsEmitter:
         from ..types import LLMInvocation, ToolCall
 
         return isinstance(
-            obj, (LLMInvocation, ToolCall, Workflow, Agent, Task)
+            obj,
+            (LLMInvocation, ToolCall, Workflow, AgentInvocation, Task),
         )
 
     # Helper methods for new agentic types
@@ -181,7 +182,7 @@ class MetricsEmitter:
             duration, attributes=metric_attrs
         )
 
-    def _record_agent_metrics(self, agent: Agent) -> None:
+    def _record_agent_metrics(self, agent: AgentInvocation) -> None:
         """Record metrics for an agent operation."""
         if agent.end_time is None:
             return

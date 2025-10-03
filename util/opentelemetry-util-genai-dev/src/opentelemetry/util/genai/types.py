@@ -103,19 +103,28 @@ class OutputMessage:
     finish_reason: Union[str, FinishReason]
 
 
-@dataclass
-class LLMInvocation:
-    """
-    Represents a single LLM call invocation. When creating an LLMInvocation object,
-    only update the data attributes. The span and context_token attributes are
-    set by the TelemetryHandler.
-    """
+@dataclass(kw_only=True)
+class GenAI:
+    """Base type for all GenAI telemetry entities."""
 
-    request_model: str
     context_token: Optional[ContextToken] = None
     span: Optional[Span] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
+    provider: Optional[str] = None
+    framework: Optional[str] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    run_id: UUID = field(default_factory=uuid4)
+    parent_run_id: Optional[UUID] = None
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
+
+
+@dataclass
+class LLMInvocation(GenAI):
+    """Represents a single large language model invocation."""
+
+    request_model: str
     input_messages: List[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -131,23 +140,12 @@ class LLMInvocation:
     chat_generations: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
-    provider: Optional[str] = None
-    # Semantic-convention framework attribute (gen_ai.framework)
-    framework: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None
     output_tokens: Optional[AttributeValue] = None
     # Structured function/tool definitions for semantic convention emission
     request_functions: list[dict[str, Any]] = field(default_factory=list)
-    # All non-semantic-convention or extended attributes (traceloop.*, request params, tool defs, etc.)
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    # Ahead of upstream
-    run_id: UUID = field(default_factory=uuid4)
-    parent_run_id: Optional[UUID] = None
-    # Agent context
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
 
 
 @dataclass
@@ -173,29 +171,16 @@ class EvaluationResult:
 
 
 @dataclass
-class EmbeddingInvocation:
-    """Represents a single embedding model invocation (Phase 4 introduction).
-
-    Kept intentionally minimal; shares a subset of fields with LLMInvocation so
-    emitters can branch on isinstance without a separate protocol yet.
-    """
+class EmbeddingInvocation(GenAI):
+    """Represents a single embedding model invocation."""
 
     request_model: str
     input_texts: list[str] = field(default_factory=list)
     vector_dimensions: Optional[int] = None
-    provider: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    # Agent context (for agentic applications)
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
 
 
 @dataclass
-class Workflow:
+class Workflow(GenAI):
     """Represents a workflow orchestrating multiple agents and tasks.
 
     A workflow is the top-level orchestration unit in agentic AI systems,
@@ -221,20 +206,12 @@ class Workflow:
     name: str
     workflow_type: Optional[str] = None  # sequential, parallel, graph, dynamic
     description: Optional[str] = None
-    framework: Optional[str] = None  # langgraph, crewai, autogen, etc.
     initial_input: Optional[str] = None  # User's initial query/request
     final_output: Optional[str] = None  # Final response/result
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    run_id: UUID = field(default_factory=uuid4)
-    parent_run_id: Optional[UUID] = None
 
 
 @dataclass
-class Agent:
+class AgentInvocation(GenAI):
     """Represents an agent in an agentic AI system.
 
     An agent is an autonomous entity with capabilities (tools, models) that can
@@ -248,23 +225,15 @@ class Agent:
         None  # researcher, planner, executor, critic, etc.
     )
     description: Optional[str] = None
-    framework: Optional[str] = None  # langchain, autogen, crewai, etc.
     model: Optional[str] = None  # primary model if applicable
     tools: list[str] = field(default_factory=list)  # available tool names
     system_instructions: Optional[str] = None  # System prompt/instructions
     input_context: Optional[str] = None  # Input for invoke operations
     output_result: Optional[str] = None  # Output for invoke operations
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    run_id: UUID = field(default_factory=uuid4)
-    parent_run_id: Optional[UUID] = None
 
 
 @dataclass
-class Task:
+class Task(GenAI):
     """Represents a discrete unit of work in an agentic AI system.
 
     Tasks can be orchestrated at the workflow level (assigned to agents) or
@@ -285,13 +254,6 @@ class Task:
     description: Optional[str] = None
     input_data: Optional[str] = None  # Input data/context for the task
     output_data: Optional[str] = None  # Output data/result from the task
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    run_id: UUID = field(default_factory=uuid4)
-    parent_run_id: Optional[UUID] = None
 
 
 __all__ = [
@@ -302,13 +264,14 @@ __all__ = [
     "Text",
     "InputMessage",
     "OutputMessage",
+    "GenAI",
     "LLMInvocation",
     "EmbeddingInvocation",
     "Error",
     "EvaluationResult",
     # agentic AI types
     "Workflow",
-    "Agent",
+    "AgentInvocation",
     "Task",
     # backward compatibility normalization helpers
 ]
