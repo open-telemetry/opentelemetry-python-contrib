@@ -2,9 +2,10 @@
 #
 # Evaluator tests: registry behavior, event & metric emission, and span modes.
 
+import importlib
 import os
-import sys
 import unittest
+from typing import Sequence
 from unittest.mock import patch
 
 from opentelemetry.sdk.trace import TracerProvider
@@ -22,6 +23,7 @@ from opentelemetry.util.genai.evaluators import (
 )
 from opentelemetry.util.genai.evaluators.base import Evaluator
 from opentelemetry.util.genai.evaluators.registry import (
+    clear_registry,
     list_evaluators,
     register_evaluator,
 )
@@ -35,25 +37,44 @@ from opentelemetry.util.genai.types import (
 )
 
 
+def _reload_builtin_evaluators() -> None:
+    from opentelemetry.util.genai.evaluators import builtins as builtin_module
+
+    importlib.reload(builtin_module)
+
+
 # ---------------- Registry & basic evaluation tests -----------------
 class _DummyEvaluator(Evaluator):
-    def __init__(self, name: str = "dummy", score: float = 0.42):
+    def __init__(
+        self,
+        name: str = "dummy",
+        score: float = 0.42,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
         self._name = name
         self._score = score
+        super().__init__(metrics)
 
-    def evaluate_invocation(
+    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
+        return (self._name,)
+
+    def evaluate_llm(
         self, invocation: LLMInvocation
-    ):  # pragma: no cover - trivial
-        return EvaluationResult(
-            metric_name=self._name, score=self._score, label="ok"
-        )
+    ) -> Sequence[EvaluationResult]:  # pragma: no cover - trivial
+        metric = self.metrics[0] if self.metrics else self._name
+        return [
+            EvaluationResult(
+                metric_name=metric, score=self._score, label="ok"
+            )
+        ]
 
 
 class TestEvaluatorRegistry(unittest.TestCase):
     def setUp(self):
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
-        reg._EVALUATORS.clear()  # pylint: disable=protected-access
+        clear_registry()
+        _reload_builtin_evaluators()
         self.invocation = LLMInvocation(request_model="model-x")
         self.invocation.input_messages.append(
             InputMessage(role="user", parts=[Text(content="hi")])
@@ -97,7 +118,9 @@ class TestEvaluatorRegistry(unittest.TestCase):
         clear=True,
     )
     def test_env_driven_evaluator(self):
-        register_evaluator("dummy", lambda: _DummyEvaluator())
+        register_evaluator(
+            "dummy", lambda metrics=None: _DummyEvaluator(metrics=metrics)
+        )
         handler = get_telemetry_handler()
         results = handler.evaluate_llm(self.invocation)
         self.assertEqual(len(results), 1)
@@ -122,10 +145,21 @@ class TestEvaluatorRegistry(unittest.TestCase):
         self.assertIn("Unknown evaluator", res.error.message)
 
     def test_register_multiple_list(self):
-        register_evaluator("dummy", lambda: _DummyEvaluator("dummy", 0.1))
-        register_evaluator("dummy2", lambda: _DummyEvaluator("dummy2", 0.2))
+        register_evaluator(
+            "dummy",
+            lambda metrics=None: _DummyEvaluator(
+                "dummy", 0.1, metrics=metrics
+            ),
+        )
+        register_evaluator(
+            "dummy2",
+            lambda metrics=None: _DummyEvaluator(
+                "dummy2", 0.2, metrics=metrics
+            ),
+        )
         names = list_evaluators()
-        self.assertEqual(names, ["dummy", "dummy2"])  # alphabetical sort
+        self.assertIn("dummy", names)
+        self.assertIn("dummy2", names)
 
 
 # ---------------- Event & metric emission tests -----------------
@@ -133,7 +167,8 @@ class TestEvaluatorTelemetry(unittest.TestCase):
     def setUp(self):
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
-        reg._EVALUATORS.clear()  # pylint: disable=protected-access
+        clear_registry()
+        _reload_builtin_evaluators()
         self.invocation = LLMInvocation(
             request_model="model-y", provider="prov"
         )
@@ -222,16 +257,28 @@ class TestEvaluatorTelemetry(unittest.TestCase):
 
 # ---------------- Span mode tests -----------------
 class _SpanModeDummyEvaluator(Evaluator):
-    def __init__(self, name: str, score: float):
+    def __init__(
+        self,
+        name: str,
+        score: float,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
         self._name = name
         self._score = score
+        super().__init__(metrics)
 
-    def evaluate_invocation(
+    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
+        return (self._name,)
+
+    def evaluate_llm(
         self, invocation: LLMInvocation
-    ):  # pragma: no cover - trivial
-        return EvaluationResult(
-            metric_name=self._name, score=self._score, label="ok"
-        )
+    ) -> Sequence[EvaluationResult]:  # pragma: no cover - trivial
+        metric = self.metrics[0] if self.metrics else self._name
+        return [
+            EvaluationResult(
+                metric_name=metric, score=self._score, label="ok"
+            )
+        ]
 
 
 class TestEvaluatorSpanModes(unittest.TestCase):
@@ -242,7 +289,8 @@ class TestEvaluatorSpanModes(unittest.TestCase):
         provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
-        reg._EVALUATORS.clear()  # pylint: disable=protected-access
+        clear_registry()
+        _reload_builtin_evaluators()
         self.provider = provider
         self.invocation = LLMInvocation(request_model="m", provider="prov")
         self.invocation.input_messages.append(
@@ -263,16 +311,21 @@ class TestEvaluatorSpanModes(unittest.TestCase):
 
         if "dummy" in eval_list:
             register_evaluator(
-                "dummy", lambda: _SpanModeDummyEvaluator("dummy", 0.9)
+                "dummy",
+                lambda metrics=None: _SpanModeDummyEvaluator(
+                    "dummy", 0.9, metrics=metrics
+                ),
             )
         if "dummy2" in eval_list:
             register_evaluator(
-                "dummy2", lambda: _SpanModeDummyEvaluator("dummy2", 0.7)
+                "dummy2",
+                lambda metrics=None: _SpanModeDummyEvaluator(
+                    "dummy2", 0.7, metrics=metrics
+                ),
             )
         handler = get_telemetry_handler(tracer_provider=self.provider)
         handler.start_llm(self.invocation)
         handler.stop_llm(self.invocation)
-        handler.evaluate_llm(self.invocation)
         return self.span_exporter.get_finished_spans()
 
     @patch.dict(
@@ -318,7 +371,8 @@ class TestDeepEvalDynamicLoading(unittest.TestCase):
         # Clear any existing evaluators and handler
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
-        reg._EVALUATORS.clear()
+        clear_registry()
+        _reload_builtin_evaluators()
         # Prepare invocation
         self.invocation = LLMInvocation(request_model="model-x")
         self.invocation.input_messages.append(
@@ -336,39 +390,51 @@ class TestDeepEvalDynamicLoading(unittest.TestCase):
         os.environ,
         {
             OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "deepeval",
+            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "external(custom_metric)",
         },
         clear=True,
     )
-    def test_deepeval_dynamic_import(self):
-        # Simulate external module
-        class DummyDeepEval(Evaluator):
-            def evaluate_invocation(self, invocation):
-                return EvaluationResult(
-                    metric_name="deepeval", score=0.75, label="ok"
-                )
+    def test_entry_point_dynamic_loading(self):
+        class DummyEntryEvaluator(Evaluator):
+            def __init__(self, metrics=None):
+                super().__init__(metrics)
 
-        dummy_mod = type(sys)("dummy_mod")
-        dummy_mod.DeepEvalEvaluator = (
-            lambda event_logger, tracer: DummyDeepEval()
-        )
-        # Patch importlib to return our dummy module for deepeval integration
-        import importlib
+            def default_metrics(self) -> Sequence[str]:  # pragma: no cover
+                return ("external",)
 
-        orig_import = importlib.import_module
+            def evaluate_llm(self, invocation):  # pragma: no cover
+                metric = self.metrics[0] if self.metrics else "external"
+                return [
+                    EvaluationResult(
+                        metric_name=metric, score=0.75, label="ok"
+                    )
+                ]
 
-        def fake_import(name, package=None):
-            if name == "opentelemetry.util.genai.evals.deepeval":
-                return dummy_mod
-            return orig_import(name, package)
+        class FakeEntryPoint:
+            def __init__(self, name, target):
+                self.name = name
+                self._target = target
 
-        with patch("importlib.import_module", fake_import):
+            def load(self):
+                return self._target
+
+        fake_eps = [
+            FakeEntryPoint(
+                "external",
+                lambda metrics=None: DummyEntryEvaluator(metrics),
+            )
+        ]
+
+        with patch(
+            "opentelemetry.util.genai.evaluators.registry.entry_points",
+            return_value=fake_eps,
+        ):
             handler = get_telemetry_handler()
             results = handler.evaluate_llm(self.invocation)
-        # Verify dynamic loading and execution
+
         self.assertEqual(len(results), 1)
         res = results[0]
-        self.assertEqual(res.metric_name, "deepeval")
+        self.assertEqual(res.metric_name, "custom_metric")
         self.assertEqual(res.score, 0.75)
         self.assertEqual(res.label, "ok")
         self.assertIsNone(res.error)

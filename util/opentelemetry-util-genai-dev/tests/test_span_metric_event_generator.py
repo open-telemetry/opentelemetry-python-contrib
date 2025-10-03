@@ -1,5 +1,6 @@
 import pytest
 
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.util.genai.emitters.composite import CompositeGenerator
 from opentelemetry.util.genai.emitters.content_events import (
     ContentEventsEmitter,
@@ -48,20 +49,16 @@ def test_events_with_content_capture(sample_invocation, monkeypatch):
     gen.start(sample_invocation)
     gen.finish(sample_invocation)
 
-    # Two events: input and output
-    assert len(logger.emitted) == 2
+    # Single event should include both input and output payloads
+    assert len(logger.emitted) == 1
 
-    # Input event should include original content and attribute gen_ai.input.messages
-    input_event = logger.emitted[0]
-    body = input_event.body
-    assert body["parts"][0]["content"] == "hello user"
-    assert "gen_ai.input.messages" in input_event.attributes
+    event = logger.emitted[0]
+    body = event.body or {}
+    inputs = body.get("gen_ai.input.messages") or []
+    outputs = body.get("gen_ai.output.messages") or []
 
-    # Output event should include content in message body
-    output_event = logger.emitted[1]
-    body_out = output_event.body
-    msg = body_out.get("message", {})
-    assert msg.get("content") == "hello back"
+    assert inputs and inputs[0]["parts"][0]["content"] == "hello user"
+    assert outputs and outputs[0]["parts"][0]["content"] == "hello back"
 
 
 @pytest.fixture
@@ -81,3 +78,42 @@ def sample_invocation():
 """
 Removed tests that depended on environment variable gating. Emission now controlled solely by capture_content flag.
 """
+
+
+def test_span_emitter_filters_non_gen_ai_attributes():
+    provider = TracerProvider()
+    emitter = SpanEmitter(
+        tracer=provider.get_tracer(__name__), capture_content=False
+    )
+    invocation = LLMInvocation(request_model="example-model")
+    invocation.provider = "example-provider"
+    invocation.framework = "langchain"
+    invocation.agent_id = "agent-123"
+    invocation.attributes.update(
+        {
+            "request_top_p": 0.42,
+            "custom": "value",
+            "gen_ai.request.id": "req-789",
+        }
+    )
+
+    emitter.start(invocation)
+    invocation.response_model_name = "example-model-v2"
+    invocation.response_id = "resp-456"
+    invocation.input_tokens = 10
+    invocation.output_tokens = 5
+    invocation.attributes["gen_ai.response.finish_reasons"] = ["stop"]
+
+    emitter.finish(invocation)
+
+    span = invocation.span
+    assert span is not None
+    attrs = getattr(span, "attributes", None) or getattr(
+        span, "_attributes", {}
+    )
+
+    assert attrs.get("gen_ai.agent.id") == "agent-123"
+    assert attrs.get("gen_ai.request.id") == "req-789"
+    assert "request_top_p" not in attrs
+    assert "custom" not in attrs
+    assert any(key.startswith("gen_ai.") for key in attrs)

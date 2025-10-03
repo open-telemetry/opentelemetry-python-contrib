@@ -298,7 +298,7 @@ class LLMRequestTypeValues(Enum):
     UNKNOWN = "unknown"
 
 
-class TraceloopSpanKindValues(Enum):
+class SpanKindValues(Enum):
     WORKFLOW = "workflow"
     TASK = "task"
     AGENT = "agent"

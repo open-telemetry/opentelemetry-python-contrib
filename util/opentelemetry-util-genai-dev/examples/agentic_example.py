@@ -32,7 +32,7 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
-    Agent,
+    AgentInvocation,
     Error,
     InputMessage,
     LLMInvocation,
@@ -101,7 +101,7 @@ def simulate_multi_agent_workflow():
 
     # 2. Create Classifier Agent
     print("Creating agent: classifier_agent")
-    classifier_agent = Agent(
+    classifier_agent = AgentInvocation(
         name="classifier_agent",
         operation="create",
         agent_type="classifier",
@@ -117,7 +117,7 @@ def simulate_multi_agent_workflow():
 
     # 3. Invoke Classifier Agent
     print("Invoking agent: classifier_agent")
-    classifier_invocation = Agent(
+    classifier_invocation = AgentInvocation(
         name="classifier_agent",
         operation="invoke",
         agent_type="classifier",
@@ -188,7 +188,7 @@ def simulate_multi_agent_workflow():
 
     # 6. Create Support Agent
     print("Creating agent: support_agent")
-    support_agent = Agent(
+    support_agent = AgentInvocation(
         name="support_agent",
         operation="create",
         agent_type="support",
@@ -204,7 +204,7 @@ def simulate_multi_agent_workflow():
 
     # 7. Invoke Support Agent
     print("Invoking agent: support_agent")
-    support_invocation = Agent(
+    support_invocation = AgentInvocation(
         name="support_agent",
         operation="invoke",
         agent_type="support",
@@ -342,7 +342,7 @@ def simulate_error_handling():
     handler.start_workflow(workflow)
 
     # Agent that encounters an error
-    agent = Agent(
+    agent = AgentInvocation(
         name="error_agent",
         operation="invoke",
         agent_type="test",

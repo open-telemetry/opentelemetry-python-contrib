@@ -20,7 +20,7 @@ available, the evaluator returns an EvaluationResult with an error field set.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Sequence
 
 from opentelemetry.util.genai.evaluators.base import Evaluator
 from opentelemetry.util.genai.evaluators.registry import register_evaluator
@@ -48,15 +48,21 @@ class LengthEvaluator(Evaluator):
     Label tiers: short (<50 chars), medium (50-200), long (>200).
     """
 
-    def evaluate_invocation(
+    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
+        return ("length",)
+
+    def evaluate_llm(
         self, invocation: LLMInvocation
-    ) -> EvaluationResult:  # renamed method
+    ) -> Sequence[EvaluationResult]:
         content = _extract_text(invocation)
         length = len(content)
+        metric_name = self.metrics[0] if self.metrics else "length"
         if length == 0:
-            return EvaluationResult(
-                metric_name="length", score=0.0, label="empty"
-            )
+            return [
+                EvaluationResult(
+                    metric_name=metric_name, score=0.0, label="empty"
+                )
+            ]
         score = length / (length + 50)
         if length < 50:
             label = "short"
@@ -64,13 +70,15 @@ class LengthEvaluator(Evaluator):
             label = "medium"
         else:
             label = "long"
-        return EvaluationResult(
-            metric_name="length",
-            score=score,
-            label=label,
-            explanation=f"Length characters: {length}",
-            attributes={"gen_ai.evaluation.length.chars": length},
-        )
+        return [
+            EvaluationResult(
+                metric_name=metric_name,
+                score=score,
+                label=label,
+                explanation=f"Length characters: {length}",
+                attributes={"gen_ai.evaluation.length.chars": length},
+            )
+        ]
 
 
 class DeepevalEvaluator(Evaluator):
@@ -81,42 +89,65 @@ class DeepevalEvaluator(Evaluator):
     placeholder result when the dependency is present.
     """
 
-    def evaluate_invocation(self, invocation: LLMInvocation):  # type: ignore[override]
+    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
+        return ("deepeval",)
+
+    def evaluate_llm(
+        self, invocation: LLMInvocation
+    ) -> Sequence[EvaluationResult]:  # type: ignore[override]
+        metric_name = self.metrics[0] if self.metrics else "deepeval"
         try:
             import deepeval  # noqa: F401
         except Exception as exc:  # pragma: no cover - environment dependent
-            return EvaluationResult(
-                metric_name="deepeval",
-                error=Error(message="deepeval not installed", type=type(exc)),
+            return [
+                EvaluationResult(
+                    metric_name=metric_name,
+                    error=Error(
+                        message="deepeval not installed", type=type(exc)
+                    ),
+                )
+            ]
+        return [
+            EvaluationResult(
+                metric_name=metric_name,
+                score=None,
+                label=None,
+                explanation="Deepeval integration placeholder (no metrics recorded)",
             )
-        return EvaluationResult(
-            metric_name="deepeval",
-            score=None,
-            label=None,
-            explanation="Deepeval integration placeholder (no metrics recorded)",
-        )
+        ]
 
 
 class SentimentEvaluator(Evaluator):
     """Simple sentiment evaluator using nltk's VADER analyzer if available."""
 
-    def evaluate_invocation(self, invocation: LLMInvocation):  # type: ignore[override]
+    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
+        return ("sentiment",)
+
+    def evaluate_llm(
+        self, invocation: LLMInvocation
+    ) -> Sequence[EvaluationResult]:  # type: ignore[override]
+        metric_name = self.metrics[0] if self.metrics else "sentiment"
         try:
             from nltk.sentiment import (
                 SentimentIntensityAnalyzer,  # type: ignore
             )
         except Exception as exc:  # pragma: no cover - dependency optional
-            return EvaluationResult(
-                metric_name="sentiment",
-                error=Error(
-                    message="nltk (vader) not installed", type=type(exc)
-                ),
-            )
+            return [
+                EvaluationResult(
+                    metric_name=metric_name,
+                    error=Error(
+                        message="nltk (vader) not installed",
+                        type=type(exc),
+                    ),
+                )
+            ]
         content = _extract_text(invocation)
         if not content:
-            return EvaluationResult(
-                metric_name="sentiment", score=0.0, label="neutral"
-            )
+            return [
+                EvaluationResult(
+                    metric_name=metric_name, score=0.0, label="neutral"
+                )
+            ]
         analyzer = SentimentIntensityAnalyzer()
         scores = analyzer.polarity_scores(content)
         compound = scores.get("compound", 0.0)
@@ -127,18 +158,24 @@ class SentimentEvaluator(Evaluator):
             label = "negative"
         else:
             label = "neutral"
-        return EvaluationResult(
-            metric_name="sentiment",
-            score=score,
-            label=label,
-            explanation=f"compound={compound}",
-        )
+        return [
+            EvaluationResult(
+                metric_name=metric_name,
+                score=score,
+                label=label,
+                explanation=f"compound={compound}",
+            )
+        ]
 
 
 # Auto-register builtin evaluators (names stable lowercase)
-register_evaluator("length", lambda: LengthEvaluator())
-register_evaluator("deepeval", lambda: DeepevalEvaluator())
-register_evaluator("sentiment", lambda: SentimentEvaluator())
+register_evaluator("length", lambda metrics=None: LengthEvaluator(metrics))
+register_evaluator(
+    "deepeval", lambda metrics=None: DeepevalEvaluator(metrics)
+)
+register_evaluator(
+    "sentiment", lambda metrics=None: SentimentEvaluator(metrics)
+)
 
 __all__ = [
     "LengthEvaluator",

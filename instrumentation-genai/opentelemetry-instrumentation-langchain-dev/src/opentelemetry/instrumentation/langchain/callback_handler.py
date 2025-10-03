@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Any, Dict, List, Optional, Type, Union
 from uuid import UUID
 
@@ -54,7 +53,7 @@ from .semconv_ai import (
     SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY,
     LLMRequestTypeValues,
     SpanAttributes,
-    TraceloopSpanKindValues,
+    SpanKindValues,
 )
 from opentelemetry.trace import SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.span import Span
@@ -67,6 +66,8 @@ from opentelemetry.util.genai.handler import (
 
 # util-genai deps
 from opentelemetry.util.genai.types import (
+    Agent as UtilAgent,
+    Error as UtilError,
     InputMessage as UtilInputMessage,
     LLMInvocation as UtilLLMInvocation,
     OutputMessage as UtilOutputMessage,
@@ -74,11 +75,6 @@ from opentelemetry.util.genai.types import (
 )
 from threading import Lock
 from .utils import get_property_value
-
-
-_TRACELOOP_COMPAT_ENABLED = "traceloop_compat" in (
-    os.getenv("OTEL_INSTRUMENTATION_GENAI_EMITTERS", "").lower()
-)
 
 
 def _extract_class_name_from_serialized(serialized: Optional[dict[str, Any]]) -> str:
@@ -157,7 +153,13 @@ def _extract_tool_call_data(
 
 class TraceloopCallbackHandler(BaseCallbackHandler):
     def __init__(
-        self, tracer: Tracer, duration_histogram: Histogram, token_histogram: Histogram
+        self,
+        tracer: Tracer,
+        duration_histogram: Histogram,
+        token_histogram: Histogram,
+        *,
+        telemetry_handler: Optional[Any] = None,
+        telemetry_handler_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__()
         self.tracer = tracer
@@ -166,8 +168,27 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         self.spans: dict[UUID, SpanHolder] = {}
         self.run_inline = True
         self._callback_manager: CallbackManager | AsyncCallbackManager = None
-        self._telemetry_handler = _get_util_handler()
+        handler_kwargs = telemetry_handler_kwargs or {}
+        if telemetry_handler is not None:
+            handler = telemetry_handler
+        else:
+            handler = _get_util_handler(**handler_kwargs)
+            desired_tracer_provider = handler_kwargs.get("tracer_provider")
+            desired_meter_provider = handler_kwargs.get("meter_provider")
+            handler_tracer_provider = getattr(handler, "_tracer_provider_ref", None)
+            handler_meter_provider = getattr(handler, "_meter_provider", None)
+            if (
+                desired_tracer_provider is not None
+                and handler_tracer_provider is not desired_tracer_provider
+            ) or (
+                desired_meter_provider is not None
+                and handler_meter_provider is not desired_meter_provider
+            ):
+                setattr(_get_util_handler, "_default_handler", None)
+                handler = _get_util_handler(**handler_kwargs)
+        self._telemetry_handler = handler
         self._invocations: dict[UUID, UtilLLMInvocation] = {}
+        self._agents: dict[UUID, UtilAgent] = {}
         self._lock = Lock()
 
     @staticmethod
@@ -324,7 +345,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         run_id: UUID,
         parent_run_id: Optional[UUID],
         name: str,
-        kind: TraceloopSpanKindValues,
+        kind: SpanKindValues,
         workflow_name: str,
         entity_name: str = "",
         entity_path: str = "",
@@ -391,6 +412,188 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
 
         return span
 
+    def _sanitize_metadata_dict(
+        self, metadata: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        if not metadata:
+            return {}
+        return {
+            key: _sanitize_metadata_value(value)
+            for key, value in metadata.items()
+            if value is not None
+        }
+
+    def _normalize_agent_tools(
+        self, metadata: Optional[dict[str, Any]]
+    ) -> list[str]:
+        if not metadata:
+            return []
+        raw_tools = metadata.get("ls_tools") or metadata.get("tools")
+        tools: list[str] = []
+        if isinstance(raw_tools, (list, tuple)):
+            for item in raw_tools:
+                if isinstance(item, str):
+                    tools.append(item)
+                elif isinstance(item, dict):
+                    name = item.get("name") or item.get("tool") or item.get("id")
+                    if name is not None:
+                        tools.append(str(name))
+                    else:
+                        try:
+                            tools.append(
+                                json.dumps(item, cls=CallbackFilteredJSONEncoder)
+                            )
+                        except Exception:  # pragma: no cover - defensive
+                            tools.append(str(item))
+                else:
+                    tools.append(str(item))
+        elif isinstance(raw_tools, str):
+            tools.append(raw_tools)
+        return tools
+
+    def _serialize_payload(self, payload: Any) -> Optional[str]:
+        if payload is None:
+            return None
+        if isinstance(payload, (list, tuple, dict)) and not payload:
+            return None
+        try:
+            return json.dumps(payload, cls=CallbackFilteredJSONEncoder)
+        except Exception:  # pragma: no cover - defensive
+            try:
+                return str(payload)
+            except Exception:  # pragma: no cover - defensive
+                return None
+
+    def _is_agent_run(
+        self,
+        serialized: Optional[dict[str, Any]],
+        metadata: Optional[dict[str, Any]],
+        tags: Optional[list[str]],
+    ) -> bool:
+        if metadata:
+            for key in (
+                "ls_span_kind",
+                "ls_run_kind",
+                "ls_entity_kind",
+                "run_type",
+                "ls_type",
+            ):
+                value = metadata.get(key)
+                if isinstance(value, str) and "agent" in value.lower():
+                    return True
+            for key in ("ls_is_agent", "is_agent"):
+                value = metadata.get(key)
+                if isinstance(value, bool) and value:
+                    return True
+                if isinstance(value, str) and value.lower() in ("true", "1", "agent"):
+                    return True
+        if tags:
+            for tag in tags:
+                try:
+                    tag_text = str(tag).lower()
+                except Exception:  # pragma: no cover - defensive
+                    continue
+                if "agent" in tag_text:
+                    return True
+        serialized = serialized or {}
+        name = serialized.get("name")
+        if isinstance(name, str) and "agent" in name.lower():
+            return True
+        identifier = serialized.get("id")
+        if isinstance(identifier, list):
+            identifier_text = " ".join(str(part) for part in identifier).lower()
+            if "agent" in identifier_text:
+                return True
+        elif isinstance(identifier, str) and "agent" in identifier.lower():
+            return True
+        return False
+
+    def _build_agent_invocation(
+        self,
+        name: str,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        inputs: dict[str, Any],
+        metadata: Optional[dict[str, Any]],
+        tags: Optional[list[str]],
+    ) -> UtilAgent:
+        metadata_attrs = self._sanitize_metadata_dict(metadata)
+        attributes: dict[str, Any] = {}
+        if tags:
+            attributes["tags"] = [str(tag) for tag in tags]
+
+        raw_operation = None
+        for key in ("ls_operation", "operation"):
+            if key in metadata_attrs:
+                raw_operation = metadata_attrs.pop(key)
+                break
+        operation = str(raw_operation).lower() if isinstance(raw_operation, str) else ""
+        operation = "create" if operation == "create" else "invoke"
+
+        agent_type = None
+        for key in ("ls_agent_type", "agent_type"):
+            if key in metadata_attrs:
+                agent_type = metadata_attrs.pop(key)
+                break
+        if agent_type is not None and not isinstance(agent_type, str):
+            agent_type = str(agent_type)
+
+        description = None
+        for key in ("ls_description", "description"):
+            if key in metadata_attrs:
+                description = metadata_attrs.pop(key)
+                break
+        if description is not None and not isinstance(description, str):
+            description = str(description)
+
+        model = None
+        for key in ("ls_model_name", "model_name"):
+            if key in metadata_attrs:
+                model = metadata_attrs.pop(key)
+                break
+        if model is not None and not isinstance(model, str):
+            model = str(model)
+
+        system_instructions = None
+        for key in ("ls_system_prompt", "system_prompt", "system_instruction"):
+            if key in metadata_attrs:
+                system_instructions = metadata_attrs.pop(key)
+                break
+        if system_instructions is not None and not isinstance(system_instructions, str):
+            system_instructions = str(system_instructions)
+
+        framework = "langchain"
+        for key in ("ls_framework", "framework"):
+            if key in metadata_attrs:
+                framework = metadata_attrs.pop(key) or framework
+                break
+        if not isinstance(framework, str):
+            framework = str(framework)
+
+        tools = self._normalize_agent_tools(metadata)
+        # remove tool metadata entries now that we've normalized them
+        metadata_attrs.pop("ls_tools", None)
+        metadata_attrs.pop("tools", None)
+        input_context = self._serialize_payload(inputs)
+
+        attributes.update(metadata_attrs)
+
+        agent = UtilAgent(
+            name=name,
+            operation=operation,
+            agent_type=agent_type,
+            description=description,
+            framework=framework,
+            model=model,
+            tools=tools,
+            system_instructions=system_instructions,
+            input_context=input_context,
+            attributes=attributes,
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+        )
+        return agent
+
     @dont_throw
     def on_chain_start(
         self,
@@ -411,13 +614,18 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         entity_path = ""
 
         name = self._get_name_from_callback(serialized, **kwargs)
-        kind = (
-            TraceloopSpanKindValues.WORKFLOW
-            if parent_run_id is None or parent_run_id not in self.spans
-            else TraceloopSpanKindValues.TASK
-        )
+        parent_known = parent_run_id is not None and parent_run_id in self.spans
+        is_agent_run = self._is_agent_run(serialized, metadata, tags)
+        if is_agent_run:
+            kind = SpanKindValues.AGENT
+        else:
+            kind = (
+                SpanKindValues.WORKFLOW
+                if not parent_known
+                else SpanKindValues.TASK
+            )
 
-        if kind == TraceloopSpanKindValues.WORKFLOW:
+        if not parent_known:
             workflow_name = name
         else:
             workflow_name = self.get_workflow_name(parent_run_id)
@@ -447,6 +655,22 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
                 ),
             )
 
+        if is_agent_run and run_id not in self._agents:
+            try:
+                agent = self._build_agent_invocation(
+                    name=name,
+                    run_id=run_id,
+                    parent_run_id=parent_run_id,
+                    inputs=inputs,
+                    metadata=metadata,
+                    tags=tags,
+                )
+                self._telemetry_handler.start_agent(agent)
+                with self._lock:
+                    self._agents[run_id] = agent
+            except Exception:  # pragma: no cover - defensive
+                pass
+
         # The start_time is now automatically set when creating the SpanHolder
 
     @dont_throw
@@ -474,6 +698,17 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             )
 
         self._end_span(span, run_id)
+        agent_to_finish: Optional[UtilAgent] = None
+        with self._lock:
+            agent_to_finish = self._agents.pop(run_id, None)
+        if agent_to_finish is not None:
+            serialized_output = self._serialize_payload(outputs)
+            if serialized_output is not None:
+                agent_to_finish.output_result = serialized_output
+            try:
+                self._telemetry_handler.stop_agent(agent_to_finish)
+            except Exception:  # pragma: no cover - defensive
+                pass
         if parent_run_id is None:
             try:
                 context_api.attach(
@@ -535,18 +770,39 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             return
 
         invocation_params = kwargs.get("invocation_params") or {}
-        request_model = (
+        metadata_attrs = self._sanitize_metadata_dict(metadata)
+        invocation_attrs = self._sanitize_metadata_dict(invocation_params)
+        raw_model_from_metadata = None
+        for key in ("ls_model_name", "model_name"):
+            if key in metadata_attrs:
+                raw_model_from_metadata = metadata_attrs.pop(key)
+                break
+
+        raw_request_model = (
             invocation_params.get("model_name")
+            or raw_model_from_metadata
             or serialized.get("name")
             or "unknown-model"
         )
-        provider_name = (metadata or {}).get("ls_provider")
-        # attributes dict now reserved for non-semconv extensions only
+        request_model = str(raw_request_model)
+        invocation_attrs.pop("model_name", None)
+        invocation_attrs.pop("model", None)
+
+        provider_name = None
+        for key in ("ls_provider", "provider"):
+            if key in metadata_attrs:
+                provider_name = str(metadata_attrs.pop(key))
+                break
+        if provider_name is None and "provider" in invocation_attrs:
+            provider_name = str(invocation_attrs.pop("provider"))
+
         attrs: dict[str, Any] = {}
-        if _TRACELOOP_COMPAT_ENABLED:
-            callback_name = self._get_name_from_callback(serialized, kwargs=kwargs)
+        callback_name = self._get_name_from_callback(serialized, kwargs=kwargs)
+        if callback_name:
+            attrs["callback.name"] = callback_name
             attrs["traceloop.callback_name"] = callback_name
             attrs.setdefault("traceloop.span.kind", "llm")
+
         # copy selected params (non-semconv)
         for key in (
             "top_p",
@@ -555,13 +811,26 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             "stop",
             "seed",
         ):
-            if key in invocation_params and invocation_params[key] is not None:
-                attrs[f"request_{key}"] = invocation_params[key]
-        if metadata:
-            if metadata.get("ls_max_tokens") is not None:
-                attrs["request_max_tokens"] = metadata.get("ls_max_tokens")
-            if metadata.get("ls_temperature") is not None:
-                attrs["request_temperature"] = metadata.get("ls_temperature")
+            if key in invocation_attrs:
+                attrs[f"request_{key}"] = invocation_attrs.pop(key)
+
+        for metadata_key, target_key in (
+            ("ls_max_tokens", "request_max_tokens"),
+            ("ls_temperature", "request_temperature"),
+        ):
+            if metadata_key in metadata_attrs:
+                attrs[target_key] = metadata_attrs.pop(metadata_key)
+
+        if tags:
+            attrs["tags"] = [str(tag) for tag in tags]
+
+        serialized_id = serialized.get("id")
+        if serialized_id is not None:
+            attrs["callback.id"] = _sanitize_metadata_value(serialized_id)
+
+        attrs.update(metadata_attrs)
+        attrs.update(invocation_attrs)
+
         request_functions = self._extract_request_functions(invocation_params)
         input_messages = self._build_input_messages(messages)
         inv = UtilLLMInvocation(
@@ -572,6 +841,15 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             request_functions=request_functions,
             attributes=attrs,
         )
+        inv.run_id = run_id
+        inv.parent_run_id = parent_run_id
+        if parent_run_id is not None:
+            with self._lock:
+                parent_agent = self._agents.get(parent_run_id)
+            if parent_agent is not None:
+                inv.agent_name = parent_agent.name
+                inv.agent_id = str(parent_agent.run_id)
+
         # no need for messages/chat_generations fields; generator uses input_messages and output_messages
         self._telemetry_handler.start_llm(inv)
         with self._lock:
@@ -701,7 +979,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             run_id,
             parent_run_id,
             name,
-            TraceloopSpanKindValues.TOOL,
+            SpanKindValues.TOOL,
             workflow_name,
             name,
             entity_path,
@@ -788,6 +1066,18 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         span.set_status(Status(StatusCode.ERROR))
         span.record_exception(error)
         self._end_span(span, run_id)
+        agent_to_fail: Optional[UtilAgent] = None
+        with self._lock:
+            agent_to_fail = self._agents.pop(run_id, None)
+        if agent_to_fail is not None:
+            agent_to_fail.output_result = str(error)
+            try:
+                self._telemetry_handler.fail_agent(
+                    agent_to_fail,
+                    UtilError(message=str(error), type=type(error)),
+                )
+            except Exception:  # pragma: no cover - defensive
+                pass
 
     @dont_throw
     def on_llm_error(

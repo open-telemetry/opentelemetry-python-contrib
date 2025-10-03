@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from opentelemetry._logs import Logger, get_logger
 
-from ..types import Agent, Error, LLMInvocation, Task, Workflow
+from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow
 from .utils import (
     _agent_to_log_record,
     _llm_invocation_to_log_record,
@@ -73,7 +73,9 @@ class ContentEventsEmitter:
         return None
 
     def handles(self, obj: Any) -> bool:
-        return isinstance(obj, (LLMInvocation, Workflow, Agent, Task))
+        return isinstance(
+            obj, (LLMInvocation, Workflow, AgentInvocation, Task)
+        )
 
     # Helper methods for new agentic types
     def _emit_workflow_event(self, workflow: Workflow) -> None:
@@ -85,7 +87,7 @@ class ContentEventsEmitter:
         except Exception:
             pass
 
-    def _emit_agent_event(self, agent: Agent) -> None:
+    def _emit_agent_event(self, agent: AgentInvocation) -> None:
         """Emit an event for an agent operation."""
         try:
             record = _agent_to_log_record(agent, self._capture_content)

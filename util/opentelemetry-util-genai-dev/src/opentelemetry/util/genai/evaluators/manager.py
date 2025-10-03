@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import importlib
+import logging
 import time
-from threading import Event, Thread
-from typing import List, Optional
+from typing import Dict, Iterable, Sequence
 
 from opentelemetry import _events as _otel_events
 from opentelemetry.trace import Tracer
 
 from ..config import Settings
-from ..types import Error, EvaluationResult, LLMInvocation
+from ..types import Error, EvaluationResult, GenAI, LLMInvocation
 from .base import Evaluator
 from .evaluation_emitters import (
     CompositeEvaluationEmitter,
@@ -17,22 +16,13 @@ from .evaluation_emitters import (
     EvaluationMetricsEmitter,
     EvaluationSpansEmitter,
 )
-from .registry import get_evaluator, register_evaluator
+from .registry import get_evaluator
 
-# NOTE: Type checker warns about heterogeneous list (metrics + events + spans) passed
-# to CompositeEvaluationEmitter due to generic inference; safe at runtime.
+_logger = logging.getLogger(__name__)
 
 
 class EvaluationManager:
-    """Coordinates evaluator discovery, execution, and telemetry emission.
-
-    Evaluation manager will check evaluators registered in
-
-    New capabilities:
-      * Asynchronous sampling pipeline: ``offer(invocation)`` enqueues sampled invocations.
-      * Background thread drains evaluator-specific queues every ``settings.evaluation_interval`` seconds.
-      * Synchronous ``evaluate_llm`` retained for on-demand (immediate) evaluation (e.g., legacy tests / explicit calls).
-    """
+    """Coordinates evaluator discovery, execution, and telemetry emission."""
 
     def __init__(
         self,
@@ -44,7 +34,6 @@ class EvaluationManager:
         self._settings = settings
         self._tracer = tracer
         self._event_logger = event_logger
-        self._histogram = histogram
         emitters = [
             EvaluationMetricsEmitter(histogram),
             EvaluationEventsEmitter(event_logger),
@@ -56,167 +45,116 @@ class EvaluationManager:
                 )
             )
         self._emitter = CompositeEvaluationEmitter(emitters)  # type: ignore[arg-type]
-        self._instances: dict[str, Evaluator] = {}
-        self._stop = Event()
-        self._thread: Thread | None = None
-        if settings.evaluation_enabled:
-            # Prime instances for configured evaluators
-            for name in settings.evaluation_evaluators:
-                self._get_instance(name)
-            self._thread = Thread(
-                target=self._loop, name="genai-eval-worker", daemon=True
-            )
-            self._thread.start()
+        (
+            self._configured_names,
+            self._configured_metrics,
+        ) = self._normalise_configuration(settings.evaluation_evaluators)
+        self._instances: Dict[str, Evaluator] = {}
 
-    # ---------------- Internal utilities ----------------
-    def _loop(self):  # pragma: no cover - timing driven
-        interval = max(0.5, float(self._settings.evaluation_interval or 5.0))
-        while not self._stop.is_set():
-            try:
-                self.process_once()
-            except Exception:
-                pass
-            self._stop.wait(interval)
-
-    def shutdown(self):  # pragma: no cover - optional
-        self._stop.set()
-        if self._thread and self._thread.is_alive():
-            try:
-                self._thread.join(timeout=1.5)
-            except Exception:
-                pass
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _normalise_configuration(
+        raw: Iterable[str],
+    ) -> tuple[list[str], dict[str, Sequence[str]]]:
+        names: list[str] = []
+        metrics: dict[str, Sequence[str]] = {}
+        seen: set[str] = set()
+        for token in raw:
+            candidate = token.strip()
+            if not candidate:
+                continue
+            metrics_part: Sequence[str] = ()
+            name = candidate
+            if candidate.endswith(")") and "(" in candidate:
+                prefix, _, suffix = candidate.partition("(")
+                name = prefix.strip()
+                metrics_part = [
+                    item.strip()
+                    for item in suffix[:-1].split(",")
+                    if item.strip()
+                ]
+            elif ":" in candidate:
+                prefix, _, suffix = candidate.partition(":")
+                name = prefix.strip()
+                metrics_part = [
+                    item.strip()
+                    for item in suffix.split(",")
+                    if item.strip()
+                ]
+            if not name:
+                continue
+            key = name.lower()
+            if metrics_part:
+                metrics[key] = tuple(metrics_part)
+            if key in seen:
+                continue
+            seen.add(key)
+            names.append(name)
+        return names, metrics
 
     def _get_instance(self, name: str) -> Evaluator | None:
         key = name.lower()
         inst = self._instances.get(key)
         if inst is not None:
             return inst
-        # try dynamic (deepeval) first for this name
-        if key == "deepeval":
-            try:
-                ext_mod = importlib.import_module(
-                    "opentelemetry.util.genai.evals.deepeval"
-                )
-                if hasattr(ext_mod, "DeepEvalEvaluator"):
-                    register_evaluator(
-                        "deepeval",
-                        lambda: ext_mod.DeepEvalEvaluator(
-                            self._event_logger, self._tracer
-                        ),
-                    )
-            except Exception:
-                pass
+        metrics = self._configured_metrics.get(key)
         try:
-            factory_inst = get_evaluator(name)
-        except Exception:
-            # attempt builtin lazy import
-            try:
-                import importlib as _imp
-                import sys
+            inst = get_evaluator(name, metrics)
+        except ValueError:
+            _logger.debug("Evaluator '%s' is not registered", name)
+            return None
+        except Exception as exc:  # pragma: no cover - defensive
+            _logger.warning(
+                "Evaluator '%s' failed to initialize: %s", name, exc
+            )
+            return None
+        self._instances[key] = inst
+        return inst
 
-                mod_name = "opentelemetry.util.genai.evaluators.builtins"
-                if mod_name in sys.modules:
-                    _imp.reload(sys.modules[mod_name])
-                else:
-                    _imp.import_module(mod_name)
-                factory_inst = get_evaluator(name)
-            except Exception:
-                return None
-        self._instances[key] = factory_inst
-        return factory_inst
-
-    def _emit(
-        self, results: list[EvaluationResult], invocation: LLMInvocation
-    ):
-        if not results:
-            return
-        self._emitter.emit(results, invocation)
-
-    # ---------------- Public async API ----------------
-    def offer(
-        self, invocation: LLMInvocation, evaluators: list[str] | None = None
-    ) -> dict[str, bool]:
-        """Attempt to enqueue invocation for each evaluator; returns sampling map.
-
-        Does not perform evaluation; background worker processes queues.
-        """
-        sampling: dict[str, bool] = {}
+    def should_evaluate(
+        self, invocation: GenAI, evaluators: Sequence[str] | None = None
+    ) -> bool:
         if not self._settings.evaluation_enabled:
-            return sampling
+            return False
+        if not isinstance(invocation, LLMInvocation):
+            return False
         names = (
-            evaluators
+            list(evaluators)
             if evaluators is not None
-            else self._settings.evaluation_evaluators
+            else self._configured_names
         )
-        if not names:
-            return sampling
-        for name in names:
-            inst = self._get_instance(name)
-            if inst is None:
-                sampling[name] = False
-                continue
-            try:
-                sampled = inst.evaluate(
-                    invocation,
-                    max_per_minute=self._settings.evaluation_max_per_minute,
-                )
-                sampling[name] = sampled
-            except Exception:
-                sampling[name] = False
-        return sampling
+        return bool(names)
 
-    def process_once(self):
-        """Drain queues for each evaluator and emit results (background)."""
-        if not self._settings.evaluation_enabled:
-            return
-        for name, inst in list(self._instances.items()):
-            try:
-                batch = inst._drain_queue()  # type: ignore[attr-defined]
-            except Exception:
-                batch = []
-            for inv in batch:
-                try:
-                    out = inst.evaluate_invocation(inv)
-                    if isinstance(out, list):
-                        results = [
-                            r for r in out if isinstance(r, EvaluationResult)
-                        ]
-                    else:
-                        results = (
-                            [out] if isinstance(out, EvaluationResult) else []
-                        )
-                except Exception as exc:
-                    results = [
-                        EvaluationResult(
-                            metric_name=name,
-                            error=Error(message=str(exc), type=type(exc)),
-                        )
-                    ]
-                self._emit(results, inv)
+    def offer(
+        self, invocation: GenAI, evaluators: Sequence[str] | None = None
+    ) -> bool:
+        if not self.should_evaluate(invocation, evaluators):
+            return False
+        results = self.evaluate(invocation, evaluators)
+        return bool(results)
 
-    # ---------------- Synchronous (legacy / on-demand) ----------------
     def evaluate(
-        self, invocation: LLMInvocation, evaluators: Optional[List[str]] = None
-    ) -> List[EvaluationResult]:
-        """Immediate evaluation (legacy path). Returns list of EvaluationResult.
-
-        This is separate from asynchronous sampling. It does *not* affect evaluator queues.
-        """
+        self, invocation: GenAI, evaluators: Sequence[str] | None = None
+    ) -> list[EvaluationResult]:
+        if not isinstance(invocation, LLMInvocation):
+            return []
         if not self._settings.evaluation_enabled:
             return []
         names = (
-            evaluators
+            list(evaluators)
             if evaluators is not None
-            else self._settings.evaluation_evaluators
+            else self._configured_names
         )
         if not names:
             return []
         if invocation.end_time is None:
             invocation.end_time = time.time()
-        results: List[EvaluationResult] = []
+        results: list[EvaluationResult] = []
         for name in names:
-            inst = self._get_instance(name)
-            if inst is None:
+            if not name:
+                continue
+            evaluator = self._get_instance(name)
+            if evaluator is None:
                 results.append(
                     EvaluationResult(
                         metric_name=name,
@@ -228,34 +166,41 @@ class EvaluationManager:
                 )
                 continue
             try:
-                out = inst.evaluate_invocation(invocation)
-                if isinstance(out, list):
-                    for r in out:
-                        if isinstance(r, EvaluationResult):
-                            results.append(r)
-                elif isinstance(out, EvaluationResult):
-                    results.append(out)
-                else:
-                    results.append(
-                        EvaluationResult(
-                            metric_name=name,
-                            error=Error(
-                                message="Evaluator returned unsupported type",
-                                type=TypeError,
-                            ),
-                        )
-                    )
-            except Exception as exc:
+                raw_results = evaluator.evaluate(invocation)
+            except Exception as exc:  # pragma: no cover - defensive
                 results.append(
                     EvaluationResult(
                         metric_name=name,
                         error=Error(message=str(exc), type=type(exc)),
                     )
                 )
-        # Emit telemetry for this synchronous batch
+                continue
+            results.extend(self._normalise_results(name, raw_results))
         if results:
-            self._emit(results, invocation)
+            self._emitter.emit(results, invocation)
         return results
+
+    @staticmethod
+    def _normalise_results(
+        evaluator_name: str, raw_results
+    ) -> list[EvaluationResult]:
+        if raw_results is None:
+            return []
+        if isinstance(raw_results, EvaluationResult):
+            raw_results = [raw_results]
+        normalised: list[EvaluationResult] = []
+        for res in raw_results:
+            if not isinstance(res, EvaluationResult):
+                continue
+            if not res.metric_name:
+                res.metric_name = evaluator_name
+            normalised.append(res)
+        return normalised
+
+    # Compatibility shim for legacy tests expecting background worker cleanup.
+    def shutdown(self) -> None:  # pragma: no cover - legacy no-op
+        """Retained for backward compatibility; no background worker to stop."""
+        return None
 
     # Backwards compatibility alias
     evaluate_llm = evaluate

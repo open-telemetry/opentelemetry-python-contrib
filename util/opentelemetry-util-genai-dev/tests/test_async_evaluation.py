@@ -4,8 +4,6 @@ from unittest.mock import patch
 
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE,
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL,
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE,
     OTEL_INSTRUMENTATION_GENAI_EVALUATORS,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
@@ -17,7 +15,7 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class TestAsyncEvaluation(unittest.TestCase):
+class TestEvaluationPipeline(unittest.TestCase):
     def _build_invocation(self, content: str) -> LLMInvocation:
         inv = LLMInvocation(request_model="m", provider="p")
         inv.input_messages.append(
@@ -32,82 +30,81 @@ class TestAsyncEvaluation(unittest.TestCase):
         )
         return inv
 
+    def _fresh_handler(self):
+        if hasattr(get_telemetry_handler, "_default_handler"):
+            delattr(get_telemetry_handler, "_default_handler")
+        return get_telemetry_handler()
+
     @patch.dict(
         os.environ,
         {
             OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
             OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "length",
-            # Large interval to prevent background worker from racing in test
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL: "30",
         },
         clear=True,
     )
-    def test_sampling_and_manual_process(self):
-        # Fresh handler
-        if hasattr(get_telemetry_handler, "_default_handler"):
-            delattr(get_telemetry_handler, "_default_handler")
-        handler = get_telemetry_handler()
-        inv = self._build_invocation("Hello async world!")
+    def test_stop_llm_triggers_evaluation_immediately(self):
+        handler = self._fresh_handler()
+        inv = self._build_invocation("Hello world")
         recorded = {"metrics": [], "events": []}
-        # Patch metric + events
-        orig_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
-        orig_emit = handler._event_logger.emit  # type: ignore[attr-defined]
+        original_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
+        original_emit = handler._event_logger.emit  # type: ignore[attr-defined]
 
-        def fake_record(v, attributes=None):
-            recorded["metrics"].append((v, dict(attributes or {})))
+        def fake_record(value, attributes=None):
+            recorded["metrics"].append((value, dict(attributes or {})))
 
-        def fake_emit(evt):
-            recorded["events"].append(evt)
+        def fake_emit(event):
+            recorded["events"].append(event)
 
         handler._evaluation_histogram.record = fake_record  # type: ignore
         handler._event_logger.emit = fake_emit  # type: ignore
 
         handler.start_llm(inv)
-        handler.stop_llm(inv)  # enqueue via offer
-        # Manually trigger processing
-        handler._evaluation_manager.process_once()  # type: ignore[attr-defined]
+        handler.stop_llm(inv)
+
+        self.assertTrue(recorded["metrics"], "Expected evaluation metric")
+        self.assertTrue(recorded["events"], "Expected evaluation event")
         self.assertTrue(
-            recorded["metrics"], "Expected at least one metric from async eval"
+            inv.attributes.get("gen_ai.evaluation.executed"),
+            "Attribute should mark evaluation execution",
         )
-        self.assertTrue(
-            recorded["events"], "Expected an evaluation event from async eval"
-        )
-        # Restore
-        handler._evaluation_histogram.record = orig_record  # type: ignore
-        handler._event_logger.emit = orig_emit  # type: ignore
+
+        handler._evaluation_histogram.record = original_record  # type: ignore
+        handler._event_logger.emit = original_emit  # type: ignore
 
     @patch.dict(
         os.environ,
         {
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
+            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "false",
             OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "length",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL: "30",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE: "1",
         },
         clear=True,
     )
-    def test_rate_limit_per_minute(self):
-        if hasattr(get_telemetry_handler, "_default_handler"):
-            delattr(get_telemetry_handler, "_default_handler")
-        handler = get_telemetry_handler()
-        recorded = {"metrics": []}
-        orig_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
+    def test_disabled_evaluation_produces_no_signals(self):
+        handler = self._fresh_handler()
+        inv = self._build_invocation("Hello world")
+        recorded = {"metrics": [], "events": []}
+        original_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
+        original_emit = handler._event_logger.emit  # type: ignore[attr-defined]
 
-        def fake_record(v, attributes=None):
-            recorded["metrics"].append(v)
+        def fake_record(value, attributes=None):
+            recorded["metrics"].append(value)
+
+        def fake_emit(event):
+            recorded["events"].append(event)
 
         handler._evaluation_histogram.record = fake_record  # type: ignore
+        handler._event_logger.emit = fake_emit  # type: ignore
 
-        inv1 = self._build_invocation("sample one")
-        inv2 = self._build_invocation("sample two longer text")
-        handler.start_llm(inv1)
-        handler.stop_llm(inv1)
-        handler.start_llm(inv2)
-        handler.stop_llm(inv2)
-        handler._evaluation_manager.process_once()  # type: ignore[attr-defined]
-        # Only one should have been evaluated due to rate limit
-        self.assertEqual(len(recorded["metrics"]), 1)
-        handler._evaluation_histogram.record = orig_record  # type: ignore
+        handler.start_llm(inv)
+        handler.stop_llm(inv)
+
+        self.assertFalse(recorded["metrics"])
+        self.assertFalse(recorded["events"])
+        self.assertNotIn("gen_ai.evaluation.executed", inv.attributes)
+
+        handler._evaluation_histogram.record = original_record  # type: ignore
+        handler._event_logger.emit = original_emit  # type: ignore
 
 
 if __name__ == "__main__":  # pragma: no cover

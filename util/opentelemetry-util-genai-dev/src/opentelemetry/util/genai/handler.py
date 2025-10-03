@@ -63,8 +63,12 @@ from opentelemetry.util.genai.emitters import (
     MetricsEmitter,
     SpanEmitter,
 )
+from opentelemetry.util.genai.plugins import (
+    PluginEmitterBundle,
+    load_emitter_plugin,
+)
 from opentelemetry.util.genai.types import (
-    Agent,
+    AgentInvocation,
     ContentCapturingMode,
     EmbeddingInvocation,
     Error,
@@ -127,6 +131,24 @@ class TelemetryHandler:
         capture_events = settings.capture_content_events
 
         # Compose emitters based on parsed settings
+        plugin_bundles: list[PluginEmitterBundle] = []
+        replace_default_emitters = False
+        for plugin_name in settings.extra_emitters:
+            if plugin_name == "traceloop_compat":
+                continue
+            bundle = load_emitter_plugin(
+                plugin_name,
+                tracer=self._tracer,
+                meter=meter,
+                event_logger=self._event_logger,
+                settings=settings,
+            )
+            if bundle:
+                plugin_bundles.append(bundle)
+                if bundle.replace_default_emitters:
+                    replace_default_emitters = True
+
+        emitters = []
         if settings.only_traceloop_compat:
             # Only traceloop compat requested
             from opentelemetry.util.genai.emitters import (
@@ -136,32 +158,35 @@ class TelemetryHandler:
             traceloop_emitter = TraceloopCompatEmitter(
                 tracer=self._tracer, capture_content=capture_span
             )
-            emitters = [traceloop_emitter]
+            emitters.append(traceloop_emitter)
         else:
-            if settings.generator_kind == "span_metric_event":
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=False,  # keep span lean
-                )
-                metrics_emitter = MetricsEmitter(meter=meter)
-                content_emitter = ContentEventsEmitter(
-                    logger=self._content_logger,
-                    capture_content=capture_events,
-                )
-                emitters = [span_emitter, metrics_emitter, content_emitter]
-            elif settings.generator_kind == "span_metric":
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=capture_span,
-                )
-                metrics_emitter = MetricsEmitter(meter=meter)
-                emitters = [span_emitter, metrics_emitter]
-            else:
-                span_emitter = SpanEmitter(
-                    tracer=self._tracer,
-                    capture_content=capture_span,
-                )
-                emitters = [span_emitter]
+            if not replace_default_emitters:
+                if settings.generator_kind == "span_metric_event":
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=False,  # keep span lean
+                    )
+                    metrics_emitter = MetricsEmitter(meter=meter)
+                    content_emitter = ContentEventsEmitter(
+                        logger=self._content_logger,
+                        capture_content=capture_events,
+                    )
+                    emitters.extend(
+                        [span_emitter, metrics_emitter, content_emitter]
+                    )
+                elif settings.generator_kind == "span_metric":
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=capture_span,
+                    )
+                    metrics_emitter = MetricsEmitter(meter=meter)
+                    emitters.extend([span_emitter, metrics_emitter])
+                else:
+                    span_emitter = SpanEmitter(
+                        tracer=self._tracer,
+                        capture_content=capture_span,
+                    )
+                    emitters.append(span_emitter)
             # Append extra emitters if requested
             if "traceloop_compat" in settings.extra_emitters:
                 try:
@@ -175,6 +200,9 @@ class TelemetryHandler:
                     emitters.append(traceloop_emitter)
                 except Exception:  # pragma: no cover
                     pass
+        for bundle in plugin_bundles:
+            if bundle.emitters:
+                emitters.extend(bundle.emitters)
         # Phase 1: wrap in composite (single element) to prepare for multi-emitter
         self._generator = CompositeGenerator(emitters)  # type: ignore[arg-type]
 
@@ -239,12 +267,12 @@ class TelemetryHandler:
         self._generator.finish(invocation)
         # Automatic async evaluation sampling (non-blocking)
         try:
-            if getattr(self, "_evaluation_manager", None):
-                sampling_map = self._evaluation_manager.offer(invocation)  # type: ignore[attr-defined]
-                # Expose sampling decision for callers (per evaluator) under a single attr
-                if sampling_map:
+            manager = getattr(self, "_evaluation_manager", None)
+            if manager and manager.should_evaluate(invocation):  # type: ignore[attr-defined]
+                scheduled = manager.offer(invocation)  # type: ignore[attr-defined]
+                if scheduled:
                     invocation.attributes.setdefault(
-                        "gen_ai.evaluation.sampled", sampling_map
+                        "gen_ai.evaluation.executed", True
                     )
         except Exception:
             pass
@@ -352,13 +380,13 @@ class TelemetryHandler:
         return workflow
 
     # Agent lifecycle -----------------------------------------------------
-    def start_agent(self, agent: Agent) -> Agent:
+    def start_agent(self, agent: AgentInvocation) -> AgentInvocation:
         """Start an agent operation (create or invoke) and create a pending span entry."""
         self._refresh_capture_content()
         self._generator.start(agent)
         return agent
 
-    def stop_agent(self, agent: Agent) -> Agent:
+    def stop_agent(self, agent: AgentInvocation) -> AgentInvocation:
         """Finalize an agent operation successfully and end its span."""
         agent.end_time = time.time()
         self._generator.finish(agent)
@@ -372,7 +400,9 @@ class TelemetryHandler:
                 pass
         return agent
 
-    def fail_agent(self, agent: Agent, error: Error) -> Agent:
+    def fail_agent(
+        self, agent: AgentInvocation, error: Error
+    ) -> AgentInvocation:
         """Fail an agent operation and end its span with error status."""
         agent.end_time = time.time()
         self._generator.error(error, agent)
@@ -434,24 +464,12 @@ class TelemetryHandler:
         """
         return self._evaluation_manager.evaluate(invocation, evaluators)  # type: ignore[arg-type]
 
-    def process_evaluations(self):
-        """Manually trigger one evaluation processing cycle (async queues).
-
-        Useful in tests or deterministic flushing scenarios where waiting for the
-        background thread interval is undesirable.
-        """
-        try:
-            if getattr(self, "_evaluation_manager", None):
-                self._evaluation_manager.process_once()  # type: ignore[attr-defined]
-        except Exception:
-            pass
-
     # Generic lifecycle API ------------------------------------------------
     def start(self, obj: Any) -> Any:
         """Generic start method for any invocation type."""
         if isinstance(obj, Workflow):
             return self.start_workflow(obj)
-        if isinstance(obj, Agent):
+        if isinstance(obj, AgentInvocation):
             return self.start_agent(obj)
         if isinstance(obj, Task):
             return self.start_task(obj)
@@ -467,7 +485,7 @@ class TelemetryHandler:
         """Generic finish method for any invocation type."""
         if isinstance(obj, Workflow):
             return self.stop_workflow(obj)
-        if isinstance(obj, Agent):
+        if isinstance(obj, AgentInvocation):
             return self.stop_agent(obj)
         if isinstance(obj, Task):
             return self.stop_task(obj)
@@ -483,7 +501,7 @@ class TelemetryHandler:
         """Generic fail method for any invocation type."""
         if isinstance(obj, Workflow):
             return self.fail_workflow(obj, error)
-        if isinstance(obj, Agent):
+        if isinstance(obj, AgentInvocation):
             return self.fail_agent(obj, error)
         if isinstance(obj, Task):
             return self.fail_task(obj, error)

@@ -21,7 +21,7 @@ from ..attributes import (
     GEN_AI_PROVIDER_NAME,
 )
 from ..types import (
-    Agent,
+    AgentInvocation,
     LLMInvocation,
     Task,
     Text,
@@ -380,7 +380,7 @@ def _workflow_to_log_record(
 
 
 def _agent_to_log_record(
-    agent: Agent, capture_content: bool
+    agent: AgentInvocation, capture_content: bool
 ) -> Optional[SDKLogRecord]:
     """Create a log record for agent event"""
     if not capture_content or not agent.system_instructions:
