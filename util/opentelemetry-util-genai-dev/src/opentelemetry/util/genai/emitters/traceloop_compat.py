@@ -50,7 +50,7 @@ class TraceloopCompatEmitter:
     def _apply_semconv_start(self, invocation: LLMInvocation, span):
         """Apply semantic convention attributes at start."""
         try:  # pragma: no cover - defensive
-            span.set_attribute("gen_ai.operation.name", "chat")
+            span.set_attribute("gen_ai.operation.name", invocation.operation)
             span.set_attribute(
                 "gen_ai.request.model", invocation.request_model
             )
@@ -65,12 +65,13 @@ class TraceloopCompatEmitter:
     def start(self, invocation: LLMInvocation) -> None:  # noqa: D401
         if not isinstance(invocation, LLMInvocation):  # defensive
             return
+        operation = invocation.operation
         cb_name = invocation.attributes.get("traceloop.callback_name")
         if cb_name:
-            span_name = f"{cb_name}.chat"
+            span_name = f"{cb_name}.{operation}"
         else:
             # Fallback similar but distinct from semconv span naming to avoid collision
-            span_name = f"chat {invocation.request_model}"
+            span_name = f"{operation} {invocation.request_model}"
         cm = self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, end_on_exit=False
         )

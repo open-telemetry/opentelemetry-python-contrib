@@ -130,6 +130,8 @@ class LLMInvocation(GenAI):
     chat_generations: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
+    # Operation type: chat, text_completion, embeddings, etc.
+    operation: str = "chat"
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
     input_tokens: Optional[AttributeValue] = None

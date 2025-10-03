@@ -1,0 +1,10 @@
+langgraph
+langchain_community
+langchain[openai]
+dotenv
+httpx
+fastmcp
+mcp-use
+flask
+flask-cors
+requests

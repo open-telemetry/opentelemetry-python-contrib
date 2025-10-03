@@ -139,12 +139,15 @@ class SpanEmitter:
         if span is None:
             return
         if isinstance(invocation, ToolCall):
-            op_value = "tool_call"
+            op_value = "execute_tool"
         elif isinstance(invocation, EmbeddingInvocation):
             enum_val = getattr(
-                GenAI.GenAiOperationNameValues, "EMBEDDING", None
+                GenAI.GenAiOperationNameValues, "EMBEDDINGS", None
             )
-            op_value = enum_val.value if enum_val else "embedding"
+            op_value = enum_val.value if enum_val else "embeddings"
+        elif isinstance(invocation, LLMInvocation):
+            # Use the operation field from LLMInvocation (defaults to "chat")
+            op_value = invocation.operation
         else:
             op_value = GenAI.GenAiOperationNameValues.CHAT.value
         span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, op_value)
@@ -242,7 +245,10 @@ class SpanEmitter:
             invocation.context_token = cm  # type: ignore[assignment]
             self._apply_start_attrs(invocation)
         else:
-            span_name = f"chat {invocation.request_model}"
+            # Use operation field for span name (defaults to "chat")
+            operation = getattr(invocation, "operation", "chat")
+            model_name = invocation.request_model
+            span_name = f"{operation} {model_name}"
             cm = self._tracer.start_as_current_span(
                 span_name, kind=SpanKind.CLIENT, end_on_exit=False
             )
@@ -386,10 +392,12 @@ class SpanEmitter:
         agent.context_token = cm
 
         # Required attributes per semantic conventions
-        span.set_attribute(
-            GenAI.GEN_AI_OPERATION_NAME,
-            GenAI.GenAiOperationNameValues.CHAT.value,
-        )
+        # Set operation name based on agent operation (create or invoke)
+        if agent.operation == "create":
+            operation_name = "create_agent"
+        else:
+            operation_name = "invoke_agent"
+        span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, operation_name)
         span.set_attribute(GEN_AI_AGENT_NAME, agent.name)
         span.set_attribute(GEN_AI_AGENT_ID, str(agent.run_id))
 
@@ -433,9 +441,7 @@ class SpanEmitter:
                 pass
         span.end()
 
-    def _error_agent(
-        self, error: Error, agent: AgentInvocation
-    ) -> None:
+    def _error_agent(self, error: Error, agent: AgentInvocation) -> None:
         """Fail an agent span with error status."""
         span = agent.span
         if span is None:
