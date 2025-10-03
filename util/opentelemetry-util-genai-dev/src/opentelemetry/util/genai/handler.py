@@ -62,6 +62,7 @@ from opentelemetry.util.genai.emitters import (
     CompositeEvaluationEmitter,
     CompositeGenerator,
     ContentEventsEmitter,
+    EvaluationEmitter,
     EvaluationEventsEmitter,
     EvaluationMetricsEmitter,
     EvaluationSpansEmitter,
@@ -78,6 +79,7 @@ from opentelemetry.util.genai.types import (
     EmbeddingInvocation,
     Error,
     EvaluationResult,
+    GenAI,
     LLMInvocation,
     Task,
     ToolCall,
@@ -148,7 +150,7 @@ class TelemetryHandler:
                 capture_span_traceloop = True
         capture_events = settings.capture_content_events
 
-        evaluation_emitters = [
+        evaluation_emitters: list[EvaluationEmitter] = [
             EvaluationMetricsEmitter(self._evaluation_histogram),
             EvaluationEventsEmitter(self._event_logger),
         ]
@@ -409,7 +411,7 @@ class TelemetryHandler:
         return workflow
 
     def _handle_evaluation_results(
-        self, invocation: LLMInvocation, results: list[EvaluationResult]
+        self, invocation: GenAI, results: list[EvaluationResult]
     ) -> None:
         if not results:
             return
@@ -457,6 +459,17 @@ class TelemetryHandler:
         """Finalize an agent operation successfully and end its span."""
         agent.end_time = time.time()
         self._generator.finish(agent)
+        # Automatic async evaluation if configured for agents
+        try:
+            manager = getattr(self, "_evaluation_manager", None)
+            if manager and manager.should_evaluate(agent):  # type: ignore[attr-defined]
+                scheduled = manager.offer(agent)  # type: ignore[attr-defined]
+                if scheduled:
+                    agent.attributes.setdefault(
+                        "gen_ai.evaluation.executed", True
+                    )
+        except Exception:
+            pass
         if (
             hasattr(self, "_meter_provider")
             and self._meter_provider is not None
@@ -530,6 +543,15 @@ class TelemetryHandler:
         pluggable emission similar to emitters.
         """
         return self._evaluation_manager.evaluate(invocation, evaluators)  # type: ignore[arg-type]
+
+    def wait_for_evaluations(self, timeout: Optional[float] = None) -> None:
+        """Wait for all pending evaluations to complete, up to the specified timeout.
+
+        This is primarily intended for use in test scenarios to ensure that
+        all asynchronous evaluation tasks have finished before assertions are made.
+        """
+        # TODO: implment
+        self._evaluation_manager.wait_for_all(timeout)  # type: ignore[attr-defined]
 
     # Generic lifecycle API ------------------------------------------------
     def start(self, obj: Any) -> Any:
