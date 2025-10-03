@@ -1,5 +1,6 @@
 import unittest.mock
 import uuid
+import time
 
 import pytest
 
@@ -98,3 +99,28 @@ class TestSpanManager:
         child_mock_span.end.assert_called_once()
         assert run_id not in handler.spans
         assert child_run_id not in handler.spans
+
+    @unittest.mock.patch(
+            "opentelemetry.instrumentation.langchain.span_manager.TTLCache",
+        )
+    def test_span_ttl_expiration(self, mock_ttlc_class, tracer):
+        # Arrange
+        from cachetools import TTLCache
+
+        mock_ttlc_class.side_effect = lambda maxsize, ttl: TTLCache(
+            maxsize=1024, ttl=0.01
+        )
+        handler = _SpanManager(tracer=tracer)
+        run_id = uuid.uuid4()
+
+        # Act
+        handler._create_span(run_id, None, "test_span")
+
+        # Assert: Span is present immediately after creation
+        assert run_id in handler.spans
+
+        # Wait
+        time.sleep(0.02)
+
+        # Assert: Span is gone after TTL expiration
+        assert run_id not in handler.spans

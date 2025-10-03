@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from uuid import UUID
 
+from cachetools import TTLCache
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -42,8 +43,8 @@ class _SpanManager:
         self._tracer = tracer
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
-        # TODO: Use weak references or a TTL cache to avoid memory leaks in long-running processes. See #3735
-        self.spans: Dict[UUID, _SpanState] = {}
+        # Using a TTL cache to avoid memory leaks in long-running processes where end_span might not be called.
+        self.spans: TTLCache[UUID, _SpanState] = TTLCache(maxsize=1024, ttl=3600)
 
     def _create_span(
         self,
@@ -92,12 +93,16 @@ class _SpanManager:
         return span
 
     def end_span(self, run_id: UUID) -> None:
-        state = self.spans[run_id]
+        state = self.spans.get(run_id)
+        if not state:
+            return
+
         for child_id in state.children:
             child_state = self.spans.get(child_id)
             if child_state:
                 child_state.span.end()
                 del self.spans[child_id]
+
         state.span.end()
         del self.spans[run_id]
 
