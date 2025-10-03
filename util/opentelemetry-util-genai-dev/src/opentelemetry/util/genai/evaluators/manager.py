@@ -2,20 +2,12 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, Iterable, Sequence
-
-from opentelemetry import _events as _otel_events
-from opentelemetry.trace import Tracer
+from collections.abc import Callable
+from typing import Any, Iterable, Sequence
 
 from ..config import Settings
 from ..types import Error, EvaluationResult, GenAI, LLMInvocation
 from .base import Evaluator
-from .evaluation_emitters import (
-    CompositeEvaluationEmitter,
-    EvaluationEventsEmitter,
-    EvaluationMetricsEmitter,
-    EvaluationSpansEmitter,
-)
 from .registry import get_evaluator
 
 _logger = logging.getLogger(__name__)
@@ -27,29 +19,16 @@ class EvaluationManager:
     def __init__(
         self,
         settings: Settings,
-        tracer: Tracer,
-        event_logger: _otel_events.EventLogger,  # type: ignore[attr-defined]
-        histogram,  # opentelemetry.metrics.Histogram
+        submit_results: Callable[[LLMInvocation, list[EvaluationResult]], None]
+        | None = None,
     ) -> None:
         self._settings = settings
-        self._tracer = tracer
-        self._event_logger = event_logger
-        emitters = [
-            EvaluationMetricsEmitter(histogram),
-            EvaluationEventsEmitter(event_logger),
-        ]
-        if settings.evaluation_span_mode in ("aggregated", "per_metric"):
-            emitters.append(
-                EvaluationSpansEmitter(
-                    tracer=tracer, span_mode=settings.evaluation_span_mode
-                )
-            )
-        self._emitter = CompositeEvaluationEmitter(emitters)  # type: ignore[arg-type]
+        self._submit_results = submit_results
         (
             self._configured_names,
             self._configured_metrics,
         ) = self._normalise_configuration(settings.evaluation_evaluators)
-        self._instances: Dict[str, Evaluator] = {}
+        self._instances: dict[str, Evaluator] = {}
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -77,9 +56,7 @@ class EvaluationManager:
                 prefix, _, suffix = candidate.partition(":")
                 name = prefix.strip()
                 metrics_part = [
-                    item.strip()
-                    for item in suffix.split(",")
-                    if item.strip()
+                    item.strip() for item in suffix.split(",") if item.strip()
                 ]
             if not name:
                 continue
@@ -176,13 +153,16 @@ class EvaluationManager:
                 )
                 continue
             results.extend(self._normalise_results(name, raw_results))
-        if results:
-            self._emitter.emit(results, invocation)
+        if results and self._submit_results is not None:
+            try:
+                self._submit_results(invocation, results)
+            except Exception:  # pragma: no cover - defensive
+                pass
         return results
 
     @staticmethod
     def _normalise_results(
-        evaluator_name: str, raw_results
+        evaluator_name: str, raw_results: Any
     ) -> list[EvaluationResult]:
         if raw_results is None:
             return []
@@ -196,14 +176,6 @@ class EvaluationManager:
                 res.metric_name = evaluator_name
             normalised.append(res)
         return normalised
-
-    # Compatibility shim for legacy tests expecting background worker cleanup.
-    def shutdown(self) -> None:  # pragma: no cover - legacy no-op
-        """Retained for backward compatibility; no background worker to stop."""
-        return None
-
-    # Backwards compatibility alias
-    evaluate_llm = evaluate
 
 
 __all__ = ["EvaluationManager"]

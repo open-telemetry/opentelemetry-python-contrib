@@ -58,8 +58,12 @@ from opentelemetry import trace as _trace_mod
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.genai.emitters import (
+    CompositeEvaluationEmitter,
     CompositeGenerator,
     ContentEventsEmitter,
+    EvaluationEventsEmitter,
+    EvaluationMetricsEmitter,
+    EvaluationSpansEmitter,
     MetricsEmitter,
     SpanEmitter,
 )
@@ -129,6 +133,21 @@ class TelemetryHandler:
         self._generator_kind = settings.generator_kind
         capture_span = settings.capture_content_span
         capture_events = settings.capture_content_events
+
+        evaluation_emitters = [
+            EvaluationMetricsEmitter(self._evaluation_histogram),
+            EvaluationEventsEmitter(self._event_logger),
+        ]
+        if settings.evaluation_span_mode in ("aggregated", "per_metric"):
+            evaluation_emitters.append(
+                EvaluationSpansEmitter(
+                    tracer=self._tracer,
+                    span_mode=settings.evaluation_span_mode,
+                )
+            )
+        self._evaluation_emitter = CompositeEvaluationEmitter(
+            evaluation_emitters
+        )
 
         # Compose emitters based on parsed settings
         plugin_bundles: list[PluginEmitterBundle] = []
@@ -210,9 +229,7 @@ class TelemetryHandler:
         # TODO should use Logs API
         self._evaluation_manager = EvaluationManager(
             settings=settings,
-            tracer=self._tracer,
-            event_logger=self._event_logger,
-            histogram=self._evaluation_histogram,
+            submit_results=self._handle_evaluation_results,
         )
 
     def _refresh_capture_content(
@@ -350,6 +367,16 @@ class TelemetryHandler:
         self._refresh_capture_content()
         self._generator.start(workflow)
         return workflow
+
+    def _handle_evaluation_results(
+        self, invocation: LLMInvocation, results: list[EvaluationResult]
+    ) -> None:
+        if not results:
+            return
+        try:
+            self._evaluation_emitter.emit(results, invocation)
+        except Exception:  # pragma: no cover - defensive
+            pass
 
     def stop_workflow(self, workflow: Workflow) -> Workflow:
         """Finalize a workflow successfully and end its span."""
