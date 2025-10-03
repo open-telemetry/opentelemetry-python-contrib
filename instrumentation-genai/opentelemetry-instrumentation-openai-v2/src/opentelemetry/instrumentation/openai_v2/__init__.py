@@ -47,7 +47,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
-from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
+from opentelemetry.instrumentation.genai_utils import is_content_enabled
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
