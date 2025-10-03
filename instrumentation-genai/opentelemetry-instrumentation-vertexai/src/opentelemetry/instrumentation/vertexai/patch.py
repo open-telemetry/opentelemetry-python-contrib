@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import json
 from contextlib import contextmanager
 from dataclasses import asdict
 from typing import (
@@ -54,7 +53,7 @@ from opentelemetry.util.genai.types import (
     InputMessage,
     OutputMessage,
 )
-from opentelemetry.util.genai.utils import Base64JsonEncoder
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.services.prediction_service import client
@@ -224,11 +223,7 @@ class MethodWrappers:
                     ):
                         span.set_attributes(
                             {
-                                k: json.dumps(
-                                    v,
-                                    cls=Base64JsonEncoder,
-                                    separators=(",", ":"),
-                                )
+                                k: gen_ai_json_dumps(v)
                                 for k, v in content_attributes.items()
                             }
                         )
