@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 
 import requests
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureOpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
 # Add BaseMessage for typed state
 from langchain_core.messages import BaseMessage
@@ -174,6 +174,76 @@ def llm_invocation_demo(llm: ChatOpenAI):
     print(f"LLM output: {getattr(result, 'content', result)}")
     _flush_evaluations()  # flush after second invocation
 
+def embedding_invocation_demo():
+    """Demonstrate OpenAI embeddings with telemetry.
+    
+    Shows:
+    - Single query embedding (embed_query)
+    - Batch document embeddings (embed_documents)
+    - Telemetry capture for both operations
+    """
+    print("\n--- Embedding Invocation Demo ---")
+
+    endpoint = "https://etser-mf7gfr7m-eastus2.cognitiveservices.azure.com/"
+    deployment = "text-embedding-3-large"
+
+    # Initialize embeddings model
+    embeddings = AzureOpenAIEmbeddings(  # or "2023-05-15" if that's your API version
+        model=deployment,
+        azure_endpoint=endpoint,
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        openai_api_version="2024-12-01-preview",
+    )
+    
+    # Demo 1: Single query embedding
+    print("\n1. Single Query Embedding:")
+    query = "What is the capital of France?"
+    print(f"   Query: {query}")
+    
+    try:
+        query_vector = embeddings.embed_query(query)
+        print(f"   ✓ Embedded query into {len(query_vector)} dimensions")
+        print(f"   First 5 values: {query_vector[:5]}")
+    except Exception as e:
+        print(f"   ✗ Error: {e}")
+    
+    # Demo 2: Batch document embeddings
+    print("\n2. Batch Document Embeddings:")
+    documents = [
+        "Paris is the capital of France.",
+        "Berlin is the capital of Germany.",
+        "Rome is the capital of Italy.",
+        "Madrid is the capital of Spain.",
+    ]
+    print(f"   Documents: {len(documents)} texts")
+    
+    try:
+        doc_vectors = embeddings.embed_documents(documents)
+        print(f"   ✓ Embedded {len(doc_vectors)} documents")
+        print(f"   Dimension count: {len(doc_vectors[0])}")
+        print(f"   First document vector (first 5): {doc_vectors[0][:5]}")
+    except Exception as e:
+        print(f"   ✗ Error: {e}")
+    
+    # Demo 3: Mixed content embeddings
+    print("\n3. Mixed Content Embeddings:")
+    mixed_texts = [
+        "OpenTelemetry provides observability",
+        "LangChain simplifies LLM applications",
+        "Vector databases store embeddings",
+    ]
+    
+    try:
+        mixed_vectors = embeddings.embed_documents(mixed_texts)
+        print(f"   ✓ Embedded {len(mixed_vectors)} mixed content texts")
+        for i, text in enumerate(mixed_texts):
+            print(f"   - Text {i+1}: {text[:40]}... → {len(mixed_vectors[i])}D vector")
+    except Exception as e:
+        print(f"   ✗ Error: {e}")
+    
+    print("\n--- End Embedding Demo ---\n")
+    _flush_evaluations()
+
 def agent_demo(llm: ChatOpenAI):
     """Demonstrate a LangGraph + LangChain agent with:
     - A tool (get_capital)
@@ -316,6 +386,9 @@ def main():
 
     # LLM invocation demo (simple)
     # llm_invocation_demo(llm)
+
+    # Embedding invocation demo
+    embedding_invocation_demo()
 
     # Run agent demo (tool + subagent). Safe if LangGraph unavailable.
     agent_demo(llm)

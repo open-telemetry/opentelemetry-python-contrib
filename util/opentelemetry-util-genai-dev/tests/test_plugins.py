@@ -93,4 +93,7 @@ def test_handler_uses_plugin_emitters(monkeypatch: pytest.MonkeyPatch) -> None:
     generators = handler._generator._generators  # type: ignore[attr-defined]
     assert len(generators) == 1
     assert isinstance(generators[0], _SentinelEmitter)
-    handler._evaluation_manager.shutdown()
+    if hasattr(handler._evaluation_manager, "shutdown"):
+        handler._evaluation_manager.shutdown()
+    if hasattr(get_telemetry_handler, "_default_handler"):
+        delattr(get_telemetry_handler, "_default_handler")

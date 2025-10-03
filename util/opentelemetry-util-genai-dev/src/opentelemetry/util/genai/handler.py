@@ -48,6 +48,7 @@ Usage:
     # handler.fail_llm(invocation, Error(type="...", message="..."))
 """
 
+import os
 import time
 from typing import Any, Optional
 
@@ -58,8 +59,12 @@ from opentelemetry import trace as _trace_mod
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.genai.emitters import (
+    CompositeEvaluationEmitter,
     CompositeGenerator,
     ContentEventsEmitter,
+    EvaluationEventsEmitter,
+    EvaluationMetricsEmitter,
+    EvaluationSpansEmitter,
     MetricsEmitter,
     SpanEmitter,
 )
@@ -82,6 +87,9 @@ from opentelemetry.util.genai.utils import get_content_capturing_mode
 from opentelemetry.util.genai.version import __version__
 
 from .config import parse_env
+from .environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from .evaluators.manager import EvaluationManager
 
 
@@ -128,7 +136,32 @@ class TelemetryHandler:
         self._settings = settings
         self._generator_kind = settings.generator_kind
         capture_span = settings.capture_content_span
+        capture_span_traceloop = capture_span
+        if not capture_span_traceloop:
+            capture_flag = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).strip()
+            if capture_flag.lower() in ("true", "1", "yes") and (
+                settings.only_traceloop_compat
+                or "traceloop_compat" in settings.extra_emitters
+            ):
+                capture_span_traceloop = True
         capture_events = settings.capture_content_events
+
+        evaluation_emitters = [
+            EvaluationMetricsEmitter(self._evaluation_histogram),
+            EvaluationEventsEmitter(self._event_logger),
+        ]
+        if settings.evaluation_span_mode in ("aggregated", "per_metric"):
+            evaluation_emitters.append(
+                EvaluationSpansEmitter(
+                    tracer=self._tracer,
+                    span_mode=settings.evaluation_span_mode,
+                )
+            )
+        self._evaluation_emitter = CompositeEvaluationEmitter(
+            evaluation_emitters
+        )
 
         # Compose emitters based on parsed settings
         plugin_bundles: list[PluginEmitterBundle] = []
@@ -156,7 +189,7 @@ class TelemetryHandler:
             )
 
             traceloop_emitter = TraceloopCompatEmitter(
-                tracer=self._tracer, capture_content=capture_span
+                tracer=self._tracer, capture_content=capture_span_traceloop
             )
             emitters.append(traceloop_emitter)
         else:
@@ -195,7 +228,8 @@ class TelemetryHandler:
                     )
 
                     traceloop_emitter = TraceloopCompatEmitter(
-                        tracer=self._tracer, capture_content=capture_span
+                        tracer=self._tracer,
+                        capture_content=capture_span_traceloop,
                     )
                     emitters.append(traceloop_emitter)
                 except Exception:  # pragma: no cover
@@ -210,9 +244,7 @@ class TelemetryHandler:
         # TODO should use Logs API
         self._evaluation_manager = EvaluationManager(
             settings=settings,
-            tracer=self._tracer,
-            event_logger=self._event_logger,
-            histogram=self._evaluation_histogram,
+            submit_results=self._handle_evaluation_results,
         )
 
     def _refresh_capture_content(
@@ -227,6 +259,9 @@ class TelemetryHandler:
                 ContentCapturingMode.SPAN_AND_EVENT,
             )
             # Respect the content capture mode for all generator kinds
+            traceloop_requested = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).strip().lower() in ("true", "1", "yes")
             new_value_events = mode in (
                 ContentCapturingMode.EVENT_ONLY,
                 ContentCapturingMode.SPAN_AND_EVENT,
@@ -242,7 +277,10 @@ class TelemetryHandler:
                     em, "set_capture_content"
                 ):
                     try:
-                        em.set_capture_content(new_value_span)  # type: ignore[attr-defined]
+                        desired = new_value_span
+                        if not new_value_span and role == "traceloop_compat":
+                            desired = traceloop_requested
+                        em.set_capture_content(desired)  # type: ignore[attr-defined]
                     except Exception:
                         pass
         except Exception:
@@ -305,6 +343,8 @@ class TelemetryHandler:
         self, invocation: EmbeddingInvocation
     ) -> EmbeddingInvocation:
         """Start an embedding invocation and create a pending span entry."""
+        self._refresh_capture_content()
+        invocation.start_time = time.time()
         self._generator.start(invocation)
         return invocation
 
@@ -314,6 +354,15 @@ class TelemetryHandler:
         """Finalize an embedding invocation successfully and end its span."""
         invocation.end_time = time.time()
         self._generator.finish(invocation)
+        # Force flush metrics if a custom provider with force_flush is present
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         return invocation
 
     def fail_embedding(
@@ -322,6 +371,14 @@ class TelemetryHandler:
         """Fail an embedding invocation and end its span with error status."""
         invocation.end_time = time.time()
         self._generator.error(error, invocation)
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         return invocation
 
     # ToolCall lifecycle --------------------------------------------------
@@ -348,6 +405,16 @@ class TelemetryHandler:
         self._refresh_capture_content()
         self._generator.start(workflow)
         return workflow
+
+    def _handle_evaluation_results(
+        self, invocation: LLMInvocation, results: list[EvaluationResult]
+    ) -> None:
+        if not results:
+            return
+        try:
+            self._evaluation_emitter.emit(results, invocation)
+        except Exception:  # pragma: no cover - defensive
+            pass
 
     def stop_workflow(self, workflow: Workflow) -> Workflow:
         """Finalize a workflow successfully and end its span."""
@@ -522,12 +589,14 @@ def get_telemetry_handler(**kwargs: Any) -> TelemetryHandler:
         get_telemetry_handler, "_default_handler", None
     )
     current_provider = _trace_mod.get_tracer_provider()
+    requested_provider = kwargs.get("tracer_provider")
+    target_provider = requested_provider or current_provider
     recreate = False
     if handler is not None:
         # Recreate if provider changed or handler lacks provider reference (older instance)
         if not hasattr(handler, "_tracer_provider_ref"):
             recreate = True
-        elif handler._tracer_provider_ref is not current_provider:  # type: ignore[attr-defined]
+        elif handler._tracer_provider_ref is not target_provider:  # type: ignore[attr-defined]
             recreate = True
     if handler is None or recreate:
         handler = TelemetryHandler(**kwargs)

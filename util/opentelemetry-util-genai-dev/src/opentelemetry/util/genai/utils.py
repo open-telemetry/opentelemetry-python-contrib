@@ -38,11 +38,27 @@ def is_experimental_mode() -> bool:
 
     # Fallback to the official check
     # TODO stability mode is being set to default even after setting OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
+    signal_type = getattr(
+        _OpenTelemetryStabilitySignalType, "GEN_AI", None
+    )
+    if signal_type is None:
+        logger.debug(
+            "GEN_AI stability signal missing in OpenTelemetry; assuming non-experimental mode"
+        )
+        return False
+    experimental_mode = getattr(
+        _StabilityMode, "GEN_AI_LATEST_EXPERIMENTAL", None
+    )
+    if experimental_mode is None:
+        logger.debug(
+            "GEN_AI_LATEST_EXPERIMENTAL stability mode missing; assuming non-experimental mode"
+        )
+        return False
     return (
         _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(  # noqa: SLF001
-            _OpenTelemetryStabilitySignalType.GEN_AI,
+            signal_type,
         )
-        == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        == experimental_mode
     )
 
 

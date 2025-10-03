@@ -49,24 +49,31 @@ def _new_str_any_dict() -> dict[str, Any]:
     return {}
 
 
+@dataclass(kw_only=True)
+class GenAI:
+    """Base type for all GenAI telemetry entities."""
+
+    context_token: Optional[ContextToken] = None
+    span: Optional[Span] = None
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    provider: Optional[str] = None
+    framework: Optional[str] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    run_id: UUID = field(default_factory=uuid4)
+    parent_run_id: Optional[UUID] = None
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
+
+
 @dataclass()
-class ToolCall:
+class ToolCall(GenAI):
     """Represents a single tool call invocation (Phase 4)."""
 
     arguments: Any
     name: str
     id: Optional[str]
     type: Literal["tool_call"] = "tool_call"
-    # Optional fields for telemetry
-    provider: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    # Agent context
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
 
 
 @dataclass()
@@ -87,7 +94,7 @@ class Text:
     type: Literal["text"] = "text"
 
 
-MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
+MessagePart = Union[Text, "ToolCall", ToolCallResponse, Any]
 
 
 @dataclass()
@@ -101,23 +108,6 @@ class OutputMessage:
     role: str
     parts: list[MessagePart]
     finish_reason: Union[str, FinishReason]
-
-
-@dataclass(kw_only=True)
-class GenAI:
-    """Base type for all GenAI telemetry entities."""
-
-    context_token: Optional[ContextToken] = None
-    span: Optional[Span] = None
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    provider: Optional[str] = None
-    framework: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    run_id: UUID = field(default_factory=uuid4)
-    parent_run_id: Optional[UUID] = None
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
 
 
 @dataclass
@@ -176,9 +166,24 @@ class EvaluationResult:
 class EmbeddingInvocation(GenAI):
     """Represents a single embedding model invocation."""
 
+    operation_name: str
     request_model: str
     input_texts: list[str] = field(default_factory=list)
-    vector_dimensions: Optional[int] = None
+    dimension_count: Optional[int] = None
+    provider: Optional[str] = None
+    server_port: Optional[int] = None
+    server_address: Optional[str] = None
+    input_tokens: Optional[int] = None
+    encoding_formats: list[str] = field(default_factory=list)
+    error_type: Optional[str] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    start_time: float = field(default_factory=time.time)
+    end_time: Optional[float] = None
+    span: Optional[Span] = None
+    context_token: Optional[ContextToken] = None
+    # Agent context (for agentic applications)
+    agent_name: Optional[str] = None
+    agent_id: Optional[str] = None
 
 
 @dataclass

@@ -17,11 +17,17 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.types import AttributeValue
 
 from ..attributes import (
+    GEN_AI_EMBEDDINGS_DIMENSION_COUNT,
+    GEN_AI_EMBEDDINGS_INPUT_TEXTS,
     GEN_AI_FRAMEWORK,
     GEN_AI_PROVIDER_NAME,
+    GEN_AI_REQUEST_ENCODING_FORMATS,
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from ..types import (
     AgentInvocation,
+    EmbeddingInvocation,
     LLMInvocation,
     Task,
     Text,
@@ -430,7 +436,7 @@ def _record_token_metrics(
 
 def _record_duration(
     duration_histogram: Histogram,
-    invocation: LLMInvocation,
+    invocation: LLMInvocation | EmbeddingInvocation | ToolCall,
     metric_attributes: Dict[str, AttributeValue],
 ) -> None:
     if invocation.end_time is not None:
@@ -539,4 +545,62 @@ def _task_to_log_record(
         body=body or None,
         attributes=attributes,
         event_name="gen_ai.client.task.operation.details",
+    )
+
+
+def _embedding_to_log_record(
+    embedding: EmbeddingInvocation, capture_content: bool
+) -> Optional[SDKLogRecord]:
+    """Create a log record for an embedding event."""
+    # Attributes contain metadata (not content)
+    attributes: Dict[str, Any] = {
+        "event.name": "gen_ai.client.embedding.operation.details",
+    }
+
+    # Core attributes
+    if embedding.operation_name:
+        attributes["gen_ai.operation.name"] = embedding.operation_name
+    if embedding.provider:
+        attributes[GEN_AI_PROVIDER_NAME] = embedding.provider
+    if embedding.request_model:
+        attributes["gen_ai.request.model"] = embedding.request_model
+
+    # Optional attributes
+    if embedding.dimension_count:
+        attributes[GEN_AI_EMBEDDINGS_DIMENSION_COUNT] = (
+            embedding.dimension_count
+        )
+    if embedding.input_tokens is not None:
+        attributes["gen_ai.usage.input_tokens"] = embedding.input_tokens
+    if embedding.server_address:
+        attributes[SERVER_ADDRESS] = embedding.server_address
+    if embedding.server_port:
+        attributes[SERVER_PORT] = embedding.server_port
+    if embedding.encoding_formats:
+        attributes[GEN_AI_REQUEST_ENCODING_FORMATS] = (
+            embedding.encoding_formats
+        )
+    if embedding.error_type:
+        attributes["error.type"] = embedding.error_type
+
+    # Add agent context if available
+    if embedding.agent_name:
+        attributes["gen_ai.agent.name"] = embedding.agent_name
+    if embedding.agent_id:
+        attributes["gen_ai.agent.id"] = embedding.agent_id
+
+    # Body contains content (input texts)
+    body: Dict[str, Any] = {}
+
+    if embedding.input_texts:
+        if capture_content:
+            body[GEN_AI_EMBEDDINGS_INPUT_TEXTS] = embedding.input_texts
+        else:
+            # Emit structure with empty content when capture is disabled
+            body[GEN_AI_EMBEDDINGS_INPUT_TEXTS] = []
+
+    return SDKLogRecord(
+        body=body or None,
+        attributes=attributes,
+        event_name="gen_ai.client.embedding.operation.details",
     )

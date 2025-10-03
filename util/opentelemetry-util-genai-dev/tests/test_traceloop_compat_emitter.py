@@ -102,9 +102,9 @@ def test_traceloop_compat_combined_with_span():
     compat = next(s for s in spans if s.name == "MyChain.chat")
     semconv = next(s for s in spans if s.name.startswith("chat "))
     assert compat.attributes.get("traceloop.span.kind") == "llm"
-    # Ensure traceloop.* attributes are not present on semconv span
-    assert all(
-        not k.startswith("traceloop.") for k in semconv.attributes.keys()
+    # Ensure traceloop attributes propagate to semconv span as well
+    assert any(
+        k.startswith("traceloop.") for k in semconv.attributes.keys()
     ), semconv.attributes
 
 

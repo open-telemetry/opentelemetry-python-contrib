@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Langchain instrumentation supporting `ChatOpenAI`, it can be enabled by
+Langchain instrumentation supporting `ChatOpenAI` and embeddings, it can be enabled by
 using ``LangChainInstrumentor``.
 
 .. _langchain: https://pypi.org/project/langchain/
@@ -25,17 +25,21 @@ Usage
 
     from opentelemetry.instrumentation.langchain import LangChainInstrumentor
     from langchain_core.messages import HumanMessage, SystemMessage
-    from langchain_openai import ChatOpenAI
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
     LangChainInstrumentor().instrument()
 
+    # LLM usage
     llm = ChatOpenAI(model="gpt-3.5-turbo")
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
-
     result = llm.invoke(messages)
+
+    # Embeddings usage
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    vectors = embeddings.embed_documents(["Hello, world!"])
 
 API
 ---
@@ -56,6 +60,9 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
+    EmbeddingInvocation as UtilEmbeddingInvocation,
+)
+from opentelemetry.util.genai.types import (
     Error as UtilError,
 )
 from opentelemetry.util.genai.types import (
@@ -75,15 +82,34 @@ from opentelemetry.instrumentation.langchain.callback_handler import (
 )
 # from opentelemetry.instrumentation.langchain.version import __version__
 
+# Embedding patches configuration
+EMBEDDING_PATCHES = [
+    {
+        "module": "langchain_openai.embeddings",
+        "class_name": "OpenAIEmbeddings",
+        "methods": ["embed_query", "embed_documents"],
+    },
+    {
+        "module": "langchain_openai.embeddings",
+        "class_name": "AzureOpenAIEmbeddings",
+        "methods": ["embed_query", "embed_documents"],
+    },
+    {
+        "module": "langchain_huggingface.embeddings",
+        "class_name": "HuggingFaceEmbeddings",
+        "methods": ["embed_query"],
+    },
+]
+
 
 class LangChainInstrumentor(BaseInstrumentor):
     """
     OpenTelemetry instrumentor for LangChain.
 
-    This adds a custom callback handler to the LangChain callback manager
-    to capture chain, LLM, and tool events. It also wraps the internal
-    OpenAI invocation points (BaseChatOpenAI) to inject W3C trace headers
-    for downstream calls to OpenAI (or other providers).
+    This wraps LangChain LLM and embedding invocation points to capture
+    telemetry data including spans, metrics, and events. Supports:
+    - Chat models (BaseChatOpenAI)
+    - Embeddings (OpenAIEmbeddings, AzureOpenAIEmbeddings, HuggingFaceEmbeddings)
     """
 
     def __init__(
@@ -350,6 +376,96 @@ class LangChainInstrumentor(BaseInstrumentor):
             except Exception:  # pragma: no cover
                 pass
 
+        def _start_embedding(instance, texts):
+            """Start an embedding invocation."""
+            # Detect model name
+            request_model = (
+                getattr(instance, "model", None)
+                or getattr(instance, "model_name", None)
+                or getattr(instance, "_model", None)
+                or "unknown-model"
+            )
+
+            # Detect provider from class name
+            provider = None
+            class_name = instance.__class__.__name__
+            if "OpenAI" in class_name:
+                provider = "openai"
+            elif "Azure" in class_name:
+                provider = "azure"
+            elif "Bedrock" in class_name:
+                provider = "aws"
+            elif "Vertex" in class_name or "Google" in class_name:
+                provider = "google"
+            elif "Cohere" in class_name:
+                provider = "cohere"
+            elif "HuggingFace" in class_name:
+                provider = "huggingface"
+            elif "Ollama" in class_name:
+                provider = "ollama"
+
+            # Create embedding invocation
+            embedding = UtilEmbeddingInvocation(
+                operation_name="embedding",
+                request_model=request_model,
+                input_texts=texts if isinstance(texts, list) else [texts],
+                provider=provider,
+                attributes={"framework": "langchain"},
+            )
+
+            self._telemetry_handler.start_embedding(embedding)
+            return embedding
+
+        def _finish_embedding(embedding, result):
+            """Finish an embedding invocation."""
+            # Try to extract dimension count from result
+            try:
+                if isinstance(result, list) and result:
+                    # result is list of embeddings (vectors)
+                    if isinstance(result[0], list):
+                        embedding.dimension_count = len(result[0])
+                    elif isinstance(result[0], (int, float)):
+                        # Single embedding vector
+                        embedding.dimension_count = len(result)
+                    # Estimate tokens (rough heuristic: ~1 token per 4 chars)
+                    total_chars = sum(len(text) for text in embedding.input_texts)
+                    embedding.input_tokens = max(1, total_chars // 4)
+            except Exception:
+                pass
+
+            self._telemetry_handler.stop_embedding(embedding)
+
+        def _embed_documents_wrapper(wrapped, instance, args, kwargs):
+            """Wrapper for embed_documents method."""
+            texts = args[0] if args else kwargs.get("texts", [])
+            embedding = _start_embedding(instance, texts)
+            try:
+                result = wrapped(*args, **kwargs)
+                _finish_embedding(embedding, result)
+                return result
+            except Exception as e:
+                self._telemetry_handler.fail_embedding(
+                    embedding, UtilError(message=str(e), type=type(e))
+                )
+                raise
+
+        def _embed_query_wrapper(wrapped, instance, args, kwargs):
+            """Wrapper for embed_query method."""
+            text = args[0] if args else kwargs.get("text", "")
+            embedding = _start_embedding(instance, [text])
+            try:
+                result = wrapped(*args, **kwargs)
+                _finish_embedding(
+                    embedding,
+                    [result] if not isinstance(result, list) else result,
+                )
+                return result
+            except Exception as e:
+                self._telemetry_handler.fail_embedding(
+                    embedding, UtilError(message=str(e), type=type(e))
+                )
+                raise
+
         def _generate_wrapper(wrapped, instance, args, kwargs):
             messages = args[0] if args else kwargs.get("messages")
             invocation_params = kwargs.get("invocation_params") or {}
@@ -396,12 +512,47 @@ class LangChainInstrumentor(BaseInstrumentor):
         except Exception:  # pragma: no cover
             pass
 
+        # Wrap embedding methods
+        for patch in EMBEDDING_PATCHES:
+            module = patch["module"]
+            class_name = patch["class_name"]
+            methods = patch["methods"]
+
+            for method in methods:
+                try:
+                    if method == "embed_documents":
+                        wrapper = _embed_documents_wrapper
+                    elif method == "embed_query":
+                        wrapper = _embed_query_wrapper
+                    else:
+                        continue
+
+                    wrap_function_wrapper(
+                        module=module,
+                        name=f"{class_name}.{method}",
+                        wrapper=wrapper,
+                    )
+                except Exception:  # pragma: no cover
+                    pass
+
     def _uninstrument(self, **kwargs):
         # Unwrap generation methods
         unwrap("langchain_openai.chat_models.base", "BaseChatOpenAI._generate")
         unwrap(
             "langchain_openai.chat_models.base", "BaseChatOpenAI._agenerate"
         )
+
+        # Unwrap embedding methods
+        for patch in EMBEDDING_PATCHES:
+            module = patch["module"]
+            class_name = patch["class_name"]
+            methods = patch["methods"]
+
+            for method in methods:
+                try:
+                    unwrap(module, f"{class_name}.{method}")
+                except Exception:  # pragma: no cover
+                    pass
 
 class _BaseCallbackManagerInitWrapper:
     """

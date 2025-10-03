@@ -95,6 +95,9 @@ class TraceloopCompatEmitter:
             if serialized is not None:
                 try:  # pragma: no cover
                     span.set_attribute("traceloop.entity.input", serialized)
+                    invocation.attributes["traceloop.entity.input"] = (
+                        serialized
+                    )
                 except Exception:  # pragma: no cover
                     pass
 
@@ -109,6 +112,9 @@ class TraceloopCompatEmitter:
             if serialized is not None:
                 try:  # pragma: no cover
                     span.set_attribute("traceloop.entity.output", serialized)
+                    invocation.attributes["traceloop.entity.output"] = (
+                        serialized
+                    )
                 except Exception:  # pragma: no cover
                     pass
         # Apply finish-time semconv attributes (response model/id, usage tokens, function defs)

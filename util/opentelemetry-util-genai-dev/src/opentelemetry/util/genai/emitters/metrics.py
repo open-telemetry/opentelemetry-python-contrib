@@ -9,7 +9,7 @@ from opentelemetry.semconv._incubating.attributes import (
 
 from ..attributes import GEN_AI_AGENT_ID, GEN_AI_AGENT_NAME
 from ..instruments import Instruments
-from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow
+from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow, EmbeddingInvocation
 from .utils import (
     _get_metric_attributes,
     _record_duration,
@@ -20,7 +20,7 @@ from .utils import (
 class MetricsEmitter:
     """Emits GenAI metrics (duration + token usage).
 
-    Ignores objects that are not LLMInvocation (e.g., EmbeddingInvocation for now).
+    Supports LLMInvocation, EmbeddingInvocation, ToolCall, Workflow, Agent, and Task.
     """
 
     role = "metric"
@@ -103,6 +103,25 @@ class MetricsEmitter:
                 self._duration_histogram, invocation, metric_attrs
             )
 
+        if isinstance(obj, EmbeddingInvocation):
+            invocation = obj
+            metric_attrs = _get_metric_attributes(
+                invocation.request_model,
+                None,
+                "embedding",
+                None,
+                None,
+            )
+            # Add agent context if available
+            if invocation.agent_name:
+                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+            if invocation.agent_id:
+                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+
+            _record_duration(
+                self._duration_histogram, invocation, metric_attrs
+            )
+
     def error(self, error: Error, obj: Any) -> None:
         # Handle new agentic types
         if isinstance(obj, Workflow):
@@ -156,12 +175,31 @@ class MetricsEmitter:
                 self._duration_histogram, invocation, metric_attrs
             )
 
+        if isinstance(obj, EmbeddingInvocation):
+            invocation = obj
+            metric_attrs = _get_metric_attributes(
+                invocation.request_model,
+                None,
+                "embedding",
+                None,
+                None,
+            )
+            # Add agent context if available
+            if invocation.agent_name:
+                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+            if invocation.agent_id:
+                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+
+            _record_duration(
+                self._duration_histogram, invocation, metric_attrs
+            )
+
     def handles(self, obj: Any) -> bool:
         from ..types import LLMInvocation, ToolCall
 
         return isinstance(
             obj,
-            (LLMInvocation, ToolCall, Workflow, AgentInvocation, Task),
+            (LLMInvocation, ToolCall, Workflow, AgentInvocation, Task, EmbeddingInvocation),
         )
 
     # Helper methods for new agentic types

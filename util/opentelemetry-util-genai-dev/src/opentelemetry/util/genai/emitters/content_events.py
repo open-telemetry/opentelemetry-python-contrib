@@ -4,12 +4,13 @@ from typing import Any, Optional
 
 from opentelemetry._logs import Logger, get_logger
 
-from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow
+from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow, EmbeddingInvocation
 from .utils import (
     _agent_to_log_record,
     _llm_invocation_to_log_record,
     _task_to_log_record,
     _workflow_to_log_record,
+    _embedding_to_log_record
 )
 
 
@@ -51,6 +52,9 @@ class ContentEventsEmitter:
         #     return
         # if isinstance(obj, Task):
         #     self._emit_task_event(obj)
+        #     return
+        # if isinstance(obj, EmbeddingInvocation):
+        #     self._emit_embedding_event(obj)
         #     return
 
         if isinstance(obj, LLMInvocation):
@@ -100,6 +104,15 @@ class ContentEventsEmitter:
         """Emit an event for a task."""
         try:
             record = _task_to_log_record(task, self._capture_content)
+            if record and self._logger:
+                self._logger.emit(record)
+        except Exception:
+            pass
+
+    def _emit_embedding_event(self, embedding: EmbeddingInvocation) -> None:
+        """Emit an event for an embedding operation."""
+        try:
+            record = _embedding_to_log_record(embedding, self._capture_content)
             if record and self._logger:
                 self._logger.emit(record)
         except Exception:
