@@ -35,8 +35,8 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.vertexai.utils import (
     GenerateContentParams,
-    convert_content_to_message,
-    convert_response_to_output_messages,
+    _map_finish_reason,
+    convert_content_to_message_parts,
     get_genai_request_attributes,
     get_genai_response_attributes,
     get_server_attributes,
@@ -51,7 +51,8 @@ from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
-    Text,
+    InputMessage,
+    OutputMessage,
 )
 from opentelemetry.util.genai.utils import Base64JsonEncoder
 
@@ -179,21 +180,30 @@ class MethodWrappers:
                 )
                 system_instructions, inputs, outputs = [], [], []
                 if params.system_instruction:
-                    system_instructions = [
-                        Text(
-                            content="\n".join(
-                                part.text
-                                for part in params.system_instruction.parts
-                            )
-                        )
-                    ]
+                    system_instructions = convert_content_to_message_parts(
+                        params.system_instruction
+                    )
                 if params.contents:
                     inputs = [
-                        convert_content_to_message(content)
+                        InputMessage(
+                            role=content.role,
+                            parts=convert_content_to_message_parts(content),
+                        )
                         for content in params.contents
                     ]
                 if response:
-                    outputs = convert_response_to_output_messages(response)
+                    outputs = [
+                        OutputMessage(
+                            finish_reason=_map_finish_reason(
+                                candidate.finish_reason
+                            ),
+                            role=candidate.content.role,
+                            parts=convert_content_to_message_parts(
+                                candidate.content
+                            ),
+                        )
+                        for candidate in response.candidates
+                    ]
                 content_attributes = {
                     k: [asdict(x) for x in v]
                     for k, v in [

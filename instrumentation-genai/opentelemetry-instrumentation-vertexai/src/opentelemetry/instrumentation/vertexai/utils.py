@@ -53,9 +53,7 @@ from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     FinishReason,
-    InputMessage,
     MessagePart,
-    OutputMessage,
     Text,
     ToolCall,
     ToolCallResponse,
@@ -310,26 +308,9 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
-def convert_response_to_output_messages(
-    response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse,
-) -> list[OutputMessage]:
-    output_messages: list[OutputMessage] = []
-    for candidate in response.candidates:
-        message = convert_content_to_message(candidate.content)
-        output_messages.append(
-            OutputMessage(
-                finish_reason=_map_finish_reason(candidate.finish_reason),
-                role=message.role,
-                parts=message.parts,
-            )
-        )
-    return output_messages
-
-
-def convert_content_to_message(
+def convert_content_to_message_parts(
     content: content.Content | content_v1beta1.Content,
-) -> InputMessage:
+) -> list[MessagePart]:
     parts: MessagePart = []
     for idx, part in enumerate(content.parts):
         if "function_response" in part:
@@ -359,7 +340,7 @@ def convert_content_to_message(
             )
             dict_part["type"] = type(part)
             parts.append(dict_part)
-    return InputMessage(role=content.role, parts=parts)
+    return parts
 
 
 def response_to_events(
