@@ -1,0 +1,151 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": [
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "New Delhi"
+                  }
+                }
+              },
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "San Francisco"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 35, \"unit\": \"C\"}"
+                  }
+                }
+              },
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 25, \"unit\": \"C\"}"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1731'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "The weather in New Delhi is 35\u00b0C and in San Francisco is 25\u00b0C.",
+                    "thoughtSignature": "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"
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -1.18875130740079
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 128,
+            "candidatesTokenCount": 22,
+            "totalTokenCount": 575,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 128
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 22
+              }
+            ],
+            "thoughtsTokenCount": 425
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:39.882212Z",
+          "responseId": "a5CkaKTsNa3hgLUP59n1oQo"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '3277'
+    status:
+      code: 200
+      message: OK
+version: 1
