@@ -38,8 +38,8 @@ def test_function_call_choice(
         "gen_ai.usage.input_tokens": 74,
         "gen_ai.usage.output_tokens": 16,
         "server.address": "us-central1-aiplatform.googleapis.com",
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Get weather details in New Delhi and San Francisco?", "type": "text"}]}]',
-        "gen_ai.output.messages": '[{"role": "model", "parts": [{"arguments": {"location": "New Delhi"}, "name": "get_current_weather", "id": "get_current_weather_0", "type": "tool_call"}, {"arguments": {"location": "San Francisco"}, "name": "get_current_weather", "id": "get_current_weather_1", "type": "tool_call"}], "finish_reason": "stop"}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Get weather details in New Delhi and San Francisco?","type":"text"}]}]',
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"arguments":{"location":"New Delhi"},"name":"get_current_weather","id":"get_current_weather_0","type":"tool_call"},{"arguments":{"location":"San Francisco"},"name":"get_current_weather","id":"get_current_weather_1","type":"tool_call"}],"finish_reason":"stop"}]',
         "server.port": 443,
     }
 
@@ -136,8 +136,8 @@ def test_tool_events(
         "gen_ai.usage.output_tokens": 26,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Get weather details in New Delhi and San Francisco?", "type": "text"}]}, {"role": "model", "parts": [{"arguments": {"location": "New Delhi"}, "name": "get_current_weather", "id": "get_current_weather_0", "type": "tool_call"}, {"arguments": {"location": "San Francisco"}, "name": "get_current_weather", "id": "get_current_weather_1", "type": "tool_call"}]}, {"role": "user", "parts": [{"response": {"content": "{\\"temperature\\": 35, \\"unit\\": \\"C\\"}"}, "id": "get_current_weather_0", "type": "tool_call_response"}, {"response": {"content": "{\\"temperature\\": 25, \\"unit\\": \\"C\\"}"}, "id": "get_current_weather_1", "type": "tool_call_response"}]}]',
-        "gen_ai.output.messages": '[{"role": "model", "parts": [{"content": "The current temperature in New Delhi is 35\\u00b0C, and in San Francisco, it is 25\\u00b0C.", "type": "text"}], "finish_reason": "stop"}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Get weather details in New Delhi and San Francisco?","type":"text"}]},{"role":"model","parts":[{"arguments":{"location":"New Delhi"},"name":"get_current_weather","id":"get_current_weather_0","type":"tool_call"},{"arguments":{"location":"San Francisco"},"name":"get_current_weather","id":"get_current_weather_1","type":"tool_call"}]},{"role":"user","parts":[{"response":{"content":"{\\"temperature\\": 35, \\"unit\\": \\"C\\"}"},"id":"get_current_weather_0","type":"tool_call_response"},{"response":{"content":"{\\"temperature\\": 25, \\"unit\\": \\"C\\"}"},"id":"get_current_weather_1","type":"tool_call_response"}]}]',
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"The current temperature in New Delhi is 35\\u00b0C, and in San Francisco, it is 25\\u00b0C.","type":"text"}],"finish_reason":"stop"}]',
     }
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1

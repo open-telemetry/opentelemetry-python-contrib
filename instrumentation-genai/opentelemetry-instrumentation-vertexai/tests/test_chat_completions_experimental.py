@@ -56,8 +56,8 @@ def test_generate_content(
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Say this is a test", "type": "text"}]}]',
-        "gen_ai.output.messages": '[{"role": "model", "parts": [{"content": "This is a test.", "type": "text"}], "finish_reason": "stop"}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
     }
 
     logs = log_exporter.get_finished_logs()
@@ -109,8 +109,8 @@ def test_generate_content_without_events(
     assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
-        "gen_ai.output.messages": '[{"role": "model", "parts": [{"content": "This is a test.", "type": "text"}], "finish_reason": "stop"}]',
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Say this is a test", "type": "text"}]}]',
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-2.5-pro",
@@ -177,7 +177,7 @@ def test_generate_content_empty_model(
         "gen_ai.request.model": "",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Say this is a test", "type": "text"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 
@@ -210,7 +210,7 @@ def test_generate_content_missing_model(
         "gen_ai.request.model": "gemini-does-not-exist",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Say this is a test", "type": "text"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 
@@ -245,7 +245,7 @@ def test_generate_content_invalid_temperature(
         "gen_ai.request.temperature": 1000.0,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role": "user", "parts": [{"content": "Say this is a test", "type": "text"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 

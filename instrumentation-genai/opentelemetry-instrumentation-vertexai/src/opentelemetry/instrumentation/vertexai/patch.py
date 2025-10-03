@@ -224,7 +224,11 @@ class MethodWrappers:
                     ):
                         span.set_attributes(
                             {
-                                k: json.dumps(v, cls=Base64JsonEncoder)
+                                k: json.dumps(
+                                    v,
+                                    cls=Base64JsonEncoder,
+                                    separators=(",", ":"),
+                                )
                                 for k, v in content_attributes.items()
                             }
                         )
