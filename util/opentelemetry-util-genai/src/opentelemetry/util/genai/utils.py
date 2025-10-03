@@ -61,9 +61,6 @@ def get_content_capturing_mode() -> ContentCapturingMode:
 
 
 class _GenAiJsonEncoder(json.JSONEncoder):
-    """Should be used by GenAI instrumentations when serializing objects that may contain
-    bytes, datetimes, etc. for GenAI observability."""
-
     def default(self, o: Any) -> Any:
         if isinstance(o, bytes):
             return b64encode(o).decode()
