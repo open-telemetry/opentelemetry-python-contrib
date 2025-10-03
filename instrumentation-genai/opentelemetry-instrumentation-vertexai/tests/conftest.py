@@ -1,18 +1,39 @@
 """Unit tests configuration module."""
 
+import asyncio
 import json
 import os
 import re
-from typing import Any, Mapping, MutableMapping
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Mapping,
+    MutableMapping,
+    Protocol,
+    TypeVar,
+)
 
 import pytest
 import vertexai
 import yaml
+from google.auth.aio.credentials import (
+    AnonymousCredentials as AsyncAnonymousCredentials,
+)
 from google.auth.credentials import AnonymousCredentials
+from google.cloud.aiplatform.initializer import _set_async_rest_credentials
+from typing_extensions import Concatenate, ParamSpec
 from vcr import VCR
 from vcr.record_mode import RecordMode
 from vcr.request import Request
+from vertexai.generative_models import (
+    GenerativeModel,
+)
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.instrumentation.vertexai.utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
@@ -92,8 +113,13 @@ def vertexai_init(vcr: VCR) -> None:
     )
 
 
-@pytest.fixture
-def instrument_no_content(tracer_provider, logger_provider, meter_provider):
+@pytest.fixture(scope="function")
+def instrument_no_content(
+    tracer_provider, logger_provider, meter_provider, request
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
     )
@@ -111,8 +137,93 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider):
         instrumentor.uninstrument()
 
 
-@pytest.fixture
-def instrument_with_content(tracer_provider, logger_provider, meter_provider):
+@pytest.fixture(scope="function")
+def instrument_no_content_with_experimental_semconvs(
+    tracer_provider, logger_provider, meter_provider, request
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"}
+    )
+
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_experimental_semconvs(
+    tracer_provider, logger_provider, meter_provider
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"}
+    )
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_upload_hook(
+    tracer_provider, logger_provider, meter_provider
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
+            "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": "memory://",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT",
+        }
+    )
+    instrumentor = VertexAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", None)
+    os.environ.pop("OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH", None)
+    if instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_content(
+    tracer_provider, logger_provider, meter_provider, request
+):
+    # Reset global state..
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update({OTEL_SEMCONV_STABILITY_OPT_IN: "stable"})
     os.environ.update(
         {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
     )
@@ -233,3 +344,53 @@ class PrettyPrintJSONBody:
 def fixture_vcr(vcr):
     vcr.register_serializer("yaml", PrettyPrintJSONBody)
     return vcr
+
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _copy_signature(
+    func_type: Callable[_P, _R],
+) -> Callable[
+    [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
+]:
+    return lambda func: func
+
+
+# Type annotation for fixture to make LSP work properly
+class GenerateContentFixture(Protocol):
+    @_copy_signature(GenerativeModel.generate_content)
+    def __call__(self): ...
+
+
+@pytest.fixture(
+    name="generate_content",
+    params=(
+        pytest.param(False, id="sync"),
+        pytest.param(True, id="async"),
+    ),
+)
+def fixture_generate_content(
+    request: pytest.FixtureRequest,
+    vcr: VCR,
+) -> Generator[GenerateContentFixture, None, None]:
+    """This fixture parameterizes tests that use it to test calling both
+    GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
+    """
+    is_async: bool = request.param
+
+    if is_async:
+        # See
+        # https://github.com/googleapis/python-aiplatform/blob/cb0e5fedbf45cb0531c0b8611fb7fabdd1f57e56/google/cloud/aiplatform/initializer.py#L717-L729
+        _set_async_rest_credentials(credentials=AsyncAnonymousCredentials())
+
+    def wrapper(model: GenerativeModel, *args, **kwargs) -> None:
+        if is_async:
+            return asyncio.run(model.generate_content_async(*args, **kwargs))
+        return model.generate_content(*args, **kwargs)
+
+    with vcr.use_cassette(
+        request.node.originalname, allow_playback_repeats=True
+    ):
+        yield wrapper
