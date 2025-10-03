@@ -66,7 +66,7 @@ from opentelemetry.util.genai.handler import (
 
 # util-genai deps
 from opentelemetry.util.genai.types import (
-    Agent as UtilAgent,
+    AgentInvocation as UtilAgent,
     Error as UtilError,
     InputMessage as UtilInputMessage,
     LLMInvocation as UtilLLMInvocation,
