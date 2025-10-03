@@ -48,6 +48,7 @@ Usage:
     # handler.fail_llm(invocation, Error(type="...", message="..."))
 """
 
+import os
 import time
 from typing import Any, Optional
 
@@ -86,6 +87,9 @@ from opentelemetry.util.genai.utils import get_content_capturing_mode
 from opentelemetry.util.genai.version import __version__
 
 from .config import parse_env
+from .environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from .evaluators.manager import EvaluationManager
 
 
@@ -132,6 +136,16 @@ class TelemetryHandler:
         self._settings = settings
         self._generator_kind = settings.generator_kind
         capture_span = settings.capture_content_span
+        capture_span_traceloop = capture_span
+        if not capture_span_traceloop:
+            capture_flag = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).strip()
+            if capture_flag.lower() in ("true", "1", "yes") and (
+                settings.only_traceloop_compat
+                or "traceloop_compat" in settings.extra_emitters
+            ):
+                capture_span_traceloop = True
         capture_events = settings.capture_content_events
 
         evaluation_emitters = [
@@ -175,7 +189,7 @@ class TelemetryHandler:
             )
 
             traceloop_emitter = TraceloopCompatEmitter(
-                tracer=self._tracer, capture_content=capture_span
+                tracer=self._tracer, capture_content=capture_span_traceloop
             )
             emitters.append(traceloop_emitter)
         else:
@@ -214,7 +228,8 @@ class TelemetryHandler:
                     )
 
                     traceloop_emitter = TraceloopCompatEmitter(
-                        tracer=self._tracer, capture_content=capture_span
+                        tracer=self._tracer,
+                        capture_content=capture_span_traceloop,
                     )
                     emitters.append(traceloop_emitter)
                 except Exception:  # pragma: no cover
@@ -243,6 +258,9 @@ class TelemetryHandler:
                 ContentCapturingMode.SPAN_ONLY,
                 ContentCapturingMode.SPAN_AND_EVENT,
             )
+            traceloop_requested = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).strip().lower() in ("true", "1", "yes")
             # For span_metric_event flavor we always keep span lean (never capture on span)
             if getattr(self, "_generator_kind", None) == "span_metric_event":
                 new_value_span = False
@@ -261,7 +279,10 @@ class TelemetryHandler:
                     em, "set_capture_content"
                 ):
                     try:
-                        em.set_capture_content(new_value_span)  # type: ignore[attr-defined]
+                        desired = new_value_span
+                        if not new_value_span and role == "traceloop_compat":
+                            desired = traceloop_requested
+                        em.set_capture_content(desired)  # type: ignore[attr-defined]
                     except Exception:
                         pass
         except Exception:

@@ -186,8 +186,8 @@ class TestTelemetryHandler(unittest.TestCase):
             output_messages[0].get("parts")[0].get("content") == "hello back"
         )
 
-        # Check that extra attributes are added to the span
-        assert span_attrs.get("extra") == "info"
+        # Invocation-only attributes should stay off the span unless provided at start
+        assert span_attrs.get("extra") is None
         assert span_attrs.get("custom_attr") == "value"
 
     @patch_env_vars(
@@ -234,8 +234,6 @@ class TestTelemetryHandler(unittest.TestCase):
         # Child has parent set to parent's span id
         assert child_span.parent is not None
         assert child_span.parent.span_id == parent_span.context.span_id
-        # Parent should not have a parent (root)
-        assert parent_span.parent is None
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",

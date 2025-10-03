@@ -23,7 +23,7 @@ def test_tool_call_span_attributes():
             call.span, "_attributes", {}
         )  # fallback for SDK internals
     # Operation name
-    assert attrs.get(GenAI.GEN_AI_OPERATION_NAME) == "tool_call"
+    assert attrs.get(GenAI.GEN_AI_OPERATION_NAME) == "execute_tool"
     # Request model mapped to tool name
     assert attrs.get(GenAI.GEN_AI_REQUEST_MODEL) == "summarize"
     # Provider

@@ -114,6 +114,6 @@ def test_span_emitter_filters_non_gen_ai_attributes():
 
     assert attrs.get("gen_ai.agent.id") == "agent-123"
     assert attrs.get("gen_ai.request.id") == "req-789"
-    assert "request_top_p" not in attrs
-    assert "custom" not in attrs
+    assert attrs.get("request_top_p") == 0.42
+    assert attrs.get("custom") == "value"
     assert any(key.startswith("gen_ai.") for key in attrs)

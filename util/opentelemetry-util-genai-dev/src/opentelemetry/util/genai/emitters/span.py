@@ -89,14 +89,16 @@ def _apply_gen_ai_semconv_attributes(
     span: Span,
     attributes: Optional[dict[str, Any]],
     *,
-    allow_custom: bool = False,
+    allowed_prefixes: Optional[tuple[str, ...]] = None,
 ) -> None:
     if not attributes:
         return
     for key, value in attributes.items():
         if not isinstance(key, str):
             continue
-        if not key.startswith("gen_ai.") and not allow_custom:
+        if allowed_prefixes and not any(
+            key.startswith(prefix) for prefix in allowed_prefixes
+        ):
             continue
         sanitized = _sanitize_span_attribute_value(value)
         if sanitized is None:
@@ -139,7 +141,10 @@ class SpanEmitter:
         if span is None:
             return
         if isinstance(invocation, ToolCall):
-            op_value = "execute_tool"
+            enum_val = getattr(
+                GenAI.GenAiOperationNameValues, "EXECUTE_TOOL", None
+            )
+            op_value = enum_val.value if enum_val else "execute_tool"
         elif isinstance(invocation, EmbeddingInvocation):
             enum_val = getattr(
                 GenAI.GenAiOperationNameValues, "EMBEDDINGS", None
@@ -176,7 +181,6 @@ class SpanEmitter:
         _apply_gen_ai_semconv_attributes(
             span,
             getattr(invocation, "attributes", None),
-            allow_custom=True,
         )
 
     def _apply_finish_attrs(
@@ -199,13 +203,15 @@ class SpanEmitter:
         if isinstance(invocation, LLMInvocation):
             _apply_llm_finish_semconv(span, invocation)
             _apply_gen_ai_semconv_attributes(
-                span, invocation.attributes, allow_custom=True
+                span,
+                invocation.attributes,
+                allowed_prefixes=("gen_ai.", "traceloop."),
             )
         else:
             _apply_gen_ai_semconv_attributes(
                 span,
                 getattr(invocation, "attributes", None),
-                allow_custom=True,
+                allowed_prefixes=("gen_ai.", "traceloop."),
             )
         if (
             self._capture_content
@@ -329,9 +335,7 @@ class SpanEmitter:
             span.set_attribute(
                 GEN_AI_WORKFLOW_INITIAL_INPUT, workflow.initial_input
             )
-        _apply_gen_ai_semconv_attributes(
-            span, workflow.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
 
     def _finish_workflow(self, workflow: Workflow) -> None:
         """Finish a workflow span."""
@@ -343,9 +347,7 @@ class SpanEmitter:
             span.set_attribute(
                 GEN_AI_WORKFLOW_FINAL_OUTPUT, workflow.final_output
             )
-        _apply_gen_ai_semconv_attributes(
-            span, workflow.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -364,9 +366,7 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
-        _apply_gen_ai_semconv_attributes(
-            span, workflow.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -418,9 +418,7 @@ class SpanEmitter:
             )
         if agent.input_context and self._capture_content:
             span.set_attribute(GEN_AI_AGENT_INPUT_CONTEXT, agent.input_context)
-        _apply_gen_ai_semconv_attributes(
-            span, agent.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
 
     def _finish_agent(self, agent: AgentInvocation) -> None:
         """Finish an agent span."""
@@ -430,9 +428,7 @@ class SpanEmitter:
         # Set output result if capture_content enabled
         if agent.output_result and self._capture_content:
             span.set_attribute(GEN_AI_AGENT_OUTPUT_RESULT, agent.output_result)
-        _apply_gen_ai_semconv_attributes(
-            span, agent.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -451,9 +447,7 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
-        _apply_gen_ai_semconv_attributes(
-            span, agent.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, agent.attributes)
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -487,9 +481,7 @@ class SpanEmitter:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
         if task.input_data and self._capture_content:
             span.set_attribute(GEN_AI_TASK_INPUT_DATA, task.input_data)
-        _apply_gen_ai_semconv_attributes(
-            span, task.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
 
     def _finish_task(self, task: Task) -> None:
         """Finish a task span."""
@@ -502,9 +494,7 @@ class SpanEmitter:
         # Update status if changed
         if task.status:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
-        _apply_gen_ai_semconv_attributes(
-            span, task.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -525,9 +515,7 @@ class SpanEmitter:
             )
         # Update status to failed
         span.set_attribute(GEN_AI_TASK_STATUS, "failed")
-        _apply_gen_ai_semconv_attributes(
-            span, task.attributes, allow_custom=True
-        )
+        _apply_gen_ai_semconv_attributes(span, task.attributes)
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
