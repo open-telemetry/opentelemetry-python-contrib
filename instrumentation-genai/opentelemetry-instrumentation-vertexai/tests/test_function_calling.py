@@ -265,22 +265,21 @@ def test_tool_events_no_content(
 
     assert tool_log1.attributes == {
         "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
     }
+    assert tool_log1.event_name == "gen_ai.tool.message"
     assert tool_log1.body == {
         "role": "user",
         "id": "get_current_weather_0",
     }
     assert tool_log1.event_name == "gen_ai.tool.message"
 
-    assert tool_log2.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
-    }
+    assert tool_log2.attributes == {"gen_ai.system": "vertex_ai"}
+
     assert tool_log2.body == {
         "role": "user",
         "id": "get_current_weather_1",
     }
+    assert tool_log2.event_name == "gen_ai.tool.message"
 
     assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
     assert choice_log.event_name == "gen_ai.choice"

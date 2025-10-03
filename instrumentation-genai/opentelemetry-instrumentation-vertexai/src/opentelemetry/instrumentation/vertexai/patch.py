@@ -228,7 +228,7 @@ class MethodWrappers:
                             }
                         )
                 event = LogRecord(
-                    name="gen_ai.client.inference.operation.details",
+                    event_name="gen_ai.client.inference.operation.details",
                 )
                 event.attributes = attributes
                 if capture_content in (

@@ -267,8 +267,8 @@ def test_generate_content_invalid_role(
     log = logs[0].log_record
     assert log.attributes == {
         "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
     }
+    assert log.event_name == "gen_ai.user.message"
     assert log.body == {
         "content": [{"text": "Say this is a test"}],
         "role": "invalid_role",
