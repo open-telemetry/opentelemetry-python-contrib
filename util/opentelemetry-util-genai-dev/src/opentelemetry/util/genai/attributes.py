@@ -48,3 +48,12 @@ GEN_AI_TASK_ASSIGNED_AGENT = "gen_ai.task.assigned_agent"
 GEN_AI_TASK_STATUS = "gen_ai.task.status"
 GEN_AI_TASK_INPUT_DATA = "gen_ai.task.input_data"
 GEN_AI_TASK_OUTPUT_DATA = "gen_ai.task.output_data"
+
+# Embedding attributes
+GEN_AI_EMBEDDINGS_DIMENSION_COUNT = "gen_ai.embeddings.dimension.count"
+GEN_AI_EMBEDDINGS_INPUT_TEXTS = "gen_ai.embeddings.input.texts"
+GEN_AI_REQUEST_ENCODING_FORMATS = "gen_ai.request.encoding_formats"
+
+# Server attributes (from semantic conventions)
+SERVER_ADDRESS = "server.address"
+SERVER_PORT = "server.port"

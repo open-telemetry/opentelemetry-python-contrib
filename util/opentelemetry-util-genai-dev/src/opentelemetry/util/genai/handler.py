@@ -345,6 +345,8 @@ class TelemetryHandler:
         self, invocation: EmbeddingInvocation
     ) -> EmbeddingInvocation:
         """Start an embedding invocation and create a pending span entry."""
+        self._refresh_capture_content()
+        invocation.start_time = time.time()
         self._generator.start(invocation)
         return invocation
 
@@ -354,6 +356,15 @@ class TelemetryHandler:
         """Finalize an embedding invocation successfully and end its span."""
         invocation.end_time = time.time()
         self._generator.finish(invocation)
+        # Force flush metrics if a custom provider with force_flush is present
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         return invocation
 
     def fail_embedding(
@@ -362,6 +373,14 @@ class TelemetryHandler:
         """Fail an embedding invocation and end its span with error status."""
         invocation.end_time = time.time()
         self._generator.error(error, invocation)
+        if (
+            hasattr(self, "_meter_provider")
+            and self._meter_provider is not None
+        ):
+            try:  # pragma: no cover
+                self._meter_provider.force_flush()  # type: ignore[attr-defined]
+            except Exception:
+                pass
         return invocation
 
     # ToolCall lifecycle --------------------------------------------------

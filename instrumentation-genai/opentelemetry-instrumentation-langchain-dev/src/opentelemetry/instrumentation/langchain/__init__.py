@@ -22,11 +22,35 @@ from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation as UtilEmbeddingInvocation,
+    Error as UtilError,
+)
 from wrapt import wrap_function_wrapper
 
 logger = logging.getLogger(__name__)
 
 _instruments = ("langchain-core > 0.1.0", )
+
+# Embedding patches configuration
+EMBEDDING_PATCHES = [
+    {
+        "module": "langchain_openai.embeddings",
+        "class_name": "OpenAIEmbeddings",
+        "methods": ["embed_query", "embed_documents"],
+    },
+    {
+        "module": "langchain_openai.embeddings",
+        "class_name": "AzureOpenAIEmbeddings",
+        "methods": ["embed_query", "embed_documents"],
+    },
+    {
+        "module": "langchain_huggingface.embeddings",
+        "class_name": "HuggingFaceEmbeddings",
+        "methods": ["embed_query"],
+    },
+]
 
 
 class LangchainInstrumentor(BaseInstrumentor):
@@ -94,6 +118,13 @@ class LangchainInstrumentor(BaseInstrumentor):
 
         if not self.disable_trace_context_propagation:
             self._wrap_openai_functions_for_tracing(traceloopCallbackHandler)
+
+        # Initialize telemetry handler for embeddings
+        self._telemetry_handler = TelemetryHandler(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+        )
+        self._wrap_embedding_functions()
 
     def _wrap_openai_functions_for_tracing(self, traceloopCallbackHandler):
         openai_tracing_wrapper = _OpenAITracingWrapper(traceloopCallbackHandler)
@@ -175,6 +206,119 @@ class LangchainInstrumentor(BaseInstrumentor):
             #     wrapper=openai_tracing_wrapper,
             # )
 
+    def _wrap_embedding_functions(self):
+        """Wrap embedding methods for telemetry capture."""
+
+        def _start_embedding(instance, texts):
+            """Start an embedding invocation."""
+            # Detect model name
+            request_model = (
+                getattr(instance, "model", None)
+                or getattr(instance, "model_name", None)
+                or getattr(instance, "_model", None)
+                or "unknown-model"
+            )
+
+            # Detect provider from class name
+            provider = None
+            class_name = instance.__class__.__name__
+            if "OpenAI" in class_name:
+                provider = "openai"
+            elif "Azure" in class_name:
+                provider = "azure"
+            elif "Bedrock" in class_name:
+                provider = "aws"
+            elif "Vertex" in class_name or "Google" in class_name:
+                provider = "google"
+            elif "Cohere" in class_name:
+                provider = "cohere"
+            elif "HuggingFace" in class_name:
+                provider = "huggingface"
+            elif "Ollama" in class_name:
+                provider = "ollama"
+
+            # Create embedding invocation
+            embedding = UtilEmbeddingInvocation(
+                operation_name="embedding",
+                request_model=request_model,
+                input_texts=texts if isinstance(texts, list) else [texts],
+                provider=provider,
+                attributes={"framework": "langchain"},
+            )
+
+            self._telemetry_handler.start_embedding(embedding)
+            return embedding
+
+        def _finish_embedding(embedding, result):
+            """Finish an embedding invocation."""
+            # Try to extract dimension count from result
+            try:
+                if isinstance(result, list) and result:
+                    # result is list of embeddings (vectors)
+                    if isinstance(result[0], list):
+                        embedding.dimension_count = len(result[0])
+                    elif isinstance(result[0], (int, float)):
+                        # Single embedding vector
+                        embedding.dimension_count = len(result)
+            except Exception:
+                pass
+
+            self._telemetry_handler.stop_embedding(embedding)
+
+        def _embed_documents_wrapper(wrapped, instance, args, kwargs):
+            """Wrapper for embed_documents method."""
+            texts = args[0] if args else kwargs.get("texts", [])
+            embedding = _start_embedding(instance, texts)
+            try:
+                result = wrapped(*args, **kwargs)
+                _finish_embedding(embedding, result)
+                return result
+            except Exception as e:
+                self._telemetry_handler.fail_embedding(
+                    embedding, UtilError(message=str(e), type=type(e))
+                )
+                raise
+
+        def _embed_query_wrapper(wrapped, instance, args, kwargs):
+            """Wrapper for embed_query method."""
+            text = args[0] if args else kwargs.get("text", "")
+            embedding = _start_embedding(instance, [text])
+            try:
+                result = wrapped(*args, **kwargs)
+                _finish_embedding(
+                    embedding,
+                    [result] if not isinstance(result, list) else result,
+                )
+                return result
+            except Exception as e:
+                self._telemetry_handler.fail_embedding(
+                    embedding, UtilError(message=str(e), type=type(e))
+                )
+                raise
+
+        # Apply wrappers for each embedding patch
+        for patch in EMBEDDING_PATCHES:
+            module = patch["module"]
+            class_name = patch["class_name"]
+            methods = patch["methods"]
+
+            for method in methods:
+                try:
+                    if method == "embed_documents":
+                        wrapper = _embed_documents_wrapper
+                    elif method == "embed_query":
+                        wrapper = _embed_query_wrapper
+                    else:
+                        continue
+
+                    wrap_function_wrapper(
+                        module=module,
+                        name=f"{class_name}.{method}",
+                        wrapper=wrapper,
+                    )
+                except Exception:  # pragma: no cover
+                    pass
+
     def _uninstrument(self, **kwargs):
         unwrap("langchain_core.callbacks", "BaseCallbackManager.__init__")
         if not self.disable_trace_context_propagation:
@@ -192,6 +336,18 @@ class LangchainInstrumentor(BaseInstrumentor):
                 unwrap("langchain_openai.chat_models.base", "BaseOpenAI._agenerate")
                 # unwrap("langchain_openai.chat_models.base", "BaseOpenAI._stream")
                 # unwrap("langchain_openai.chat_models.base", "BaseOpenAI._astream")
+
+        # Unwrap embedding methods
+        for patch in EMBEDDING_PATCHES:
+            module = patch["module"]
+            class_name = patch["class_name"]
+            methods = patch["methods"]
+
+            for method in methods:
+                try:
+                    unwrap(module, f"{class_name}.{method}")
+                except Exception:  # pragma: no cover
+                    pass
 
 
 # Backwards-compatible alias for older import casing

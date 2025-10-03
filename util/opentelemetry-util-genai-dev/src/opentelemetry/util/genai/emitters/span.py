@@ -24,9 +24,12 @@ from ..attributes import (
     GEN_AI_AGENT_SYSTEM_INSTRUCTIONS,
     GEN_AI_AGENT_TOOLS,
     GEN_AI_AGENT_TYPE,
+    GEN_AI_EMBEDDINGS_DIMENSION_COUNT,
+    GEN_AI_EMBEDDINGS_INPUT_TEXTS,
     GEN_AI_INPUT_MESSAGES,
     GEN_AI_OUTPUT_MESSAGES,
     GEN_AI_PROVIDER_NAME,
+    GEN_AI_REQUEST_ENCODING_FORMATS,
     GEN_AI_TASK_ASSIGNED_AGENT,
     GEN_AI_TASK_INPUT_DATA,
     GEN_AI_TASK_NAME,
@@ -40,6 +43,8 @@ from ..attributes import (
     GEN_AI_WORKFLOW_INITIAL_INPUT,
     GEN_AI_WORKFLOW_NAME,
     GEN_AI_WORKFLOW_TYPE,
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from ..types import (
     AgentInvocation,
@@ -242,14 +247,7 @@ class SpanEmitter:
             invocation.context_token = cm  # type: ignore[assignment]
             self._apply_start_attrs(invocation)
         elif isinstance(invocation, EmbeddingInvocation):
-            span_name = f"embedding {invocation.request_model}"
-            cm = self._tracer.start_as_current_span(
-                span_name, kind=SpanKind.CLIENT, end_on_exit=False
-            )
-            span = cm.__enter__()
-            invocation.span = span  # type: ignore[assignment]
-            invocation.context_token = cm  # type: ignore[assignment]
-            self._apply_start_attrs(invocation)
+            self._start_embedding(invocation)
         else:
             # Use operation field for span name (defaults to "chat")
             operation = getattr(invocation, "operation", "chat")
@@ -270,6 +268,8 @@ class SpanEmitter:
             self._finish_agent(invocation)
         elif isinstance(invocation, Task):
             self._finish_task(invocation)
+        elif isinstance(invocation, EmbeddingInvocation):
+            self._finish_embedding(invocation)
         else:
             span = getattr(invocation, "span", None)
             if span is None:
@@ -292,6 +292,8 @@ class SpanEmitter:
             self._error_agent(error, invocation)
         elif isinstance(invocation, Task):
             self._error_task(error, invocation)
+        elif isinstance(invocation, EmbeddingInvocation):
+            self._error_embedding(error, invocation)
         else:
             span = getattr(invocation, "span", None)
             if span is None:
@@ -523,3 +525,74 @@ class SpanEmitter:
             except Exception:
                 pass
         span.end()
+
+    # ---- Embedding lifecycle ---------------------------------------------
+    def _start_embedding(self, embedding: EmbeddingInvocation) -> None:
+        """Start an embedding span."""
+        span_name = f"{embedding.operation_name} {embedding.request_model}"
+        cm = self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, end_on_exit=False
+        )
+        span = cm.__enter__()
+        embedding.span = span  # type: ignore[assignment]
+        embedding.context_token = cm  # type: ignore[assignment]
+        self._apply_start_attrs(embedding)
+
+        # Set embedding-specific start attributes
+        if embedding.server_address:
+            span.set_attribute(SERVER_ADDRESS, embedding.server_address)
+        if embedding.server_port:
+            span.set_attribute(SERVER_PORT, embedding.server_port)
+        if embedding.encoding_formats:
+            span.set_attribute(
+                GEN_AI_REQUEST_ENCODING_FORMATS, embedding.encoding_formats
+            )
+        if self._capture_content and embedding.input_texts:
+            # Capture input texts as array attribute
+            span.set_attribute(
+                GEN_AI_EMBEDDINGS_INPUT_TEXTS, embedding.input_texts
+            )
+
+    def _finish_embedding(self, embedding: EmbeddingInvocation) -> None:
+        """Finish an embedding span."""
+        span = embedding.span
+        if span is None:
+            return
+        # Apply finish-time semantic conventions
+        if embedding.dimension_count:
+            span.set_attribute(
+                GEN_AI_EMBEDDINGS_DIMENSION_COUNT, embedding.dimension_count
+            )
+        if embedding.input_tokens is not None:
+            span.set_attribute(
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS, embedding.input_tokens
+            )
+        token = embedding.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
+        span.end()
+
+    def _error_embedding(
+        self, error: Error, embedding: EmbeddingInvocation
+    ) -> None:
+        """Fail an embedding span with error status."""
+        span = embedding.span
+        if span is None:
+            return
+        span.set_status(Status(StatusCode.ERROR, error.message))
+        if span.is_recording():
+            span.set_attribute(
+                ErrorAttributes.ERROR_TYPE, error.type.__qualname__
+            )
+        # Set error type from invocation if available
+        if embedding.error_type:
+            span.set_attribute(ErrorAttributes.ERROR_TYPE, embedding.error_type)
+        token = embedding.context_token
+        if token is not None and hasattr(token, "__exit__"):
+            try:
+                token.__exit__(None, None, None)  # type: ignore[misc]
+            except Exception:
+                pass
