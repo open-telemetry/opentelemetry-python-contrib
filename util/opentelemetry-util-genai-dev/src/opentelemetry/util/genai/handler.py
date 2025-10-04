@@ -199,7 +199,7 @@ class TelemetryHandler:
                 if settings.generator_kind == "span_metric_event":
                     span_emitter = SpanEmitter(
                         tracer=self._tracer,
-                        capture_content=False,  # keep span lean
+                        capture_content=capture_span,  # respect content capture mode
                     )
                     metrics_emitter = MetricsEmitter(meter=meter)
                     content_emitter = ContentEventsEmitter(
@@ -260,12 +260,10 @@ class TelemetryHandler:
                 ContentCapturingMode.SPAN_ONLY,
                 ContentCapturingMode.SPAN_AND_EVENT,
             )
+            # Respect the content capture mode for all generator kinds
             traceloop_requested = os.environ.get(
                 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
             ).strip().lower() in ("true", "1", "yes")
-            # For span_metric_event flavor we always keep span lean (never capture on span)
-            if getattr(self, "_generator_kind", None) == "span_metric_event":
-                new_value_span = False
             new_value_events = mode in (
                 ContentCapturingMode.EVENT_ONLY,
                 ContentCapturingMode.SPAN_AND_EVENT,

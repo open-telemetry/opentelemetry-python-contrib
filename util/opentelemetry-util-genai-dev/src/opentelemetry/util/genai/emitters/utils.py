@@ -5,8 +5,6 @@ import json
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
-from openai.types import Embedding
-
 from opentelemetry import trace
 from opentelemetry._logs import (
     Logger,  # noqa: F401 (kept for backward compatibility if referenced externally)
@@ -29,22 +27,114 @@ from ..attributes import (
 )
 from ..types import (
     AgentInvocation,
+    EmbeddingInvocation,
     LLMInvocation,
     Task,
     Text,
     ToolCall,
     ToolCallResponse,
-    Workflow, EmbeddingInvocation,
+    Workflow,
 )
 
 
-def _serialize_messages(messages) -> Optional[str]:
+def _serialize_messages(
+    messages, exclude_system: bool = False
+) -> Optional[str]:
     """Safely JSON serialize a sequence of dataclass messages.
+
+    Uses the same format as events for consistency with semantic conventions.
+
+    Args:
+        messages: List of InputMessage or OutputMessage objects
+        exclude_system: If True, exclude messages with role="system"
 
     Returns a JSON string or None on failure.
     """
     try:  # pragma: no cover - defensive
-        return json.dumps([asdict(m) for m in messages])
+        serialized_msgs = []
+
+        for msg in messages:
+            # Skip system messages if exclude_system is True
+            if exclude_system and msg.role == "system":
+                continue
+
+            msg_dict = {"role": msg.role, "parts": []}
+
+            # Add finish_reason for output messages
+            if hasattr(msg, "finish_reason"):
+                msg_dict["finish_reason"] = msg.finish_reason or "stop"
+
+            # Process parts (text, tool_call, tool_call_response)
+            for part in msg.parts:
+                if isinstance(part, Text):
+                    part_dict = {
+                        "type": "text",
+                        "content": part.content,
+                    }
+                    msg_dict["parts"].append(part_dict)
+                elif isinstance(part, ToolCall):
+                    tool_dict = {
+                        "type": "tool_call",
+                        "id": part.id,
+                        "name": part.name,
+                        "arguments": part.arguments,
+                    }
+                    msg_dict["parts"].append(tool_dict)
+                elif isinstance(part, ToolCallResponse):
+                    tool_response_dict = {
+                        "type": "tool_call_response",
+                        "id": part.id,
+                        "result": part.response,
+                    }
+                    msg_dict["parts"].append(tool_response_dict)
+                else:
+                    # Fallback for other part types
+                    part_dict = (
+                        asdict(part)
+                        if hasattr(part, "__dataclass_fields__")
+                        else part
+                    )
+                    msg_dict["parts"].append(part_dict)
+
+            serialized_msgs.append(msg_dict)
+
+        return json.dumps(serialized_msgs)
+    except Exception:  # pragma: no cover
+        return None
+
+
+def _extract_system_instructions(messages) -> Optional[str]:
+    """Extract and serialize system instructions from messages.
+
+    Extracts messages with role="system" and serializes their parts.
+    Uses the same format as events for consistency.
+
+    Returns a JSON string or None if no system instructions found.
+    """
+    try:  # pragma: no cover - defensive
+        system_parts = []
+
+        for msg in messages:
+            if msg.role == "system":
+                for part in msg.parts:
+                    if isinstance(part, Text):
+                        part_dict = {
+                            "type": "text",
+                            "content": part.content,
+                        }
+                        system_parts.append(part_dict)
+                    else:
+                        # Fallback for other part types
+                        part_dict = (
+                            asdict(part)
+                            if hasattr(part, "__dataclass_fields__")
+                            else part
+                        )
+                        system_parts.append(part_dict)
+
+        if system_parts:
+            return json.dumps(system_parts)
+        return None
     except Exception:  # pragma: no cover
         return None
 
@@ -104,6 +194,7 @@ def _apply_llm_finish_semconv(
         _apply_function_definitions(span, invocation.request_functions)
     except Exception:  # pragma: no cover
         pass
+
 
 def _llm_invocation_to_log_record(
     invocation: LLMInvocation,
@@ -456,6 +547,7 @@ def _task_to_log_record(
         event_name="gen_ai.client.task.operation.details",
     )
 
+
 def _embedding_to_log_record(
     embedding: EmbeddingInvocation, capture_content: bool
 ) -> Optional[SDKLogRecord]:
@@ -464,7 +556,7 @@ def _embedding_to_log_record(
     attributes: Dict[str, Any] = {
         "event.name": "gen_ai.client.embedding.operation.details",
     }
-    
+
     # Core attributes
     if embedding.operation_name:
         attributes["gen_ai.operation.name"] = embedding.operation_name
@@ -472,10 +564,12 @@ def _embedding_to_log_record(
         attributes[GEN_AI_PROVIDER_NAME] = embedding.provider
     if embedding.request_model:
         attributes["gen_ai.request.model"] = embedding.request_model
-    
+
     # Optional attributes
     if embedding.dimension_count:
-        attributes[GEN_AI_EMBEDDINGS_DIMENSION_COUNT] = embedding.dimension_count
+        attributes[GEN_AI_EMBEDDINGS_DIMENSION_COUNT] = (
+            embedding.dimension_count
+        )
     if embedding.input_tokens is not None:
         attributes["gen_ai.usage.input_tokens"] = embedding.input_tokens
     if embedding.server_address:
@@ -483,26 +577,28 @@ def _embedding_to_log_record(
     if embedding.server_port:
         attributes[SERVER_PORT] = embedding.server_port
     if embedding.encoding_formats:
-        attributes[GEN_AI_REQUEST_ENCODING_FORMATS] = embedding.encoding_formats
+        attributes[GEN_AI_REQUEST_ENCODING_FORMATS] = (
+            embedding.encoding_formats
+        )
     if embedding.error_type:
         attributes["error.type"] = embedding.error_type
-    
+
     # Add agent context if available
     if embedding.agent_name:
         attributes["gen_ai.agent.name"] = embedding.agent_name
     if embedding.agent_id:
         attributes["gen_ai.agent.id"] = embedding.agent_id
-    
+
     # Body contains content (input texts)
     body: Dict[str, Any] = {}
-    
+
     if embedding.input_texts:
         if capture_content:
             body[GEN_AI_EMBEDDINGS_INPUT_TEXTS] = embedding.input_texts
         else:
             # Emit structure with empty content when capture is disabled
             body[GEN_AI_EMBEDDINGS_INPUT_TEXTS] = []
-    
+
     return SDKLogRecord(
         body=body or None,
         attributes=attributes,

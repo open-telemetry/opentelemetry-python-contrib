@@ -80,7 +80,11 @@ def parse_env() -> Settings:
             ContentCapturingMode.EVENT_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         )
-        capture_content_span = False
+        # Capture in spans when mode is SPAN_ONLY or SPAN_AND_EVENT
+        capture_content_span = mode in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
     else:
         capture_content_events = False
         capture_content_span = mode in (
