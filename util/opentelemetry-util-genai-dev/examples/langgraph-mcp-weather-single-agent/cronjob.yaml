@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: langgraph-single-agent-utils-loadgen
+  namespace: demo-app
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: loadgen
+              image: radial/busyboxplus:curl
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -X POST http://langgraph-single-agent-utils-service.demo-app.svc.cluster.local:5000/weather -H 'Content-Type: application/json' -d '{"city": "San Francisco"}'
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+          restartPolicy: OnFailure

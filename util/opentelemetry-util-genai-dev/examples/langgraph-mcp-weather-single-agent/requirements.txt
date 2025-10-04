@@ -1,9 +1,12 @@
 # LangChain/LangGraph
 langgraph
 langchain-openai
+langchain_community
 
 # MCP (Model Context Protocol)
 mcp
+fastmcp
+httpx
 
 # Flask web framework
 flask

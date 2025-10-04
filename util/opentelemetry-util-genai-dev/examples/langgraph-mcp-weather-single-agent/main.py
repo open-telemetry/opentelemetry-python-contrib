@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 
@@ -95,7 +96,11 @@ logs.get_logger_provider().add_log_record_processor(
 
 class TokenManager:
     def __init__(
-        self, client_id, client_secret, app_key, cache_file=".token.json"
+        self,
+        client_id,
+        client_secret,
+        app_key,
+        cache_file="/tmp/cisco_token_cache.json",
     ):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -325,6 +330,9 @@ cisco_client_secret = os.getenv("CISCO_CLIENT_SECRET")
 cisco_app_key = os.getenv("CISCO_APP_KEY")
 
 if not all([cisco_client_id, cisco_client_secret, cisco_app_key]):
+    print(
+        "ERROR: Missing Cisco credentials. Please set CISCO_CLIENT_ID, CISCO_CLIENT_SECRET, and CISCO_APP_KEY environment variables."
+    )
     token_manager = None
     model = None
 else:
@@ -334,7 +342,9 @@ else:
 
     # Initialize the model with Cisco AI service
     try:
+        print("Initializing Cisco AI model...")
         access_token = token_manager.get_token()
+        print("Successfully obtained Cisco access token")
         model = ChatOpenAI(
             temperature=0.1,
             api_key="dummy-key",
@@ -343,13 +353,22 @@ else:
             default_headers={"api-key": access_token},
             model_kwargs={"user": f'{{"appkey": "{cisco_app_key}"}}'},
         )
-    except Exception:
+        print("Cisco AI model initialized successfully")
+    except Exception as e:
+        print(f"ERROR: Failed to initialize Cisco AI model: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
         model = None
 
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
+# Disable Flask's default request logging
+log = logging.getLogger("werkzeug")
+log.setLevel(logging.ERROR)
 
 
 @tool
@@ -766,4 +785,5 @@ async def process_weather_request(city: str) -> str:
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Disable Flask request logs by setting debug=False and custom logging
+    app.run(host="0.0.0.0", port=5000, debug=False)
