@@ -50,7 +50,7 @@ Usage
 Setting up tracing
 ------------------
 
-When tracing a celery worker process, tracing and instrumention both must be initialized after the celery worker
+When tracing a celery worker process, tracing and instrumentation both must be initialized after the celery worker
 process is initialized. This is required for any tracing components that might use threading to work correctly
 such as the BatchSpanProcessor. Celery provides a signal called ``worker_process_init`` that can be used to
 accomplish this as shown in the example above.
