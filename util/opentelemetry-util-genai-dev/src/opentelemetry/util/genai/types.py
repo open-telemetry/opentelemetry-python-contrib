@@ -166,24 +166,15 @@ class EvaluationResult:
 class EmbeddingInvocation(GenAI):
     """Represents a single embedding model invocation."""
 
-    operation_name: str
-    request_model: str
+    operation_name: str = "embeddings"
+    request_model: str = ""
     input_texts: list[str] = field(default_factory=list)
     dimension_count: Optional[int] = None
-    provider: Optional[str] = None
     server_port: Optional[int] = None
     server_address: Optional[str] = None
     input_tokens: Optional[int] = None
     encoding_formats: list[str] = field(default_factory=list)
     error_type: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    span: Optional[Span] = None
-    context_token: Optional[ContextToken] = None
-    # Agent context (for agentic applications)
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
 
 
 @dataclass
