@@ -518,17 +518,20 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         tags: Optional[list[str]],
     ) -> UtilAgent:
         metadata_attrs = self._sanitize_metadata_dict(metadata)
-        attributes: dict[str, Any] = {}
+        extras: dict[str, Any] = {}
         if tags:
-            attributes["tags"] = [str(tag) for tag in tags]
+            extras["tags"] = [str(tag) for tag in tags]
 
         raw_operation = None
         for key in ("ls_operation", "operation"):
             if key in metadata_attrs:
                 raw_operation = metadata_attrs.pop(key)
                 break
-        operation = str(raw_operation).lower() if isinstance(raw_operation, str) else ""
-        operation = "create" if operation == "create" else "invoke"
+        op_text = str(raw_operation).lower() if isinstance(raw_operation, str) else ""
+        if "create" in op_text:
+            operation = "create_agent"
+        else:
+            operation = "invoke_agent"
 
         agent_type = None
         for key in ("ls_agent_type", "agent_type"):
@@ -576,7 +579,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         metadata_attrs.pop("tools", None)
         input_context = self._serialize_payload(inputs)
 
-        attributes.update(metadata_attrs)
+        extras.update(metadata_attrs)
 
         agent = UtilAgent(
             name=name,
@@ -588,7 +591,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             tools=tools,
             system_instructions=system_instructions,
             input_context=input_context,
-            attributes=attributes,
+            attributes=extras,
             run_id=run_id,
             parent_run_id=parent_run_id,
         )
@@ -796,51 +799,125 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if provider_name is None and "provider" in invocation_attrs:
             provider_name = str(invocation_attrs.pop("provider"))
 
-        attrs: dict[str, Any] = {}
+        extras: dict[str, Any] = {}
         callback_name = self._get_name_from_callback(serialized, kwargs=kwargs)
         if callback_name:
-            attrs["callback.name"] = callback_name
-            attrs["traceloop.callback_name"] = callback_name
-            attrs.setdefault("traceloop.span.kind", "llm")
+            extras["callback.name"] = callback_name
+        extras.setdefault("span.kind", "llm")
 
-        # copy selected params (non-semconv)
-        for key in (
-            "top_p",
-            "frequency_penalty",
-            "presence_penalty",
-            "stop",
-            "seed",
-        ):
-            if key in invocation_attrs:
-                attrs[f"request_{key}"] = invocation_attrs.pop(key)
+        def _pop_float(source: dict[str, Any], *keys: str) -> Optional[float]:
+            for key in keys:
+                if key in source:
+                    raw = source.pop(key)
+                    try:
+                        return float(raw)
+                    except (TypeError, ValueError):
+                        return None
+            return None
 
-        for metadata_key, target_key in (
-            ("ls_max_tokens", "request_max_tokens"),
-            ("ls_temperature", "request_temperature"),
-        ):
-            if metadata_key in metadata_attrs:
-                attrs[target_key] = metadata_attrs.pop(metadata_key)
+        def _pop_int(source: dict[str, Any], *keys: str) -> Optional[int]:
+            for key in keys:
+                if key in source:
+                    raw = source.pop(key)
+                    try:
+                        return int(raw)
+                    except (TypeError, ValueError):
+                        try:
+                            return int(float(raw))
+                        except (TypeError, ValueError):
+                            return None
+            return None
+
+        def _pop_stop_sequences(source: dict[str, Any], *keys: str) -> list[str]:
+            for key in keys:
+                if key in source:
+                    raw = source.pop(key)
+                    if raw is None:
+                        return []
+                    if isinstance(raw, (list, tuple, set)):
+                        return [str(item) for item in raw if item is not None]
+                    return [str(raw)]
+            return []
+
+        request_temperature = _pop_float(invocation_attrs, "temperature")
+        if request_temperature is None:
+            request_temperature = _pop_float(metadata_attrs, "ls_temperature")
+        request_top_p = _pop_float(invocation_attrs, "top_p")
+        request_top_k = _pop_int(invocation_attrs, "top_k")
+        request_frequency_penalty = _pop_float(
+            invocation_attrs, "frequency_penalty"
+        )
+        request_presence_penalty = _pop_float(
+            invocation_attrs, "presence_penalty"
+        )
+        request_seed = _pop_int(invocation_attrs, "seed")
+
+        request_max_tokens = _pop_int(
+            invocation_attrs, "max_tokens", "max_new_tokens"
+        )
+        if request_max_tokens is None:
+            request_max_tokens = _pop_int(metadata_attrs, "ls_max_tokens")
+
+        request_stop_sequences = _pop_stop_sequences(invocation_attrs, "stop")
+        if not request_stop_sequences:
+            request_stop_sequences = _pop_stop_sequences(
+                invocation_attrs, "stop_sequences"
+            )
+
+        request_choice_count = _pop_int(
+            invocation_attrs,
+            "n",
+            "choice_count",
+            "num_generations",
+            "num_return_sequences",
+        )
+
+        request_service_tier = metadata_attrs.pop("ls_service_tier", None)
+        if request_service_tier is None:
+            request_service_tier = invocation_attrs.pop("service_tier", None)
 
         if tags:
-            attrs["tags"] = [str(tag) for tag in tags]
+            extras["tags"] = [str(tag) for tag in tags]
 
         serialized_id = serialized.get("id")
         if serialized_id is not None:
-            attrs["callback.id"] = _sanitize_metadata_value(serialized_id)
+            extras["callback.id"] = _sanitize_metadata_value(serialized_id)
 
-        attrs.update(metadata_attrs)
-        attrs.update(invocation_attrs)
+        extras.update(metadata_attrs)
+        extras.update(invocation_attrs)
 
         request_functions = self._extract_request_functions(invocation_params)
         input_messages = self._build_input_messages(messages)
-        inv = UtilLLMInvocation(
-            request_model=request_model,
-            provider=provider_name,
-            framework="langchain",
-            input_messages=input_messages,
-            request_functions=request_functions,
-            attributes=attrs,
-        )
+        llm_kwargs: dict[str, Any] = {
+            "request_model": request_model,
+            "provider": provider_name,
+            "framework": "langchain",
+            "input_messages": input_messages,
+            "request_functions": request_functions,
+            "attributes": extras,
+        }
+        if request_temperature is not None:
+            llm_kwargs["request_temperature"] = request_temperature
+        if request_top_p is not None:
+            llm_kwargs["request_top_p"] = request_top_p
+        if request_top_k is not None:
+            llm_kwargs["request_top_k"] = request_top_k
+        if request_frequency_penalty is not None:
+            llm_kwargs["request_frequency_penalty"] = request_frequency_penalty
+        if request_presence_penalty is not None:
+            llm_kwargs["request_presence_penalty"] = request_presence_penalty
+        if request_seed is not None:
+            llm_kwargs["request_seed"] = request_seed
+        if request_max_tokens is not None:
+            llm_kwargs["request_max_tokens"] = request_max_tokens
+        if request_choice_count is not None:
+            llm_kwargs["request_choice_count"] = request_choice_count
+        if request_stop_sequences:
+            llm_kwargs["request_stop_sequences"] = request_stop_sequences
+        if request_service_tier is not None:
+            llm_kwargs["request_service_tier"] = request_service_tier
+
+        inv = UtilLLMInvocation(**llm_kwargs)
         inv.run_id = run_id
         inv.parent_run_id = parent_run_id
         if parent_run_id is not None:

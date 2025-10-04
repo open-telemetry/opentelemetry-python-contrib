@@ -24,8 +24,7 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-import fsspec
-from fsspec.implementations.memory import MemoryFileSystem
+import pytest
 
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
@@ -36,6 +35,11 @@ from opentelemetry.util.genai.upload_hook import (
     _NoOpUploadHook,
     load_upload_hook,
 )
+
+fsspec = pytest.importorskip("fsspec")
+MemoryFileSystem = pytest.importorskip(
+    "fsspec.implementations.memory"
+).MemoryFileSystem
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem

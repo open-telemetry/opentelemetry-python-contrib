@@ -3,13 +3,18 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from opentelemetry.metrics import Histogram, Meter, get_meter
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAI,
-)
 
 from ..attributes import GEN_AI_AGENT_ID, GEN_AI_AGENT_NAME
 from ..instruments import Instruments
-from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow, EmbeddingInvocation
+from ..interfaces import EmitterMeta
+from ..types import (
+    AgentInvocation,
+    EmbeddingInvocation,
+    Error,
+    LLMInvocation,
+    Task,
+    Workflow,
+)
 from .utils import (
     _get_metric_attributes,
     _record_duration,
@@ -17,7 +22,7 @@ from .utils import (
 )
 
 
-class MetricsEmitter:
+class MetricsEmitter(EmitterMeta):
     """Emits GenAI metrics (duration + token usage).
 
     Supports LLMInvocation, EmbeddingInvocation, ToolCall, Workflow, Agent, and Task.
@@ -43,10 +48,10 @@ class MetricsEmitter:
             instruments.task_duration_histogram
         )
 
-    def start(self, obj: Any) -> None:  # no-op for metrics
+    def on_start(self, obj: Any) -> None:  # no-op for metrics
         return None
 
-    def finish(self, obj: Any) -> None:
+    def on_end(self, obj: Any) -> None:
         if isinstance(obj, Workflow):
             self._record_workflow_metrics(obj)
             return
@@ -62,9 +67,9 @@ class MetricsEmitter:
             metric_attrs = _get_metric_attributes(
                 invocation.request_model,
                 invocation.response_model_name,
-                GenAI.GenAiOperationNameValues.CHAT.value,
+                invocation.operation,
                 invocation.provider,
-                invocation.attributes.get("framework"),
+                invocation.framework,
             )
             # Add agent context if available
             if invocation.agent_name:
@@ -122,7 +127,7 @@ class MetricsEmitter:
                 self._duration_histogram, invocation, metric_attrs
             )
 
-    def error(self, error: Error, obj: Any) -> None:
+    def on_error(self, error: Error, obj: Any) -> None:
         # Handle new agentic types
         if isinstance(obj, Workflow):
             self._record_workflow_metrics(obj)
@@ -140,9 +145,9 @@ class MetricsEmitter:
             metric_attrs = _get_metric_attributes(
                 invocation.request_model,
                 invocation.response_model_name,
-                GenAI.GenAiOperationNameValues.CHAT.value,
+                invocation.operation,
                 invocation.provider,
-                invocation.attributes.get("framework"),
+                invocation.framework,
             )
             # Add agent context if available
             if invocation.agent_name:
@@ -199,7 +204,14 @@ class MetricsEmitter:
 
         return isinstance(
             obj,
-            (LLMInvocation, ToolCall, Workflow, AgentInvocation, Task, EmbeddingInvocation),
+            (
+                LLMInvocation,
+                ToolCall,
+                Workflow,
+                AgentInvocation,
+                Task,
+                EmbeddingInvocation,
+            ),
         )
 
     # Helper methods for new agentic types
@@ -226,7 +238,7 @@ class MetricsEmitter:
             return
         duration = agent.end_time - agent.start_time
         metric_attrs = {
-            "gen_ai.operation.name": f"agent.{agent.operation}",
+            "gen_ai.operation.name": agent.operation,
             "gen_ai.agent.name": agent.name,
             "gen_ai.agent.id": str(agent.run_id),
         }

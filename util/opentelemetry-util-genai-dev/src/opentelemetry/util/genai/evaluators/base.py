@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from opentelemetry.util.genai.types import (
     AgentInvocation,
@@ -33,8 +33,30 @@ class Evaluator(ABC):
     ``evaluate`` method performs dynamic dispatch and guarantees a list return type.
     """
 
-    def __init__(self, metrics: Iterable[str] | None = None) -> None:
-        self._metrics = tuple(metrics or self.default_metrics())
+    def __init__(
+        self,
+        metrics: Iterable[str] | None = None,
+        *,
+        invocation_type: str | None = None,
+        options: Mapping[str, str] | None = None,
+    ) -> None:
+        default_metrics = (
+            self.default_metrics_for(invocation_type)
+            if invocation_type is not None
+            else self.default_metrics()
+        )
+        self._metrics = tuple(metrics or default_metrics)
+        self._invocation_type = invocation_type
+        if options:
+            normalized: dict[str, Mapping[str, str]] = {}
+            for key, value in options.items():
+                if isinstance(value, Mapping):
+                    normalized[key] = dict(value)
+                else:
+                    normalized[key] = {"value": str(value)}
+            self._options: Mapping[str, Mapping[str, str]] = normalized
+        else:
+            self._options = {}
 
     # ---- Metrics ------------------------------------------------------
     def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
@@ -42,11 +64,35 @@ class Evaluator(ABC):
 
         return ()
 
+    def default_metrics_for(
+        self, invocation_type: str | None
+    ) -> Sequence[str]:
+        mapping = self.default_metrics_by_type()
+        if invocation_type and invocation_type in mapping:
+            return mapping[invocation_type]
+        if "LLMInvocation" in mapping:
+            return mapping["LLMInvocation"]
+        return self.default_metrics()
+
+    def default_metrics_by_type(self) -> Mapping[str, Sequence[str]]:
+        """Return default metric identifiers grouped by GenAI invocation type."""
+
+        metrics = self.default_metrics()
+        if not metrics:
+            return {}
+        return {"LLMInvocation": tuple(metrics)}
+
     @property
     def metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
         """Metric identifiers advertised by this evaluator instance."""
 
         return self._metrics
+
+    @property
+    def options(self) -> Mapping[str, Mapping[str, str]]:
+        """Metric configuration supplied at construction time."""
+
+        return self._options
 
     # ---- Evaluation dispatch -----------------------------------------
     def evaluate(self, item: GenAI) -> list[EvaluationResult]:

@@ -16,24 +16,38 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Callable, Dict, Sequence
+from dataclasses import dataclass
+from typing import Callable, Dict, Mapping, Sequence
 
-from opentelemetry.util.genai.evaluators.base import Evaluator
 from opentelemetry.util._importlib_metadata import (
     entry_points,
 )
+from opentelemetry.util.genai.evaluators.base import Evaluator
 
 _LOGGER = logging.getLogger(__name__)
 _ENTRY_POINT_GROUP = "opentelemetry_util_genai_evaluators"
 
-EvaluatorFactory = Callable[[Sequence[str] | None], Evaluator]
+EvaluatorFactory = Callable[..., Evaluator]
 
-_EVALUATORS: Dict[str, EvaluatorFactory] = {}
+
+@dataclass
+class EvaluatorRegistration:
+    """Registration metadata for an evaluator plugin."""
+
+    factory: EvaluatorFactory
+    default_metrics_factory: Callable[[], Mapping[str, Sequence[str]]]
+
+
+_EVALUATORS: Dict[str, EvaluatorRegistration] = {}
 _ENTRY_POINTS_LOADED = False
 
 
-def _call_with_optional_metrics(
-    target: Callable[..., Evaluator], metrics: Sequence[str] | None
+def _call_with_optional_params(
+    target: EvaluatorFactory,
+    *,
+    metrics: Sequence[str] | None = None,
+    invocation_type: str | None = None,
+    options: Mapping[str, str] | None = None,
 ) -> Evaluator:
     """Call a factory/constructor handling optional ``metrics`` gracefully."""
 
@@ -49,50 +63,92 @@ def _call_with_optional_metrics(
         accepts_varargs = any(
             p.kind is inspect.Parameter.VAR_POSITIONAL for p in params
         )
-        has_metrics_kw = any(
-            p.name == "metrics"
-            and p.kind
-            in (
-                inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                inspect.Parameter.KEYWORD_ONLY,
-            )
-            for p in params
-        )
-        if metrics is None and not accepts_kwargs and not accepts_varargs:
-            # No metrics requested and callable doesn't need it
-            return target()
-        if has_metrics_kw or accepts_kwargs:
-            return target(metrics=metrics)
-        if accepts_varargs:
-            return target(metrics)
-        if metrics is None:
-            return target()
-        # Callable doesn't appear to accept metrics explicitly; fall back
+        parameter_names = {p.name for p in params}
+        call_kwargs: dict[str, object] = {}
+        args: list[object] = []
+        if metrics is not None:
+            if "metrics" in parameter_names:
+                call_kwargs["metrics"] = metrics
+            elif accepts_varargs:
+                args.append(metrics)
+        if (
+            invocation_type is not None
+            and "invocation_type" in parameter_names
+        ):
+            call_kwargs["invocation_type"] = invocation_type
+        if options and "options" in parameter_names:
+            call_kwargs["options"] = options
+        if accepts_kwargs:
+            return target(*args, **call_kwargs)
         try:
-            return target(metrics)
-        except TypeError:  # pragma: no cover - defensive
-            return target()
-    # Unable to introspect signature; best-effort invocation
-    try:
-        return target(metrics=metrics)
-    except TypeError:
-        try:
-            return target(metrics)
+            return target(*args, **call_kwargs)
         except TypeError:
-            return target()
+            # Retry progressively dropping optional parameters
+            if call_kwargs:
+                call_kwargs.pop("options", None)
+                try:
+                    return target(*args, **call_kwargs)
+                except TypeError:
+                    call_kwargs.pop("invocation_type", None)
+                    try:
+                        return target(*args, **call_kwargs)
+                    except TypeError:
+                        call_kwargs.pop("metrics", None)
+                        return target(*args, **call_kwargs)
+            raise
+    # Unable to introspect signature; best-effort invocation cascade
+    for attempt in (
+        lambda: target(
+            metrics=metrics, invocation_type=invocation_type, options=options
+        ),
+        lambda: target(metrics=metrics, invocation_type=invocation_type),
+        lambda: target(metrics=metrics),
+        target,
+    ):
+        try:
+            return attempt()  # type: ignore[misc]
+        except TypeError:
+            continue
+    raise TypeError("Unable to invoke evaluator factory")
 
 
 def register_evaluator(
-    name: str, factory: Callable[..., Evaluator]
+    name: str,
+    factory: EvaluatorFactory,
+    *,
+    default_metrics: Callable[[], Mapping[str, Sequence[str]]]
+    | Mapping[str, Sequence[str]]
+    | None = None,
 ) -> None:
     """Register a manual evaluator factory (case-insensitive name)."""
 
     key = name.lower()
 
-    def _wrapped(metrics: Sequence[str] | None = None) -> Evaluator:
-        return _call_with_optional_metrics(factory, metrics)
+    def _default_supplier() -> Mapping[str, Sequence[str]]:
+        if default_metrics is None:
+            try:
+                instance = _call_with_optional_params(factory)
+            except Exception:  # pragma: no cover - defensive
+                return {}
+            provider = getattr(instance, "default_metrics_by_type", None)
+            if callable(provider):
+                try:
+                    return provider()
+                except Exception:  # pragma: no cover - defensive
+                    return {}
+            try:
+                metrics = instance.default_metrics()
+            except Exception:  # pragma: no cover - defensive
+                metrics = []
+            return {"LLMInvocation": tuple(metrics)}
+        if callable(default_metrics):
+            return default_metrics()
+        return default_metrics
 
-    _EVALUATORS[key] = _wrapped
+    _EVALUATORS[key] = EvaluatorRegistration(
+        factory=factory,
+        default_metrics_factory=_default_supplier,
+    )
 
 
 def _load_entry_points() -> None:
@@ -106,42 +162,79 @@ def _load_entry_points() -> None:
         _ENTRY_POINTS_LOADED = True
         return
     for ep in eps:  # type: ignore[assignment]
-        name = ep.name
         try:
             target = ep.load()
         except Exception as exc:  # pragma: no cover - import issues
             _LOGGER.warning(
-                "Failed to load evaluator entry point '%s': %s", name, exc
+                "Failed to load evaluator entry point '%s': %s", ep.name, exc
             )
             continue
-        if not callable(target):
+        registration: EvaluatorRegistration | None = None
+        if isinstance(target, EvaluatorRegistration):
+            registration = target
+        elif hasattr(target, "factory") and hasattr(target, "default_metrics"):
+            try:
+                defaults_callable = getattr(target, "default_metrics")
+                if callable(defaults_callable):
+                    registration = EvaluatorRegistration(
+                        factory=getattr(target, "factory"),
+                        default_metrics_factory=lambda _f=defaults_callable: _f(),
+                    )
+            except Exception:  # pragma: no cover - defensive
+                registration = None
+        elif callable(target):
+            # Legacy entry point exposing factory directly
+            registration = EvaluatorRegistration(
+                factory=target,
+                default_metrics_factory=lambda: {},
+            )
+
+        if registration is None:
             _LOGGER.warning(
-                "Evaluator entry point '%s' is not callable; ignoring", name
+                "Evaluator entry point '%s' did not yield a registration",
+                ep.name,
             )
             continue
 
-        def _factory(
-            metrics: Sequence[str] | None = None,
-            _target: Callable[..., Evaluator] = target,
-        ) -> Evaluator:
-            return _call_with_optional_metrics(_target, metrics)
-
-        # Manual registrations take precedence; avoid overriding explicitly set ones
-        key = name.lower()
+        key = ep.name.lower()
         if key not in _EVALUATORS:
-            _EVALUATORS[key] = _factory
+            _EVALUATORS[key] = registration
     _ENTRY_POINTS_LOADED = True
 
 
 def get_evaluator(
-    name: str, metrics: Sequence[str] | None = None
+    name: str,
+    metrics: Sequence[str] | None = None,
+    *,
+    invocation_type: str | None = None,
+    options: Mapping[str, str] | None = None,
 ) -> Evaluator:
     _load_entry_points()
     key = name.lower()
-    factory = _EVALUATORS.get(key)
-    if factory is None:
+    registration = _EVALUATORS.get(key)
+    if registration is None:
         raise ValueError(f"Unknown evaluator: {name}")
-    return factory(metrics)
+    return _call_with_optional_params(
+        registration.factory,
+        metrics=metrics,
+        invocation_type=invocation_type,
+        options=options,
+    )
+
+
+def get_default_metrics(name: str) -> Mapping[str, Sequence[str]]:
+    _load_entry_points()
+    registration = _EVALUATORS.get(name.lower())
+    if registration is None:
+        raise ValueError(f"Unknown evaluator: {name}")
+    try:
+        defaults = registration.default_metrics_factory()
+    except Exception:  # pragma: no cover - defensive
+        return {}
+    normalized: dict[str, Sequence[str]] = {}
+    for key, value in defaults.items():
+        normalized[key] = tuple(value)
+    return normalized
 
 
 def list_evaluators() -> list[str]:
@@ -158,8 +251,10 @@ def clear_registry() -> None:  # pragma: no cover - test helper
 
 
 __all__ = [
+    "EvaluatorRegistration",
     "register_evaluator",
     "get_evaluator",
+    "get_default_metrics",
     "list_evaluators",
     "clear_registry",
 ]

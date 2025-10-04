@@ -16,7 +16,6 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 from ..attributes import (
-    GEN_AI_AGENT_DESCRIPTION,
     GEN_AI_AGENT_ID,
     GEN_AI_AGENT_NAME,
     GEN_AI_AGENT_TOOLS,
@@ -39,6 +38,7 @@ from ..attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
+from ..interfaces import EmitterMeta
 from ..types import (
     AgentInvocation,
     EmbeddingInvocation,
@@ -47,6 +47,9 @@ from ..types import (
     Task,
     ToolCall,
     Workflow,
+)
+from ..types import (
+    GenAI as GenAIType,
 )
 from .utils import (
     _apply_function_definitions,
@@ -87,18 +90,10 @@ def _sanitize_span_attribute_value(value: Any) -> Optional[Any]:
 def _apply_gen_ai_semconv_attributes(
     span: Span,
     attributes: Optional[dict[str, Any]],
-    *,
-    allowed_prefixes: Optional[tuple[str, ...]] = None,
 ) -> None:
     if not attributes:
         return
     for key, value in attributes.items():
-        if not isinstance(key, str):
-            continue
-        if allowed_prefixes and not any(
-            key.startswith(prefix) for prefix in allowed_prefixes
-        ):
-            continue
         sanitized = _sanitize_span_attribute_value(value)
         if sanitized is None:
             continue
@@ -108,11 +103,25 @@ def _apply_gen_ai_semconv_attributes(
             pass
 
 
-class SpanEmitter:
+def _filtered_attribute_view(
+    attributes: Optional[dict[str, Any]], prefixes: tuple[str, ...]
+) -> dict[str, Any]:
+    if not attributes:
+        return {}
+    filtered: dict[str, Any] = {}
+    for key, value in attributes.items():
+        if not isinstance(key, str):
+            continue
+        if any(key.startswith(prefix) for prefix in prefixes):
+            filtered[key] = value
+    return filtered
+
+
+class SpanEmitter(EmitterMeta):
     """Span-focused emitter supporting optional content capture.
 
     Original implementation migrated from generators/span_emitter.py. Additional telemetry
-    (metrics, content events) are handled by separate emitters composed via CompositeGenerator.
+    (metrics, content events) are handled by separate emitters composed via CompositeEmitter.
     """
 
     role = "span"
@@ -133,34 +142,31 @@ class SpanEmitter:
         return True
 
     # ---- helpers ---------------------------------------------------------
-    def _apply_start_attrs(
-        self, invocation: LLMInvocation | EmbeddingInvocation
-    ):
+    def _apply_start_attrs(self, invocation: GenAIType):
         span = getattr(invocation, "span", None)
         if span is None:
             return
+        semconv_attrs = dict(invocation.semantic_convention_attributes())
         if isinstance(invocation, ToolCall):
             enum_val = getattr(
                 GenAI.GenAiOperationNameValues, "EXECUTE_TOOL", None
             )
-            op_value = enum_val.value if enum_val else "execute_tool"
-        elif isinstance(invocation, EmbeddingInvocation):
-            enum_val = getattr(
-                GenAI.GenAiOperationNameValues, "EMBEDDINGS", None
+            semconv_attrs[GenAI.GEN_AI_OPERATION_NAME] = (
+                enum_val.value if enum_val else "execute_tool"
             )
-            op_value = enum_val.value if enum_val else "embeddings"
+            semconv_attrs[GenAI.GEN_AI_REQUEST_MODEL] = invocation.name
+        elif isinstance(invocation, EmbeddingInvocation):
+            semconv_attrs.setdefault(
+                GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model
+            )
         elif isinstance(invocation, LLMInvocation):
-            # Use the operation field from LLMInvocation (defaults to "chat")
-            op_value = invocation.operation
-        else:
-            op_value = GenAI.GenAiOperationNameValues.CHAT.value
-        span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, op_value)
-        model_name = (
-            invocation.name
-            if isinstance(invocation, ToolCall)
-            else invocation.request_model
+            semconv_attrs.setdefault(
+                GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model
+            )
+        _apply_gen_ai_semconv_attributes(span, semconv_attrs)
+        _apply_gen_ai_semconv_attributes(
+            span, getattr(invocation, "attributes", None)
         )
-        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, model_name)
         provider = getattr(invocation, "provider", None)
         if provider:
             span.set_attribute(GEN_AI_PROVIDER_NAME, provider)
@@ -170,17 +176,7 @@ class SpanEmitter:
         # function definitions (semantic conv derived from structured list)
         if isinstance(invocation, LLMInvocation):
             _apply_function_definitions(span, invocation.request_functions)
-        # Agent context
-        agent_name = getattr(invocation, "agent_name", None)
-        if agent_name:
-            span.set_attribute(GEN_AI_AGENT_NAME, agent_name)
-        agent_id = getattr(invocation, "agent_id", None)
-        if agent_id:
-            span.set_attribute(GEN_AI_AGENT_ID, agent_id)
-        _apply_gen_ai_semconv_attributes(
-            span,
-            getattr(invocation, "attributes", None),
-        )
+        # Agent context (already covered by semconv metadata on base fields)
 
     def _apply_finish_attrs(
         self, invocation: LLMInvocation | EmbeddingInvocation
@@ -214,17 +210,15 @@ class SpanEmitter:
         # Finish-time semconv attributes (response + usage tokens + functions)
         if isinstance(invocation, LLMInvocation):
             _apply_llm_finish_semconv(span, invocation)
-            _apply_gen_ai_semconv_attributes(
-                span,
-                invocation.attributes,
-                allowed_prefixes=("gen_ai.", "traceloop."),
-            )
-        else:
-            _apply_gen_ai_semconv_attributes(
-                span,
-                getattr(invocation, "attributes", None),
-                allowed_prefixes=("gen_ai.", "traceloop."),
-            )
+        _apply_gen_ai_semconv_attributes(
+            span, invocation.semantic_convention_attributes()
+        )
+        prefixed = _filtered_attribute_view(
+            getattr(invocation, "attributes", None),
+            ("gen_ai.", "traceloop."),
+        )
+        if prefixed:
+            _apply_gen_ai_semconv_attributes(span, prefixed)
 
         # Capture output messages if enabled
         if (
@@ -237,7 +231,9 @@ class SpanEmitter:
                 span.set_attribute(GEN_AI_OUTPUT_MESSAGES, serialized)
 
     # ---- lifecycle -------------------------------------------------------
-    def start(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
+    def on_start(
+        self, invocation: LLMInvocation | EmbeddingInvocation
+    ) -> None:  # type: ignore[override]
         # Handle new agentic types
         if isinstance(invocation, Workflow):
             self._start_workflow(invocation)
@@ -270,7 +266,7 @@ class SpanEmitter:
             invocation.context_token = cm  # type: ignore[assignment]
             self._apply_start_attrs(invocation)
 
-    def finish(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
+    def on_end(self, invocation: LLMInvocation | EmbeddingInvocation) -> None:  # type: ignore[override]
         if isinstance(invocation, Workflow):
             self._finish_workflow(invocation)
         elif isinstance(invocation, AgentInvocation):
@@ -292,7 +288,7 @@ class SpanEmitter:
                     pass
             span.end()
 
-    def error(
+    def on_error(
         self, error: Error, invocation: LLMInvocation | EmbeddingInvocation
     ) -> None:  # type: ignore[override]
         if isinstance(invocation, Workflow):
@@ -353,7 +349,9 @@ class SpanEmitter:
             span.set_attribute(
                 "gen_ai.input.messages", json.dumps([input_msg])
             )
-        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, workflow.semantic_convention_attributes()
+        )
 
     def _finish_workflow(self, workflow: Workflow) -> None:
         """Finish a workflow span."""
@@ -372,7 +370,9 @@ class SpanEmitter:
             span.set_attribute(
                 "gen_ai.output.messages", json.dumps([output_msg])
             )
-        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, workflow.semantic_convention_attributes()
+        )
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -391,7 +391,9 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
-        _apply_gen_ai_semconv_attributes(span, workflow.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, workflow.semantic_convention_attributes()
+        )
         token = workflow.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -404,7 +406,7 @@ class SpanEmitter:
     def _start_agent(self, agent: AgentInvocation) -> None:
         """Start an agent span (create or invoke)."""
         # Span name per semantic conventions
-        if agent.operation == "create":
+        if agent.operation == "create_agent":
             span_name = f"create_agent {agent.name}"
         else:
             span_name = f"invoke_agent {agent.name}"
@@ -418,23 +420,16 @@ class SpanEmitter:
 
         # Required attributes per semantic conventions
         # Set operation name based on agent operation (create or invoke)
-        if agent.operation == "create":
-            operation_name = "create_agent"
-        else:
-            operation_name = "invoke_agent"
-        span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, operation_name)
-        span.set_attribute(GEN_AI_AGENT_NAME, agent.name)
-        span.set_attribute(GEN_AI_AGENT_ID, str(agent.run_id))
+        semconv_attrs = dict(agent.semantic_convention_attributes())
+        semconv_attrs.setdefault(GEN_AI_AGENT_NAME, agent.name)
+        semconv_attrs.setdefault(GEN_AI_AGENT_ID, str(agent.run_id))
+        _apply_gen_ai_semconv_attributes(span, semconv_attrs)
 
         # Optional attributes
         if agent.agent_type:
             span.set_attribute(GEN_AI_AGENT_TYPE, agent.agent_type)
-        if agent.description:
-            span.set_attribute(GEN_AI_AGENT_DESCRIPTION, agent.description)
         if agent.framework:
             span.set_attribute("gen_ai.framework", agent.framework)
-        if agent.model:
-            span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, agent.model)
         if agent.tools:
             span.set_attribute(GEN_AI_AGENT_TOOLS, agent.tools)
         if agent.system_instructions and self._capture_content:
@@ -456,7 +451,9 @@ class SpanEmitter:
             span.set_attribute(
                 "gen_ai.input.messages", json.dumps([input_msg])
             )
-        _apply_gen_ai_semconv_attributes(span, agent.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, agent.semantic_convention_attributes()
+        )
 
     def _finish_agent(self, agent: AgentInvocation) -> None:
         """Finish an agent span."""
@@ -475,7 +472,9 @@ class SpanEmitter:
             span.set_attribute(
                 "gen_ai.output.messages", json.dumps([output_msg])
             )
-        _apply_gen_ai_semconv_attributes(span, agent.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, agent.semantic_convention_attributes()
+        )
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -494,7 +493,9 @@ class SpanEmitter:
             span.set_attribute(
                 ErrorAttributes.ERROR_TYPE, error.type.__qualname__
             )
-        _apply_gen_ai_semconv_attributes(span, agent.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, agent.semantic_convention_attributes()
+        )
         token = agent.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -536,7 +537,9 @@ class SpanEmitter:
             span.set_attribute(
                 "gen_ai.input.messages", json.dumps([input_msg])
             )
-        _apply_gen_ai_semconv_attributes(span, task.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, task.semantic_convention_attributes()
+        )
 
     def _finish_task(self, task: Task) -> None:
         """Finish a task span."""
@@ -558,7 +561,9 @@ class SpanEmitter:
         # Update status if changed
         if task.status:
             span.set_attribute(GEN_AI_TASK_STATUS, task.status)
-        _apply_gen_ai_semconv_attributes(span, task.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, task.semantic_convention_attributes()
+        )
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:
@@ -579,7 +584,9 @@ class SpanEmitter:
             )
         # Update status to failed
         span.set_attribute(GEN_AI_TASK_STATUS, "failed")
-        _apply_gen_ai_semconv_attributes(span, task.attributes)
+        _apply_gen_ai_semconv_attributes(
+            span, task.semantic_convention_attributes()
+        )
         token = task.context_token
         if token is not None and hasattr(token, "__exit__"):
             try:

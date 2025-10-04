@@ -13,9 +13,10 @@
 # limitations under the License.
 """Builtin evaluators.
 
-Lightweight reference evaluators that demonstrate the interface.
-Heavy / optional dependencies are imported lazily. If the dependency is not
-available, the evaluator returns an EvaluationResult with an error field set.
+These evaluators implement lightweight reference behaviour to exercise the
+pluggable evaluation infrastructure. Heavy / optional dependencies are
+imported lazily. When a dependency is not available the evaluator returns an
+``EvaluationResult`` with the ``error`` field populated.
 """
 
 from __future__ import annotations
@@ -25,7 +26,6 @@ from typing import List, Sequence
 from opentelemetry.util.genai.evaluators.base import Evaluator
 from opentelemetry.util.genai.evaluators.registry import register_evaluator
 from opentelemetry.util.genai.types import (
-    Error,
     EvaluationResult,
     LLMInvocation,
     Text,
@@ -36,17 +36,13 @@ def _extract_text(invocation: LLMInvocation) -> str:
     text_parts: List[str] = []
     for msg in invocation.output_messages:
         for part in msg.parts:
-            if isinstance(part, Text):  # simple content aggregation
+            if isinstance(part, Text):
                 text_parts.append(part.content)
     return "\n".join(text_parts).strip()
 
 
 class LengthEvaluator(Evaluator):
-    """Simple evaluator producing a score based on response length.
-
-    Score: normalized length = len / (len + 50) in [0,1).
-    Label tiers: short (<50 chars), medium (50-200), long (>200).
-    """
+    """Simple evaluator producing a score based on response length."""
 
     def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
         return ("length",)
@@ -81,104 +77,28 @@ class LengthEvaluator(Evaluator):
         ]
 
 
-class DeepevalEvaluator(Evaluator):
-    """Placeholder Deepeval evaluator.
+def _wrap_factory(cls):
+    def _factory(
+        metrics=None,
+        invocation_type=None,
+        options=None,
+    ):
+        return cls(
+            metrics,
+            invocation_type=invocation_type,
+            options=options,
+        )
 
-    Attempts to import deepeval. If unavailable, returns error. A future
-    integration may map multiple metrics; for now this returns a single
-    placeholder result when the dependency is present.
-    """
-
-    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
-        return ("deepeval",)
-
-    def evaluate_llm(
-        self, invocation: LLMInvocation
-    ) -> Sequence[EvaluationResult]:  # type: ignore[override]
-        metric_name = self.metrics[0] if self.metrics else "deepeval"
-        try:
-            import deepeval  # noqa: F401
-        except Exception as exc:  # pragma: no cover - environment dependent
-            return [
-                EvaluationResult(
-                    metric_name=metric_name,
-                    error=Error(
-                        message="deepeval not installed", type=type(exc)
-                    ),
-                )
-            ]
-        return [
-            EvaluationResult(
-                metric_name=metric_name,
-                score=None,
-                label=None,
-                explanation="Deepeval integration placeholder (no metrics recorded)",
-            )
-        ]
-
-
-class SentimentEvaluator(Evaluator):
-    """Simple sentiment evaluator using nltk's VADER analyzer if available."""
-
-    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
-        return ("sentiment",)
-
-    def evaluate_llm(
-        self, invocation: LLMInvocation
-    ) -> Sequence[EvaluationResult]:  # type: ignore[override]
-        metric_name = self.metrics[0] if self.metrics else "sentiment"
-        try:
-            from nltk.sentiment import (
-                SentimentIntensityAnalyzer,  # type: ignore
-            )
-        except Exception as exc:  # pragma: no cover - dependency optional
-            return [
-                EvaluationResult(
-                    metric_name=metric_name,
-                    error=Error(
-                        message="nltk (vader) not installed",
-                        type=type(exc),
-                    ),
-                )
-            ]
-        content = _extract_text(invocation)
-        if not content:
-            return [
-                EvaluationResult(
-                    metric_name=metric_name, score=0.0, label="neutral"
-                )
-            ]
-        analyzer = SentimentIntensityAnalyzer()
-        scores = analyzer.polarity_scores(content)
-        compound = scores.get("compound", 0.0)
-        score = (compound + 1) / 2
-        if compound >= 0.2:
-            label = "positive"
-        elif compound <= -0.2:
-            label = "negative"
-        else:
-            label = "neutral"
-        return [
-            EvaluationResult(
-                metric_name=metric_name,
-                score=score,
-                label=label,
-                explanation=f"compound={compound}",
-            )
-        ]
+    return _factory
 
 
 # Auto-register builtin evaluators (names stable lowercase)
-register_evaluator("length", lambda metrics=None: LengthEvaluator(metrics))
 register_evaluator(
-    "deepeval", lambda metrics=None: DeepevalEvaluator(metrics)
-)
-register_evaluator(
-    "sentiment", lambda metrics=None: SentimentEvaluator(metrics)
+    "length",
+    _wrap_factory(LengthEvaluator),
+    default_metrics=lambda: {"LLMInvocation": ("length",)},
 )
 
 __all__ = [
     "LengthEvaluator",
-    "DeepevalEvaluator",
-    "SentimentEvaluator",
 ]

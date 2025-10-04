@@ -21,6 +21,17 @@ OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
 true / false (default: false)
 """
 
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES = (
+    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES
+
+One of ``span``, ``events``, ``both``, ``none`` (case-insensitive). Overrides the
+legacy ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT(_MODE)`` variables when
+set.
+"""
+
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE"
 )
@@ -59,56 +70,47 @@ information, see
 """
 
 # ---- Evaluation configuration ----
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE"
+OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS"
 )
 """
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS
 
-Enable or disable GenAI evaluations. Accepted values (case-insensitive):
+Comma-separated list describing evaluator configuration. Each entry selects an evaluator
+registered under the ``opentelemetry_util_genai_evaluators`` entry-point group. Optional
+per-type overrides may be supplied using the syntax::
 
-* ``true`` / ``1`` / ``yes``: Enable evaluations
-* ``false`` / ``0`` / ``no`` (default): Disable evaluations
+    EvaluatorName(TypeName(metric,metric2(config=value)))
 
-If disabled, calls to ``TelemetryHandler.evaluate_llm`` will return an empty list without invoking evaluators.
+Examples::
+
+    Deepeval
+    Deepeval,NLTK
+    Deepeval(LLMInvocation(bias,toxicity))
+    Deepeval(LLMInvocation(bias(threshold=1),toxicity))
+
+If no configuration is provided, each evaluator defaults to its declared metric set per
+GenAI invocation type.
 """
 
-OTEL_INSTRUMENTATION_GENAI_EVALUATORS = "OTEL_INSTRUMENTATION_GENAI_EVALUATORS"
-"""
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATORS
-
-Comma-separated list of evaluator names to run (e.g. ``deepeval,sentiment``). If not provided
-and explicit names are not passed to ``evaluate_llm``, no evaluators are run.
-
-Per-evaluator metric subsets may be specified with either ``name(metric1,metric2)`` or
-``name:metric1,metric2`` forms. Examples:
-
-* ``DEEPEVAL(toxicity,bias)``
-* ``nltk:sentiment,readability``
-* ``toxicity`` (single metric evaluator)
-
-Whitespace is ignored. Duplicate evaluator names are de-duplicated preserving first occurrence.
-"""
-
-# New: control which GenAI artifact kinds are automatically evaluated
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS"
+OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION"
 )
 """
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION
 
-Comma-separated list of invocation kinds to evaluate automatically when they finish.
-Supported values (case-insensitive):
+When set to ``true``/``1``/``yes`` aggregate results from all evaluators for a sampled
+invocation into a single list before forwarding to the handler. Otherwise, results are
+forwarded per-evaluator.
+"""
 
-* ``llm`` (default)
-* ``agent``
+OTEL_INSTRUMENTATION_GENAI_EVALS_INTERVAL = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_INTERVAL"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALS_INTERVAL
 
-Examples:
-
-* ``llm`` – only evaluate LLM invocations (current default behavior)
-* ``llm,agent`` – evaluate both LLM and Agent invocations
-
-If an invocation kind is listed but no evaluators are enabled, no evaluation occurs.
+Polling interval (seconds) for the evaluation worker loop. Defaults to ``5.0`` seconds.
 """
 
 OTEL_INSTRUMENTATION_GENAI_EMITTERS = "OTEL_INSTRUMENTATION_GENAI_EMITTERS"
@@ -124,63 +126,46 @@ Select telemetry flavor (composed emitters). Accepted baseline values (case-inse
 * ``span_metric_event`` - spans + metrics + content events
 
 Additional extender emitters:
-* ``traceloop_compat`` - adds a Traceloop-compatible LLM span. If specified *alone*, only the compat span is emitted. If combined (e.g. ``span,traceloop_compat``) both semconv and compat spans are produced.
+* ``traceloop_compat`` - adds a Traceloop-compatible LLM span (requires installing ``opentelemetry-util-genai-emitters-traceloop``). If specified *alone*, only the compat span is emitted. If combined (e.g. ``span,traceloop_compat``) both semconv and compat spans are produced.
 
 Invalid or unset values fallback to ``span``.
 """
 
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE"
+OTEL_INSTRUMENTATION_GENAI_EMITTERS_SPAN = (
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_SPAN"
+)
+OTEL_INSTRUMENTATION_GENAI_EMITTERS_METRICS = (
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_METRICS"
+)
+OTEL_INSTRUMENTATION_GENAI_EMITTERS_CONTENT_EVENTS = (
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_CONTENT_EVENTS"
+)
+OTEL_INSTRUMENTATION_GENAI_EMITTERS_EVALUATION = (
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_EVALUATION"
 )
 """
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EMITTERS_<CATEGORY>
 
-Controls evaluation span creation strategy. Accepted values:
-* ``off`` (default) - no evaluation spans
-* ``aggregated`` - single span summarizing all evaluation metrics
-* ``per_metric`` - one span per evaluation metric
+Optional category-specific overrides applied after builtin and entry-point emitters
+are registered. Accepts comma-separated emitter names with optional directives such
+as ``replace:`` (replace entire category) or ``append:``/``prepend:`` (explicit
+positioning). Categories: ``SPAN``, ``METRICS``, ``CONTENT_EVENTS``, ``EVALUATION``.
 """
-
-# Evaluation async processing interval (seconds, float). Default: 5.0
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL"
-)
-"""
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL
-
-Evaluation async processing interval in seconds (default: 5.0).
-"""
-
-# Per-evaluator max sampled invocations per minute (integer). Blank/0 = unlimited.
-OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE = (
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE"
-)
-"""
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE
-
-Per-evaluator max sampled invocations per minute. Set to 0 or leave blank for unlimited.
-"""
-
-# Backward/defensive: ensure evaluation span mode constant exists even if edits race
-try:  # pragma: no cover - defensive
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE
-except NameError:  # pragma: no cover
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE = (
-        "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE"
-    )
 
 __all__ = [
     # existing
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
+    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES",
     "OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK",
     "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH",
     # evaluation
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE",
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATORS",
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE",
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL",
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE",
-    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS",
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS",
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION",
+    "OTEL_INSTRUMENTATION_GENAI_EVALS_INTERVAL",
     # generator selection
     "OTEL_INSTRUMENTATION_GENAI_EMITTERS",
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_SPAN",
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_METRICS",
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_CONTENT_EVENTS",
+    "OTEL_INSTRUMENTATION_GENAI_EMITTERS_EVALUATION",
 ]

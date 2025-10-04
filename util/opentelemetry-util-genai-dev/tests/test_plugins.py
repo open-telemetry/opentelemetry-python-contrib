@@ -7,14 +7,12 @@ from unittest.mock import patch
 
 import pytest
 
+from opentelemetry.util.genai.emitters.spec import EmitterSpec
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EMITTERS,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
-from opentelemetry.util.genai.plugins import (
-    PluginEmitterBundle,
-    load_emitter_plugin,
-)
+from opentelemetry.util.genai.plugins import load_emitter_specs
 
 
 @dataclass
@@ -30,54 +28,67 @@ class _SentinelEmitter:
     def __init__(self) -> None:
         self.role = "sentinel"
 
-    def start(
+    def on_start(
         self, obj: Any
     ) -> None:  # pragma: no cover - behaviour tested via inclusion
         return None
 
-    def finish(
+    def on_end(
         self, obj: Any
     ) -> None:  # pragma: no cover - behaviour tested via inclusion
         return None
 
-    def error(
+    def on_error(
         self, error: Any, obj: Any
     ) -> None:  # pragma: no cover - behaviour tested via inclusion
         return None
 
-
-def _bundle_factory(**_: Any) -> PluginEmitterBundle:
-    return PluginEmitterBundle(
-        emitters=[_SentinelEmitter()],
-        replace_default_emitters=True,
-    )
+    def on_evaluation_results(
+        self, results: Any, obj: Any | None = None
+    ) -> None:  # pragma: no cover - default no-op
+        return None
 
 
-def test_load_emitter_plugin_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def _spec_factory(**_: Any) -> list[EmitterSpec]:
+    return [
+        EmitterSpec(
+            name="SentinelEmitter",
+            category="span",
+            mode="replace-category",
+            factory=lambda ctx: _SentinelEmitter(),
+        )
+    ]
+
+
+def test_load_emitter_specs_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "opentelemetry.util.genai.plugins.entry_points",
-        lambda group: [_FakeEntryPoint("splunk", _bundle_factory)]
-        if group == "opentelemetry_genai_emitters"
+        lambda **kwargs: [_FakeEntryPoint("splunk", _spec_factory)]
+        if kwargs.get("group") == "opentelemetry_util_genai_emitters"
         else [],
     )
 
-    bundle = load_emitter_plugin(
-        "splunk",
-        tracer=None,
-        meter=None,
-        event_logger=None,
-        settings=object(),
-    )
-    assert bundle is not None
-    assert bundle.replace_default_emitters is True
-    assert len(bundle.emitters) == 1
+    import opentelemetry.util.genai.plugins as plugins
+
+    calls: list[object] = []
+
+    def _wrapped(provider, source, *, _orig=plugins._coerce_to_specs):
+        calls.append(provider)
+        return _orig(provider, source)
+
+    monkeypatch.setattr(plugins, "_coerce_to_specs", _wrapped)
+
+    specs = load_emitter_specs(["splunk"])
+    assert calls, "_coerce_to_specs was not invoked"
+    assert len(specs) == 1
+    assert specs[0].name == "SentinelEmitter"
 
 
 def test_handler_uses_plugin_emitters(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "opentelemetry.util.genai.plugins.entry_points",
-        lambda group: [_FakeEntryPoint("splunk", _bundle_factory)]
-        if group == "opentelemetry_genai_emitters"
+        lambda **kwargs: [_FakeEntryPoint("splunk", _spec_factory)]
+        if kwargs.get("group") == "opentelemetry_util_genai_emitters"
         else [],
     )
 
@@ -90,9 +101,9 @@ def test_handler_uses_plugin_emitters(monkeypatch: pytest.MonkeyPatch) -> None:
             delattr(get_telemetry_handler, "_default_handler")
         handler = get_telemetry_handler()
 
-    generators = handler._generator._generators  # type: ignore[attr-defined]
-    assert len(generators) == 1
-    assert isinstance(generators[0], _SentinelEmitter)
+    span_emitters = list(handler._emitter.emitters_for("span"))  # type: ignore[attr-defined]
+    assert len(span_emitters) == 1
+    assert isinstance(span_emitters[0], _SentinelEmitter)
     if hasattr(handler._evaluation_manager, "shutdown"):
         handler._evaluation_manager.shutdown()
     if hasattr(get_telemetry_handler, "_default_handler"):

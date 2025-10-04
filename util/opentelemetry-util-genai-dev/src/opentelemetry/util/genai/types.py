@@ -16,10 +16,14 @@
 import time
 from contextvars import Token
 from dataclasses import dataclass, field
+from dataclasses import fields as dataclass_fields
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Type, Union
 from uuid import UUID, uuid4
 
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
 from opentelemetry.trace import Span
 from opentelemetry.util.types import AttributeValue
 
@@ -62,8 +66,42 @@ class GenAI:
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
     run_id: UUID = field(default_factory=uuid4)
     parent_run_id: Optional[UUID] = None
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
+    agent_name: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_AGENT_NAME},
+    )
+    agent_id: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_AGENT_ID},
+    )
+    system: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_SYSTEM},
+    )
+    conversation_id: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_CONVERSATION_ID},
+    )
+    data_source_id: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_DATA_SOURCE_ID},
+    )
+
+    def semantic_convention_attributes(self) -> dict[str, Any]:
+        """Return semantic convention attributes defined on this dataclass."""
+
+        result: dict[str, Any] = {}
+        for data_field in dataclass_fields(self):
+            semconv_key = data_field.metadata.get("semconv")
+            if not semconv_key:
+                continue
+            value = getattr(self, data_field.name)
+            if value is None:
+                continue
+            if isinstance(value, list) and not value:
+                continue
+            result[semconv_key] = value
+        return result
 
 
 @dataclass()
@@ -114,7 +152,9 @@ class OutputMessage:
 class LLMInvocation(GenAI):
     """Represents a single large language model invocation."""
 
-    request_model: str
+    request_model: str = field(
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_MODEL}
+    )
     input_messages: List[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -131,13 +171,94 @@ class LLMInvocation(GenAI):
         default_factory=_new_output_messages
     )
     # Operation type: chat, text_completion, embeddings, etc.
-    operation: str = "chat"
-    response_model_name: Optional[str] = None
-    response_id: Optional[str] = None
-    input_tokens: Optional[AttributeValue] = None
-    output_tokens: Optional[AttributeValue] = None
+    operation: str = field(
+        default=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        metadata={"semconv": GenAIAttributes.GEN_AI_OPERATION_NAME},
+    )
+    response_model_name: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_RESPONSE_MODEL},
+    )
+    response_id: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_RESPONSE_ID},
+    )
+    input_tokens: Optional[AttributeValue] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS},
+    )
+    output_tokens: Optional[AttributeValue] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS},
+    )
     # Structured function/tool definitions for semantic convention emission
     request_functions: list[dict[str, Any]] = field(default_factory=list)
+    request_temperature: Optional[float] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE},
+    )
+    request_top_p: Optional[float] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_TOP_P},
+    )
+    request_top_k: Optional[int] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_TOP_K},
+    )
+    request_frequency_penalty: Optional[float] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY},
+    )
+    request_presence_penalty: Optional[float] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY},
+    )
+    request_stop_sequences: List[str] = field(
+        default_factory=list,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES},
+    )
+    request_max_tokens: Optional[int] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS},
+    )
+    request_choice_count: Optional[int] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT},
+    )
+    request_seed: Optional[int] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_SEED},
+    )
+    request_encoding_formats: List[str] = field(
+        default_factory=list,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS},
+    )
+    output_type: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_OUTPUT_TYPE},
+    )
+    response_finish_reasons: List[str] = field(
+        default_factory=list,
+        metadata={"semconv": GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS},
+    )
+    request_service_tier: Optional[str] = field(
+        default=None,
+        metadata={
+            "semconv": GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+        },
+    )
+    response_service_tier: Optional[str] = field(
+        default=None,
+        metadata={
+            "semconv": GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+        },
+    )
+    response_system_fingerprint: Optional[str] = field(
+        default=None,
+        metadata={
+            "semconv": GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT
+        },
+    )
 
 
 @dataclass
@@ -166,14 +287,26 @@ class EvaluationResult:
 class EmbeddingInvocation(GenAI):
     """Represents a single embedding model invocation."""
 
-    operation_name: str = "embeddings"
-    request_model: str = ""
+    operation_name: str = field(
+        default=GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value,
+        metadata={"semconv": GenAIAttributes.GEN_AI_OPERATION_NAME},
+    )
+    request_model: str = field(
+        default="",
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_MODEL},
+    )
     input_texts: list[str] = field(default_factory=list)
     dimension_count: Optional[int] = None
     server_port: Optional[int] = None
     server_address: Optional[str] = None
-    input_tokens: Optional[int] = None
-    encoding_formats: list[str] = field(default_factory=list)
+    input_tokens: Optional[int] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS},
+    )
+    encoding_formats: list[str] = field(
+        default_factory=list,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS},
+    )
     error_type: Optional[str] = None
 
 
@@ -218,12 +351,20 @@ class AgentInvocation(GenAI):
     """
 
     name: str
-    operation: Literal["create", "invoke"]  # create_agent or invoke_agent
+    operation: Literal["create_agent", "invoke_agent"] = field(
+        metadata={"semconv": GenAIAttributes.GEN_AI_OPERATION_NAME}
+    )
     agent_type: Optional[str] = (
         None  # researcher, planner, executor, critic, etc.
     )
-    description: Optional[str] = None
-    model: Optional[str] = None  # primary model if applicable
+    description: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_AGENT_DESCRIPTION},
+    )
+    model: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_MODEL},
+    )  # primary model if applicable
     tools: list[str] = field(default_factory=list)  # available tool names
     system_instructions: Optional[str] = None  # System prompt/instructions
     input_context: Optional[str] = None  # Input for invoke operations

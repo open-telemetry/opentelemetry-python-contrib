@@ -4,17 +4,25 @@ from typing import Any, Optional
 
 from opentelemetry._logs import Logger, get_logger
 
-from ..types import AgentInvocation, Error, LLMInvocation, Task, Workflow, EmbeddingInvocation
+from ..interfaces import EmitterMeta
+from ..types import (
+    AgentInvocation,
+    EmbeddingInvocation,
+    Error,
+    LLMInvocation,
+    Task,
+    Workflow,
+)
 from .utils import (
     _agent_to_log_record,
+    _embedding_to_log_record,
     _llm_invocation_to_log_record,
     _task_to_log_record,
     _workflow_to_log_record,
-    _embedding_to_log_record
 )
 
 
-class ContentEventsEmitter:
+class ContentEventsEmitter(EmitterMeta):
     """Emits input/output content as events (log records) instead of span attributes.
 
     Supported: LLMInvocation only.
@@ -36,11 +44,11 @@ class ContentEventsEmitter:
         self._logger: Logger = logger or get_logger(__name__)
         self._capture_content = capture_content
 
-    def start(self, obj: Any) -> None:
+    def on_start(self, obj: Any) -> None:
         # LLM events are emitted in finish() when we have both input and output
         return None
 
-    def finish(self, obj: Any) -> None:
+    def on_end(self, obj: Any) -> None:
         if not self._capture_content:
             return
 
@@ -73,7 +81,7 @@ class ContentEventsEmitter:
                     f"Failed to emit LLM invocation event: {e}", exc_info=True
                 )
 
-    def error(self, error: Error, obj: Any) -> None:
+    def on_error(self, error: Error, obj: Any) -> None:
         return None
 
     def handles(self, obj: Any) -> bool:

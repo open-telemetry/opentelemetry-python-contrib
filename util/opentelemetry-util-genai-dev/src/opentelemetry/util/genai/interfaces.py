@@ -2,27 +2,32 @@
 # composite generator + plugin system can rely on a stable narrow contract.
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, Sequence, runtime_checkable
 
-from .types import Error, LLMInvocation
+from .types import Error, EvaluationResult, LLMInvocation
 
 
 @runtime_checkable
-class GeneratorProtocol(Protocol):
-    """Protocol implemented by all telemetry generators / emitters.
+class EmitterProtocol(Protocol):
+    """Protocol implemented by all telemetry emitters.
 
-    Generalized to accept any domain object (LLMInvocation, EmbeddingInvocation, etc.).
+    Accepts any GenAI domain object (LLMInvocation, EmbeddingInvocation, etc.).
     Implementations MAY ignore objects of unsupported types.
     """
 
-    def start(self, obj: Any) -> None:  # pragma: no cover - structural
+    def on_start(self, obj: Any) -> None:  # pragma: no cover - structural
         ...
 
-    def finish(self, obj: Any) -> None:  # pragma: no cover - structural
+    def on_end(self, obj: Any) -> None:  # pragma: no cover - structural
         ...
 
-    def error(
+    def on_error(
         self, error: Error, obj: Any
+    ) -> None:  # pragma: no cover - structural
+        ...
+
+    def on_evaluation_results(
+        self, results: Sequence[EvaluationResult], obj: Any | None = None
     ) -> None:  # pragma: no cover - structural
         ...
 
@@ -46,3 +51,8 @@ class EmitterMeta:
 
     def handles(self, obj: Any) -> bool:  # pragma: no cover (trivial)
         return True
+
+    def on_evaluation_results(
+        self, results: Sequence[EvaluationResult], obj: Any | None = None
+    ) -> None:  # pragma: no cover - default no-op
+        return None

@@ -22,6 +22,7 @@ from . import (
     builtins as _builtins,  # noqa: E402,F401  (auto-registration side effects)
 )
 from .base import Evaluator
+from .manager import Manager, Sampler
 from .registry import get_evaluator, list_evaluators, register_evaluator
 
 __all__ = [
@@ -29,4 +30,6 @@ __all__ = [
     "register_evaluator",
     "get_evaluator",
     "list_evaluators",
+    "Manager",
+    "Sampler",
 ]

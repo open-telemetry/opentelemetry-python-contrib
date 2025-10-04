@@ -1,7 +1,7 @@
 import pytest
 
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.util.genai.emitters.composite import CompositeGenerator
+from opentelemetry.util.genai.emitters.composite import CompositeEmitter
 from opentelemetry.util.genai.emitters.content_events import (
     ContentEventsEmitter,
 )
@@ -29,15 +29,20 @@ def _build_composite(logger: DummyLogger, capture_content: bool):
     content = ContentEventsEmitter(
         logger=logger, capture_content=capture_content
     )
-    return CompositeGenerator([span, content])
+    return CompositeEmitter(
+        span_emitters=[span],
+        metrics_emitters=[],
+        content_event_emitters=[content],
+        evaluation_emitters=[],
+    )
 
 
 def test_events_without_content_capture(sample_invocation):
     logger = DummyLogger()
     gen = _build_composite(logger, capture_content=False)
     # Start and finish to emit events
-    gen.start(sample_invocation)
-    gen.finish(sample_invocation)
+    gen.on_start(sample_invocation)
+    gen.on_end(sample_invocation)
 
     # No events should be emitted when capture_content=False
     assert len(logger.emitted) == 0
@@ -46,8 +51,8 @@ def test_events_without_content_capture(sample_invocation):
 def test_events_with_content_capture(sample_invocation, monkeypatch):
     logger = DummyLogger()
     gen = _build_composite(logger, capture_content=True)
-    gen.start(sample_invocation)
-    gen.finish(sample_invocation)
+    gen.on_start(sample_invocation)
+    gen.on_end(sample_invocation)
 
     # Single event should include both input and output payloads
     assert len(logger.emitted) == 1
@@ -97,14 +102,14 @@ def test_span_emitter_filters_non_gen_ai_attributes():
         }
     )
 
-    emitter.start(invocation)
+    emitter.on_start(invocation)
     invocation.response_model_name = "example-model-v2"
     invocation.response_id = "resp-456"
     invocation.input_tokens = 10
     invocation.output_tokens = 5
     invocation.attributes["gen_ai.response.finish_reasons"] = ["stop"]
 
-    emitter.finish(invocation)
+    emitter.on_end(invocation)
 
     span = invocation.span
     assert span is not None

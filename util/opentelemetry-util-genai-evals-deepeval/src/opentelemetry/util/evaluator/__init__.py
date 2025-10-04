@@ -12,21 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evaluator scaffolding (Phase 1).
+"""Deepeval evaluator plugin package."""
 
-Provides a minimal pluggable registry for GenAI evaluators. Future phases will
-add concrete implementations (e.g., deepeval) and telemetry emission.
-"""
+from .deepeval import DeepevalEvaluator, register, registration
 
-from opentelemetry.util.genai.evaluators import (
-    builtins as _builtins,  # noqa: E402,F401  (auto-registration side effects)
-)
-from opentelemetry.util.genai.evaluators.base import Evaluator
-from opentelemetry.util.genai.evaluators.registry import get_evaluator, list_evaluators, register_evaluator
-
-__all__ = [
-    "Evaluator",
-    "register_evaluator",
-    "get_evaluator",
-    "list_evaluators",
-]
+__all__ = ["DeepevalEvaluator", "register", "registration"]

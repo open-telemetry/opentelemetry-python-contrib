@@ -1,21 +1,16 @@
-# Copyright The OpenTelemetry Authors
-#
-# Evaluator tests: registry behavior, event & metric emission, and span modes.
-
 import importlib
 import os
 import unittest
-from typing import Sequence
 from unittest.mock import patch
 
 from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE,
-    OTEL_INSTRUMENTATION_GENAI_EVALUATORS,
+    OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS,
+    OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION,
 )
 from opentelemetry.util.genai.evaluators.base import Evaluator
+from opentelemetry.util.genai.evaluators.manager import Manager
 from opentelemetry.util.genai.evaluators.registry import (
     clear_registry,
-    list_evaluators,
     register_evaluator,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
@@ -34,198 +29,266 @@ def _reload_builtin_evaluators() -> None:
     importlib.reload(builtin_module)
 
 
-# ---------------- Registry & basic evaluation tests -----------------
-class _DummyEvaluator(Evaluator):
+class _RecordingHandler:
+    def __init__(self) -> None:
+        self.observations: list[list[EvaluationResult]] = []
+
+    def evaluation_results(
+        self, invocation: LLMInvocation, results: list[EvaluationResult]
+    ) -> None:
+        self.observations.append(list(results))
+
+
+class _StaticEvaluator(Evaluator):
     def __init__(
         self,
-        name: str = "dummy",
-        score: float = 0.42,
-        metrics: Sequence[str] | None = None,
+        metrics=None,
+        *,
+        invocation_type: str | None = None,
+        options=None,
     ) -> None:
-        self._name = name
-        self._score = score
-        super().__init__(metrics)
+        super().__init__(
+            metrics, invocation_type=invocation_type, options=options
+        )
 
-    def default_metrics(self) -> Sequence[str]:  # pragma: no cover - trivial
-        return (self._name,)
+    def default_metrics(self):  # pragma: no cover - trivial
+        return ("static_metric",)
 
     def evaluate_llm(
         self, invocation: LLMInvocation
-    ) -> Sequence[EvaluationResult]:  # pragma: no cover - trivial
-        metric = self.metrics[0] if self.metrics else self._name
-        return [
-            EvaluationResult(metric_name=metric, score=self._score, label="ok")
-        ]
+    ) -> list[EvaluationResult]:  # pragma: no cover - trivial
+        results: list[EvaluationResult] = []
+        for metric in self.metrics:
+            opts = self.options.get(metric, {})
+            results.append(
+                EvaluationResult(
+                    metric_name=metric,
+                    score=1.0,
+                    label="ok",
+                    explanation="static evaluator result",
+                    attributes={"options": opts},
+                )
+            )
+        return results
 
 
-class TestEvaluatorRegistry(unittest.TestCase):
-    def setUp(self):
+class TestManagerConfiguration(unittest.TestCase):
+    def setUp(self) -> None:
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
         clear_registry()
         _reload_builtin_evaluators()
-        self.invocation = LLMInvocation(request_model="model-x")
-        self.invocation.input_messages.append(
+        register_evaluator(
+            "Static",
+            lambda metrics=None,
+            invocation_type=None,
+            options=None: _StaticEvaluator(
+                metrics,
+                invocation_type=invocation_type,
+                options=options,
+            ),
+            default_metrics=lambda: {"LLMInvocation": ("static_metric",)},
+        )
+
+    def tearDown(self) -> None:  # pragma: no cover - defensive
+        clear_registry()
+        _reload_builtin_evaluators()
+
+    def _build_invocation(self) -> LLMInvocation:
+        invocation = LLMInvocation(request_model="m1")
+        invocation.input_messages.append(
             InputMessage(role="user", parts=[Text(content="hi")])
         )
-        self.invocation.output_messages.append(
+        invocation.output_messages.append(
             OutputMessage(
                 role="assistant",
                 parts=[Text(content="hello")],
                 finish_reason="stop",
             )
         )
-
-    @patch.dict(
-        os.environ,
-        {OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "false"},
-        clear=True,
-    )
-    def test_disabled_returns_empty(self):
-        handler = get_telemetry_handler()
-        results = handler.evaluate_llm(
-            self.invocation, ["anything"]
-        )  # evaluator missing
-        self.assertEqual(results, [])
-
-    @patch.dict(
-        os.environ,
-        {OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true"},
-        clear=True,
-    )
-    def test_enabled_no_evaluators_specified(self):
-        handler = get_telemetry_handler()
-        results = handler.evaluate_llm(self.invocation)
-        self.assertEqual(results, [])
+        return invocation
 
     @patch.dict(
         os.environ,
         {
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "dummy",
+            OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "Static",
+            OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION: "true",
         },
         clear=True,
     )
-    def test_env_driven_evaluator(self):
-        register_evaluator(
-            "dummy", lambda metrics=None: _DummyEvaluator(metrics=metrics)
-        )
-        handler = get_telemetry_handler()
-        results = handler.evaluate_llm(self.invocation)
+    def test_manager_runs_default_metrics(self) -> None:
+        handler = _RecordingHandler()
+        manager = Manager(handler)
+        invocation = self._build_invocation()
+        results = manager.evaluate_now(invocation)
+        manager.shutdown()
         self.assertEqual(len(results), 1)
-        res = results[0]
-        self.assertEqual(res.metric_name, "dummy")
-        self.assertEqual(res.score, 0.42)
-        self.assertEqual(res.label, "ok")
-        self.assertIsNone(res.error)
+        self.assertEqual(results[0].metric_name, "static_metric")
+        self.assertEqual(len(handler.observations), 1)
+        self.assertEqual(
+            handler.observations[0][0].metric_name, "static_metric"
+        )
 
     @patch.dict(
         os.environ,
-        {OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true"},
+        {
+            OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: (
+                "Static(LLMInvocation(metric_one(threshold=0.5),metric_two))"
+            )
+        },
         clear=True,
     )
-    def test_unknown_evaluator_error(self):
-        handler = get_telemetry_handler()
-        results = handler.evaluate_llm(self.invocation, ["missing"])
-        self.assertEqual(len(results), 1)
-        res = results[0]
-        self.assertEqual(res.metric_name, "missing")
-        self.assertIsNotNone(res.error)
-        self.assertIn("Unknown evaluator", res.error.message)
+    def test_manager_parses_metric_options(self) -> None:
+        handler = _RecordingHandler()
+        manager = Manager(handler)
+        invocation = self._build_invocation()
+        results = manager.evaluate_now(invocation)
+        manager.shutdown()
+        metric_names = {result.metric_name for result in results}
+        self.assertEqual(metric_names, {"metric_one", "metric_two"})
+        options = {
+            result.metric_name: result.attributes.get("options")
+            for result in results
+        }
+        self.assertEqual(options["metric_one"].get("threshold"), "0.5")
+        self.assertFalse(options["metric_two"])
 
-    def test_register_multiple_list(self):
-        register_evaluator(
-            "dummy",
-            lambda metrics=None: _DummyEvaluator(
-                "dummy", 0.1, metrics=metrics
+    @patch.dict(os.environ, {}, clear=True)
+    def test_manager_auto_discovers_defaults(self) -> None:
+        with (
+            patch(
+                "opentelemetry.util.genai.evaluators.manager.list_evaluators",
+                return_value=["Static"],
             ),
-        )
-        register_evaluator(
-            "dummy2",
-            lambda metrics=None: _DummyEvaluator(
-                "dummy2", 0.2, metrics=metrics
+            patch(
+                "opentelemetry.util.genai.evaluators.manager.get_default_metrics",
+                return_value={"LLMInvocation": ("static_metric",)},
             ),
-        )
-        names = list_evaluators()
-        self.assertIn("dummy", names)
-        self.assertIn("dummy2", names)
+        ):
+            handler = _RecordingHandler()
+            manager = Manager(handler)
+            try:
+                self.assertTrue(manager.has_evaluators)
+            finally:
+                manager.shutdown()
+
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "none"},
+        clear=True,
+    )
+    def test_manager_respects_none(self) -> None:
+        handler = _RecordingHandler()
+        manager = Manager(handler)
+        try:
+            self.assertFalse(manager.has_evaluators)
+        finally:
+            manager.shutdown()
 
 
-# ---------------- DeepEval dynamic loading tests -----------------
-class TestDeepEvalDynamicLoading(unittest.TestCase):
-    """Test that deepeval evaluator is dynamically loaded when package is installed and configured via env var."""
-
-    def setUp(self):
-        # Clear any existing evaluators and handler
+class TestHandlerIntegration(unittest.TestCase):
+    def setUp(self) -> None:
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
         clear_registry()
         _reload_builtin_evaluators()
-        # Prepare invocation
-        self.invocation = LLMInvocation(request_model="model-x")
-        self.invocation.input_messages.append(
-            InputMessage(role="user", parts=[Text(content="hello")])
+        register_evaluator(
+            "Static",
+            lambda metrics=None,
+            invocation_type=None,
+            options=None: _StaticEvaluator(
+                metrics,
+                invocation_type=invocation_type,
+                options=options,
+            ),
+            default_metrics=lambda: {"LLMInvocation": ("static_metric",)},
         )
-        self.invocation.output_messages.append(
+
+    def tearDown(self) -> None:  # pragma: no cover - defensive
+        clear_registry()
+        _reload_builtin_evaluators()
+
+    def _build_invocation(self) -> LLMInvocation:
+        invocation = LLMInvocation(request_model="m2")
+        invocation.input_messages.append(
+            InputMessage(role="user", parts=[Text(content="hi")])
+        )
+        invocation.output_messages.append(
             OutputMessage(
                 role="assistant",
-                parts=[Text(content="world")],
+                parts=[Text(content="hello")],
                 finish_reason="stop",
             )
         )
+        return invocation
+
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "Static"},
+        clear=True,
+    )
+    def test_handler_registers_manager(self) -> None:
+        handler = get_telemetry_handler()
+        invocation = self._build_invocation()
+        handler.start_llm(invocation)
+        invocation.output_messages = invocation.output_messages
+        handler.stop_llm(invocation)
+        handler.wait_for_evaluations(2.0)
+        manager = getattr(handler, "_evaluation_manager", None)
+        self.assertIsNotNone(manager)
+        self.assertTrue(
+            invocation.attributes.get("gen_ai.evaluation.executed")
+        )
+        manager.shutdown()
 
     @patch.dict(
         os.environ,
         {
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "external(custom_metric)",
+            OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "Static",
+            OTEL_INSTRUMENTATION_GENAI_EVALS_RESULTS_AGGREGATION: "false",
         },
         clear=True,
     )
-    def test_entry_point_dynamic_loading(self):
-        class DummyEntryEvaluator(Evaluator):
-            def __init__(self, metrics=None):
-                super().__init__(metrics)
+    def test_handler_evaluate_llm_returns_results(self) -> None:
+        handler = get_telemetry_handler()
+        invocation = self._build_invocation()
+        results = handler.evaluate_llm(invocation)
+        manager = getattr(handler, "_evaluation_manager", None)
+        if manager is not None:
+            manager.shutdown()
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].metric_name, "static_metric")
 
-            def default_metrics(self) -> Sequence[str]:  # pragma: no cover
-                return ("external",)
-
-            def evaluate_llm(self, invocation):  # pragma: no cover
-                metric = self.metrics[0] if self.metrics else "external"
-                return [
-                    EvaluationResult(
-                        metric_name=metric, score=0.75, label="ok"
-                    )
-                ]
-
-        class FakeEntryPoint:
-            def __init__(self, name, target):
-                self.name = name
-                self._target = target
-
-            def load(self):
-                return self._target
-
-        fake_eps = [
-            FakeEntryPoint(
-                "external",
-                lambda metrics=None: DummyEntryEvaluator(metrics),
-            )
-        ]
-
-        with patch(
-            "opentelemetry.util.genai.evaluators.registry.entry_points",
-            return_value=fake_eps,
+    @patch.dict(os.environ, {}, clear=True)
+    def test_handler_auto_enables_when_env_missing(self) -> None:
+        with (
+            patch(
+                "opentelemetry.util.genai.evaluators.manager.list_evaluators",
+                return_value=["Static"],
+            ),
+            patch(
+                "opentelemetry.util.genai.evaluators.manager.get_default_metrics",
+                return_value={"LLMInvocation": ("static_metric",)},
+            ),
         ):
             handler = get_telemetry_handler()
-            results = handler.evaluate_llm(self.invocation)
+            manager = getattr(handler, "_evaluation_manager", None)
+            self.assertIsNotNone(manager)
+            self.assertTrue(manager.has_evaluators)  # type: ignore[union-attr]
+            if manager is not None:
+                manager.shutdown()
 
-        self.assertEqual(len(results), 1)
-        res = results[0]
-        self.assertEqual(res.metric_name, "custom_metric")
-        self.assertEqual(res.score, 0.75)
-        self.assertEqual(res.label, "ok")
-        self.assertIsNone(res.error)
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "none"},
+        clear=True,
+    )
+    def test_handler_disables_when_none(self) -> None:
+        handler = get_telemetry_handler()
+        manager = getattr(handler, "_evaluation_manager", None)
+        if manager is not None:
+            manager.shutdown()
+        self.assertIsNone(manager)
 
 
 if __name__ == "__main__":  # pragma: no cover

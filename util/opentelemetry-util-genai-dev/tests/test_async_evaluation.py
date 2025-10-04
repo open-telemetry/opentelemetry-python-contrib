@@ -1,10 +1,10 @@
 import os
+import types
 import unittest
 from unittest.mock import patch
 
 from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE,
-    OTEL_INSTRUMENTATION_GENAI_EVALUATORS,
+    OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
@@ -15,96 +15,50 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class TestEvaluationPipeline(unittest.TestCase):
-    def _build_invocation(self, content: str) -> LLMInvocation:
-        inv = LLMInvocation(request_model="m", provider="p")
-        inv.input_messages.append(
-            InputMessage(role="user", parts=[Text(content="hello")])
+class TestAsyncEvaluation(unittest.TestCase):
+    def setUp(self) -> None:
+        if hasattr(get_telemetry_handler, "_default_handler"):
+            delattr(get_telemetry_handler, "_default_handler")
+
+    def _build_invocation(self) -> LLMInvocation:
+        invocation = LLMInvocation(request_model="async-model")
+        invocation.input_messages.append(
+            InputMessage(role="user", parts=[Text(content="hi")])
         )
-        inv.output_messages.append(
+        invocation.output_messages.append(
             OutputMessage(
                 role="assistant",
-                parts=[Text(content=content)],
+                parts=[Text(content="hello")],
                 finish_reason="stop",
             )
         )
-        return inv
-
-    def _fresh_handler(self):
-        if hasattr(get_telemetry_handler, "_default_handler"):
-            delattr(get_telemetry_handler, "_default_handler")
-        return get_telemetry_handler()
+        return invocation
 
     @patch.dict(
         os.environ,
-        {
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "true",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "length",
-        },
+        {OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS: "length"},
         clear=True,
     )
-    def test_stop_llm_triggers_evaluation_immediately(self):
-        handler = self._fresh_handler()
-        inv = self._build_invocation("Hello world")
-        recorded = {"metrics": [], "events": []}
-        original_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
-        original_emit = handler._event_logger.emit  # type: ignore[attr-defined]
+    def test_async_evaluation_emits_results(self) -> None:
+        handler = get_telemetry_handler()
+        captured: list[str] = []
 
-        def fake_record(value, attributes=None):
-            recorded["metrics"].append((value, dict(attributes or {})))
+        def _capture(self, invocation, results):
+            for result in results:
+                captured.append(result.metric_name)
 
-        def fake_emit(event):
-            recorded["events"].append(event)
-
-        handler._evaluation_histogram.record = fake_record  # type: ignore
-        handler._event_logger.emit = fake_emit  # type: ignore
-
-        handler.start_llm(inv)
-        handler.stop_llm(inv)
-
-        self.assertTrue(recorded["metrics"], "Expected evaluation metric")
-        self.assertTrue(recorded["events"], "Expected evaluation event")
-        self.assertTrue(
-            inv.attributes.get("gen_ai.evaluation.executed"),
-            "Attribute should mark evaluation execution",
+        handler.evaluation_results = types.MethodType(  # type: ignore[assignment]
+            _capture,
+            handler,
         )
-
-        handler._evaluation_histogram.record = original_record  # type: ignore
-        handler._event_logger.emit = original_emit  # type: ignore
-
-    @patch.dict(
-        os.environ,
-        {
-            OTEL_INSTRUMENTATION_GENAI_EVALUATION_ENABLE: "false",
-            OTEL_INSTRUMENTATION_GENAI_EVALUATORS: "length",
-        },
-        clear=True,
-    )
-    def test_disabled_evaluation_produces_no_signals(self):
-        handler = self._fresh_handler()
-        inv = self._build_invocation("Hello world")
-        recorded = {"metrics": [], "events": []}
-        original_record = handler._evaluation_histogram.record  # type: ignore[attr-defined]
-        original_emit = handler._event_logger.emit  # type: ignore[attr-defined]
-
-        def fake_record(value, attributes=None):
-            recorded["metrics"].append(value)
-
-        def fake_emit(event):
-            recorded["events"].append(event)
-
-        handler._evaluation_histogram.record = fake_record  # type: ignore
-        handler._event_logger.emit = fake_emit  # type: ignore
-
-        handler.start_llm(inv)
-        handler.stop_llm(inv)
-
-        self.assertFalse(recorded["metrics"])
-        self.assertFalse(recorded["events"])
-        self.assertNotIn("gen_ai.evaluation.executed", inv.attributes)
-
-        handler._evaluation_histogram.record = original_record  # type: ignore
-        handler._event_logger.emit = original_emit  # type: ignore
+        invocation = self._build_invocation()
+        handler.start_llm(invocation)
+        handler.stop_llm(invocation)
+        handler.wait_for_evaluations(2.0)
+        manager = getattr(handler, "_evaluation_manager", None)
+        if manager is not None:
+            manager.shutdown()
+        self.assertIn("length", captured)
 
 
 if __name__ == "__main__":  # pragma: no cover

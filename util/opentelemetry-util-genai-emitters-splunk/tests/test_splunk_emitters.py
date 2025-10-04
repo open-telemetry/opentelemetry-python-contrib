@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 from opentelemetry import metrics
+from opentelemetry.util.genai.emitters.spec import EmitterFactoryContext
 from opentelemetry.util.genai.emitters.splunk import (
     SplunkConversationEventsEmitter,
     splunk_emitters,
@@ -23,23 +22,38 @@ class _CapturingLogger:
         self.records.append(record)
 
 
-def test_splunk_emitters_bundle_replaces_defaults() -> None:
-    bundle = splunk_emitters(
+def test_splunk_emitters_specs() -> None:
+    specs = splunk_emitters()
+    assert len(specs) == 1
+    spec = specs[0]
+    assert spec.category == "content_events"
+    assert spec.mode == "replace-category"
+    context = EmitterFactoryContext(
         tracer=None,
         meter=metrics.get_meter(__name__),
         event_logger=_CapturingLogger(),
-        settings=SimpleNamespace(
-            capture_content_span=False,
-            capture_content_events=True,
-        ),
+        content_logger=None,
+        evaluation_histogram=None,
+        capture_span_content=False,
+        capture_event_content=True,
     )
-    assert bundle.replace_default_emitters is True
-    assert len(bundle.emitters) == 3
+    emitter = spec.factory(context)
+    assert isinstance(emitter, SplunkConversationEventsEmitter)
 
 
 def test_conversation_event_emission() -> None:
     logger = _CapturingLogger()
-    emitter = SplunkConversationEventsEmitter(logger, capture_content=True)
+    spec = splunk_emitters()[0]
+    context = EmitterFactoryContext(
+        tracer=None,
+        meter=metrics.get_meter(__name__),
+        event_logger=logger,
+        content_logger=None,
+        evaluation_histogram=None,
+        capture_span_content=False,
+        capture_event_content=True,
+    )
+    emitter = spec.factory(context)
     invocation = LLMInvocation(request_model="gpt-test")
     invocation.input_messages = [
         InputMessage(role="user", parts=[Text(content="Hello")])
@@ -50,7 +64,7 @@ def test_conversation_event_emission() -> None:
         )
     ]
 
-    emitter.finish(invocation)
+    emitter.on_end(invocation)
 
     assert logger.records
     record = logger.records[0]

@@ -4,13 +4,12 @@ from dataclasses import asdict
 from typing import Any, Dict, Iterable, List
 
 from opentelemetry.sdk._logs._internal import LogRecord as SDKLogRecord
-from opentelemetry.util.genai.emitters.metrics import MetricsEmitter
-from opentelemetry.util.genai.emitters.span import SpanEmitter
-from opentelemetry.util.genai.plugins import PluginEmitterBundle
+from opentelemetry.util.genai.emitters.spec import EmitterSpec
+from opentelemetry.util.genai.interfaces import EmitterMeta
 from opentelemetry.util.genai.types import LLMInvocation
 
 
-class SplunkConversationEventsEmitter:
+class SplunkConversationEventsEmitter(EmitterMeta):
     """Emit Splunk-friendly conversation events from GenAI invocations."""
 
     role = "content_event"
@@ -25,10 +24,10 @@ class SplunkConversationEventsEmitter:
     def handles(self, obj: Any) -> bool:
         return isinstance(obj, LLMInvocation)
 
-    def start(self, obj: Any) -> None:
+    def on_start(self, obj: Any) -> None:
         return None
 
-    def finish(self, obj: Any) -> None:
+    def on_end(self, obj: Any) -> None:
         if not isinstance(obj, LLMInvocation):
             return
         if not self._capture_content or self._event_logger is None:
@@ -82,28 +81,30 @@ class SplunkConversationEventsEmitter:
         except Exception:  # pragma: no cover - defensive
             pass
 
-    def error(self, error: Any, obj: Any) -> None:
+    def on_error(self, error: Any, obj: Any) -> None:
+        return None
+
+    def on_evaluation_results(
+        self, results: Any, obj: Any | None = None
+    ) -> None:
         return None
 
 
-def splunk_emitters(
-    *,
-    tracer: Any,
-    meter: Any,
-    event_logger: Any,
-    settings: Any,
-) -> PluginEmitterBundle:
-    capture_span = getattr(settings, "capture_content_span", False)
-    capture_events = getattr(settings, "capture_content_events", False)
-    span_emitter = SpanEmitter(tracer=tracer, capture_content=capture_span)
-    metrics_emitter = MetricsEmitter(meter=meter)
-    events_emitter = SplunkConversationEventsEmitter(
-        event_logger=event_logger, capture_content=capture_events
-    )
-    return PluginEmitterBundle(
-        emitters=[span_emitter, metrics_emitter, events_emitter],
-        replace_default_emitters=True,
-    )
+def splunk_emitters() -> list[EmitterSpec]:
+    def _conversation_factory(ctx):
+        capture_mode = getattr(ctx, "capture_event_content", False)
+        return SplunkConversationEventsEmitter(
+            event_logger=ctx.event_logger, capture_content=capture_mode
+        )
+
+    return [
+        EmitterSpec(
+            name="SplunkConversationEvents",
+            category="content_events",
+            mode="replace-category",
+            factory=_conversation_factory,
+        )
+    ]
 
 
 def _coerce_messages(

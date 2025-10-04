@@ -204,8 +204,8 @@ def _llm_invocation_to_log_record(
     attributes: Dict[str, Any] = {
         "event.name": "gen_ai.client.inference.operation.details",
     }
-    if invocation.attributes.get("framework"):
-        attributes[GEN_AI_FRAMEWORK] = invocation.attributes.get("framework")
+    if invocation.framework:
+        attributes[GEN_AI_FRAMEWORK] = invocation.framework
     if invocation.provider:
         attributes[GEN_AI_PROVIDER_NAME] = invocation.provider
     if invocation.request_model:
@@ -220,22 +220,9 @@ def _llm_invocation_to_log_record(
         attributes["gen_ai.usage.input_tokens"] = invocation.input_tokens
     if invocation.output_tokens is not None:
         attributes["gen_ai.usage.output_tokens"] = invocation.output_tokens
-    attr_mappings = {
-        "gen_ai.request.id": "gen_ai.request.id",
-        "gen_ai.request.max_tokens": "gen_ai.request.max_tokens",
-        "gen_ai.request.temperature": "gen_ai.request.temperature",
-        "gen_ai.request.top_p": "gen_ai.request.top_p",
-        "gen_ai.request.top_k": "gen_ai.request.top_k",
-        "gen_ai.request.frequency_penalty": "gen_ai.request.frequency_penalty",
-        "gen_ai.request.presence_penalty": "gen_ai.request.presence_penalty",
-        "gen_ai.request.stop_sequences": "gen_ai.request.stop_sequences",
-        "gen_ai.response.finish_reasons": "gen_ai.response.finish_reasons",
-        "gen_ai.request.choice.count": "gen_ai.request.choice.count",
-    }
-
-    for attr_key, semconv_key in attr_mappings.items():
-        if attr_key in invocation.attributes:
-            attributes[semconv_key] = invocation.attributes[attr_key]
+    semantic_attrs = invocation.semantic_convention_attributes()
+    for key, value in semantic_attrs.items():
+        attributes[key] = value
 
     # If choice count not in attributes, infer from output_messages length
     if (

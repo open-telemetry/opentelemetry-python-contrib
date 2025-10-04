@@ -23,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT_MODE,
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 
@@ -38,9 +39,7 @@ def is_experimental_mode() -> bool:
 
     # Fallback to the official check
     # TODO stability mode is being set to default even after setting OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
-    signal_type = getattr(
-        _OpenTelemetryStabilitySignalType, "GEN_AI", None
-    )
+    signal_type = getattr(_OpenTelemetryStabilitySignalType, "GEN_AI", None)
     if signal_type is None:
         logger.debug(
             "GEN_AI stability signal missing in OpenTelemetry; assuming non-experimental mode"
@@ -65,6 +64,29 @@ def is_experimental_mode() -> bool:
 def get_content_capturing_mode() -> (
     ContentCapturingMode
 ):  # single authoritative implementation
+    capture_messages = os.environ.get(
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES
+    )
+    if capture_messages:
+        if not is_experimental_mode():
+            return ContentCapturingMode.NO_CONTENT
+        normalized = capture_messages.strip().lower()
+        mapping = {
+            "span": ContentCapturingMode.SPAN_ONLY,
+            "events": ContentCapturingMode.EVENT_ONLY,
+            "both": ContentCapturingMode.SPAN_AND_EVENT,
+            "none": ContentCapturingMode.NO_CONTENT,
+        }
+        mode = mapping.get(normalized)
+        if mode is not None:
+            return mode
+        logger.warning(
+            "%s is not a valid option for `%s` environment variable. Must be one of span, events, both, none. Defaulting to `NO_CONTENT`.",
+            capture_messages,
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES,
+        )
+        return ContentCapturingMode.NO_CONTENT
+
     capture_message_content = os.environ.get(
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
     )

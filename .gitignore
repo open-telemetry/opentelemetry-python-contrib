@@ -61,3 +61,6 @@ target
 
 # Benchmark result files
 *-benchmark.json
+
+# deepeval
+.deepeval
