@@ -8,6 +8,7 @@ from .environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL,
     OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE,
     OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE,
+    OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS,
     OTEL_INSTRUMENTATION_GENAI_EVALUATORS,
 )
 from .types import ContentCapturingMode
@@ -32,6 +33,7 @@ class Settings:
     evaluation_span_mode: str
     evaluation_interval: float
     evaluation_max_per_minute: int
+    evaluation_targets: list[str]  # normalized list (e.g. ["llm", "agent"])
 
 
 def parse_env() -> Settings:
@@ -102,6 +104,25 @@ def parse_env() -> Settings:
         else "off"
     )
 
+    # Evaluation targets (llm by default). Accepts comma separated values.
+    raw_targets = os.environ.get(
+        OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS, "llm"
+    )
+    evaluation_targets = []
+    seen = set()
+    for tok in raw_targets.split(","):
+        val = tok.strip().lower()
+        if not val:
+            continue
+        if val not in ("llm", "agent"):
+            continue  # ignore unsupported future tokens silently
+        if val in seen:
+            continue
+        seen.add(val)
+        evaluation_targets.append(val)
+    if not evaluation_targets:
+        evaluation_targets = ["llm"]  # fallback
+
     return Settings(
         generator_kind=baseline,
         capture_content_span=capture_content_span,
@@ -138,4 +159,5 @@ def parse_env() -> Settings:
             ).strip()
             or 0
         ),
+        evaluation_targets=evaluation_targets,
     )

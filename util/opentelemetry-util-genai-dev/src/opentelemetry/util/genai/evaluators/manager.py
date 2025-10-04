@@ -6,7 +6,13 @@ from collections.abc import Callable
 from typing import Any, Iterable, Sequence
 
 from ..config import Settings
-from ..types import Error, EvaluationResult, GenAI, LLMInvocation
+from ..types import (
+    AgentInvocation,
+    Error,
+    EvaluationResult,
+    GenAI,
+    LLMInvocation,
+)
 from .base import Evaluator
 from .registry import get_evaluator
 
@@ -19,7 +25,7 @@ class EvaluationManager:
     def __init__(
         self,
         settings: Settings,
-        submit_results: Callable[[LLMInvocation, list[EvaluationResult]], None]
+        submit_results: Callable[[GenAI, list[EvaluationResult]], None]
         | None = None,
     ) -> None:
         self._settings = settings
@@ -88,12 +94,21 @@ class EvaluationManager:
         self._instances[key] = inst
         return inst
 
+    def _is_target_kind(self, invocation: GenAI) -> bool:
+        # Determine if invocation type is configured for evaluation
+        kinds = set(self._settings.evaluation_targets)
+        if isinstance(invocation, LLMInvocation) and "llm" in kinds:
+            return True
+        if isinstance(invocation, AgentInvocation) and "agent" in kinds:
+            return True
+        return False
+
     def should_evaluate(
         self, invocation: GenAI, evaluators: Sequence[str] | None = None
     ) -> bool:
         if not self._settings.evaluation_enabled:
             return False
-        if not isinstance(invocation, LLMInvocation):
+        if not self._is_target_kind(invocation):
             return False
         names = (
             list(evaluators)
@@ -113,9 +128,10 @@ class EvaluationManager:
     def evaluate(
         self, invocation: GenAI, evaluators: Sequence[str] | None = None
     ) -> list[EvaluationResult]:
-        if not isinstance(invocation, LLMInvocation):
-            return []
+        """Evaluate the given invocation using the specified or configured evaluators."""
         if not self._settings.evaluation_enabled:
+            return []
+        if not self._is_target_kind(invocation):
             return []
         names = (
             list(evaluators)
@@ -124,8 +140,8 @@ class EvaluationManager:
         )
         if not names:
             return []
-        if invocation.end_time is None:
-            invocation.end_time = time.time()
+        if getattr(invocation, "end_time", None) is None:
+            invocation.end_time = time.time()  # type: ignore[attr-defined]
         results: list[EvaluationResult] = []
         for name in names:
             if not name:
@@ -176,6 +192,10 @@ class EvaluationManager:
                 res.metric_name = evaluator_name
             normalised.append(res)
         return normalised
+
+    def wait_for_all(self, timeout: float | None = None) -> None:
+        """Wait for all evaluators to complete any pending operations."""
+        raise NotImplementedError()
 
 
 __all__ = ["EvaluationManager"]

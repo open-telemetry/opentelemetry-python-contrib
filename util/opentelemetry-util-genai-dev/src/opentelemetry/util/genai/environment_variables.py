@@ -79,6 +79,36 @@ OTEL_INSTRUMENTATION_GENAI_EVALUATORS = "OTEL_INSTRUMENTATION_GENAI_EVALUATORS"
 
 Comma-separated list of evaluator names to run (e.g. ``deepeval,sentiment``). If not provided
 and explicit names are not passed to ``evaluate_llm``, no evaluators are run.
+
+Per-evaluator metric subsets may be specified with either ``name(metric1,metric2)`` or
+``name:metric1,metric2`` forms. Examples:
+
+* ``DEEPEVAL(toxicity,bias)``
+* ``nltk:sentiment,readability``
+* ``toxicity`` (single metric evaluator)
+
+Whitespace is ignored. Duplicate evaluator names are de-duplicated preserving first occurrence.
+"""
+
+# New: control which GenAI artifact kinds are automatically evaluated
+OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS = (
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS
+
+Comma-separated list of invocation kinds to evaluate automatically when they finish.
+Supported values (case-insensitive):
+
+* ``llm`` (default)
+* ``agent``
+
+Examples:
+
+* ``llm`` – only evaluate LLM invocations (current default behavior)
+* ``llm,agent`` – evaluate both LLM and Agent invocations
+
+If an invocation kind is listed but no evaluators are enabled, no evaluation occurs.
 """
 
 OTEL_INSTRUMENTATION_GENAI_EMITTERS = "OTEL_INSTRUMENTATION_GENAI_EMITTERS"
@@ -150,6 +180,7 @@ __all__ = [
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_SPAN_MODE",
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_INTERVAL",
     "OTEL_INSTRUMENTATION_GENAI_EVALUATION_MAX_PER_MINUTE",
+    "OTEL_INSTRUMENTATION_GENAI_EVALUATION_TARGETS",
     # generator selection
     "OTEL_INSTRUMENTATION_GENAI_EMITTERS",
 ]

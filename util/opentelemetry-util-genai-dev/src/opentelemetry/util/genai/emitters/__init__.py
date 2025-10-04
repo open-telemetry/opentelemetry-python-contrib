@@ -22,6 +22,7 @@ from .composite import CompositeGenerator  # noqa: F401
 from .content_events import ContentEventsEmitter  # noqa: F401
 from .evaluation import (  # noqa: F401
     CompositeEvaluationEmitter,
+    EvaluationEmitter,
     EvaluationEventsEmitter,
     EvaluationMetricsEmitter,
     EvaluationSpansEmitter,
@@ -40,4 +41,5 @@ __all__ = [
     "EvaluationEventsEmitter",
     "EvaluationSpansEmitter",
     "CompositeEvaluationEmitter",
+    "EvaluationEmitter",
 ]

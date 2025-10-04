@@ -385,7 +385,7 @@ def main():
     )
 
     # LLM invocation demo (simple)
-    # llm_invocation_demo(llm)
+    llm_invocation_demo(llm)
 
     # Embedding invocation demo
     embedding_invocation_demo()
