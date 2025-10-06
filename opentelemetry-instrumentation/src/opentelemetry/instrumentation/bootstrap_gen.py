@@ -17,7 +17,7 @@
 
 libraries = [
     {
-        "library": "openai-agents >= 0.3.2",
+        "library": "openai-agents >= 0.3.3",
         "instrumentation": "opentelemetry-instrumentation-openai-agents==0.1.0.dev",
     },
     {

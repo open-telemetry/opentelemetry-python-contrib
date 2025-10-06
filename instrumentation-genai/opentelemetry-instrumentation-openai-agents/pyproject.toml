@@ -26,6 +26,12 @@ classifiers = [
 dependencies = [
   "opentelemetry-api ~= 1.30",
   "opentelemetry-instrumentation ~= 0.51b0",
+  "opentelemetry-semantic-conventions ~= 0.51b0"
+]
+
+[project.optional-dependencies]
+instruments = [
+  "openai-agents >= 0.3.3",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
