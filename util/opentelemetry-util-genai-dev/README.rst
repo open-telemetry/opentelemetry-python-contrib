@@ -10,6 +10,8 @@ If you need the deep rationale and full architecture (categories, replacement se
 Core Concepts
 -------------
 * Domain objects (``LLMInvocation``, ``EmbeddingInvocation``, etc.) capture request/response + timing.
+  * ``LLMInvocation`` now exposes semantic-convention-ready fields (temperature, top_p, stop sequences, token counts, response finish reasons, service tier, system/conversation ids, agent context, etc.). Each field carries metadata so emitters can call ``semantic_convention_attributes()`` and emit a stable map without re-implementing lookups.
+  * The ``attributes`` dict remains for free-form extras. Core emitters ignore non-prefixed keys; ``gen_ai.*`` / ``traceloop.*`` entries are still honored so vendors can extend output without polluting the structured fields.
 * ``TelemetryHandler`` is the facade: start / stop / fail invocations, internally delegating to a ``CompositeEmitter``.
 * Emitters are small components implementing ``EmitterProtocol`` with hooks: ``on_start``, ``on_end``, ``on_error``, ``on_evaluation_results`` (evaluation hook used only by evaluation category members).
 * Categories: ``span``, ``metrics``; ``content_events``; ``evaluation`` (evaluation emitters fire only when evaluator results exist).
@@ -59,7 +61,7 @@ Built via ``build_emitter_pipeline`` which:
 Extending with Entry Points
 ---------------------------
 Register an entry point group ``opentelemetry_util_genai_emitters`` that returns one or more ``EmitterSpec`` objects (or dicts). Fields:
-``name``, ``category``, ``factory``, optional ``mode`` (append|prepend|replace-category|replace-same-name), optional ``invocation_types`` (future filtering hook; planned Task 19).
+``name``, ``category``, ``factory``, optional ``mode`` (append|prepend|replace-category|replace-same-name), optional ``invocation_types`` (limits the emitter to matching GenAI type names at runtime).
 
 Typical Scenarios
 -----------------
@@ -79,7 +81,6 @@ Planned (Not Yet Implemented)
 -----------------------------
 
 * Traceloop extraction to its own distribution.
-* Invocation type filtering (skips emitters for unrelated invocation objects).
 * Metrics counters for emitter failures.
 
 Stability

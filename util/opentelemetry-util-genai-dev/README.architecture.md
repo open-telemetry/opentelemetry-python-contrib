@@ -41,6 +41,17 @@ GenAIInvocation:
 ```
 Messages hold role, content (structured parts), and optional metadata.
 
+#### 2.1.1 LLMInvocation semantic attribute contract
+
+`LLMInvocation` now exposes the semantic-convention friendly fields directly on the dataclass instead of hiding everything in the generic `attributes` dictionary. Each field carries metadata (`metadata={"semconv": <attribute name>}`) so emitters can enumerate the canonical keys without hard-coding property names. Highlights:
+
+- Base `GenAI` class adds `system`, `conversation_id`, `data_source_id`, `agent_name`, and `agent_id` to mirror proposed semantics.
+- Request knobs (`request_temperature`, `request_top_p`, `request_top_k`, `request_frequency_penalty`, `request_presence_penalty`, `request_stop_sequences`, `request_max_tokens`, `request_choice_count`, `request_seed`, `request_encoding_formats`) and response details (`response_model_name`, `response_id`, `response_finish_reasons`, `response_service_tier`, `response_system_fingerprint`) are first-class fields.
+- Token usage (`input_tokens`, `output_tokens`) and output modality (`output_type`) likewise map 1:1 to semantic attributes.
+- The helper `semantic_convention_attributes()` walks the dataclass field metadata to produce a dict of populated semantic attributes; built-in emitters use this instead of bespoke mapping tables.
+
+The `attributes: Dict[str, Any]` bag is still present for vendor or instrumentation-specific metadata. Built-in emitters only read keys that already have a semantic prefix (`gen_ai.*`, `traceloop.*`, etc.); everything else stays in-process unless a plug-in cares about it. This keeps semantic output deterministic while allowing instrumentation to stash raw extras that other emitters (Traceloop, Splunk, custom) can enrich.
+
 `EvaluationResult` (atomic) includes: metric_name, value (numeric or categorical), pass_fail (optional bool), confidence(optional), reasoning(optional), latency(optional), additional_attrs.
 
 ### 2.2 Handler
