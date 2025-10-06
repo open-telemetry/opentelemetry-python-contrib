@@ -237,7 +237,7 @@ class OpAMPAgent:
         """
         Signal server we are disconnecting and then threads to exit
 
-        :param timeout: seconds to wait for threads to join
+        :param timeout: seconds to wait for each thread to join
         """
 
         # Before exiting send signal the server we are disconnecting to free our resources
