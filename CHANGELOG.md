@@ -11,12 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
 ### Fixed
 
-  - `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
+- `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
+  ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
+- `opentelemetry-instrumentation-vertexai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3626))
+- `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
   ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+
+### Added
+- `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
+  ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+- Add `rstcheck` to pre-commit to stop introducing invalid RST
+  ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
+- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. 
+[#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
@@ -47,8 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-util-genai` Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
-  Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
 - `opentelemetry-instrumentation-system-metrics`: Add `cpython.gc.collected_objects` and `cpython.gc.uncollectable_objects` metrics

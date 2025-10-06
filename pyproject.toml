@@ -64,6 +64,7 @@ dependencies = [
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
   "opentelemetry-util-http",
+  "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
 ]
@@ -134,6 +135,7 @@ opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
+opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
 
@@ -145,7 +147,7 @@ members = [
   "exporter/*",
   "opentelemetry-instrumentation",
   "propagator/*",
-  "util/opentelemetry-util-http",
+  "util/*",
 ]
 
 [tool.ruff]
@@ -203,6 +205,7 @@ include = [
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
+  "exporter/opentelemetry-exporter-credential-provider-gcp",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.

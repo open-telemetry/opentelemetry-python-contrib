@@ -30,10 +30,12 @@ dependencies = [
   "opentelemetry-api>=1.31.0",
 ]
 
+[project.entry-points.opentelemetry_genai_completion_hook]
+upload = "opentelemetry.util.genai._upload:upload_completion_hook"
+
 [project.optional-dependencies]
-test = [
-  "pytest>=7.0.0",
-]
+test = ["pytest>=7.0.0"]
+upload = ["fsspec>=2025.9.0"]
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/util/opentelemetry-util-genai"
