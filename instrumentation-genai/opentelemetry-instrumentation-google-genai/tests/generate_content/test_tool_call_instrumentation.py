@@ -285,6 +285,7 @@ class ToolCallInstrumentationTestCase(TestCase):
 
     def test_new_semconv_tool_calls_record_parameter_values(self):
         for mode in ContentCapturingMode:
+            calls = []
             patched_environ = patch.dict(
                 "os.environ",
                 {
@@ -303,7 +304,6 @@ class ToolCallInstrumentationTestCase(TestCase):
             ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
-                    calls = []
 
                     def handle(*args, **kwargs):
                         calls.append((args, kwargs))
@@ -376,6 +376,7 @@ class ToolCallInstrumentationTestCase(TestCase):
 
     def test_new_semconv_tool_calls_record_return_values(self):
         for mode in ContentCapturingMode:
+            calls = []
             patched_environ = patch.dict(
                 "os.environ",
                 {
@@ -394,7 +395,6 @@ class ToolCallInstrumentationTestCase(TestCase):
             ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
-                    calls = []
 
                     def handle(*args, **kwargs):
                         calls.append((args, kwargs))
