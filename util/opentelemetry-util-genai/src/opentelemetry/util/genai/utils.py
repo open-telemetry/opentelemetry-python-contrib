@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
+from base64 import b64encode
+from functools import partial
+from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
@@ -28,23 +32,19 @@ from opentelemetry.util.genai.types import ContentCapturingMode
 logger = logging.getLogger(__name__)
 
 
-def is_experimental_mode() -> bool:
-    return (
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI,
-        )
-        is _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-    )
-
-
 def get_content_capturing_mode() -> ContentCapturingMode:
     """This function should not be called when GEN_AI stability mode is set to DEFAULT.
 
     When the GEN_AI stability mode is DEFAULT this function will raise a ValueError -- see the code below."""
     envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
-    if not is_experimental_mode():
+    if (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+        )
+        == _StabilityMode.DEFAULT
+    ):
         raise ValueError(
-            "This function should never be called when StabilityMode is not experimental."
+            "This function should never be called when StabilityMode is default."
         )
     if not envvar:
         return ContentCapturingMode.NO_CONTENT
@@ -58,3 +58,23 @@ def get_content_capturing_mode() -> ContentCapturingMode:
             ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
+
+
+class _GenAiJsonEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            return b64encode(o).decode()
+        return super().default(o)
+
+
+gen_ai_json_dump = partial(
+    json.dump, separators=(",", ":"), cls=_GenAiJsonEncoder
+)
+"""Should be used by GenAI instrumentations when serializing objects that may contain
+bytes, datetimes, etc. for GenAI observability."""
+
+gen_ai_json_dumps = partial(
+    json.dumps, separators=(",", ":"), cls=_GenAiJsonEncoder
+)
+"""Should be used by GenAI instrumentations when serializing objects that may contain
+bytes, datetimes, etc. for GenAI observability."""
