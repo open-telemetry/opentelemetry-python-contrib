@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: langgraph-single-agent-utils
+  name: langgraph-multi-agent-utils
   namespace: demo-app
   labels:
-    app: langgraph-single-agent-utils
+    app: langgraph-multi-agent-utils
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: langgraph-single-agent-utils
+      app: langgraph-multi-agent-utils
   template:
     metadata:
       labels:
-        app: langgraph-single-agent-utils
+        app: langgraph-multi-agent-utils
     spec:
       containers:
-      - name: weather-agent
-        image: pranair2800/langgraph-single-agent-utils:1.4
+      - name: multi-agent-rag
+        image: pranair2800/langgraph-multi-agent-utils:1.0
         ports:
-        - containerPort: 5000
+        - containerPort: 8000
         env:
         - name: OTEL_SERVICE_NAME
-          value: "langgraph-single-agent-utils"
+          value: "langgraph-multi-agent-utils"
         - name: OTEL_RESOURCE_ATTRIBUTES
           value: "deployment.environment=o11y-inframon-ai"
         - name: SPLUNK_OTEL_AGENT
@@ -33,7 +33,6 @@ spec:
           value: "http://$(SPLUNK_OTEL_AGENT):4317"
         - name: OTEL_EXPORTER_OTLP_PROTOCOL
           value: "grpc"
-          # filter out health check requests to the root URL
         - name: OTEL_PYTHON_EXCLUDED_URLS
           value: "^(https?://)?[^/]+(/)?$"
         - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
@@ -69,23 +68,32 @@ spec:
             secretKeyRef:
               name: cisco-credentials
               key: app-key
+        - name: TAVILY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cisco-credentials
+              key: tavily-api-key
+        - name: WEAVIATE_HOST
+          value: "weaviate-rag.demo-app.svc.cluster.local"
+        - name: WEAVIATE_PORT
+          value: "8080"
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health
-            port: 5000
+            port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
-            port: 5000
+            port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
         securityContext:
@@ -97,13 +105,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: langgraph-single-agent-utils-service
+  name: langgraph-multi-agent-utils-service
   namespace: demo-app
 spec:
   type: ClusterIP
   ports:
     - protocol: TCP
-      port: 5000
-      targetPort: 5000
+      port: 8000
+      targetPort: 8000
   selector:
-    app: langgraph-single-agent-utils
+    app: langgraph-multi-agent-utils
