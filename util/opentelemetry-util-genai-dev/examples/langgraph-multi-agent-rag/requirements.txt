@@ -1,0 +1,28 @@
+# Core dependencies
+langchain-core>=0.1.0
+langchain-openai>=0.1.0
+langchain-community>=0.0.20
+
+# LangGraph
+langgraph>=0.0.40
+
+# Vector Database - using version compatible with protobuf 5.x
+weaviate-client==4.4.4
+
+# Search Tool
+tavily-python>=0.3.0
+langchain-tavily>=0.1.0
+
+# OpenTelemetry
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-requests
+
+# Essential utilities
+python-dotenv>=1.0.0
+httpx>=0.24.0
+flask>=2.3.0
+flask-cors>=4.0.0
+protobuf>=5.0.0
+requests

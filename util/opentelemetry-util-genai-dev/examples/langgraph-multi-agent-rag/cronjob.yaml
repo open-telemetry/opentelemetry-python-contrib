@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: langgraph-multi-agent-utils-loadgen
+  namespace: demo-app
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: loadgen
+              image: radial/busyboxplus:curl
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Array of diverse queries for variation
+                  QUERIES=(
+                    '{"query": "What are the latest developments in artificial intelligence and how do they compare to historical AI trends?"}'
+                    '{"query": "How is climate change affecting global weather patterns and what adaptation strategies are being implemented?"}'
+                    '{"query": "What are the recent breakthroughs in quantum computing and their potential applications?"}'
+                    '{"query": "Explain the current state of renewable energy adoption and its economic impact."}'
+                    '{"query": "What are the ethical implications of AI in healthcare and how are they being addressed?"}'
+                    '{"query": "How is cybersecurity evolving to address modern threats like ransomware?"}'
+                    '{"query": "What is the current state of commercial space exploration and satellite technology?"}'
+                    '{"query": "How is biotechnology advancing with CRISPR and gene editing technologies?"}'
+                  )
+                  # Select random query
+                  RANDOM_INDEX=$((RANDOM % ${#QUERIES[@]}))
+                  SELECTED_QUERY="${QUERIES[$RANDOM_INDEX]}"
+                  echo "Selected query: $SELECTED_QUERY"
+                  curl -X POST http://langgraph-multi-agent-utils-service.demo-app.svc.cluster.local:8000/query -H 'Content-Type: application/json' -d "$SELECTED_QUERY"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+          restartPolicy: OnFailure

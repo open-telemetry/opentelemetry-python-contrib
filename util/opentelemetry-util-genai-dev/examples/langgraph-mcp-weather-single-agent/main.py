@@ -346,7 +346,7 @@ else:
         access_token = token_manager.get_token()
         print("Successfully obtained Cisco access token")
         model = ChatOpenAI(
-            temperature=0.1,
+            temperature=0.7,
             api_key="dummy-key",
             base_url="https://chat-ai.cisco.com/openai/deployments/gpt-4o-mini",
             model="gpt-4o-mini",
