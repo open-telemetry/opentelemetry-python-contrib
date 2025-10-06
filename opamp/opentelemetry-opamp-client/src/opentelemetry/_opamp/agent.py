@@ -233,9 +233,11 @@ class OpAMPAgent:
             finally:
                 self._queue.task_done()
 
-    def stop(self) -> None:
+    def stop(self, timeout: float | None = None) -> None:
         """
-        Immediately cancel all in-flight and queued jobs, then join threads.
+        Signal server we are disconnecting and then threads to exit
+
+        :param timeout: seconds to wait for threads to join
         """
 
         # Before exiting send signal the server we are disconnecting to free our resources
@@ -254,13 +256,13 @@ class OpAMPAgent:
         self._stop.set()
         # don't crash if the user calls stop() before start() or calls stop() multiple times
         try:
-            self._worker.join()
+            self._worker.join(timeout=timeout)
         except RuntimeError as exc:
             logger.warning(
                 "Stopping OpAMPAgent: worker thread failed to join %s", exc
             )
         try:
-            self._scheduler.join()
+            self._scheduler.join(timeout=timeout)
         except RuntimeError as exc:
             logger.warning(
                 "Stopping OpAMPAgent: scheduler thread failed to join %s", exc
