@@ -15,11 +15,9 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import posixpath
 import threading
-from base64 import b64encode
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
@@ -39,6 +37,7 @@ from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
 )
+from opentelemetry.util.genai.utils import gen_ai_json_dump
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
     gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
@@ -192,12 +191,7 @@ class UploadCompletionHook(CompletionHook):
 
         with self._fs.open(path, "w", content_type=content_type) as file:
             for message in message_lines:
-                json.dump(
-                    message,
-                    file,
-                    separators=(",", ":"),
-                    cls=Base64JsonEncoder,
-                )
+                gen_ai_json_dump(message, file)
                 file.write("\n")
 
     def on_completion(
@@ -281,10 +275,3 @@ class UploadCompletionHook(CompletionHook):
 
             # Queue is flushed and blocked, start shutdown
             self._executor.shutdown(wait=False)
-
-
-class Base64JsonEncoder(json.JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            return b64encode(o).decode()
-        return super().default(o)

@@ -78,6 +78,7 @@ PyYAML==6.0.2
 requests==2.32.3
 rsa==4.9
 shapely==2.0.6
+fsspec==2025.9.0
 six==1.17.0
 tomli==2.2.1
 typing_extensions==4.12.2

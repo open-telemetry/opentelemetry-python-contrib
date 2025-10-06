@@ -20,10 +20,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_REDIS_DATABASE_INDEX,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+    NET_TRANSPORT,
+)
 from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
-    SpanAttributes,
 )
 from opentelemetry.trace import Span
 
@@ -41,25 +49,17 @@ _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 def _extract_conn_attributes(conn_kwargs):
     """Transform redis conn info into dict"""
     attributes = {
-        SpanAttributes.DB_SYSTEM: DbSystemValues.REDIS.value,
+        DB_SYSTEM: DbSystemValues.REDIS.value,
     }
     db = conn_kwargs.get("db", 0)
-    attributes[SpanAttributes.DB_REDIS_DATABASE_INDEX] = db
+    attributes[DB_REDIS_DATABASE_INDEX] = db
     if "path" in conn_kwargs:
-        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
-        attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.OTHER.value
-        )
+        attributes[NET_PEER_NAME] = conn_kwargs.get("path", "")
+        attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
     else:
-        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get(
-            "host", "localhost"
-        )
-        attributes[SpanAttributes.NET_PEER_PORT] = conn_kwargs.get(
-            "port", 6379
-        )
-        attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.IP_TCP.value
-        )
+        attributes[NET_PEER_NAME] = conn_kwargs.get("host", "localhost")
+        attributes[NET_PEER_PORT] = conn_kwargs.get("port", 6379)
+        attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
 
     return attributes
 
