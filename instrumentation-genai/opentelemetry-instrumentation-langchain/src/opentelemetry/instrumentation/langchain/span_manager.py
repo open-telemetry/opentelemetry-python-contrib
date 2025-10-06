@@ -25,7 +25,10 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
-__all__ = ["_SpanManager"]
+__all__ = ["_SpanManager", "_OPERATION_INVOKE_AGENT"]
+
+# Operation name constants
+_OPERATION_INVOKE_AGENT = "invoke_agent"
 
 
 @dataclass
@@ -98,9 +101,9 @@ class _SpanManager:
         agent_name: Optional[str] = None,
     ) -> Span:
         """Create a span for agent invocation."""
-        span_name = (
-            f"invoke_agent {agent_name}" if agent_name else "invoke_agent"
-        )
+        # Use "unknown" as default if agent_name is not provided
+        effective_agent_name = agent_name or "unknown"
+        span_name = f"{_OPERATION_INVOKE_AGENT} {effective_agent_name}"
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
@@ -109,10 +112,9 @@ class _SpanManager:
         )
         span.set_attribute(
             GenAI.GEN_AI_OPERATION_NAME,
-            "invoke_agent",
+            _OPERATION_INVOKE_AGENT,
         )
-        if agent_name:
-            span.set_attribute(GenAI.GEN_AI_AGENT_NAME, agent_name)
+        span.set_attribute(GenAI.GEN_AI_AGENT_NAME, effective_agent_name)
 
         return span
 
@@ -122,15 +124,19 @@ class _SpanManager:
         parent_run_id: Optional[UUID],
         chain_name: str,
     ) -> Span:
-        """Create a span for chain execution."""
+        """Create a span for chain execution.
+
+        Chains are internal operations by default and don't have gen_ai.operation.name.
+        However, if the chain represents an agent (determined by metadata in the callback),
+        the operation name and agent name attributes will be set separately by the
+        callback handler to make it an agent span.
+        """
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
             span_name=f"chain {chain_name}",
             kind=SpanKind.INTERNAL,
         )
-        # Chains are internal operations, not direct GenAI operations
-        # We can track them but they don't have a gen_ai.operation.name
         return span
 
     def end_span(self, run_id: UUID) -> None:

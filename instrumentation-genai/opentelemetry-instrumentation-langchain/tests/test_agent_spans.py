@@ -22,11 +22,17 @@ def callback_handler(tracer_provider):
 
 
 def test_agent_chain_span(callback_handler, span_exporter):
-    """Test that agent chains create proper invoke_agent spans."""
+    """Test that agent chains create proper invoke_agent spans.
+
+    Note: Agent chains are created via create_chain_span() but are enhanced
+    with agent-specific attributes (gen_ai.agent.name and gen_ai.operation.name)
+    when metadata contains 'agent_name'. This is different from regular chains
+    which remain as internal operations without gen_ai.operation.name.
+    """
     run_id = uuid4()
     parent_run_id = uuid4()
 
-    # Start a chain that represents an agent
+    # Start a chain that represents an agent (note: metadata includes agent_name)
     callback_handler.on_chain_start(
         serialized={
             "name": "TestAgent",
@@ -52,6 +58,7 @@ def test_agent_chain_span(callback_handler, span_exporter):
     span = spans[0]
     assert span.name == "chain TestAgent"
     assert span.kind == SpanKind.INTERNAL
+    # Agent chains have these attributes set via callback_handler when metadata contains agent_name
     assert span.attributes.get(GenAI.GEN_AI_AGENT_NAME) == "TestAgent"
     assert span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) == "invoke_agent"
 

@@ -22,7 +22,10 @@ from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
+from opentelemetry.instrumentation.langchain.span_manager import (
+    _OPERATION_INVOKE_AGENT,
+    _SpanManager,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -260,7 +263,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         # If this is an agent chain, set agent-specific attributes
         if metadata and "agent_name" in metadata:
             span.set_attribute(GenAI.GEN_AI_AGENT_NAME, metadata["agent_name"])
-            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, "invoke_agent")
+            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, _OPERATION_INVOKE_AGENT)
 
     def on_chain_end(
         self,
