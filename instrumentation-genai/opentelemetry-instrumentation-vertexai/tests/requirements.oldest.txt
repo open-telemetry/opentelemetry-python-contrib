@@ -69,7 +69,7 @@ opentelemetry-api==1.37
 opentelemetry-sdk==1.37
 opentelemetry-semantic-conventions==0.58b0
 opentelemetry-instrumentation==0.58b0
-
+fsspec==2025.9.0
 
 -e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
 -e util/opentelemetry-util-genai
