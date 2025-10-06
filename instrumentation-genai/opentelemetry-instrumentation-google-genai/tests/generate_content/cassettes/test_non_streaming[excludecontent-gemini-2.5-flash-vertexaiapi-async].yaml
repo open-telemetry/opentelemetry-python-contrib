@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.11.9
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In tangled clouds, where microservices roam,\nAnd data streams find a circuitous home,\nA dark abyss, where errors often hide,\nWith mysteries deep, there's nowhere to confide.\n\nBut from the void, a standard takes its flight,\nTo bring the hidden processes to light.\nOpenTelemetry, a unified design,\nA beacon in the digital divine.\n\nWith traces keen, a journey we embark,\nEach operation leaves its vital mark.\nFrom service entry to a database's keep,\nContext propagated, secrets now don't sleep.\n\nThen metrics gleam, in charts and graphs displayed,\nResponse times measured, no detail delayed.\nThrough counters, gauges, histograms so precise,\nPerformance whispered, at a measurable price.\n\nAnd logs, the tales of moments as they pass,\nDiscrete events within the digital glass.\nWith structured wisdom, messages unfold,\nA narrative of what the systems hold.\n\nThrough instrumentation, code begins to speak,\nA common language that all systems seek.\nThe Collector waits, a sentinel so grand,\nTo process, batch, and send across the land.\n\nNo vendor binds, no proprietary chain,\nBut open standards, free from selfish gain.\nA universal tongue, for insight to arise,\nReflecting truth before observing eyes.\n\nFrom scattered signals, patterns now emerge,\nTo quell the chaos, stem the error's surge.\nWith deep observability, we understand,\nThe intricate dance across the digital sand.\n\nSo hail this standard, built with thoughtful grace,\nTo light the corners of computing space.\nOpenTelemetry, a steadfast, vital guide,\nWhere understanding and precision ride."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -2.298871321801128
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 349,
+            "totalTokenCount": 2326,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 349
+              }
+            ],
+            "thoughtsTokenCount": 1969
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-06T15:50:52.185046Z",
+          "responseId": "XOXjaNalC4-nnvgPsaPcuAw"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Mon, 06 Oct 2025 15:51:05 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

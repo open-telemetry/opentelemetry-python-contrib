@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.11.9
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In realms of code, where microservices gleam,\nA hidden flow, a silent, complex stream.\nThe journey lost, where data takes its flight,\nA developer's plea for dawning light.\n\nThen from the cloud, a standard takes its stand,\nWith open heart, across the digital land.\nOpenTelemetry, a beacon strong and true,\nTo pierce the fog, and bring the facts to view.\n\nA Trace begins, a story to unfold,\nThrough every service, brave and strong and bold.\nWith Spans entwined, a parent and its child,\nThe call graph painted, nevermore beguiled.\n\nThen Metrics rise, in numbers clear and plain,\nThe count of errors, or the joyful gain.\nA gauge of load, a histogram's wide spread,\nThe health of systems, clearly to be read.\n\nAnd Logs arrive, with context rich and deep,\nThe structured message, secrets they don't keep.\nEach line a moment, with data to attest,\nA vital clue, to pass the crucial test.\n\nNo vendor lock, no proprietary chain,\nBut open hands, a collaborative domain.\nA unified approach, for all to understand,\nThe data flowing, free across the land.\n\nWith SDKs bright, in languages diverse,\nYou instrument your code, a crucial verse.\nAttach the agents, where the queries run,\nThe observation journey, has begun.\n\nThe Collector waits, a gatherer so keen,\nTo process data, clean and sharp and lean.\nTransform and batch, then send it far away,\nTo chosen backend, come what may.\n\nSo dark no longer, where the errors hide,\nBut clarity shines, your systems open wide.\nThe 'why' revealed, the latency explained,\nWith OTel's power, mastery is gained.\n\nFor engineers who seek to truly see,\nThe inner workings, wild and fiercely free.\nEmbrace the standard, let its power ignite,\nOpenTelemetry, your guiding, digital light."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -1.5871007582720589
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 425,
+            "totalTokenCount": 2470,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 425
+              }
+            ],
+            "thoughtsTokenCount": 2037
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-06T15:50:21.557646Z",
+          "responseId": "PeXjaM6EItur3NoPkYPI2A4"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Mon, 06 Oct 2025 15:50:34 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

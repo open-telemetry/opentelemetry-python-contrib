@@ -15,6 +15,7 @@
 from unittest.mock import patch
 
 import google.genai.types as genai_types
+
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -297,7 +298,9 @@ class ToolCallInstrumentationTestCase(TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
-            with self.subTest(f'mode: {mode}', patched_environ=patched_environ):
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     calls = []
@@ -307,7 +310,11 @@ class ToolCallInstrumentationTestCase(TestCase):
                         return "some result"
 
                     def somefunction(someparam, otherparam=2):
-                        print("someparam=%s, otherparam=%s", someparam, otherparam)
+                        print(
+                            "someparam=%s, otherparam=%s",
+                            someparam,
+                            otherparam,
+                        )
 
                     self.mock_generate_content.side_effect = handle
                     self.client.models.generate_content(
@@ -322,8 +329,12 @@ class ToolCallInstrumentationTestCase(TestCase):
                     tools = config.tools
                     wrapped_somefunction = tools[0]
                     wrapped_somefunction(123, otherparam="abc")
-                    self.otel.assert_has_span_named("execute_tool somefunction")
-                    generated_span = self.otel.get_span_named("execute_tool somefunction")
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
                     self.assertEqual(
                         generated_span.attributes[
                             "code.function.parameters.someparam.type"
@@ -340,11 +351,27 @@ class ToolCallInstrumentationTestCase(TestCase):
                         ContentCapturingMode.SPAN_ONLY,
                         ContentCapturingMode.SPAN_AND_EVENT,
                     ]:
-                        self.assertEqual(generated_span.attributes["code.function.parameters.someparam.value"], 123)
-                        self.assertEqual(generated_span.attributes["code.function.parameters.otherparam.value"], "abc")
+                        self.assertEqual(
+                            generated_span.attributes[
+                                "code.function.parameters.someparam.value"
+                            ],
+                            123,
+                        )
+                        self.assertEqual(
+                            generated_span.attributes[
+                                "code.function.parameters.otherparam.value"
+                            ],
+                            "abc",
+                        )
                     else:
-                        self.assertNotIn("code.function.parameters.someparam.value", generated_span.attributes)
-                        self.assertNotIn("code.function.parameters.otherparam.value", generated_span.attributes)
+                        self.assertNotIn(
+                            "code.function.parameters.someparam.value",
+                            generated_span.attributes,
+                        )
+                        self.assertNotIn(
+                            "code.function.parameters.otherparam.value",
+                            generated_span.attributes,
+                        )
                 self.tearDown()
 
     def test_new_semconv_tool_calls_record_return_values(self):
@@ -362,7 +389,9 @@ class ToolCallInstrumentationTestCase(TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
-            with self.subTest(f'mode: {mode}', patched_environ=patched_environ):
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     calls = []
@@ -387,20 +416,27 @@ class ToolCallInstrumentationTestCase(TestCase):
                     tools = config.tools
                     wrapped_somefunction = tools[0]
                     wrapped_somefunction(123)
-                    self.otel.assert_has_span_named("execute_tool somefunction")
-                    generated_span = self.otel.get_span_named("execute_tool somefunction")
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
                     self.assertEqual(
-                        generated_span.attributes["code.function.return.type"], "int"
+                        generated_span.attributes["code.function.return.type"],
+                        "int",
                     )
                     if mode in [
                         ContentCapturingMode.SPAN_ONLY,
                         ContentCapturingMode.SPAN_AND_EVENT,
                     ]:
                         self.assertIn(
-                            "code.function.return.value", generated_span.attributes
+                            "code.function.return.value",
+                            generated_span.attributes,
                         )
                     else:
                         self.assertNotIn(
-                            "code.function.return.value", generated_span.attributes
+                            "code.function.return.value",
+                            generated_span.attributes,
                         )
                 self.tearDown()

@@ -35,6 +35,7 @@ from google.genai.types import (
     GenerateContentConfigOrDict,
     GenerateContentResponse,
 )
+
 from opentelemetry import trace
 from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
@@ -48,13 +49,13 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace.span import Span
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
-    MessagePart,
     InputMessage,
+    MessagePart,
     OutputMessage,
 )
-from opentelemetry.util.genai.completion_hook import CompletionHook
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -165,7 +166,9 @@ def _to_dict(value: object):
 
 
 def _add_request_options_to_span(
-    span: Span, config: Optional[GenerateContentConfigOrDict], allow_list: AllowList
+    span: Span,
+    config: Optional[GenerateContentConfigOrDict],
+    allow_list: AllowList,
 ):
     if config is None:
         return
@@ -209,7 +212,9 @@ def _add_request_options_to_span(
         },
     )
     for key, value in attributes.items():
-        if key.startswith(GCP_GENAI_OPERATION_CONFIG) and not allow_list.allowed(key):
+        if key.startswith(
+            GCP_GENAI_OPERATION_CONFIG
+        ) and not allow_list.allowed(key):
             # The allowlist is used to control inclusion of the dynamic keys.
             continue
         span.set_attribute(key, value)
@@ -245,7 +250,9 @@ def _wrapped_config_with_tools(
     if not config.tools:
         return config
     result = copy.copy(config)
-    result.tools = [wrapped_tool(tool, otel_wrapper, **kwargs) for tool in config.tools]
+    result.tools = [
+        wrapped_tool(tool, otel_wrapper, **kwargs) for tool in config.tools
+    ]
     return result
 
 
@@ -268,10 +275,12 @@ def _create_completion_details_attributes(
 ) -> dict[str, Any]:
     attributes: dict[str, Any] = {
         gen_ai_attributes.GEN_AI_INPUT_MESSAGES: [
-            dataclasses.asdict(input_message) for input_message in input_messages
+            dataclasses.asdict(input_message)
+            for input_message in input_messages
         ],
         gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES: [
-            dataclasses.asdict(output_message) for output_message in output_messages
+            dataclasses.asdict(output_message)
+            for output_message in output_messages
         ],
     }
     if system_instructions:
@@ -280,7 +289,10 @@ def _create_completion_details_attributes(
         ]
 
     if as_str:
-        return {k: json.dumps(v, cls=Base64JsonEncoder) for k, v in attributes.items()}
+        return {
+            k: json.dumps(v, cls=Base64JsonEncoder)
+            for k, v in attributes.items()
+        }
 
     return attributes
 
@@ -464,12 +476,17 @@ class _GenerateContentInstrumentationHelper:
             system_instructions = to_system_instructions(
                 content=transformers.t_contents(system_content)[0]
             )
-        input_messages = to_input_messages(contents=transformers.t_contents(request))
-        output_messages = to_output_messages(candidates=response.candidates or [])
+        input_messages = to_input_messages(
+            contents=transformers.t_contents(request)
+        )
+        output_messages = to_output_messages(
+            candidates=response.candidates or []
+        )
 
         span = trace.get_current_span()
         event = Event(
-            name="gen_ai.client.inference.operation.details", attributes=attributes
+            name="gen_ai.client.inference.operation.details",
+            attributes=attributes,
         )
         self.completion_hook.on_completion(
             inputs=input_messages,
@@ -482,21 +499,25 @@ class _GenerateContentInstrumentationHelper:
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
-            completion_details_attributes = _create_completion_details_attributes(
-                input_messages,
-                output_messages,
-                system_instructions,
-                as_str=True,
+            completion_details_attributes = (
+                _create_completion_details_attributes(
+                    input_messages,
+                    output_messages,
+                    system_instructions,
+                    as_str=True,
+                )
             )
             span.set_attributes(completion_details_attributes)
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
-            completion_details_attributes = _create_completion_details_attributes(
-                input_messages,
-                output_messages,
-                system_instructions,
+            completion_details_attributes = (
+                _create_completion_details_attributes(
+                    input_messages,
+                    output_messages,
+                    system_instructions,
+                )
             )
             event.attributes = {
                 **(event.attributes or {}),
@@ -541,7 +562,9 @@ class _GenerateContentInstrumentationHelper:
             total = len(contents)
             index = 0
             for entry in contents:
-                self._maybe_log_single_user_prompt(entry, index=index, total=total)
+                self._maybe_log_single_user_prompt(
+                    entry, index=index, total=total
+                )
                 index += 1
         else:
             self._maybe_log_single_user_prompt(contents)
@@ -647,7 +670,9 @@ class _GenerateContentInstrumentationHelper:
         #
         pass
 
-    def _maybe_log_response_safety_ratings(self, response: GenerateContentResponse):
+    def _maybe_log_response_safety_ratings(
+        self, response: GenerateContentResponse
+    ):
         # TODO: Determine if there is a way that we can log
         # the "prompt_feedback". This would be especially useful
         # in the case where the response is blocked.
@@ -917,13 +942,18 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             with trace.use_span(span, end_on_exit=True):
                 try:
                     async for response in response_async_generator:
-                        if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+                        if (
+                            helper.sem_conv_opt_in_mode
+                            == _StabilityMode.DEFAULT
+                        ):
                             helper.process_response(response)
                         elif (
                             helper.sem_conv_opt_in_mode
                             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                         ):
-                            helper.process_completion(contents, response, config)
+                            helper.process_completion(
+                                contents, response, config
+                            )
                         else:
                             raise ValueError(
                                 f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
@@ -969,12 +999,10 @@ def instrument_generate_content(
         completion_hook,
         generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
-    AsyncModels.generate_content_stream = (
-        _create_instrumented_async_generate_content_stream(
-            snapshot,
-            otel_wrapper,
-            completion_hook,
-            generate_content_config_key_allowlist=generate_content_config_key_allowlist,
-        )
+    AsyncModels.generate_content_stream = _create_instrumented_async_generate_content_stream(
+        snapshot,
+        otel_wrapper,
+        completion_hook,
+        generate_content_config_key_allowlist=generate_content_config_key_allowlist,
     )
     return snapshot

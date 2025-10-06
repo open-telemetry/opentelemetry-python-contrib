@@ -24,15 +24,14 @@ from google.genai.types import (
 )
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.semconv._incubating.attributes import (
     code_attributes,
 )
-from opentelemetry.instrumentation._semconv import (
-    _StabilityMode,
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-)
-
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .flags import is_content_recording_enabled
@@ -52,7 +51,9 @@ def _to_otel_value(python_value):
     if isinstance(python_value, list):
         return [_to_otel_value(x) for x in python_value]
     if isinstance(python_value, dict):
-        return {key: _to_otel_value(val) for (key, val) in python_value.items()}
+        return {
+            key: _to_otel_value(val) for (key, val) in python_value.items()
+        }
     if hasattr(python_value, "model_dump"):
         return python_value.model_dump()
     if hasattr(python_value, "__dict__"):
@@ -120,7 +121,9 @@ def _create_function_span_attributes(
     return result
 
 
-def _record_function_call_argument(span, param_name, param_value, include_values):
+def _record_function_call_argument(
+    span, param_name, param_value, include_values
+):
     attribute_prefix = f"code.function.parameters.{param_name}"
     type_attribute = f"{attribute_prefix}.type"
     span.set_attribute(type_attribute, type(param_value).__name__)
@@ -152,7 +155,9 @@ def _record_function_call_result(otel_wrapper, wrapped_function, result):
     span = trace.get_current_span()
     span.set_attribute("code.function.return.type", type(result).__name__)
     if include_values:
-        span.set_attribute("code.function.return.value", _to_otel_attribute(result))
+        span.set_attribute(
+            "code.function.return.value", _to_otel_attribute(result)
+        )
 
 
 def _wrap_sync_tool_function(
@@ -167,8 +172,12 @@ def _wrap_sync_tool_function(
         attributes = _create_function_span_attributes(
             tool_function, args, kwargs, extra_span_attributes
         )
-        with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
+        with otel_wrapper.start_as_current_span(
+            span_name, attributes=attributes
+        ):
+            _record_function_call_arguments(
+                otel_wrapper, tool_function, args, kwargs
+            )
             result = tool_function(*args, **kwargs)
             _record_function_call_result(otel_wrapper, tool_function, result)
             return result
@@ -188,8 +197,12 @@ def _wrap_async_tool_function(
         attributes = _create_function_span_attributes(
             tool_function, args, kwargs, extra_span_attributes
         )
-        with otel_wrapper.start_as_current_span(span_name, attributes=attributes):
-            _record_function_call_arguments(otel_wrapper, tool_function, args, kwargs)
+        with otel_wrapper.start_as_current_span(
+            span_name, attributes=attributes
+        ):
+            _record_function_call_arguments(
+                otel_wrapper, tool_function, args, kwargs
+            )
             result = await tool_function(*args, **kwargs)
             _record_function_call_result(otel_wrapper, tool_function, result)
             return result
@@ -215,7 +228,9 @@ def wrapped(
     if tool_or_tools is None:
         return None
     if isinstance(tool_or_tools, list):
-        return [wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools]
+        return [
+            wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools
+        ]
     if isinstance(tool_or_tools, dict):
         return {
             key: wrapped(value, otel_wrapper, **kwargs)

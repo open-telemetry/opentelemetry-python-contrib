@@ -17,13 +17,17 @@ import unittest
 from unittest.mock import patch
 
 from google.genai import types as genai_types
+
 from opentelemetry._events import get_event_logger_provider
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
 )
-from opentelemetry.instrumentation.google_genai import otel_wrapper, tool_call_wrapper
+from opentelemetry.instrumentation.google_genai import (
+    otel_wrapper,
+    tool_call_wrapper,
+)
 from opentelemetry.metrics import get_meter_provider
 from opentelemetry.trace import get_tracer_provider
 from opentelemetry.util.genai.types import ContentCapturingMode
@@ -299,19 +303,29 @@ class TestCase(unittest.TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
-            with self.subTest(f'mode: {mode}', patched_environ=patched_environ):
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     wrapped_somefunction = self.wrap(somefunction)
                     wrapped_somefunction(12345)
 
-                    span = self.otel.get_span_named("execute_tool somefunction")
+                    span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
 
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,
                         ContentCapturingMode.EVENT_ONLY,
                     ]:
-                        self.assertNotIn("code.function.parameters.arg.value", span.attributes)
+                        self.assertNotIn(
+                            "code.function.parameters.arg.value",
+                            span.attributes,
+                        )
                     else:
-                        self.assertIn("code.function.parameters.arg.value", span.attributes)
+                        self.assertIn(
+                            "code.function.parameters.arg.value",
+                            span.attributes,
+                        )
                 self.tearDown()

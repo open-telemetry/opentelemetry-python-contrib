@@ -59,7 +59,9 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
             event_logger_provider=event_logger_provider,
             meter_provider=meter_provider,
         )
-        completion_hook = kwargs.get("completion_hook") or load_completion_hook()
+        completion_hook = (
+            kwargs.get("completion_hook") or load_completion_hook()
+        )
         self._generate_content_snapshot = instrument_generate_content(
             otel_wrapper,
             completion_hook,

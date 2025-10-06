@@ -17,6 +17,7 @@ import logging
 from typing import Any
 
 import google.genai
+
 from opentelemetry._events import Event, EventLogger, EventLoggerProvider
 from opentelemetry.metrics import Meter, MeterProvider
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
@@ -39,15 +40,17 @@ _SCOPE_ATTRIBUTES = {
 
 
 class OTelWrapper:
-    def __init__(self, tracer: Tracer, event_logger: EventLogger, meter: Meter):
+    def __init__(
+        self, tracer: Tracer, event_logger: EventLogger, meter: Meter
+    ):
         self._tracer = tracer
         self._event_logger = event_logger
         self._meter = meter
         self._operation_duration_metric = (
             gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
         )
-        self._token_usage_metric = gen_ai_metrics.create_gen_ai_client_token_usage(
-            meter
+        self._token_usage_metric = (
+            gen_ai_metrics.create_gen_ai_client_token_usage(meter)
         )
 
     @staticmethod
@@ -79,17 +82,23 @@ class OTelWrapper:
     def token_usage_metric(self):
         return self._token_usage_metric
 
-    def log_system_prompt(self, attributes: dict[str, str], body: dict[str, Any]):
+    def log_system_prompt(
+        self, attributes: dict[str, str], body: dict[str, Any]
+    ):
         _logger.debug("Recording system prompt.")
         event_name = "gen_ai.system.message"
         self._log_event(event_name, attributes, body)
 
-    def log_user_prompt(self, attributes: dict[str, str], body: dict[str, Any]):
+    def log_user_prompt(
+        self, attributes: dict[str, str], body: dict[str, Any]
+    ):
         _logger.debug("Recording user prompt.")
         event_name = "gen_ai.user.message"
         self._log_event(event_name, attributes, body)
 
-    def log_response_content(self, attributes: dict[str, str], body: dict[str, Any]):
+    def log_response_content(
+        self, attributes: dict[str, str], body: dict[str, Any]
+    ):
         _logger.debug("Recording response.")
         event_name = "gen_ai.choice"
         self._log_event(event_name, attributes, body)

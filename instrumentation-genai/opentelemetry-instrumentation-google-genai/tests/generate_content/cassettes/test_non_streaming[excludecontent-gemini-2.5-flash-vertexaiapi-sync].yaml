@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.11.9
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In realms where code profoundly weaves its might,\nAnd services converse in hurried streams,\nA common tongue emerges, clear and bright,\nTo shed its light upon our digital dreams.\n\nNo longer hidden, lost in labyrinthine ways,\nThe secret life of systems, now revealed,\nThrough OpenTelemetry's enlightened gaze,\nA universal language, fairly wielded.\n\nA **Trace** begins, a journey's golden thread,\nFrom distant client to the deepest core,\nEach tiny \"span,\" a word that has been said,\nMapping the path, from shore to server's shore.\nContext propagated, like a gentle breeze,\nAcross the network, through the busy maze,\nConnecting dots with elegant, calm ease,\nUnveiling time, in swift or lingering phases.\n\nThen **Metrics** pulse, a steady, rhythmic beat,\nThe CPU's hum, the memory's steady climb,\nLatency's dance, both bitter and so sweet,\nA quantitative pulse, defying time.\nCounters tally, gauges hold their ground,\nHistograms paint distributions, clear and bold,\nThe health of systems, constantly profound,\nA silent story, in their numbers told.\n\nAnd finally, the **Logs**, a detailed scroll,\nEach event marked, a narrative precise,\nWhat happened where, beyond our own control,\nA key to debug, a moment's wise advice.\nStructured records, searchable and plain,\nThey whisper errors, or triumphant news,\nA chronological, unwavering refrain,\nUnlocking insights, banishing confusions.\n\nFrom humble agents, nestled in the code,\nTo collectors standing, vigilant and keen,\nThe data flows, a precious, heavy load,\nTo any backend, for display and screen.\nVendor-neutral, open, strong, and free,\nIt breaks the silos, tears the walls apart,\nFor true observability's decree,\nTo understand the system's beating heart.\n\nSo hail this standard, built with thoughtful hand,\nFor those who build, and those who seek to mend,\nOpenTelemetry, across the land,\nOur guiding light, until the journey's end."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -2.4816789437603477
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 453,
+            "totalTokenCount": 2468,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 453
+              }
+            ],
+            "thoughtsTokenCount": 2007
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-06T15:50:35.682132Z",
+          "responseId": "S-XjaJTRKdO6nvgPnMuyoQs"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Mon, 06 Oct 2025 15:50:51 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

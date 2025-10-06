@@ -35,6 +35,7 @@ import google.auth.credentials
 import google.genai
 import pytest
 import yaml
+from google.genai import types
 from vcr.record_mode import RecordMode
 
 from opentelemetry.instrumentation.google_genai import (
@@ -389,7 +390,13 @@ def fixture_gcloud_api_key(gemini_api_key):
 @pytest.fixture(name="nonvertex_client_factory")
 def fixture_nonvertex_client_factory(gemini_api_key):
     def _factory():
-        return google.genai.Client(api_key=gemini_api_key, vertexai=False)
+        return google.genai.Client(
+            api_key=gemini_api_key,
+            vertexai=False,
+            http_options=types.HttpOptions(
+                headers={"accept-encoding": "identity"}
+            ),
+        )
 
     return _factory
 
@@ -404,6 +411,9 @@ def fixture_vertex_client_factory(
             project=gcloud_project,
             location=gcloud_location,
             credentials=gcloud_credentials,
+            http_options=types.HttpOptions(
+                headers={"accept-encoding": "identity"}
+            ),
         )
 
     return _factory
@@ -435,7 +445,7 @@ def fixture_is_async(request):
     return request.param == "async"
 
 
-@pytest.fixture(name="model", params=["gemini-1.5-flash-002"])
+@pytest.fixture(name="model", params=["gemini-2.5-flash"])
 def fixture_model(request):
     return request.param
 
