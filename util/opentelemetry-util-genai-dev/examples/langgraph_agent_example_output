@@ -904,9 +904,9 @@ Waiting for metrics export...
                             }
                         },
                         {
-                            "name": "gen_ai.token.usage",
-                            "description": "Token usage for GenAI operations",
-                            "unit": "tokens",
+                            "name": "gen_ai.client.token.usage",
+                            "description": "Number of input and output tokens used",
+                            "unit": "{token}",
                             "data": {
                                 "data_points": [
                                     {
@@ -1050,8 +1050,8 @@ Waiting for metrics export...
                             }
                         },
                         {
-                            "name": "gen_ai.operation.duration",
-                            "description": "Duration of GenAI operations",
+                            "name": "gen_ai.client.operation.duration",
+                            "description": "Duration of GenAI client operations",
                             "unit": "s",
                             "data": {
                                 "data_points": [
@@ -1538,9 +1538,9 @@ Waiting for metrics export...
                             }
                         },
                         {
-                            "name": "gen_ai.token.usage",
-                            "description": "Token usage for GenAI operations",
-                            "unit": "tokens",
+                            "name": "gen_ai.client.token.usage",
+                            "description": "Number of input and output tokens used",
+                            "unit": "{token}",
                             "data": {
                                 "data_points": [
                                     {
@@ -1654,8 +1654,8 @@ Waiting for metrics export...
                             }
                         },
                         {
-                            "name": "gen_ai.operation.duration",
-                            "description": "Duration of GenAI operations",
+                            "name": "gen_ai.client.operation.duration",
+                            "description": "Duration of GenAI client operations",
                             "unit": "s",
                             "data": {
                                 "data_points": [

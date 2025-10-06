@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from opentelemetry.metrics import Histogram, Meter, get_meter
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 
-from ..attributes import GEN_AI_AGENT_ID, GEN_AI_AGENT_NAME
 from ..instruments import Instruments
 from ..interfaces import EmitterMeta
 from ..types import (
@@ -73,9 +75,9 @@ class MetricsEmitter(EmitterMeta):
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_token_metrics(
                 self._token_histogram,
@@ -94,15 +96,15 @@ class MetricsEmitter(EmitterMeta):
             metric_attrs = _get_metric_attributes(
                 invocation.name,
                 None,
-                "tool_call",
+                GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value,
                 invocation.provider,
-                None,
+                invocation.framework,
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
                 self._duration_histogram, invocation, metric_attrs
@@ -113,15 +115,17 @@ class MetricsEmitter(EmitterMeta):
             metric_attrs = _get_metric_attributes(
                 invocation.request_model,
                 None,
-                "embedding",
-                None,
-                None,
+                invocation.operation_name,
+                invocation.provider,
+                invocation.framework,
+                server_address=invocation.server_address,
+                server_port=invocation.server_port,
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
                 self._duration_histogram, invocation, metric_attrs
@@ -151,9 +155,9 @@ class MetricsEmitter(EmitterMeta):
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
                 self._duration_histogram, invocation, metric_attrs
@@ -166,15 +170,15 @@ class MetricsEmitter(EmitterMeta):
             metric_attrs = _get_metric_attributes(
                 invocation.name,
                 None,
-                "tool_call",
+                GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value,
                 invocation.provider,
-                None,
+                invocation.framework,
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
                 self._duration_histogram, invocation, metric_attrs
@@ -185,15 +189,17 @@ class MetricsEmitter(EmitterMeta):
             metric_attrs = _get_metric_attributes(
                 invocation.request_model,
                 None,
-                "embedding",
-                None,
-                None,
+                invocation.operation_name,
+                invocation.provider,
+                invocation.framework,
+                server_address=invocation.server_address,
+                server_port=invocation.server_port,
             )
             # Add agent context if available
             if invocation.agent_name:
-                metric_attrs[GEN_AI_AGENT_NAME] = invocation.agent_name
+                metric_attrs[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
             if invocation.agent_id:
-                metric_attrs[GEN_AI_AGENT_ID] = invocation.agent_id
+                metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
                 self._duration_histogram, invocation, metric_attrs
@@ -238,9 +244,9 @@ class MetricsEmitter(EmitterMeta):
             return
         duration = agent.end_time - agent.start_time
         metric_attrs = {
-            "gen_ai.operation.name": agent.operation,
-            "gen_ai.agent.name": agent.name,
-            "gen_ai.agent.id": str(agent.run_id),
+            GenAI.GEN_AI_OPERATION_NAME: agent.operation,
+            GenAI.GEN_AI_AGENT_NAME: agent.name,
+            GenAI.GEN_AI_AGENT_ID: str(agent.run_id),
         }
         if agent.agent_type:
             metric_attrs["gen_ai.agent.type"] = agent.agent_type
@@ -264,6 +270,6 @@ class MetricsEmitter(EmitterMeta):
         if task.source:
             metric_attrs["gen_ai.task.source"] = task.source
         if task.assigned_agent:
-            metric_attrs["gen_ai.agent.name"] = task.assigned_agent
+            metric_attrs[GenAI.GEN_AI_AGENT_NAME] = task.assigned_agent
 
         self._task_duration_histogram.record(duration, attributes=metric_attrs)

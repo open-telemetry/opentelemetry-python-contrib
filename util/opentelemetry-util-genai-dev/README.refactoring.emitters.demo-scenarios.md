@@ -264,14 +264,14 @@ These can be adapted to query your backend (pseudo examples):
 
 ### Current Built-in Metric Instruments
 Emitted today when corresponding emitters are enabled:
-- gen_ai.operation.duration (Histogram)
-- gen_ai.token.usage (Histogram)
+- gen_ai.client.operation.duration (Histogram)
+- gen_ai.client.token.usage (Histogram)
 - gen_ai.workflow.duration (Histogram)
 - gen_ai.agent.duration (Histogram)
 - gen_ai.task.duration (Histogram)
 - gen_ai.evaluation.score (Histogram of numeric evaluation scores)
 
-Token usage attributes also appear on spans (gen_ai.usage.input_tokens / output_tokens) and are bucketed into gen_ai.token.usage when MetricsEmitter is active.
+Token usage attributes also appear on spans (gen_ai.usage.input_tokens / output_tokens) and are bucketed into gen_ai.client.token.usage when MetricsEmitter is active.
 
 ---
 ## Cleanup

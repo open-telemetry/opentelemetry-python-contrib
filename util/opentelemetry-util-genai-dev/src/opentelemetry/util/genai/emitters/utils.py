@@ -14,16 +14,16 @@ from opentelemetry.sdk._logs._internal import LogRecord as SDKLogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import (
+    server_attributes as ServerAttributes,
+)
 from opentelemetry.util.types import AttributeValue
 
 from ..attributes import (
     GEN_AI_EMBEDDINGS_DIMENSION_COUNT,
     GEN_AI_EMBEDDINGS_INPUT_TEXTS,
     GEN_AI_FRAMEWORK,
-    GEN_AI_PROVIDER_NAME,
     GEN_AI_REQUEST_ENCODING_FORMATS,
-    SERVER_ADDRESS,
-    SERVER_PORT,
 )
 from ..types import (
     AgentInvocation,
@@ -207,38 +207,42 @@ def _llm_invocation_to_log_record(
     if invocation.framework:
         attributes[GEN_AI_FRAMEWORK] = invocation.framework
     if invocation.provider:
-        attributes[GEN_AI_PROVIDER_NAME] = invocation.provider
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
+    if invocation.operation:
+        attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation
     if invocation.request_model:
-        attributes["gen_ai.request.model"] = invocation.request_model
+        attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
 
     # Optional attributes from semantic conventions table
     if invocation.response_model_name:
-        attributes["gen_ai.response.model"] = invocation.response_model_name
+        attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
+            invocation.response_model_name
+        )
     if invocation.response_id:
-        attributes["gen_ai.response.id"] = invocation.response_id
+        attributes[GenAI.GEN_AI_RESPONSE_ID] = invocation.response_id
     if invocation.input_tokens is not None:
-        attributes["gen_ai.usage.input_tokens"] = invocation.input_tokens
+        attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] = invocation.input_tokens
     if invocation.output_tokens is not None:
-        attributes["gen_ai.usage.output_tokens"] = invocation.output_tokens
+        attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] = invocation.output_tokens
     semantic_attrs = invocation.semantic_convention_attributes()
     for key, value in semantic_attrs.items():
         attributes[key] = value
 
     # If choice count not in attributes, infer from output_messages length
     if (
-        "gen_ai.request.choice.count" not in attributes
+        GenAI.GEN_AI_REQUEST_CHOICE_COUNT not in attributes
         and invocation.output_messages
         and len(invocation.output_messages) != 1
     ):
-        attributes["gen_ai.request.choice.count"] = len(
+        attributes[GenAI.GEN_AI_REQUEST_CHOICE_COUNT] = len(
             invocation.output_messages
         )
 
     # Add agent context if available
     if invocation.agent_name:
-        attributes["gen_ai.agent.name"] = invocation.agent_name
+        attributes[GenAI.GEN_AI_AGENT_NAME] = invocation.agent_name
     if invocation.agent_id:
-        attributes["gen_ai.agent.id"] = invocation.agent_id
+        attributes[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
     body: Dict[str, Any] = {}
     system_instructions = []
@@ -320,10 +324,10 @@ def _llm_invocation_to_log_record(
             input_msgs.append(input_msg)
 
         if input_msgs:
-            body["gen_ai.input.messages"] = input_msgs
+            body[GenAI.GEN_AI_INPUT_MESSAGES] = input_msgs
 
     if system_instructions:
-        body["gen_ai.system.instructions"] = system_instructions
+        body[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = system_instructions
 
     if invocation.output_messages:
         output_msgs = []
@@ -369,7 +373,7 @@ def _llm_invocation_to_log_record(
                         pass
 
             output_msgs.append(output_msg)
-        body["gen_ai.output.messages"] = output_msgs
+        body[GenAI.GEN_AI_OUTPUT_MESSAGES] = output_msgs
 
     return SDKLogRecord(
         body=body or None,
@@ -382,21 +386,26 @@ def _get_metric_attributes(
     request_model: Optional[str],
     response_model: Optional[str],
     operation_name: Optional[str],
-    system: Optional[str],
+    provider: Optional[str],
     framework: Optional[str],
+    server_address: Optional[str] = None,
+    server_port: Optional[int] = None,
 ) -> Dict[str, AttributeValue]:
     attributes: Dict[str, AttributeValue] = {}
     if framework is not None:
         attributes[GEN_AI_FRAMEWORK] = framework
-    if system:
-        # NOTE: The 'system' parameter historically mapped to provider name; keeping for backward compatibility.
-        attributes[GEN_AI_PROVIDER_NAME] = system
+    if provider:
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
     if operation_name:
         attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
     if request_model:
         attributes[GenAI.GEN_AI_REQUEST_MODEL] = request_model
     if response_model:
         attributes[GenAI.GEN_AI_RESPONSE_MODEL] = response_model
+    if server_address:
+        attributes[ServerAttributes.SERVER_ADDRESS] = server_address
+    if server_port:
+        attributes[ServerAttributes.SERVER_PORT] = server_port
     return attributes
 
 
@@ -475,8 +484,8 @@ def _agent_to_log_record(
         GEN_AI_FRAMEWORK: agent.framework,
     }
 
-    attributes["gen_ai.agent.name"] = agent.name
-    attributes["gen_ai.agent.id"] = str(agent.run_id)
+    attributes[GenAI.GEN_AI_AGENT_NAME] = agent.name
+    attributes[GenAI.GEN_AI_AGENT_ID] = str(agent.run_id)
 
     body = agent.system_instructions
 
@@ -508,7 +517,7 @@ def _task_to_log_record(
     if task.source:
         attributes["gen_ai.task.source"] = task.source
     if task.assigned_agent:
-        attributes["gen_ai.agent.name"] = task.assigned_agent
+        attributes[GenAI.GEN_AI_AGENT_NAME] = task.assigned_agent
     if task.status:
         attributes["gen_ai.task.status"] = task.status
 
@@ -546,11 +555,11 @@ def _embedding_to_log_record(
 
     # Core attributes
     if embedding.operation_name:
-        attributes["gen_ai.operation.name"] = embedding.operation_name
+        attributes[GenAI.GEN_AI_OPERATION_NAME] = embedding.operation_name
     if embedding.provider:
-        attributes[GEN_AI_PROVIDER_NAME] = embedding.provider
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = embedding.provider
     if embedding.request_model:
-        attributes["gen_ai.request.model"] = embedding.request_model
+        attributes[GenAI.GEN_AI_REQUEST_MODEL] = embedding.request_model
 
     # Optional attributes
     if embedding.dimension_count:
@@ -558,11 +567,11 @@ def _embedding_to_log_record(
             embedding.dimension_count
         )
     if embedding.input_tokens is not None:
-        attributes["gen_ai.usage.input_tokens"] = embedding.input_tokens
+        attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] = embedding.input_tokens
     if embedding.server_address:
-        attributes[SERVER_ADDRESS] = embedding.server_address
+        attributes[ServerAttributes.SERVER_ADDRESS] = embedding.server_address
     if embedding.server_port:
-        attributes[SERVER_PORT] = embedding.server_port
+        attributes[ServerAttributes.SERVER_PORT] = embedding.server_port
     if embedding.encoding_formats:
         attributes[GEN_AI_REQUEST_ENCODING_FORMATS] = (
             embedding.encoding_formats
@@ -572,9 +581,9 @@ def _embedding_to_log_record(
 
     # Add agent context if available
     if embedding.agent_name:
-        attributes["gen_ai.agent.name"] = embedding.agent_name
+        attributes[GenAI.GEN_AI_AGENT_NAME] = embedding.agent_name
     if embedding.agent_id:
-        attributes["gen_ai.agent.id"] = embedding.agent_id
+        attributes[GenAI.GEN_AI_AGENT_ID] = embedding.agent_id
 
     # Body contains content (input texts)
     body: Dict[str, Any] = {}

@@ -134,8 +134,8 @@ class TestMetricsEmission(unittest.TestCase):
             "[DEBUG span] collected metrics:", [m.name for m in metrics_list]
         )
         names = {m.name for m in metrics_list}
-        self.assertNotIn("gen_ai.operation.duration", names)
-        self.assertNotIn("gen_ai.token.usage", names)
+        self.assertNotIn("gen_ai.client.operation.duration", names)
+        self.assertNotIn("gen_ai.client.token.usage", names)
 
     def test_span_metric_flavor_emits_metrics(self):
         self._invoke("span_metric", "SPAN_ONLY")
@@ -153,8 +153,8 @@ class TestMetricsEmission(unittest.TestCase):
         self.assertIn(
             "probe.metric", names, "probe metric missing - pipeline inactive"
         )
-        self.assertIn("gen_ai.operation.duration", names)
-        self.assertIn("gen_ai.token.usage", names)
+        self.assertIn("gen_ai.client.operation.duration", names)
+        self.assertIn("gen_ai.client.token.usage", names)
 
     def test_span_metric_event_flavor_emits_metrics(self):
         self._invoke("span_metric_event", "EVENT_ONLY")
@@ -171,8 +171,8 @@ class TestMetricsEmission(unittest.TestCase):
         self.assertIn(
             "probe2.metric", names, "probe2 metric missing - pipeline inactive"
         )
-        self.assertIn("gen_ai.operation.duration", names)
-        self.assertIn("gen_ai.token.usage", names)
+        self.assertIn("gen_ai.client.operation.duration", names)
+        self.assertIn("gen_ai.client.token.usage", names)
 
 
 if __name__ == "__main__":  # pragma: no cover

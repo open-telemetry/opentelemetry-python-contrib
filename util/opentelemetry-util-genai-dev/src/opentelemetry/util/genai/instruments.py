@@ -22,14 +22,14 @@ class Instruments:
 
     def __init__(self, meter: Meter):
         self.operation_duration_histogram: Histogram = meter.create_histogram(
-            name="gen_ai.operation.duration",
+            name="gen_ai.client.operation.duration",
             unit="s",
-            description="Duration of GenAI operations",
+            description="Duration of GenAI client operations",
         )
         self.token_usage_histogram: Histogram = meter.create_histogram(
-            name="gen_ai.token.usage",
-            unit="tokens",
-            description="Token usage for GenAI operations",
+            name="gen_ai.client.token.usage",
+            unit="{token}",
+            description="Number of input and output tokens used",
         )
         # Agentic AI metrics
         self.workflow_duration_histogram: Histogram = meter.create_histogram(

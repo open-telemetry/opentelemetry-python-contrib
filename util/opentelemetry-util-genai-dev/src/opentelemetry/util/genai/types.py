@@ -61,7 +61,10 @@ class GenAI:
     span: Optional[Span] = None
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
-    provider: Optional[str] = None
+    provider: Optional[str] = field(
+        default=None,
+        metadata={"semconv": GenAIAttributes.GEN_AI_PROVIDER_NAME},
+    )
     framework: Optional[str] = None
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
     run_id: UUID = field(default_factory=uuid4)
@@ -161,16 +164,9 @@ class LLMInvocation(GenAI):
     output_messages: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
-    # Added in composite refactor Phase 1 for backward compatibility with
-    # generators that previously stashed normalized lists dynamically.
-    # "messages" mirrors input_messages at start; "chat_generations" mirrors
-    # output_messages. They can be overwritten by generators as needed without
-    # risking AttributeError during lifecycle hooks.
-    messages: List[InputMessage] = field(default_factory=_new_input_messages)
     chat_generations: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
-    # Operation type: chat, text_completion, embeddings, etc.
     operation: str = field(
         default=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         metadata={"semconv": GenAIAttributes.GEN_AI_OPERATION_NAME},
