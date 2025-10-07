@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 from uuid import UUID
+from urllib.parse import urlparse
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
@@ -25,13 +26,44 @@ from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.trace import Tracer
+from opentelemetry.semconv._incubating.attributes.azure_attributes import (
+    AZURE_RESOURCE_PROVIDER_NAMESPACE,
+)
+from opentelemetry.semconv._incubating.attributes.openai_attributes import (
+    OPENAI_REQUEST_SERVICE_TIER,
+    OPENAI_RESPONSE_SERVICE_TIER,
+    OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+)
+from opentelemetry.trace import Span, Tracer
 
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
+
+    _CHAT_MODEL_PROVIDER_MAPPING: dict[str, str] = {
+        "ChatOpenAI": GenAI.GenAiProviderNameValues.OPENAI.value,
+        "AzureChatOpenAI": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "AzureOpenAI": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "ChatBedrock": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+        "BedrockChat": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+    }
+
+    _METADATA_PROVIDER_MAPPING: dict[str, str] = {
+        "openai": GenAI.GenAiProviderNameValues.OPENAI.value,
+        "azure": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "azure_openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "azure-ai-openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "azure_ai_openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+        "azure_ai_inference": GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
+        "azure-inference": GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
+        "amazon": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+        "bedrock": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+        "aws": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+    }
+
+    _SERVER_URL_KEYS = ("base_url", "azure_endpoint", "endpoint")
 
     def __init__(
         self,
@@ -54,33 +86,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         metadata: dict[str, Any] | None,
         **kwargs: Any,
     ) -> None:
-        # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
-        if serialized.get("name") not in ("ChatOpenAI", "ChatBedrock"):
+        provider_name = self._resolve_provider(
+            serialized.get("name"), metadata
+        )
+        if provider_name is None:
             return
 
-        if "invocation_params" in kwargs:
-            params = (
-                kwargs["invocation_params"].get("params")
-                or kwargs["invocation_params"]
-            )
-        else:
-            params = kwargs
-
-        request_model = "unknown"
-        for model_tag in (
-            "model_name",  # ChatOpenAI
-            "model_id",  # ChatBedrock
-        ):
-            if (model := (params or {}).get(model_tag)) is not None:
-                request_model = model
-                break
-            elif (model := (metadata or {}).get(model_tag)) is not None:
-                request_model = model
-                break
-
-        # Skip telemetry for unsupported request models
-        if request_model == "unknown":
-            return
+        params = self._extract_params(kwargs)
+        request_model = self._extract_request_model(params, metadata)
 
         span = self.span_manager.create_chat_span(
             run_id=run_id,
@@ -88,7 +101,83 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             request_model=request_model,
         )
 
-        if params is not None:
+        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider_name)
+        if provider_name in (
+            GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
+            GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
+        ):
+            span.set_attribute(
+                AZURE_RESOURCE_PROVIDER_NAMESPACE, "Microsoft.CognitiveServices"
+            )
+
+        self._apply_request_attributes(span, params, metadata)
+
+    def _resolve_provider(
+        self, llm_name: str | None, metadata: dict[str, Any] | None
+    ) -> str | None:
+        if llm_name:
+            provider = self._CHAT_MODEL_PROVIDER_MAPPING.get(llm_name)
+            if provider:
+                return provider
+
+        if metadata is None:
+            return None
+
+        provider_key = metadata.get("ls_provider")
+        if not provider_key:
+            return None
+
+        mapped = self._METADATA_PROVIDER_MAPPING.get(provider_key.lower())
+        if mapped is not None:
+            return mapped
+
+        return provider_key
+
+    def _extract_params(self, kwargs: dict[str, Any]) -> dict[str, Any] | None:
+        invocation_params = kwargs.get("invocation_params")
+        if isinstance(invocation_params, dict):
+            params = invocation_params.get("params") or invocation_params
+            if isinstance(params, dict):
+                return params
+            return None
+
+        return kwargs if kwargs else None
+
+    def _extract_request_model(
+        self,
+        params: dict[str, Any] | None,
+        metadata: dict[str, Any] | None,
+    ) -> str | None:
+        search_order = (
+            "model_name",
+            "model",
+            "model_id",
+            "ls_model_name",
+            "azure_deployment",
+            "deployment_name",
+        )
+
+        sources: list[dict[str, Any]] = []
+        if isinstance(params, dict):
+            sources.append(params)
+        if isinstance(metadata, dict):
+            sources.append(metadata)
+
+        for key in search_order:
+            for source in sources:
+                value = source.get(key)
+                if value:
+                    return str(value)
+
+        return None
+
+    def _apply_request_attributes(
+        self,
+        span: Span,
+        params: dict[str, Any] | None,
+        metadata: dict[str, Any] | None,
+    ) -> None:
+        if params:
             top_p = params.get("top_p")
             if top_p is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
@@ -110,31 +199,100 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             seed = params.get("seed")
             if seed is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
-            # ChatOpenAI
             temperature = params.get("temperature")
             if temperature is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
-            # ChatOpenAI
-            max_tokens = params.get("max_completion_tokens")
+            max_tokens = params.get("max_completion_tokens") or params.get(
+                "max_tokens"
+            )
             if max_tokens is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
 
-        if metadata is not None:
-            provider = metadata.get("ls_provider")
-            if provider is not None:
-                span.set_attribute("gen_ai.provider.name", provider)
-            # ChatBedrock
+            top_k = params.get("top_k")
+            if top_k is not None:
+                span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_K, top_k)
+
+            choice_count = params.get("n") or params.get("choice_count")
+            if choice_count is not None:
+                try:
+                    choice_value = int(choice_count)
+                except (TypeError, ValueError):
+                    choice_value = choice_count
+                if choice_value != 1:
+                    span.set_attribute(
+                        GenAI.GEN_AI_REQUEST_CHOICE_COUNT, choice_value
+                    )
+
+            output_type = self._extract_output_type(params)
+            if output_type is not None:
+                span.set_attribute(GenAI.GEN_AI_OUTPUT_TYPE, output_type)
+
+            service_tier = params.get("service_tier")
+            if service_tier is not None:
+                span.set_attribute(OPENAI_REQUEST_SERVICE_TIER, service_tier)
+
+            self._maybe_set_server_attributes(span, params)
+
+        if metadata:
             temperature = metadata.get("ls_temperature")
             if temperature is not None:
                 span.set_attribute(
                     GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
                 )
-            # ChatBedrock
             max_tokens = metadata.get("ls_max_tokens")
             if max_tokens is not None:
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+
+    def _maybe_set_server_attributes(
+        self, span: Span, params: dict[str, Any]
+    ) -> None:
+        potential_url = None
+        for key in self._SERVER_URL_KEYS:
+            value = params.get(key)
+            if isinstance(value, str) and value:
+                potential_url = value
+                break
+
+        if not potential_url:
+            return
+
+        parsed = urlparse(potential_url)
+        hostname = parsed.hostname or potential_url
+        if hostname:
+            span.set_attribute("server.address", hostname)
+            port = parsed.port
+            if port is None:
+                if parsed.scheme == "https":
+                    port = 443
+                elif parsed.scheme == "http":
+                    port = 80
+            if port is not None:
+                span.set_attribute("server.port", port)
+
+    def _extract_output_type(self, params: dict[str, Any]) -> str | None:
+        response_format = params.get("response_format")
+        output_type: str | None = None
+        if isinstance(response_format, dict):
+            output_type = response_format.get("type")
+        elif isinstance(response_format, str):
+            output_type = response_format
+
+        if not output_type:
+            return None
+
+        lowered = output_type.lower()
+        mapping = {
+            "json_object": GenAI.GenAiOutputTypeValues.JSON.value,
+            "json_schema": GenAI.GenAiOutputTypeValues.JSON.value,
+            "json": GenAI.GenAiOutputTypeValues.JSON.value,
+            "text": GenAI.GenAiOutputTypeValues.TEXT.value,
+            "image": GenAI.GenAiOutputTypeValues.IMAGE.value,
+            "speech": GenAI.GenAiOutputTypeValues.SPEECH.value,
+        }
+
+        return mapping.get(lowered)
 
     def on_llm_end(
         self,
@@ -209,6 +367,16 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             response_id = llm_output.get("id")
             if response_id is not None:
                 span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, str(response_id))
+
+            service_tier = llm_output.get("service_tier")
+            if service_tier is not None:
+                span.set_attribute(OPENAI_RESPONSE_SERVICE_TIER, service_tier)
+
+            system_fingerprint = llm_output.get("system_fingerprint")
+            if system_fingerprint is not None:
+                span.set_attribute(
+                    OPENAI_RESPONSE_SYSTEM_FINGERPRINT, system_fingerprint
+                )
 
         # End the LLM span
         self.span_manager.end_span(run_id)
