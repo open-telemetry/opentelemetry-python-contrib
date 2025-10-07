@@ -506,13 +506,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             # this path is used by streaming apis, in that case we are already out of the span
             # context so need to add the span context manually
             span_ctx = span.get_span_context()
-            logger.emit(
-                choice.to_choice_event(
-                    trace_id=span_ctx.trace_id,
-                    span_id=span_ctx.span_id,
-                    trace_flags=span_ctx.trace_flags,
-                )
-            )
+            logger.emit(choice.to_choice_event(context=span_ctx))
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()

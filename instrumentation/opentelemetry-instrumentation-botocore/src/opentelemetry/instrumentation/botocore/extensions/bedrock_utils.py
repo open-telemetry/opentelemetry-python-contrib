@@ -627,5 +627,4 @@ class _Choice:
             attributes=attributes,
             body=self._to_body_dict(),
             **event_kwargs,
-            context=get_current(),
         )
