@@ -19,7 +19,6 @@ from opentelemetry.semconv._incubating.attributes.azure_attributes import (
     AZURE_RESOURCE_PROVIDER_NAMESPACE,
 )
 from opentelemetry.semconv._incubating.attributes.openai_attributes import (
-    OPENAI_REQUEST_SERVICE_TIER,
     OPENAI_RESPONSE_SERVICE_TIER,
     OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
 )
@@ -62,9 +61,7 @@ def test_provider_and_server_metadata_extracted():
 
     span = exporter.get_finished_spans()[0]
     assert span.name == "chat gpt-4o"
-    assert (
-        span.attributes[GenAI.GEN_AI_PROVIDER_NAME] == "azure.ai.openai"
-    )
+    assert span.attributes[GenAI.GEN_AI_PROVIDER_NAME] == "azure.ai.openai"
     assert (
         span.attributes[AZURE_RESOURCE_PROVIDER_NAMESPACE]
         == "Microsoft.CognitiveServices"
@@ -112,9 +109,7 @@ def test_llm_end_sets_response_metadata():
     assert span.attributes[GenAI.GEN_AI_RESPONSE_MODEL] == "gpt-4-0125"
     assert span.attributes[GenAI.GEN_AI_RESPONSE_ID] == "chatcmpl-test"
     assert span.attributes[OPENAI_RESPONSE_SERVICE_TIER] == "premium"
-    assert (
-        span.attributes[OPENAI_RESPONSE_SYSTEM_FINGERPRINT] == "fp-test"
-    )
+    assert span.attributes[OPENAI_RESPONSE_SYSTEM_FINGERPRINT] == "fp-test"
 
 
 def test_choice_count_not_set_when_one():
@@ -138,6 +133,4 @@ def test_choice_count_not_set_when_one():
 
     handler.span_manager.end_span(run_id)
     span = exporter.get_finished_spans()[0]
-    assert (
-        GenAI.GEN_AI_REQUEST_CHOICE_COUNT not in span.attributes
-    )
+    assert GenAI.GEN_AI_REQUEST_CHOICE_COUNT not in span.attributes

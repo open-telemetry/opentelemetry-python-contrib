@@ -7,8 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -100,9 +99,7 @@ def assert_openai_completion_attributes(
     )
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME] == "openai"
-    )
+    assert span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME] == "openai"
     assert gen_ai_attributes.GEN_AI_RESPONSE_ID in span.attributes
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
     assert (
@@ -190,7 +187,9 @@ def test_azure_chat_sets_provider_and_server_attributes():
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
-    handler = OpenTelemetryLangChainCallbackHandler(provider.get_tracer(__name__))
+    handler = OpenTelemetryLangChainCallbackHandler(
+        provider.get_tracer(__name__)
+    )
 
     run_id = uuid4()
 
@@ -215,18 +214,14 @@ def test_azure_chat_sets_provider_and_server_attributes():
     span = exporter.get_finished_spans()[0]
 
     assert span.name == "chat gpt-4o"
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-4o"
-    )
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-4o"
     assert (
         span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME]
         == "azure.ai.openai"
     )
     assert span.attributes["server.address"] == "example.openai.azure.com"
     assert span.attributes["server.port"] == 443
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] == 2
-    )
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] == 2
     assert span.attributes[OPENAI_REQUEST_SERVICE_TIER] == "default"
     assert (
         span.attributes[AZURE_RESOURCE_PROVIDER_NAMESPACE]

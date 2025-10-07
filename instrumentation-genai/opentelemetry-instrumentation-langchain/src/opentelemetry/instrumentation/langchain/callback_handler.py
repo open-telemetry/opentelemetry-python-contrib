@@ -15,8 +15,8 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
 from urllib.parse import urlparse
+from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
@@ -107,7 +107,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
         ):
             span.set_attribute(
-                AZURE_RESOURCE_PROVIDER_NAMESPACE, "Microsoft.CognitiveServices"
+                AZURE_RESOURCE_PROVIDER_NAMESPACE,
+                "Microsoft.CognitiveServices",
             )
 
         self._apply_request_attributes(span, params, metadata)
