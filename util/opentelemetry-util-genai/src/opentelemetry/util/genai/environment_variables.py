@@ -16,11 +16,11 @@ OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
-OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK = (
-    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK"
+OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK = (
+    "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK"
 )
 """
-.. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_HOOK
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK
 """
 
 OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH = (
@@ -39,7 +39,14 @@ information, see
 * `Configuration
   <https://filesystem-spec.readthedocs.io/en/latest/features.html#configuration>`_ for
   configuring a backend with environment variables.
-*  `URL Chaining
-   <https://filesystem-spec.readthedocs.io/en/latest/features.html#url-chaining>`_ for advanced
-   use cases.
+"""
+
+OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT = (
+    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT
+
+The format to use when uploading prompt and response data. Must be one of ``json`` or
+``jsonl``. Defaults to ``json``.
 """

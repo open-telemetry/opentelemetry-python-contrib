@@ -11,6 +11,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "opentelemetry-exporter-credential-provider-gcp",
     "opentelemetry-exporter-prometheus-remote-write",
     "opentelemetry-exporter-richconsole",
     "opentelemetry-instrumentation",
@@ -2402,6 +2403,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-exporter-credential-provider-gcp"
+source = { editable = "exporter/opentelemetry-exporter-credential-provider-gcp" }
+dependencies = [
+    { name = "google-auth" },
+    { name = "grpcio" },
+    { name = "requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "google-auth", specifier = ">=2.25" },
+    { name = "grpcio", specifier = ">=1.67.0" },
+    { name = "requests", specifier = ">=2.7" },
+]
+
+[[package]]
 name = "opentelemetry-exporter-prometheus-remote-write"
 source = { editable = "exporter/opentelemetry-exporter-prometheus-remote-write" }
 dependencies = [
@@ -4002,22 +4019,22 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-fsspec = [
-    { name = "fsspec" },
-]
 test = [
     { name = "pytest" },
+]
+upload = [
+    { name = "fsspec" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fsspec", marker = "extra == 'fsspec'", specifier = ">=2025.9.0" },
+    { name = "fsspec", marker = "extra == 'upload'", specifier = ">=2025.9.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
 ]
-provides-extras = ["fsspec", "test"]
+provides-extras = ["test", "upload"]
 
 [[package]]
 name = "opentelemetry-util-http"

@@ -24,9 +24,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.28",
+  "opentelemetry-api >= 1.37",
   "opentelemetry-instrumentation ~= 0.58b0",
-  "opentelemetry-util-genai == 0.1b0.dev",
+  # TODO https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3786: restrict
+  # version after the first release
+  "opentelemetry-util-genai",
   "opentelemetry-semantic-conventions ~= 0.58b0",
 ]
 
