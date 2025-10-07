@@ -173,9 +173,13 @@ def test_llm_attributes_independent_of_emitters(monkeypatch):
     assert attrs["custom_meta"] == "value"
     assert attrs["tags"] == ["agent"]
     assert attrs["callback.name"] == "ChatOpenAI"
-    assert attrs["traceloop.callback_name"] == "ChatOpenAI"
     assert attrs["callback.id"] == ["langchain", "ChatOpenAI"]
+    assert "traceloop.callback_name" not in attrs
     assert "ls_provider" not in attrs
     assert "ls_max_tokens" not in attrs
     assert "ls_model_name" not in attrs
+    ls_meta = attrs.get("_ls_metadata")
+    assert isinstance(ls_meta, dict)
+    assert ls_meta["ls_provider"] == "openai"
+    assert ls_meta["ls_max_tokens"] == 256
     assert "model_kwargs" in attrs

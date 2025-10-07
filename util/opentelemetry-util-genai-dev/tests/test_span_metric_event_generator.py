@@ -99,6 +99,7 @@ def test_span_emitter_filters_non_gen_ai_attributes():
             "request_top_p": 0.42,
             "custom": "value",
             "gen_ai.request.id": "req-789",
+            "ls_temperature": 0.55,
         }
     )
 
@@ -119,6 +120,9 @@ def test_span_emitter_filters_non_gen_ai_attributes():
 
     assert attrs.get("gen_ai.agent.id") == "agent-123"
     assert attrs.get("gen_ai.request.id") == "req-789"
-    assert attrs.get("request_top_p") == 0.42
-    assert attrs.get("custom") == "value"
+    assert "request_top_p" not in attrs
+    assert "custom" not in attrs
+    assert "ls_temperature" not in attrs
+    assert "traceloop.association.properties.ls_temperature" not in attrs
+    assert all(not key.startswith("traceloop.") for key in attrs.keys())
     assert any(key.startswith("gen_ai.") for key in attrs)

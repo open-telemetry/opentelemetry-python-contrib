@@ -41,6 +41,7 @@ from ..attributes import (
 from ..interfaces import EmitterMeta
 from ..types import (
     AgentInvocation,
+    ContentCapturingMode,
     EmbeddingInvocation,
     Error,
     LLMInvocation,
@@ -56,7 +57,10 @@ from .utils import (
     _apply_llm_finish_semconv,
     _extract_system_instructions,
     _serialize_messages,
+    filter_semconv_gen_ai_attributes,
 )
+
+_SPAN_ALLOWED_SUPPLEMENTAL_KEYS: tuple[str, ...] = ("gen_ai.framework",)
 
 
 def _sanitize_span_attribute_value(value: Any) -> Optional[Any]:
@@ -103,20 +107,6 @@ def _apply_gen_ai_semconv_attributes(
             pass
 
 
-def _filtered_attribute_view(
-    attributes: Optional[dict[str, Any]], prefixes: tuple[str, ...]
-) -> dict[str, Any]:
-    if not attributes:
-        return {}
-    filtered: dict[str, Any] = {}
-    for key, value in attributes.items():
-        if not isinstance(key, str):
-            continue
-        if any(key.startswith(prefix) for prefix in prefixes):
-            filtered[key] = value
-    return filtered
-
-
 class SpanEmitter(EmitterMeta):
     """Span-focused emitter supporting optional content capture.
 
@@ -132,11 +122,17 @@ class SpanEmitter(EmitterMeta):
     ):
         self._tracer: Tracer = tracer or trace.get_tracer(__name__)
         self._capture_content = capture_content
+        self._content_mode = ContentCapturingMode.NO_CONTENT
 
     def set_capture_content(
         self, value: bool
     ):  # pragma: no cover - trivial mutator
         self._capture_content = value
+
+    def set_content_mode(
+        self, mode: ContentCapturingMode
+    ) -> None:  # pragma: no cover - trivial mutator
+        self._content_mode = mode
 
     def handles(self, obj: object) -> bool:
         return True
@@ -213,12 +209,12 @@ class SpanEmitter(EmitterMeta):
         _apply_gen_ai_semconv_attributes(
             span, invocation.semantic_convention_attributes()
         )
-        prefixed = _filtered_attribute_view(
+        extra_attrs = filter_semconv_gen_ai_attributes(
             getattr(invocation, "attributes", None),
-            ("gen_ai.", "traceloop."),
+            extras=_SPAN_ALLOWED_SUPPLEMENTAL_KEYS,
         )
-        if prefixed:
-            _apply_gen_ai_semconv_attributes(span, prefixed)
+        if extra_attrs:
+            _apply_gen_ai_semconv_attributes(span, extra_attrs)
 
         # Capture output messages if enabled
         if (

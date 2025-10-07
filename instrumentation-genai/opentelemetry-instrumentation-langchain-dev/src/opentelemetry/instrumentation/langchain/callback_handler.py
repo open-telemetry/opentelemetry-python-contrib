@@ -775,10 +775,13 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         invocation_params = kwargs.get("invocation_params") or {}
         metadata_attrs = self._sanitize_metadata_dict(metadata)
         invocation_attrs = self._sanitize_metadata_dict(invocation_params)
+        ls_metadata: dict[str, Any] = {}
         raw_model_from_metadata = None
         for key in ("ls_model_name", "model_name"):
             if key in metadata_attrs:
                 raw_model_from_metadata = metadata_attrs.pop(key)
+                if key == "ls_model_name":
+                    ls_metadata[key] = raw_model_from_metadata
                 break
 
         raw_request_model = (
@@ -794,7 +797,10 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         provider_name = None
         for key in ("ls_provider", "provider"):
             if key in metadata_attrs:
-                provider_name = str(metadata_attrs.pop(key))
+                value = metadata_attrs.pop(key)
+                if key == "ls_provider":
+                    ls_metadata[key] = value
+                provider_name = str(value)
                 break
         if provider_name is None and "provider" in invocation_attrs:
             provider_name = str(invocation_attrs.pop("provider"))
@@ -804,6 +810,11 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if callback_name:
             extras["callback.name"] = callback_name
         extras.setdefault("span.kind", "llm")
+
+        def _record_ls_attribute(key: str, value: Any) -> None:
+            if value is None:
+                return
+            ls_metadata[key] = value
 
         def _pop_float(source: dict[str, Any], *keys: str) -> Optional[float]:
             for key in keys:
@@ -841,7 +852,10 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
 
         request_temperature = _pop_float(invocation_attrs, "temperature")
         if request_temperature is None:
-            request_temperature = _pop_float(metadata_attrs, "ls_temperature")
+            temp_from_metadata = _pop_float(metadata_attrs, "ls_temperature")
+            if temp_from_metadata is not None:
+                _record_ls_attribute("ls_temperature", temp_from_metadata)
+                request_temperature = temp_from_metadata
         request_top_p = _pop_float(invocation_attrs, "top_p")
         request_top_k = _pop_int(invocation_attrs, "top_k")
         request_frequency_penalty = _pop_float(
@@ -856,13 +870,21 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             invocation_attrs, "max_tokens", "max_new_tokens"
         )
         if request_max_tokens is None:
-            request_max_tokens = _pop_int(metadata_attrs, "ls_max_tokens")
+            max_tokens_from_metadata = _pop_int(metadata_attrs, "ls_max_tokens")
+            if max_tokens_from_metadata is not None:
+                _record_ls_attribute("ls_max_tokens", max_tokens_from_metadata)
+                request_max_tokens = max_tokens_from_metadata
 
         request_stop_sequences = _pop_stop_sequences(invocation_attrs, "stop")
         if not request_stop_sequences:
             request_stop_sequences = _pop_stop_sequences(
                 invocation_attrs, "stop_sequences"
             )
+        ls_stop_sequences = _pop_stop_sequences(metadata_attrs, "ls_stop")
+        if ls_stop_sequences:
+            _record_ls_attribute("ls_stop", ls_stop_sequences)
+            if not request_stop_sequences:
+                request_stop_sequences = ls_stop_sequences
 
         request_choice_count = _pop_int(
             invocation_attrs,
@@ -873,8 +895,36 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         )
 
         request_service_tier = metadata_attrs.pop("ls_service_tier", None)
+        _record_ls_attribute("ls_service_tier", request_service_tier)
         if request_service_tier is None:
             request_service_tier = invocation_attrs.pop("service_tier", None)
+
+        for key in list(metadata_attrs.keys()):
+            if key.startswith("ls_"):
+                _record_ls_attribute(key, metadata_attrs.pop(key))
+        for key in list(invocation_attrs.keys()):
+            if key.startswith("ls_"):
+                _record_ls_attribute(key, invocation_attrs.pop(key))
+
+        duplicate_param_keys = (
+            "temperature",
+            "top_p",
+            "top_k",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "max_tokens",
+            "max_new_tokens",
+            "stop",
+            "stop_sequences",
+            "n",
+            "choice_count",
+            "num_generations",
+            "num_return_sequences",
+        )
+        for key in duplicate_param_keys:
+            metadata_attrs.pop(key, None)
+            invocation_attrs.pop(key, None)
 
         if tags:
             extras["tags"] = [str(tag) for tag in tags]
@@ -885,6 +935,8 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
 
         extras.update(metadata_attrs)
         extras.update(invocation_attrs)
+        if ls_metadata:
+            extras["_ls_metadata"] = ls_metadata
 
         request_functions = self._extract_request_functions(invocation_params)
         input_messages = self._build_input_messages(messages)

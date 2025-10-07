@@ -234,13 +234,7 @@ class DeepevalEvaluator(Evaluator):
 
         if isinstance(invocation, LLMInvocation):
             input_text = self._serialize_messages(invocation.input_messages)
-            if not input_text:
-                input_text = self._serialize_messages(invocation.messages)
             output_text = self._serialize_messages(invocation.output_messages)
-            if not output_text:
-                output_text = self._serialize_messages(
-                    invocation.chat_generations
-                )
             context = self._extract_context(invocation)
             retrieval_context = self._extract_retrieval_context(invocation)
             if not input_text or not output_text:

@@ -153,7 +153,12 @@ class OutputMessage:
 
 @dataclass
 class LLMInvocation(GenAI):
-    """Represents a single large language model invocation."""
+    """Represents a single large language model invocation.
+
+    Only fields tagged with ``metadata["semconv"]`` are emitted as
+    semantic-convention attributes by the span emitters. Additional fields are
+    util-only helpers or inputs to alternative span flavors (e.g. Traceloop).
+    """
 
     request_model: str = field(
         metadata={"semconv": GenAIAttributes.GEN_AI_REQUEST_MODEL}
@@ -161,10 +166,8 @@ class LLMInvocation(GenAI):
     input_messages: List[InputMessage] = field(
         default_factory=_new_input_messages
     )
+    # Traceloop compatibility relies on enumerating these lists into prefixed attributes.
     output_messages: List[OutputMessage] = field(
-        default_factory=_new_output_messages
-    )
-    chat_generations: List[OutputMessage] = field(
         default_factory=_new_output_messages
     )
     operation: str = field(

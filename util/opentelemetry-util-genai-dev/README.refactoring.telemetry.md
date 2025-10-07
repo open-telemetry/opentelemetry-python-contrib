@@ -99,7 +99,6 @@ Core semconv mapped fields already present:
 
 Non-semconv / internal convenience fields:
 - framework (currently emitted as `gen_ai.framework` manually)
-- chat_generations (not used by emitters – candidate for removal or deprecation)
 - attributes (arbitrary user / instrumentation extras, currently filtered in span emitter allowing `gen_ai.` + `traceloop.` prefixes on finish)
 
 Gaps relative to samples:
@@ -112,7 +111,7 @@ Gaps relative to samples:
 
 A. Data Model
 - Ensure every semconv attribute we emit is backed by a dedicated dataclass field with `metadata={'semconv': ...}` (already largely true).
-- Remove / deprecate `chat_generations`: not required—`output_messages` suffices.
+- ✅ Removed `chat_generations`: `output_messages` is the authoritative response container.
 - Optionally add explicit optional fields ONLY if Traceloop requires something not derivable from existing semconv fields. (Current assessment: no new core fields needed; traceloop can compute from existing ones.)
 - Mark `framework` either: (1) map to a future semconv if defined OR (2) keep as non-semconv; ensure span emitter does not treat it like a semconv attribute (only set if still desired).
 
@@ -168,39 +167,41 @@ D. LangChain Callback Handler
 ## 5. Concrete Refactoring Tasks (To Be Executed by AI Coder Agent)
 
 ### Data Model (`types.py`)
-- [ ] Remove unused `chat_generations` field from `LLMInvocation` (or mark deprecated comment first if backward compat needed).
-- [ ] Ensure docstring clarifies that only semconv fields have `metadata['semconv']`.
-- [ ] (Optional) Add comment that Traceloop flavor derives enumerated prompt/completion attributes; no extra fields required.
+- [x] Remove unused `chat_generations` field from `LLMInvocation` (or mark deprecated comment first if backward compat needed).
+- [x] Ensure docstring clarifies that only semconv fields have `metadata['semconv']`.
+- [x] (Optional) Add comment that Traceloop flavor derives enumerated prompt/completion attributes; no extra fields required.
 
 ### Span Emitter (`span.py`)
-- [ ] Restrict finish-time attribute application: when adding `attributes` filter only keys starting with `gen_ai.` AND present in spec OR part of allowed supplemental list (`gen_ai.framework` maybe) – exclude `ls_*`.
-- [ ] Do NOT propagate any `traceloop.*` keys onto semconv span.
-- [ ] Integrate content mode logic (SPAN vs EVENTS vs BOTH) by reading existing content capture config (if not already) – currently binary `_capture_content`; extend to accept mode enumeration (wired later by handler/env).
+- [x] Restrict finish-time attribute application: when adding `attributes` filter only keys starting with `gen_ai.` AND present in spec OR part of allowed supplemental list (`gen_ai.framework` maybe) – exclude `ls_*`.
+- [x] Do NOT propagate any `traceloop.*` keys onto semconv span.
+- [x] Integrate content mode logic (SPAN vs EVENTS vs BOTH) by reading existing content capture config (if not already) – currently binary `_capture_content`; extend to accept mode enumeration (wired later by handler/env).
 
 ### Traceloop Emitter (`traceloop.py`)
-- [ ] Stop indiscriminate copying of every non `gen_ai.` attribute; introduce whitelist mapping for legacy `ls_*` -> `traceloop.association.properties.*`.
-- [ ] Add derivation of enumerated prompt attributes `gen_ai.prompt.{i}.role` / `gen_ai.prompt.{i}.content` from `input_messages` if capture enabled and mode requires spans or events.
-- [ ] Add derivation of enumerated completion attributes `gen_ai.completion.{i}.role` / `gen_ai.completion.{i}.content` from `output_messages` similarly.
-- [ ] Map semconv token usage to traceloop names (prompt/completion, plus compute total if needed: `llm.usage.total_tokens = prompt+completion`).
+- [x] Stop indiscriminate copying of every non `gen_ai.` attribute; introduce whitelist mapping for legacy `ls_*` -> `traceloop.association.properties.*`.
+- [x] Add derivation of enumerated prompt attributes `gen_ai.prompt.{i}.role` / `gen_ai.prompt.{i}.content` from `input_messages` if capture enabled and mode requires spans or events.
+- [x] Add derivation of enumerated completion attributes `gen_ai.completion.{i}.role` / `gen_ai.completion.{i}.content` from `output_messages` similarly.
+- [x] Map semconv token usage to traceloop names (prompt/completion, plus compute total if needed: `llm.usage.total_tokens = prompt+completion`).
 
 ### LangChain Callback Handler
-- [ ] Remove assignment/population of any deprecated `chat_generations` use.
-- [ ] After extracting request params, ensure duplicates are removed from the `attributes` dict (no `temperature`, etc.) to avoid reintroducing non-semconv differences.
-- [ ] Insert an explicit cleanup step removing `ls_temperature`, `ls_model_type`, etc. after mapping to semconv fields.
+- [x] Remove assignment/population of any deprecated `chat_generations` use.
+- [x] After extracting request params, ensure duplicates are removed from the `attributes` dict (no `temperature`, etc.) to avoid reintroducing non-semconv differences.
+- [x] Keep instrumentation vendor-neutral: do not attach `traceloop.*` association properties directly to `LLMInvocation`/`AgentInvocation` instances.
+- [ ] Restore telemetry emission when running manual example (`python instrumentation-genai/opentelemetry-instrumentation-langchain-dev/examples/manual/main.py`).
 
 ### Configuration & Env
-- [ ] Introduce/confirm env var parsing for content mode (NONE | SPAN | EVENT | SPAN_AND_EVENT) at util handler level; propagate into both emitters.
+- [x] Introduce/confirm env var parsing for content mode (NONE | SPAN | EVENT | SPAN_AND_EVENT) at util handler level; propagate into both emitters.
 
 ### Tests
-- [ ] Update existing tests expecting `ls_temperature` etc. on semconv spans—they should now expect ONLY semconv equivalents.
-- [ ] Add tests to validate traceloop flavor still produces enumerated prompt/completion fields.
-- [ ] Add regression test ensuring no `ls_*` attributes leak into semantic-convention span flavor.
+- [x] Update existing tests expecting `ls_temperature` etc. on semconv spans—they should now expect ONLY semconv equivalents.
+- [x] Add tests to validate traceloop flavor still produces enumerated prompt/completion fields.
+- [x] Add regression test ensuring no `ls_*` attributes leak into semantic-convention span flavor.
 
 ---
 ## 6. Open Questions / Assumptions
-- Assumption: Backward compatibility does not require preserving `chat_generations`; callers rely on `output_messages`.
+- Resolved: `chat_generations` removed; callers rely on `output_messages`.
 - Assumption: It is acceptable to drop `ls_*` attributes from semconv spans (they remain accessible via traceloop flavor if that emitter is enabled).
 - Assumption: `gen_ai.framework` is temporarily retained; may become an official semconv or be removed later.
+- Issue: Manual LangChain example (`examples/manual/main.py`) currently produces no telemetry events in the collector; root cause under investigation.
 - Question: Should `user` (custom JSON) be standardized? (Deferred – not part of current semconv set.)
 
 ---
@@ -221,6 +222,46 @@ Planned initial entries:
 3. Refactor traceloop emitter for whitelist + enumerated messages.
 4. Clean callback handler duplicate attributes; remove ls_* leakage.
 5. Update tests & add regression coverage.
+
+### 1-span-semconv-cleanup
+Status: done
+Summary: Removed legacy `chat_generations` state and locked span emission to spec-approved keys.
+Details:
+- Dropped `LLMInvocation.chat_generations`, refreshed deepeval evaluator usage, and clarified dataclass docstrings/comments.
+- Introduced semconv filtering helper so only `gen_ai.*` spec keys plus `gen_ai.framework` survive span emission.
+Migration Notes: None.
+
+### 2-content-mode-propagation
+Status: done
+Summary: Propagated content capture mode awareness into span-style emitters.
+Details:
+- Added `set_content_mode` handling to span and traceloop emitters with TelemetryHandler refresh wiring.
+- Centralized content enumeration helpers to reuse across emitters while respecting span/event capture intent.
+Migration Notes: None.
+
+### 3-traceloop-whitelist-enumeration
+Status: done
+Summary: Reworked Traceloop emitter to whitelist legacy metadata and emit enumerated prompt/completion fields.
+Details:
+- Mapped `ls_*` metadata into `traceloop.association.properties.*` while blocking arbitrary attribute passthrough.
+- Derived prompt/completion enumerations and token totals (`llm.usage.total_tokens`, `gen_ai.usage.prompt/completion_tokens`).
+Migration Notes: None.
+
+### 4-langchain-attribute-scrub
+Status: done
+Summary: Sanitized LangChain callback handler extras for semconv compliance while keeping vendor-neutral payloads.
+Details:
+- Captured raw `ls_*` metadata into an internal `_ls_metadata` bag for downstream emitters and stripped duplicate request parameters from invocation attributes.
+- Removed any direct `traceloop.*` keys from `LLMInvocation`/`AgentInvocation`; Traceloop mapping now occurs entirely inside the emitter.
+Migration Notes: None.
+
+### 5-regression-coverage
+Status: done
+Summary: Extended regression coverage for filtered semconv spans and traceloop enumerations.
+Details:
+- Updated semconv span tests to assert absence of `ls_*`/`traceloop.*` leakage.
+- Added traceloop emitter tests for whitelist mapping, enumerated prompts/completions, and token total derivation.
+Migration Notes: None.
 
 ---
 ## 8. Agent Directives (You Are The Senior Software Engineer)

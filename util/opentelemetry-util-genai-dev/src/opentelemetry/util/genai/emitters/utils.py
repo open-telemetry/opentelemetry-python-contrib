@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from opentelemetry import trace
 from opentelemetry._logs import (
@@ -28,13 +28,123 @@ from ..attributes import (
 from ..types import (
     AgentInvocation,
     EmbeddingInvocation,
+    InputMessage,
     LLMInvocation,
+    OutputMessage,
     Task,
     Text,
     ToolCall,
     ToolCallResponse,
     Workflow,
 )
+
+_SEMCONV_GEN_AI_KEYS: set[str] = {
+    value
+    for value in GenAI.__dict__.values()
+    if isinstance(value, str) and value.startswith("gen_ai.")
+}
+
+
+def filter_semconv_gen_ai_attributes(
+    attributes: Mapping[str, Any] | None,
+    *,
+    extras: Iterable[str] = (),
+) -> dict[str, Any]:
+    """Return attribute subset limited to GenAI semantic-convention keys.
+
+    Args:
+        attributes: Existing invocation attribute mapping.
+        extras: Supplemental keys (e.g. "gen_ai.framework") explicitly allowed.
+    """
+
+    if not attributes:
+        return {}
+    allowed: set[str] = set(_SEMCONV_GEN_AI_KEYS)
+    if extras:
+        allowed.update(extras)
+    filtered: dict[str, Any] = {}
+    for key, value in attributes.items():
+        if not isinstance(key, str):
+            continue
+        if key not in allowed:
+            continue
+        filtered[key] = value
+    return filtered
+
+
+def _flatten_message_parts(parts: Sequence[Any]) -> str:
+    payloads: list[str] = []
+    for part in parts:
+        if isinstance(part, Text):
+            payloads.append(part.content)
+            continue
+        if isinstance(part, ToolCall):
+            try:
+                payloads.append(
+                    json.dumps(
+                        {
+                            "type": part.type,
+                            "id": part.id,
+                            "name": part.name,
+                            "arguments": part.arguments,
+                        }
+                    )
+                )
+            except Exception:
+                payloads.append(str(part))
+            continue
+        if isinstance(part, ToolCallResponse):
+            try:
+                payloads.append(
+                    json.dumps(
+                        {
+                            "type": part.type,
+                            "id": part.id,
+                            "response": part.response,
+                        }
+                    )
+                )
+            except Exception:
+                payloads.append(str(part))
+            continue
+        try:
+            payloads.append(json.dumps(part))
+        except Exception:
+            payloads.append(str(part))
+    return "\n\n".join(p for p in payloads if p)
+
+
+def build_prompt_enumeration(
+    messages: Sequence[InputMessage],
+) -> dict[str, Any]:
+    """Flatten prompt messages into Traceloop enumerated attributes."""
+
+    enumerated: dict[str, Any] = {}
+    for idx, message in enumerate(messages):
+        enumerated[f"gen_ai.prompt.{idx}.role"] = message.role
+        content = _flatten_message_parts(message.parts)
+        if content:
+            enumerated[f"gen_ai.prompt.{idx}.content"] = content
+    return enumerated
+
+
+def build_completion_enumeration(
+    messages: Sequence[OutputMessage],
+) -> dict[str, Any]:
+    """Flatten completion messages into Traceloop enumerated attributes."""
+
+    enumerated: dict[str, Any] = {}
+    for idx, message in enumerate(messages):
+        enumerated[f"gen_ai.completion.{idx}.role"] = message.role
+        content = _flatten_message_parts(message.parts)
+        if content:
+            enumerated[f"gen_ai.completion.{idx}.content"] = content
+        finish_reason = getattr(message, "finish_reason", None)
+        if finish_reason:
+            enumerated[f"gen_ai.completion.{idx}.finish_reason"] = (
+                finish_reason
+            )
+    return enumerated
 
 
 def _serialize_messages(
