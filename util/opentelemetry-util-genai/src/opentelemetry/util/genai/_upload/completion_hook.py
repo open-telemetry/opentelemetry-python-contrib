@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import posixpath
 import threading
@@ -152,10 +153,21 @@ class UploadCompletionHook(CompletionHook):
                 )
                 self._semaphore.release()
 
-    def _calculate_ref_path(self) -> CompletionRefs:
+    def _calculate_ref_path(
+        self, system_instruction: list[types.MessagePart]
+    ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
-
+        system_instruction_hash = None
+        # Use an md5 hash of the system instructions as a filename, when system instructions are text.
+        if all(isinstance(x, types.Text) for x in system_instruction):
+            md5_hash = hashlib.md5()
+            md5_hash.update(
+                "\n".join(x.content for x in system_instruction).encode(
+                    "utf-8"
+                )
+            )
+            system_instruction_hash = md5_hash.hexdigest()
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
@@ -166,13 +178,17 @@ class UploadCompletionHook(CompletionHook):
             ),
             system_instruction_ref=posixpath.join(
                 self._base_path,
-                f"{uuid_str}_system_instruction.{self._format}",
+                f"{system_instruction_hash or uuid_str}_system_instruction.{self._format}",
             ),
         )
 
     def _do_upload(
         self, path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
+        # FileSystem class has this method. Only check for system instructions as that's the only where the filename is a hash.
+        # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
+        if "_system_instruction" in path and self._fs.exists(path):
+            return
         if self._format == "json":
             # output as a single line with the json messages array
             message_lines = [json_encodeable()]
@@ -213,7 +229,7 @@ class UploadCompletionHook(CompletionHook):
             system_instruction=system_instruction or None,
         )
         # generate the paths to upload to
-        ref_names = self._calculate_ref_path()
+        ref_names = self._calculate_ref_path(system_instruction)
 
         def to_dict(
             dataclass_list: list[types.InputMessage]

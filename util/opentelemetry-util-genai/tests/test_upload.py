@@ -14,10 +14,12 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
+import hashlib
 import importlib
 import logging
 import sys
 import threading
+import time
 from contextlib import contextmanager
 from typing import Any
 from unittest import TestCase
@@ -120,6 +122,7 @@ class TestUploadCompletionHook(TestCase):
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
+        self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
             base_path=BASE_PATH,
@@ -127,6 +130,7 @@ class TestUploadCompletionHook(TestCase):
         )
 
     def tearDown(self) -> None:
+        self.mock_fs.reset_mock()
         self.hook.shutdown()
         self._fsspec_patcher.stop()
 
@@ -160,6 +164,46 @@ class TestUploadCompletionHook(TestCase):
             self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
+        )
+
+    def test_system_insruction_is_hashed_to_avoid_reupload(self):
+        system_instructions = [
+            types.Text(content="You are a helpful assistant."),
+            types.Text(content="You will do your best."),
+        ]
+        md5_hash = hashlib.md5()
+        md5_hash.update(
+            "\n".join(x.content for x in system_instructions).encode("utf-8")
+        )
+        expected_hash = md5_hash.hexdigest()
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        self.mock_fs.exists.return_value = True
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        # all items should be consumed
+        self.hook.shutdown()
+
+        self.assertEqual(
+            self.mock_fs.open.call_count,
+            1,
+            "should have uploaded 1 file",
+        )
+        assert record.attributes is not None
+        self.assertEqual(
+            record.attributes["gen_ai.system_instructions_ref"].split("/")[-1],
+            f"{expected_hash}_system_instruction.json",
         )
 
     def test_upload_when_inputs_outputs_empty(self):
