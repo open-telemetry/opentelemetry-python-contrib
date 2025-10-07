@@ -163,7 +163,7 @@ class UploadCompletionHook(CompletionHook):
         if all(isinstance(x, types.Text) for x in system_instruction):
             md5_hash = hashlib.md5()
             md5_hash.update(
-                "\n".join(x.content for x in system_instruction).encode(
+                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
                     "utf-8"
                 )
             )
@@ -187,7 +187,7 @@ class UploadCompletionHook(CompletionHook):
     ) -> None:
         # FileSystem class has this method. Only check for system instructions as that's the only where the filename is a hash.
         # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
-        if "_system_instruction" in path and self._fs.exists(path):
+        if "_system_instruction" in path and self._fs.exists(path):  # pyright: ignore[reportUnknownMemberType]
             return
         if self._format == "json":
             # output as a single line with the json messages array
