@@ -20,7 +20,7 @@ import typing
 import unittest
 import urllib.parse
 from http import HTTPStatus
-from unittest import mock
+from unittest import mock, IsolatedAsyncioTestCase
 
 import aiohttp
 import aiohttp.test_utils
@@ -801,6 +801,51 @@ class TestAioHttpIntegration(TestBase):
                 )
             ]
         )
+        self.memory_exporter.clear()
+
+
+class TestAioHttpIntegrationAsync(TestAioHttpIntegration, IsolatedAsyncioTestCase):
+    def test_async_hooks(self):
+        method = "PATCH"
+        path = "/some/path"
+        expected = "PATCH - /some/path"
+
+        async def request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
+            span.update_name(f"{params.method} - {params.url.path}")
+
+        async def response_hook(
+            span: Span,
+            params: typing.Union[
+                aiohttp.TraceRequestEndParams,
+                aiohttp.TraceRequestExceptionParams,
+            ],
+        ):
+            span.set_attribute("response_hook_attr", "value")
+
+        host, port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(
+                request_hook=request_hook,
+                response_hook=response_hook,
+            ),
+            method=method,
+            url=path,
+            status_code=HTTPStatus.OK,
+        )
+
+        for span in self.memory_exporter.get_finished_spans():
+            self.assertEqual(span.name, expected)
+            self.assertEqual(
+                (span.status.status_code, span.status.description),
+                (StatusCode.UNSET, None),
+            )
+            self.assertEqual(span.attributes[HTTP_METHOD], method)
+            self.assertEqual(
+                span.attributes[HTTP_URL],
+                f"http://{host}:{port}{path}",
+            )
+            self.assertEqual(span.attributes[HTTP_STATUS_CODE], HTTPStatus.OK)
+            self.assertIn("response_hook_attr", span.attributes)
+            self.assertEqual(span.attributes["response_hook_attr"], "value")
         self.memory_exporter.clear()
 
 
