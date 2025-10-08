@@ -28,8 +28,8 @@ from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
 
-def _parse_iso8601(timestamp: str | None) -> float | None:
-    """Return POSIX timestamp (seconds) for ISO8601 string."""
+def _parse_iso8601(timestamp: str | None) -> int | None:
+    """Return nanosecond timestamp for ISO8601 string."""
 
     if not timestamp:
         return None
@@ -41,7 +41,7 @@ def _parse_iso8601(timestamp: str | None) -> float | None:
     except ValueError:
         return None
 
-    return dt.timestamp()
+    return int(dt.timestamp() * 1_000_000_000)
 
 
 def _extract_server_attributes(
