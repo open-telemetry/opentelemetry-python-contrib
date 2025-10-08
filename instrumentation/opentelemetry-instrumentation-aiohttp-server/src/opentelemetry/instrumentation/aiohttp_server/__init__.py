@@ -293,7 +293,11 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    def _instrument(self, tracer_provider: trace.TracerProvider | None = None, **kwargs):
+    def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get("tracer_provider", None)
+        assert tracer_provider is None or isinstance(
+            tracer_provider, trace.TracerProvider
+        )
         self._original_app = web.Application
 
         _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
