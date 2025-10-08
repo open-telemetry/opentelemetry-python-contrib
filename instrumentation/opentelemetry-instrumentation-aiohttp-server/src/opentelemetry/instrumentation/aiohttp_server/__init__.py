@@ -228,64 +228,62 @@ class AiohttpGetter(Getter):
 
 getter = AiohttpGetter()
 
+def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = None):
+    _tracer = tracer_provider.get_tracer(
+        __name__, __version__
+    ) if tracer_provider else tracer
 
-@web.middleware
-async def middleware(request, handler):
-    """Middleware for aiohttp implementing tracing logic"""
-    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-        request.url.path
-    ):
-        return await handler(request)
+    @web.middleware
+    async def _middleware(request, handler):
+        """Middleware for aiohttp implementing tracing logic"""
+        if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
+            request.url.path
+        ):
+            return await handler(request)
 
-    span_name, additional_attributes = get_default_span_details(request)
+        span_name, additional_attributes = get_default_span_details(request)
 
-    req_attrs = collect_request_attributes(request)
-    duration_attrs = _parse_duration_attrs(req_attrs)
-    active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
+        req_attrs = collect_request_attributes(request)
+        duration_attrs = _parse_duration_attrs(req_attrs)
+        active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
 
-    duration_histogram = meter.create_histogram(
-        name=MetricInstruments.HTTP_SERVER_DURATION,
-        unit="ms",
-        description="Measures the duration of inbound HTTP requests.",
-    )
+        duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_DURATION,
+            unit="ms",
+            description="Measures the duration of inbound HTTP requests.",
+        )
 
-    active_requests_counter = meter.create_up_down_counter(
-        name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-        unit="requests",
-        description="measures the number of concurrent HTTP requests those are currently in flight",
-    )
+        active_requests_counter = meter.create_up_down_counter(
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+            unit="requests",
+            description="measures the number of concurrent HTTP requests those are currently in flight",
+        )
 
-    with tracer.start_as_current_span(
-        span_name,
-        context=extract(request, getter=getter),
-        kind=trace.SpanKind.SERVER,
-    ) as span:
-        attributes = collect_request_attributes(request)
-        attributes.update(additional_attributes)
-        span.set_attributes(attributes)
-        start = default_timer()
-        active_requests_counter.add(1, active_requests_count_attrs)
-        try:
-            resp = await handler(request)
-            set_status_code(span, resp.status)
-        except web.HTTPException as ex:
-            set_status_code(span, ex.status_code)
-            raise
-        finally:
-            duration = max((default_timer() - start) * 1000, 0)
-            duration_histogram.record(duration, duration_attrs)
-            active_requests_counter.add(-1, active_requests_count_attrs)
-        return resp
+        with _tracer.start_as_current_span(
+            span_name,
+            context=extract(request, getter=getter),
+            kind=trace.SpanKind.SERVER,
+        ) as span:
+            attributes = collect_request_attributes(request)
+            attributes.update(additional_attributes)
+            span.set_attributes(attributes)
+            start = default_timer()
+            active_requests_counter.add(1, active_requests_count_attrs)
+            try:
+                resp = await handler(request)
+                set_status_code(span, resp.status)
+            except web.HTTPException as ex:
+                set_status_code(span, ex.status_code)
+                raise
+            finally:
+                duration = max((default_timer() - start) * 1000, 0)
+                duration_histogram.record(duration, duration_attrs)
+                active_requests_counter.add(-1, active_requests_count_attrs)
+            return resp
+    return _middleware
 
+middleware = create_aiohttp_middleware()
 
-class _InstrumentedApplication(web.Application):
-    """Insert tracing middleware"""
-
-    def __init__(self, *args, **kwargs):
-        middlewares = kwargs.pop("middlewares", [])
-        middlewares.insert(0, middleware)
-        kwargs["middlewares"] = middlewares
-        super().__init__(*args, **kwargs)
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
@@ -296,7 +294,20 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get("tracer_provider", None)
+        assert tracer_provider is None or isinstance(tracer_provider, trace.TracerProvider) # nosec
         self._original_app = web.Application
+
+        _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+        class _InstrumentedApplication(web.Application):
+            """Insert tracing middleware"""
+
+            def __init__(self, *args, **kwargs):
+                middlewares = kwargs.pop("middlewares", [])
+                middlewares.insert(0, _middleware)
+                kwargs["middlewares"] = middlewares
+                super().__init__(*args, **kwargs)
+
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):
