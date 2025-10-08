@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from google.genai import types as genai_types
 
-from opentelemetry._events import get_event_logger_provider
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -41,7 +41,7 @@ class TestCase(unittest.TestCase):
         self._otel.install()
         self._otel_wrapper = otel_wrapper.OTelWrapper.from_providers(
             get_tracer_provider(),
-            get_event_logger_provider(),
+            get_logger_provider(),
             get_meter_provider(),
         )
 

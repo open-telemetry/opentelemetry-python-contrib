@@ -18,7 +18,7 @@ from typing import Any
 
 import google.genai
 
-from opentelemetry._events import Event, EventLogger, EventLoggerProvider
+from opentelemetry._logs import LogRecord, Logger, LoggerProvider
 from opentelemetry.metrics import Meter, MeterProvider
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
@@ -41,10 +41,10 @@ _SCOPE_ATTRIBUTES = {
 
 class OTelWrapper:
     def __init__(
-        self, tracer: Tracer, event_logger: EventLogger, meter: Meter
+        self, tracer: Tracer, logger: Logger, meter: Meter
     ):
         self._tracer = tracer
-        self._event_logger = event_logger
+        self._logger = logger
         self._meter = meter
         self._operation_duration_metric = (
             gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
@@ -56,14 +56,14 @@ class OTelWrapper:
     @staticmethod
     def from_providers(
         tracer_provider: TracerProvider,
-        event_logger_provider: EventLoggerProvider,
+        logger_provider: LoggerProvider,
         meter_provider: MeterProvider,
     ):
         return OTelWrapper(
             tracer_provider.get_tracer(
                 _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
             ),
-            event_logger_provider.get_event_logger(
+            logger_provider.get_logger(
                 _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
             ),
             meter=meter_provider.get_meter(
@@ -106,12 +106,14 @@ class OTelWrapper:
     def _log_event(
         self, event_name: str, attributes: dict[str, str], body: dict[str, Any]
     ):
-        event = Event(event_name, body=body, attributes=attributes)
-        self._event_logger.emit(event)
+        event = LogRecord(
+            event_name=event_name, body=body, attributes=attributes
+        )
+        self._logger.emit(event)
 
     def log_completion_details(
         self,
-        event: Event,
+        event: LogRecord,
     ) -> None:
         _logger.debug("Recording completion details event.")
-        self._event_logger.emit(event)
+        self._logger.emit(event)
