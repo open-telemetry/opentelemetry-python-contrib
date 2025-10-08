@@ -282,7 +282,7 @@ def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = Non
             return resp
     return _middleware
 
-middleware = create_aiohttp_middleware()
+middleware = create_aiohttp_middleware() # for backwards compatibility
 
 
 
