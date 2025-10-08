@@ -38,13 +38,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api >=1.37, <2",
-  "opentelemetry-instrumentation >=0.52b1, <2",
-  "opentelemetry-semantic-conventions >=0.52b1, <2"
+  "opentelemetry-instrumentation >=0.58b0, <2",
+  "opentelemetry-semantic-conventions >=0.58b0, <2",
+  "opentelemetry-util-genai >= 0.1b0"
 ]
 
 [project.optional-dependencies]
 instruments = [
-    "google-genai >= 1.0.0"
+    "google-genai >= 1.32.0"
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
