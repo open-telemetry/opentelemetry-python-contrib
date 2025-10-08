@@ -5,6 +5,30 @@ from __future__ import annotations
 from agents import Agent, Runner, function_tool
 from dotenv import load_dotenv
 
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
+)
+from opentelemetry.instrumentation.openai_agents import (
+    OpenAIAgentsInstrumentor,
+)
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+
+def configure_tracing() -> None:
+    """Ensure tracing exports spans even without auto-instrumentation."""
+
+    current_provider = trace.get_tracer_provider()
+    if isinstance(current_provider, TracerProvider):
+        provider = current_provider
+    else:
+        provider = TracerProvider()
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+        trace.set_tracer_provider(provider)
+
+    OpenAIAgentsInstrumentor().instrument(tracer_provider=provider)
+
 
 @function_tool
 def get_weather(city: str) -> str:
@@ -34,6 +58,7 @@ def run_agent() -> None:
 
 def main() -> None:
     load_dotenv()
+    configure_tracing()
     run_agent()
 
 

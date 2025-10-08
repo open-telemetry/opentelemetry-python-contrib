@@ -11,7 +11,8 @@ OTLP/gRPC to the endpoint configured in the environment.
 Setup
 -----
 
-1. Update the `.env <.env>`_ file with your real ``OPENAI_API_KEY``. If your
+1. Copy `.env.example <.env.example>`_ to `.env` and update it with your real
+   ``OPENAI_API_KEY``. If your
    OTLP collector is not reachable via ``http://localhost:4317``, adjust the
    endpoint variables as needed.
 2. Create a virtual environment and install the dependencies:
