@@ -33,5 +33,9 @@ are applied:
 
     dotenv run -- python main.py
 
+The script automatically loads environment variables from ``.env`` so running
+``python main.py`` directly also works if the shell already has the required
+values exported.
+
 You should see the agent response printed to the console while spans export to
 your configured observability backend.

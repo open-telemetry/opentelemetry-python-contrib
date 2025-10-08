@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from agents import Agent, Runner, function_tool
+from dotenv import load_dotenv
 
 
 @function_tool
@@ -32,6 +33,7 @@ def run_agent() -> None:
 
 
 def main() -> None:
+    load_dotenv()
     run_agent()
 
 

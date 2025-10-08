@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from agents import Agent, Runner, function_tool
+from dotenv import load_dotenv
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
@@ -55,6 +56,7 @@ def run_agent() -> None:
 
 
 def main() -> None:
+    load_dotenv()
     configure_otel()
     run_agent()
 

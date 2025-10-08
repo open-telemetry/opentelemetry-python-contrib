@@ -33,5 +33,8 @@ instrumentation is activated automatically:
 
     dotenv run -- opentelemetry-instrument python main.py
 
+Because ``main.py`` invokes ``load_dotenv``, running ``python main.py`` directly
+also works when the required environment variables are already exported.
+
 You should see the agent response printed to the console while spans export to
 your observability backend.
