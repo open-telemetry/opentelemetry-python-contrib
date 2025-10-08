@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -68,12 +69,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def __init__(
         self,
         tracer: Tracer,
+        capture_messages: bool,
     ) -> None:
         super().__init__()  # type: ignore
 
         self.span_manager = _SpanManager(
             tracer=tracer,
         )
+        self._capture_messages = capture_messages
 
     def on_chat_model_start(
         self,
@@ -112,6 +115,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             )
 
         self._apply_request_attributes(span, params, metadata)
+
+        if self._capture_messages and messages:
+            serialized_messages = self._serialize_input_messages(messages)
+            span.set_attribute(
+                GenAI.GEN_AI_INPUT_MESSAGES,
+                self._serialize_to_json(serialized_messages),
+            )
 
     def _resolve_provider(
         self, llm_name: str | None, metadata: dict[str, Any] | None
@@ -295,6 +305,59 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
         return mapping.get(lowered)
 
+    def _serialize_input_messages(
+        self, messages: list[list[BaseMessage]]
+    ) -> list[dict[str, Any]]:
+        serialized: list[dict[str, Any]] = []
+        for conversation in messages:
+            for message in conversation:
+                serialized.append(self._serialize_message(message))
+        return serialized
+
+    def _serialize_output_messages(
+        self, response: LLMResult
+    ) -> list[dict[str, Any]]:
+        serialized: list[dict[str, Any]] = []
+        generations = getattr(response, "generations", [])  # type: ignore
+        for generation in generations:
+            for item in generation:
+                message = getattr(item, "message", None)
+                if message is not None:
+                    serialized.append(self._serialize_message(message))
+        return serialized
+
+    def _serialize_message(self, message: BaseMessage) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "type": getattr(message, "type", message.__class__.__name__),
+            "content": getattr(message, "content", None),
+        }
+        for attr in (
+            "additional_kwargs",
+            "response_metadata",
+            "tool_call_id",
+            "tool_calls",
+            "usage_metadata",
+            "id",
+            "name",
+        ):
+            value = getattr(message, attr, None)
+            if value:
+                payload[attr] = value
+        return payload
+
+    def _serialize_to_json(self, payload: Any) -> str:
+        return json.dumps(payload, default=self._json_default)
+
+    @staticmethod
+    def _json_default(value: Any) -> Any:
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        return getattr(value, "__dict__", str(value))
+
     def on_llm_end(
         self,
         response: LLMResult,  # type: ignore [reportUnknownParameterType]
@@ -377,6 +440,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             if system_fingerprint is not None:
                 span.set_attribute(
                     OPENAI_RESPONSE_SYSTEM_FINGERPRINT, system_fingerprint
+                )
+
+        if self._capture_messages:
+            serialized_outputs = self._serialize_output_messages(response)
+            if serialized_outputs:
+                span.set_attribute(
+                    GenAI.GEN_AI_OUTPUT_MESSAGES,
+                    self._serialize_to_json(serialized_outputs),
                 )
 
         # End the LLM span

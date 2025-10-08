@@ -188,7 +188,8 @@ def test_azure_chat_sets_provider_and_server_attributes():
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     handler = OpenTelemetryLangChainCallbackHandler(
-        provider.get_tracer(__name__)
+        provider.get_tracer(__name__),
+        capture_messages=True,
     )
 
     run_id = uuid4()
