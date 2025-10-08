@@ -382,8 +382,7 @@ class _GenerateContentInstrumentationHelper:
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
         self._update_response(response)
-        self._maybe_log_completion_details(request, response, config)
-        self._response_index += 1
+        self._maybe_log_completion_details(request, response.candidates or [], config)
 
     def process_error(self, e: Exception):
         self._error_type = str(e.__class__.__name__)
@@ -466,7 +465,7 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_log_completion_details(
         self,
         request: Union[ContentListUnion, ContentListUnionDict],
-        response: GenerateContentResponse,
+        candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
         attributes = {
@@ -481,7 +480,7 @@ class _GenerateContentInstrumentationHelper:
             contents=transformers.t_contents(request)
         )
         output_messages = to_output_messages(
-            candidates=response.candidates or []
+            candidates=candidates
         )
 
         span = trace.get_current_span()
@@ -791,6 +790,7 @@ def _create_instrumented_generate_content_stream(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
+        candidates: list[Candidate] = []
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,
@@ -818,7 +818,9 @@ def _create_instrumented_generate_content_stream(
                         helper.sem_conv_opt_in_mode
                         == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                     ):
-                        helper.process_completion(contents, response, config)
+                        helper._update_response(response)
+                        if response.candidates:
+                            candidates += response.candidates
                     else:
                         raise ValueError(
                             f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
@@ -828,6 +830,7 @@ def _create_instrumented_generate_content_stream(
                 helper.process_error(error)
                 raise
             finally:
+                helper._maybe_log_completion_details(contents, candidates, config)
                 helper.finalize_processing()
 
     return instrumented_generate_content_stream
@@ -923,50 +926,52 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             end_on_exit=False,
         ) as span:
             helper.add_request_options_to_span(config)
-        if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            helper.process_request(contents, config)
-        try:
-            response_async_generator = await wrapped_func(
-                self,
-                model=model,
-                contents=contents,
-                config=helper.wrapped_config(config),
-                **kwargs,
-            )
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            helper.process_error(error)
-            helper.finalize_processing()
-            with trace.use_span(span, end_on_exit=True):
-                raise
-
-        async def _response_async_generator_wrapper():
-            with trace.use_span(span, end_on_exit=True):
-                try:
-                    async for response in response_async_generator:
-                        if (
-                            helper.sem_conv_opt_in_mode
-                            == _StabilityMode.DEFAULT
-                        ):
-                            helper.process_response(response)
-                        elif (
-                            helper.sem_conv_opt_in_mode
-                            == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-                        ):
-                            helper.process_completion(
-                                contents, response, config
-                            )
-                        else:
-                            raise ValueError(
-                                f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
-                            )
-                        yield response
-                except Exception as error:
-                    helper.process_error(error)
+            if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+                helper.process_request(contents, config)
+            try:
+                response_async_generator = await wrapped_func(
+                    self,
+                    model=model,
+                    contents=contents,
+                    config=helper.wrapped_config(config),
+                    **kwargs,
+                )
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                helper.process_error(error)
+                helper.finalize_processing()
+                with trace.use_span(span, end_on_exit=True):
                     raise
-                finally:
-                    helper.finalize_processing()
 
-        return _response_async_generator_wrapper()
+            async def _response_async_generator_wrapper():
+                candidates: list[Candidate] = []
+                with trace.use_span(span, end_on_exit=True):
+                    try:
+                        async for response in response_async_generator:
+                            if (
+                                helper.sem_conv_opt_in_mode
+                                == _StabilityMode.DEFAULT
+                            ):
+                                helper.process_response(response)
+                            elif (
+                                helper.sem_conv_opt_in_mode
+                                == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                            ):
+                                helper._update_response(response)
+                                if response.candidates:
+                                    candidates += response.candidates
+                            else:
+                                raise ValueError(
+                                    f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
+                                )
+                            yield response
+                    except Exception as error:
+                        helper.process_error(error)
+                        raise
+                    finally:
+                        helper._maybe_log_completion_details(contents, candidates, config)
+                        helper.finalize_processing()
+
+            return _response_async_generator_wrapper()
 
     return instrumented_generate_content_stream
 
