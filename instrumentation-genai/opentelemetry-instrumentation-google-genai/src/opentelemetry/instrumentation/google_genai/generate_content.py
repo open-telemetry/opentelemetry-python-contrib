@@ -57,13 +57,13 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
+from opentelemetry.util.genai.utils import _GenAiJsonEncoder
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
 from .message import (
-    Base64JsonEncoder,
     to_input_messages,
     to_output_messages,
     to_system_instructions,
@@ -316,7 +316,7 @@ def _create_completion_details_attributes(
 
     if as_str:
         return {
-            k: json.dumps(v, cls=Base64JsonEncoder)
+            k: json.dumps(v, cls=_GenAiJsonEncoder)
             for k, v in attributes.items()
         }
 

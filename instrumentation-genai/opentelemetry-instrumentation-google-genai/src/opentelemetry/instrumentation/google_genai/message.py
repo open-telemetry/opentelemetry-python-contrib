@@ -14,11 +14,8 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from base64 import b64encode
 from enum import Enum
-from typing import Any
 
 from google.genai import types as genai_types
 
@@ -40,13 +37,6 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     TOOL = "tool"
-
-
-class Base64JsonEncoder(json.JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            return b64encode(o).decode()
-        return super().default(o)
 
 
 _logger = logging.getLogger(__name__)
