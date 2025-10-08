@@ -14,6 +14,8 @@ users will need to set the environment variable OTEL_SEMCONV_STABILITY_OPT_IN to
   ([#3328](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3328))
 - VertexAI support for async calling
   ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386))
+  - `opentelemetry-instrumentation-vertexai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3626))
 
 ## Version 2.0b0 (2025-02-24)
 
