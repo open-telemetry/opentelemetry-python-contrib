@@ -16,7 +16,7 @@ import logging
 
 import google.genai
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
 
@@ -36,9 +36,9 @@ _SCOPE_ATTRIBUTES = {
 
 
 class OTelWrapper:
-    def __init__(self, tracer, event_logger, meter):
+    def __init__(self, tracer, logger, meter):
         self._tracer = tracer
-        self._event_logger = event_logger
+        self._logger = logger
         self._meter = meter
         self._operation_duration_metric = (
             gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
@@ -48,12 +48,12 @@ class OTelWrapper:
         )
 
     @staticmethod
-    def from_providers(tracer_provider, event_logger_provider, meter_provider):
+    def from_providers(tracer_provider, logger_provider, meter_provider):
         return OTelWrapper(
             tracer_provider.get_tracer(
                 _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
             ),
-            event_logger_provider.get_event_logger(
+            logger_provider.get_logger(
                 _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
             ),
             meter=meter_provider.get_meter(
@@ -88,5 +88,7 @@ class OTelWrapper:
         self._log_event(event_name, attributes, body)
 
     def _log_event(self, event_name, attributes, body):
-        event = Event(event_name, body=body, attributes=attributes)
-        self._event_logger.emit(event)
+        event = LogRecord(
+            event_name=event_name, body=body, attributes=attributes
+        )
+        self._logger.emit(event)
