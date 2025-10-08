@@ -15,14 +15,14 @@
 
 from __future__ import annotations
 
-import hashlib
+import binascii
 import logging
 import posixpath
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
-from functools import partial
+from functools import lru_cache, partial
 from os import environ
 from time import time
 from typing import Any, Callable, Final, Literal
@@ -159,15 +159,15 @@ class UploadCompletionHook(CompletionHook):
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
-        # Use an md5 hash of the system instructions as a filename, when system instructions are text.
         if all(isinstance(x, types.Text) for x in system_instruction):
-            md5_hash = hashlib.md5()
-            md5_hash.update(
-                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
-                    "utf-8"
+            # Get a checksum of the text.
+            system_instruction_hash = hex(
+                binascii.crc32(
+                    "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
+                        "utf-8"
+                    )
                 )
             )
-            system_instruction_hash = md5_hash.hexdigest()
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
@@ -182,12 +182,17 @@ class UploadCompletionHook(CompletionHook):
             ),
         )
 
+    @lru_cache(maxsize=512)
+    def _file_exists(self, path: str) -> bool:
+        # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
+        return self._fs.exists(path)
+
     def _do_upload(
         self, path: str, json_encodeable: Callable[[], JsonEncodeable]
     ) -> None:
-        # FileSystem class has this method. Only check for system instructions as that's the only where the filename is a hash.
-        # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
-        if "_system_instruction" in path and self._fs.exists(path):  # pyright: ignore[reportUnknownMemberType]
+        # Only check for system instruction file existence as that's the only file where the filename is a hash
+        # of the content.
+        if "_system_instruction" in path and self._file_exists(path):
             return
         if self._format == "json":
             # output as a single line with the json messages array

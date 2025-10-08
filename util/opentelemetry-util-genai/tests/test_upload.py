@@ -14,7 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
-import hashlib
+import binascii
 import importlib
 import logging
 import sys
@@ -171,11 +171,13 @@ class TestUploadCompletionHook(TestCase):
             types.Text(content="You are a helpful assistant."),
             types.Text(content="You will do your best."),
         ]
-        md5_hash = hashlib.md5()
-        md5_hash.update(
-            "\n".join(x.content for x in system_instructions).encode("utf-8")
+        expected_hash = hex(
+            binascii.crc32(
+                "\n".join(x.content for x in system_instructions).encode(
+                    "utf-8"
+                )
+            )
         )
-        expected_hash = md5_hash.hexdigest()
         record = LogRecord()
         self.hook.on_completion(
             inputs=[],
