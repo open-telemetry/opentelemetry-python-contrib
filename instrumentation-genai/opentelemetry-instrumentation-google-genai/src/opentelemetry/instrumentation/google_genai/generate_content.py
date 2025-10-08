@@ -221,6 +221,31 @@ def _add_request_options_to_span(
         span.set_attribute(key, value)
 
 
+def _get_gen_ai_request_attributes(config: Union[GenerateContentConfigOrDict, None]) -> dict[str, Any]:
+    if not config:
+        return {}
+    attributes: dict[str, Any] = {}
+    config = _coerce_config_to_object(config)
+    if config.seed:
+        attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] = (
+            config.seed
+        )
+    if config.candidate_count:
+        attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+            config.candidate_count
+        )
+    if config.response_mime_type:
+        if config.response_mime_type == "text/plain":
+            attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = "text"
+        elif config.response_mime_type == "application/json":
+            attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = "json"
+        else:
+            attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = (
+                config.response_mime_type
+            )
+    return attributes
+
+
 def _get_response_property(response: GenerateContentResponse, path: str):
     path_segments = path.split(".")
     current_context = response
@@ -347,7 +372,6 @@ class _GenerateContentInstrumentationHelper:
             start_time=self._start_time,
             attributes={
                 code_attributes.CODE_FUNCTION_NAME: function_name,
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
                 gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
                 gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
             },
@@ -399,6 +423,10 @@ class _GenerateContentInstrumentationHelper:
             gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
             sorted(self._finish_reasons_set),
         )
+        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            span.set_attribute(
+                gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system
+            )
         self._record_token_usage_metric()
         self._record_duration_metric()
 
@@ -468,9 +496,7 @@ class _GenerateContentInstrumentationHelper:
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
-        attributes = {
-            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-        }
+        attributes = _get_gen_ai_request_attributes(config)
         system_instructions = []
         if system_content := _config_to_system_instruction(config):
             system_instructions = to_system_instructions(
@@ -508,6 +534,7 @@ class _GenerateContentInstrumentationHelper:
                 )
             )
             span.set_attributes(completion_details_attributes)
+            span.set_attributes(attributes)
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
