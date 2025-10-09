@@ -26,6 +26,16 @@ It still:
 - Filters / normalizes params ad hoc (ls_* keys) inside handler.
 - Emits request/response prompt data through span attributes or events depending on env gating.
 
+### Recent Progress Snapshot
+- Replaced internal span maps with `_entities`/`_llms` registries and routed lifecycle calls through `TelemetryHandler`.
+- Chain, tool, agent, and LLM callbacks now build neutral GenAI dataclasses and preserve `langchain_legacy` metadata.
+- Metrics emitters attach span context when recording so exemplars are emitted (still validating via tests).
+
+### Outstanding Issues
+- `tests/test_langchain_llm.py::test_langchain_call` currently fails because token usage exemplars are missing in replayed metrics. Investigate histogram context propagation.
+- `tests/test_langchain_llm.py::test_langchain_call_with_tools` produces no spans under VCR replay with the new entity pipeline; trace suppression or parent linkage needs debugging.
+- Pytest runs inside the sandbox require disabling the rerunfailures plugin; outside-sandbox verification still pending.
+
 ## 3. Target Model
 LangChain callbacks map to GenAI invocation types:
 | LangChain Callback | GenAI Type | Notes / Parent Link |
@@ -186,6 +196,8 @@ Details: Attributes now use `langchain_legacy` buckets and neutral keys across e
 
 ## 14. Prompt for AI Coder (Execute Incrementally)
 You are a senior software engineer refactoring LangChain instrumentation to use `opentelemetry.util.genai` dataclasses and handler lifecycle.
+
+> **Update cadence:** After every meaningful change (code, tests, or docs), append progress notes and refresh the status in this README to keep the plan current.
 
 Context:
 - Current callback handler file: `instrumentation-genai/opentelemetry-instrumentation-langchain-dev/src/opentelemetry/instrumentation/langchain/callback_handler.py` (see sections creating spans, maintaining `self.spans`, building agents, and LLM invocation logic).
