@@ -13,11 +13,11 @@
 # limitations under the License.
 
 
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
     Any,
-    ContextManager,
     Dict,
     List,
     Literal,
@@ -105,7 +105,7 @@ class LLMInvocation:
     request_model: str
     span: Optional[Span] = None
     # Internal handle returned by opentelemetry.trace.use_span to keep the span active.
-    span_scope: Optional[ContextManager[Span]] = field(
+    span_scope: Optional[AbstractContextManager[Span]] = field(
         default=None, compare=False, repr=False
     )
     input_messages: List[InputMessage] = field(
