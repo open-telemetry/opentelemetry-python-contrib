@@ -22,10 +22,19 @@ from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
 )
 from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
-from opentelemetry.sdk.trace.export import (  # noqa: E402
-    InMemorySpanExporter,
-    SimpleSpanProcessor,
-)
+
+try:
+    from opentelemetry.sdk.trace.export import (  # type: ignore[attr-defined]
+        InMemorySpanExporter,
+        SimpleSpanProcessor,
+    )
+except ImportError:  # pragma: no cover - support older/newer SDK layouts
+    from opentelemetry.sdk.trace.export import (
+        SimpleSpanProcessor,  # noqa: E402
+    )
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E402
+        InMemorySpanExporter,
+    )
 from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
     gen_ai_attributes as GenAI,
 )
