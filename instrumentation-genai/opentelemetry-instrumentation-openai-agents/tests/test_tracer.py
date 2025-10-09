@@ -45,14 +45,14 @@ from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
 from opentelemetry.trace import SpanKind  # noqa: E402
 
 
-def _instrument_with_provider():
+def _instrument_with_provider(**instrument_kwargs):
     set_trace_processors([])
     provider = TracerProvider()
     exporter = InMemorySpanExporter()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     instrumentor = OpenAIAgentsInstrumentor()
-    instrumentor.instrument(tracer_provider=provider)
+    instrumentor.instrument(tracer_provider=provider, **instrument_kwargs)
 
     return instrumentor, exporter
 
@@ -154,6 +154,35 @@ def test_agent_create_span_records_attributes():
         assert create_span.attributes[GenAI.GEN_AI_AGENT_ID] == "agt_123"
         assert (
             create_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
+        )
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_agent_name_override_applied_to_agent_spans():
+    instrumentor, exporter = _instrument_with_provider(
+        agent_name="Travel Concierge"
+    )
+
+    try:
+        with trace("workflow"):
+            with agent_span(operation="invoke", name="support_bot"):
+                pass
+
+        spans = exporter.get_finished_spans()
+        agent_span_record = next(
+            span
+            for span in spans
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        )
+
+        assert agent_span_record.kind is SpanKind.CLIENT
+        assert agent_span_record.name == "invoke_agent Travel Concierge"
+        assert (
+            agent_span_record.attributes[GenAI.GEN_AI_AGENT_NAME]
+            == "Travel Concierge"
         )
     finally:
         instrumentor.uninstrument()

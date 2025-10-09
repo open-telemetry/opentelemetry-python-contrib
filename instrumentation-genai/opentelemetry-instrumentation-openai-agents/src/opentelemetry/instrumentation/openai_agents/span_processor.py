@@ -134,9 +134,20 @@ class _SpanContext:
 class _OpenAIAgentsSpanProcessor(TracingProcessor):
     """Convert OpenAI Agents traces into OpenTelemetry spans."""
 
-    def __init__(self, tracer: Tracer, system: str) -> None:
+    def __init__(
+        self,
+        tracer: Tracer,
+        system: str,
+        agent_name_override: str | None = None,
+    ) -> None:
         self._tracer = tracer
         self._system = system
+        self._agent_name_override = (
+            agent_name_override.strip()
+            if isinstance(agent_name_override, str)
+            and agent_name_override.strip()
+            else None
+        )
         self._root_spans: dict[str, Span] = {}
         self._spans: dict[str, _SpanContext] = {}
         self._lock = RLock()
@@ -308,7 +319,7 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
-        name = getattr(span_data, "name", None)
+        name = self._agent_name_override or getattr(span_data, "name", None)
         if name:
             attributes[GenAI.GEN_AI_AGENT_NAME] = name
         output_type = getattr(span_data, "output_type", None)
@@ -325,7 +336,7 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             GenAI.GenAiOperationNameValues.CREATE_AGENT.value
         )
 
-        name = getattr(span_data, "name", None)
+        name = self._agent_name_override or getattr(span_data, "name", None)
         if name:
             attributes[GenAI.GEN_AI_AGENT_NAME] = name
         description = getattr(span_data, "description", None)
