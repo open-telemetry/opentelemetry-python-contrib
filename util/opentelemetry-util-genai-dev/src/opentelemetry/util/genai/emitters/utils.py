@@ -17,6 +17,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.trace import Span
 from opentelemetry.util.types import AttributeValue
 
 from ..attributes import (
@@ -533,30 +534,52 @@ def _record_token_metrics(
     prompt_tokens: Optional[AttributeValue],
     completion_tokens: Optional[AttributeValue],
     metric_attributes: Dict[str, AttributeValue],
+    *,
+    span: Optional[Span] = None,
 ) -> None:
+    context = None
+    if span is not None:
+        try:
+            context = trace.set_span_in_context(span)
+        except Exception:  # pragma: no cover - defensive
+            context = None
     prompt_attrs: Dict[str, AttributeValue] = {
         GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
     }
     prompt_attrs.update(metric_attributes)
     if isinstance(prompt_tokens, (int, float)):
-        token_histogram.record(prompt_tokens, attributes=prompt_attrs)
+        token_histogram.record(
+            prompt_tokens, attributes=prompt_attrs, context=context
+        )
 
     completion_attrs: Dict[str, AttributeValue] = {
         GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.COMPLETION.value
     }
     completion_attrs.update(metric_attributes)
     if isinstance(completion_tokens, (int, float)):
-        token_histogram.record(completion_tokens, attributes=completion_attrs)
+        token_histogram.record(
+            completion_tokens, attributes=completion_attrs, context=context
+        )
 
 
 def _record_duration(
     duration_histogram: Histogram,
     invocation: LLMInvocation | EmbeddingInvocation | ToolCall,
     metric_attributes: Dict[str, AttributeValue],
+    *,
+    span: Optional[Span] = None,
 ) -> None:
     if invocation.end_time is not None:
         elapsed: float = invocation.end_time - invocation.start_time
-        duration_histogram.record(elapsed, attributes=metric_attributes)
+        context = None
+        if span is not None:
+            try:
+                context = trace.set_span_in_context(span)
+            except Exception:  # pragma: no cover - defensive
+                context = None
+        duration_histogram.record(
+            elapsed, attributes=metric_attributes, context=context
+        )
 
 
 # Helper functions for agentic types

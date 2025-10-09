@@ -32,15 +32,6 @@ from opentelemetry.instrumentation.langchain.event_models import (
     MessageEvent,
     ToolCall,
 )
-from opentelemetry.instrumentation.langchain.span_utils import (
-    SpanHolder,
-    _set_span_attribute,
-    set_llm_request,
-    set_request_params,
-)
-from opentelemetry.instrumentation.langchain.vendor_detection import (
-    detect_vendor_from_class,
-)
 from opentelemetry.instrumentation.langchain.utils import (
     CallbackFilteredJSONEncoder,
     dont_throw,
@@ -49,16 +40,8 @@ from opentelemetry.instrumentation.langchain.utils import (
 )
 from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
 from opentelemetry.metrics import Histogram
-from .semconv_ai import (
-    SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY,
-    LLMRequestTypeValues,
-    SpanAttributes,
-    SpanKindValues,
-)
-from opentelemetry.trace import SpanKind, Tracer, set_span_in_context
-from opentelemetry.trace.span import Span
-from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from .semconv_ai import SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY
+from opentelemetry.trace import Tracer
 
 from opentelemetry.util.genai.handler import (
     get_telemetry_handler as _get_util_handler,
@@ -68,32 +51,16 @@ from opentelemetry.util.genai.handler import (
 from opentelemetry.util.genai.types import (
     AgentInvocation as UtilAgent,
     Error as UtilError,
+    GenAI,
     InputMessage as UtilInputMessage,
     LLMInvocation as UtilLLMInvocation,
     OutputMessage as UtilOutputMessage,
+    Task as UtilTask,
     Text as UtilText,
+    Workflow as UtilWorkflow,
 )
 from threading import Lock
 from .utils import get_property_value
-
-
-def _extract_class_name_from_serialized(serialized: Optional[dict[str, Any]]) -> str:
-    """
-    Extract class name from serialized model information.
-
-    Args:
-        serialized: Serialized model information from LangChain callback
-
-    Returns:
-        Class name string, or empty string if not found
-    """
-    class_id = (serialized or {}).get("id", [])
-    if isinstance(class_id, list) and len(class_id) > 0:
-        return class_id[-1]
-    elif class_id:
-        return str(class_id)
-    else:
-        return ""
 
 
 def _sanitize_metadata_value(value: Any) -> Any:
@@ -165,7 +132,6 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         self.tracer = tracer
         self.duration_histogram = duration_histogram
         self.token_histogram = token_histogram
-        self.spans: dict[UUID, SpanHolder] = {}
         self.run_inline = True
         self._callback_manager: CallbackManager | AsyncCallbackManager = None
         handler_kwargs = telemetry_handler_kwargs or {}
@@ -187,9 +153,10 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
                 setattr(_get_util_handler, "_default_handler", None)
                 handler = _get_util_handler(**handler_kwargs)
         self._telemetry_handler = handler
-        self._invocations: dict[UUID, UtilLLMInvocation] = {}
-        self._agents: dict[UUID, UtilAgent] = {}
+        self._entities: dict[UUID, GenAI] = {}
+        self._llms: dict[UUID, UtilLLMInvocation] = {}
         self._lock = Lock()
+        self._payload_truncation_bytes = 8 * 1024
 
     @staticmethod
     def _get_name_from_callback(
@@ -210,207 +177,179 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
 
         return "unknown"
 
-    def _get_span(self, run_id: UUID) -> Span:
-        return self.spans[run_id].span
+    def _register_entity(self, entity: GenAI) -> None:
+        with self._lock:
+            self._entities[entity.run_id] = entity
+            if isinstance(entity, UtilLLMInvocation):
+                self._llms[entity.run_id] = entity
 
-    def _end_span(self, span: Span, run_id: UUID) -> None:
-        for child_id in self.spans[run_id].children:
-            if child_id in self.spans:
-                child_span = self.spans[child_id].span
-                try:
-                    child_span.end()
-                except Exception:
-                    pass
-        span.end()
-        token = self.spans[run_id].token
-        if token:
-            self._safe_detach_context(token)
+    def _unregister_entity(self, run_id: UUID) -> Optional[GenAI]:
+        with self._lock:
+            entity = self._entities.pop(run_id, None)
+            if isinstance(entity, UtilLLMInvocation):
+                self._llms.pop(run_id, None)
+            return entity
 
-        del self.spans[run_id]
+    def _get_entity(self, run_id: Optional[UUID]) -> Optional[GenAI]:
+        if run_id is None:
+            return None
+        return self._entities.get(run_id)
 
-    def _safe_attach_context(self, span: Span):
-        """
-        Safely attach span to context, handling potential failures in async scenarios.
+    def _find_ancestor(
+        self, run_id: Optional[UUID], target_type: Type[GenAI]
+    ) -> Optional[GenAI]:
+        current = self._get_entity(run_id)
+        while current is not None:
+            if isinstance(current, target_type):
+                return current
+            current = self._get_entity(current.parent_run_id)
+        return None
 
-        Returns the context token for later detachment, or None if attachment fails.
-        """
+    def _find_agent(self, run_id: Optional[UUID]) -> Optional[UtilAgent]:
+        ancestor = self._find_ancestor(run_id, UtilAgent)
+        return ancestor if isinstance(ancestor, UtilAgent) else None
+
+    def _maybe_truncate(self, text: str) -> tuple[str, Optional[int]]:
+        encoded = text.encode("utf-8")
+        length = len(encoded)
+        if length <= self._payload_truncation_bytes:
+            return text, None
+        return f"<truncated:{length} bytes>", length
+
+    def _record_payload_length(
+        self, entity: GenAI, field_name: str, original_length: Optional[int]
+    ) -> None:
+        if original_length is None:
+            return
+        lengths = entity.attributes.setdefault("orig_length", {})
+        if isinstance(lengths, dict):
+            lengths[field_name] = original_length
+        else:  # pragma: no cover - defensive
+            entity.attributes["orig_length"] = {field_name: original_length}
+
+    def _store_serialized_payload(
+        self, entity: GenAI, field_name: str, payload: Any
+    ) -> None:
+        serialized = self._serialize_payload(payload)
+        if serialized is None:
+            return
+        truncated, original_length = self._maybe_truncate(serialized)
+        setattr(entity, field_name, truncated)
+        self._record_payload_length(entity, field_name, original_length)
+
+    def _capture_prompt_data(
+        self, entity: GenAI, key: str, payload: Any
+    ) -> None:
+        serialized = self._serialize_payload(payload)
+        if serialized is None:
+            return
+        truncated, original_length = self._maybe_truncate(serialized)
+        capture = entity.attributes.setdefault("prompt_capture", {})
+        if isinstance(capture, dict):
+            capture[key] = truncated
+        else:  # pragma: no cover - defensive
+            entity.attributes["prompt_capture"] = {key: truncated}
+        self._record_payload_length(entity, f"prompt_capture.{key}", original_length)
+
+    def _collect_attributes(
+        self,
+        *sources: Optional[dict[str, Any]],
+        tags: Optional[list[str]] = None,
+        extra: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        attributes: dict[str, Any] = {}
+        legacy: dict[str, Any] = {}
+        for source in sources:
+            if not source:
+                continue
+            for key, value in list(source.items()):
+                sanitized = _sanitize_metadata_value(value)
+                if sanitized is None:
+                    continue
+                if key.startswith("ls_"):
+                    legacy[key] = sanitized
+                    source.pop(key, None)
+                else:
+                    attributes[key] = sanitized
+        if tags:
+            attributes["tags"] = [str(tag) for tag in tags]
+        if extra:
+            attributes.update(extra)
+        if legacy:
+            attributes["langchain_legacy"] = legacy
+        return attributes
+
+    def _coerce_optional_str(self, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
         try:
-            return context_api.attach(set_span_in_context(span))
-        except Exception:
-            # Context attachment can fail in some edge cases, particularly in
-            # complex async scenarios or when context is corrupted.
-            # Return None to indicate no token needs to be detached later.
+            return str(value)
+        except Exception:  # pragma: no cover - defensive
             return None
 
-    def _safe_detach_context(self, token):
-        """
-        Safely detach context token without causing application crashes.
-
-        This method implements a fail-safe approach to context detachment that handles
-        all known edge cases in async/concurrent scenarios where context tokens may
-        become invalid or be detached in different execution contexts.
-
-        We use the runtime context directly to avoid logging errors from context_api.detach()
-        """
-        if not token:
+    def _start_entity(self, entity: GenAI) -> None:
+        try:
+            if isinstance(entity, UtilWorkflow):
+                self._telemetry_handler.start_workflow(entity)
+            elif isinstance(entity, UtilAgent):
+                self._telemetry_handler.start_agent(entity)
+            elif isinstance(entity, UtilTask):
+                self._telemetry_handler.start_task(entity)
+            elif isinstance(entity, UtilLLMInvocation):
+                self._telemetry_handler.start_llm(entity)
+            else:
+                self._telemetry_handler.start(entity)
+        except Exception:  # pragma: no cover - defensive
             return
+        self._register_entity(entity)
 
+    def _stop_entity(self, entity: GenAI) -> None:
         try:
-            # Use the runtime context directly to avoid error logging from context_api.detach()
-            from opentelemetry.context import _RUNTIME_CONTEXT
-
-            _RUNTIME_CONTEXT.detach(token)
-        except Exception:
-            # Context detach can fail in async scenarios when tokens are created in different contexts
-            # This includes ValueError, RuntimeError, and other context-related exceptions
-            # This is expected behavior and doesn't affect the correct span hierarchy
-            #
-            # Common scenarios where this happens:
-            # 1. Token created in one async task/thread, detached in another
-            # 2. Context was already detached by another process
-            # 3. Token became invalid due to context switching
-            # 4. Race conditions in highly concurrent scenarios
-            #
-            # This is safe to ignore as the span itself was properly ended
-            # and the tracing data is correctly captured.
+            if isinstance(entity, UtilWorkflow):
+                self._telemetry_handler.stop_workflow(entity)
+            elif isinstance(entity, UtilAgent):
+                self._telemetry_handler.stop_agent(entity)
+            elif isinstance(entity, UtilTask):
+                self._telemetry_handler.stop_task(entity)
+            elif isinstance(entity, UtilLLMInvocation):
+                self._telemetry_handler.stop_llm(entity)
+                try:  # pragma: no cover - defensive
+                    self._telemetry_handler.evaluate_llm(entity)
+                except Exception:
+                    pass
+            else:
+                self._telemetry_handler.finish(entity)
+        except Exception:  # pragma: no cover - defensive
             pass
+        finally:
+            self._unregister_entity(entity.run_id)
 
-    def _create_span(
-        self,
-        run_id: UUID,
-        parent_run_id: Optional[UUID],
-        span_name: str,
-        kind: SpanKind = SpanKind.INTERNAL,
-        workflow_name: str = "",
-        entity_name: str = "",
-        entity_path: str = "",
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> Span:
-        if metadata is not None:
-            current_association_properties = (
-                context_api.get_value("association_properties") or {}
-            )
-            # Sanitize metadata values to ensure they're compatible with OpenTelemetry
-            sanitized_metadata = {
-                k: _sanitize_metadata_value(v)
-                for k, v in metadata.items()
-                if v is not None
-            }
-            try:
-                context_api.attach(
-                    context_api.set_value(
-                        "association_properties",
-                        {**current_association_properties, **sanitized_metadata},
-                    )
-                )
-            except Exception:
-                # If setting association properties fails, continue without them
-                # This doesn't affect the core span functionality
-                pass
-
-        if parent_run_id is not None and parent_run_id in self.spans:
-            span = self.tracer.start_span(
-                span_name,
-                context=set_span_in_context(self.spans[parent_run_id].span),
-                kind=kind,
-            )
-        else:
-            span = self.tracer.start_span(span_name, kind=kind)
-
-        token = self._safe_attach_context(span)
-
-        _set_span_attribute(span, SpanAttributes.TRACELOOP_WORKFLOW_NAME, workflow_name)
-        _set_span_attribute(span, SpanAttributes.TRACELOOP_ENTITY_PATH, entity_path)
-
-        # Set metadata as span attributes if available
-        if metadata is not None:
-            for key, value in sanitized_metadata.items():
-                _set_span_attribute(
-                    span,
-                    f"{SpanAttributes.TRACELOOP_ASSOCIATION_PROPERTIES}.{key}",
-                    value,
-                )
-
-        self.spans[run_id] = SpanHolder(
-            span, token, None, [], workflow_name, entity_name, entity_path
-        )
-
-        if parent_run_id is not None and parent_run_id in self.spans:
-            self.spans[parent_run_id].children.append(run_id)
-
-        return span
-
-    def _create_task_span(
-        self,
-        run_id: UUID,
-        parent_run_id: Optional[UUID],
-        name: str,
-        kind: SpanKindValues,
-        workflow_name: str,
-        entity_name: str = "",
-        entity_path: str = "",
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> Span:
-        span_name = f"{name}.{kind.value}"
-        span = self._create_span(
-            run_id,
-            parent_run_id,
-            span_name,
-            workflow_name=workflow_name,
-            entity_name=entity_name,
-            entity_path=entity_path,
-            metadata=metadata,
-        )
-
-        _set_span_attribute(span, SpanAttributes.TRACELOOP_SPAN_KIND, kind.value)
-        _set_span_attribute(span, SpanAttributes.TRACELOOP_ENTITY_NAME, entity_name)
-
-        return span
-
-    def _create_llm_span(
-        self,
-        run_id: UUID,
-        parent_run_id: Optional[UUID],
-        name: str,
-        request_type: LLMRequestTypeValues,
-        metadata: Optional[dict[str, Any]] = None,
-        serialized: Optional[dict[str, Any]] = None,
-    ) -> Span:
-        workflow_name = self.get_workflow_name(parent_run_id)
-        entity_path = self.get_entity_path(parent_run_id)
-
-        span = self._create_span(
-            run_id,
-            parent_run_id,
-            f"{name}.{request_type.value}",
-            kind=SpanKind.CLIENT,
-            workflow_name=workflow_name,
-            entity_path=entity_path,
-            metadata=metadata,
-        )
-
-        vendor = detect_vendor_from_class(
-            _extract_class_name_from_serialized(serialized)
-        )
-
-        _set_span_attribute(span, SpanAttributes.LLM_SYSTEM, vendor)
-        _set_span_attribute(span, SpanAttributes.LLM_REQUEST_TYPE, request_type.value)
-
-        # we already have an LLM span by this point,
-        # so skip any downstream instrumentation from here
+    def _fail_entity(self, entity: GenAI, error: BaseException) -> None:
+        util_error = UtilError(message=str(error), type=type(error))
+        entity.attributes.setdefault("error_type", type(error).__name__)
+        if isinstance(entity, UtilAgent):
+            entity.output_result = str(error)
+        elif isinstance(entity, UtilTask):
+            entity.output_data = str(error)
+        elif isinstance(entity, UtilWorkflow):
+            entity.final_output = str(error)
+        elif isinstance(entity, UtilLLMInvocation):
+            entity.output_messages = []
         try:
-            token = context_api.attach(
-                context_api.set_value(SUPPRESS_LANGUAGE_MODEL_INSTRUMENTATION_KEY, True)
-            )
-        except Exception:
-            # If context setting fails, continue without suppression token
-            token = None
-
-        self.spans[run_id] = SpanHolder(
-            span, token, None, [], workflow_name, None, entity_path
-        )
-
-        return span
+            if isinstance(entity, UtilWorkflow):
+                self._telemetry_handler.fail_workflow(entity, util_error)
+            elif isinstance(entity, UtilAgent):
+                self._telemetry_handler.fail_agent(entity, util_error)
+            elif isinstance(entity, UtilTask):
+                self._telemetry_handler.fail_task(entity, util_error)
+            elif isinstance(entity, UtilLLMInvocation):
+                self._telemetry_handler.fail_llm(entity, util_error)
+        except Exception:  # pragma: no cover - defensive
+            pass
+        finally:
+            self._unregister_entity(entity.run_id)
 
     def _sanitize_metadata_dict(
         self, metadata: Optional[dict[str, Any]]
@@ -514,13 +453,11 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         run_id: UUID,
         parent_run_id: Optional[UUID],
         inputs: dict[str, Any],
-        metadata: Optional[dict[str, Any]],
+        metadata_attrs: dict[str, Any],
         tags: Optional[list[str]],
+        extra_attrs: Optional[dict[str, Any]] = None,
     ) -> UtilAgent:
-        metadata_attrs = self._sanitize_metadata_dict(metadata)
-        extras: dict[str, Any] = {}
-        if tags:
-            extras["tags"] = [str(tag) for tag in tags]
+        extras: dict[str, Any] = extra_attrs.copy() if extra_attrs else {}
 
         raw_operation = None
         for key in ("ls_operation", "operation"):
@@ -573,13 +510,15 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if not isinstance(framework, str):
             framework = str(framework)
 
-        tools = self._normalize_agent_tools(metadata)
+        tools = self._normalize_agent_tools(metadata_attrs)
         # remove tool metadata entries now that we've normalized them
         metadata_attrs.pop("ls_tools", None)
         metadata_attrs.pop("tools", None)
-        input_context = self._serialize_payload(inputs)
-
-        extras.update(metadata_attrs)
+        attributes = self._collect_attributes(
+            metadata_attrs,
+            tags=tags,
+            extra=extras,
+        )
 
         agent = UtilAgent(
             name=name,
@@ -590,12 +529,91 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             model=model,
             tools=tools,
             system_instructions=system_instructions,
-            input_context=input_context,
-            attributes=extras,
+            attributes=attributes,
             run_id=run_id,
             parent_run_id=parent_run_id,
         )
+        self._store_serialized_payload(agent, "input_context", inputs)
         return agent
+
+    def _build_workflow(
+        self,
+        *,
+        name: str,
+        run_id: UUID,
+        metadata_attrs: dict[str, Any],
+        extra_attrs: dict[str, Any],
+    ) -> UtilWorkflow:
+        workflow_type = metadata_attrs.pop("ls_workflow_type", None)
+        if workflow_type is None:
+            workflow_type = metadata_attrs.pop("workflow_type", None)
+        description = metadata_attrs.pop("ls_description", None)
+        if description is None:
+            description = metadata_attrs.pop("description", None)
+        framework = metadata_attrs.pop("ls_framework", None)
+        if framework is None:
+            framework = metadata_attrs.pop("framework", "langchain")
+
+        attributes = self._collect_attributes(
+            metadata_attrs,
+            extra=extra_attrs,
+        )
+
+        workflow = UtilWorkflow(
+            name=name or "workflow",
+            workflow_type=self._coerce_optional_str(workflow_type),
+            description=self._coerce_optional_str(description),
+            framework=self._coerce_optional_str(framework) or "langchain",
+            attributes=attributes,
+            run_id=run_id,
+        )
+        return workflow
+
+    def _build_task(
+        self,
+        *,
+        name: str,
+        run_id: UUID,
+        parent: Optional[GenAI],
+        parent_run_id: Optional[UUID],
+        metadata_attrs: dict[str, Any],
+        extra_attrs: dict[str, Any],
+        tags: Optional[list[str]],
+        task_type: str,
+        inputs: dict[str, Any],
+    ) -> UtilTask:
+        objective = metadata_attrs.pop("ls_objective", None)
+        if objective is None:
+            objective = metadata_attrs.pop("objective", None)
+        description = metadata_attrs.pop("ls_description", None)
+        if description is None:
+            description = metadata_attrs.pop("description", None)
+        assigned_agent = metadata_attrs.pop("assigned_agent", None)
+        source: Optional[str] = None
+        if isinstance(parent, UtilAgent):
+            source = "agent"
+        elif isinstance(parent, UtilWorkflow):
+            source = "workflow"
+
+        attributes = self._collect_attributes(
+            metadata_attrs,
+            tags=tags,
+            extra=extra_attrs,
+        )
+
+        task = UtilTask(
+            name=name or "task",
+            objective=self._coerce_optional_str(objective),
+            task_type=task_type,
+            source=source,
+            assigned_agent=self._coerce_optional_str(assigned_agent),
+            description=self._coerce_optional_str(description),
+            attributes=attributes,
+            run_id=run_id,
+            parent_run_id=parent.run_id if parent is not None else parent_run_id,
+        )
+        self._store_serialized_payload(task, "input_data", inputs)
+        return task
 
     @dont_throw
     def on_chain_start(
@@ -613,68 +631,52 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
 
-        workflow_name = ""
-        entity_path = ""
-
         name = self._get_name_from_callback(serialized, **kwargs)
-        parent_known = parent_run_id is not None and parent_run_id in self.spans
         is_agent_run = self._is_agent_run(serialized, metadata, tags)
+        parent_entity = self._get_entity(parent_run_id)
+        metadata_attrs = self._sanitize_metadata_dict(metadata)
+        extra_attrs: dict[str, Any] = {
+            "callback.name": name,
+            "callback.id": serialized.get("id"),
+        }
+
         if is_agent_run:
-            kind = SpanKindValues.AGENT
-        else:
-            kind = (
-                SpanKindValues.WORKFLOW
-                if not parent_known
-                else SpanKindValues.TASK
+            agent = self._build_agent_invocation(
+                name=name,
+                run_id=run_id,
+                parent_run_id=parent_run_id,
+                inputs=inputs,
+                metadata_attrs=metadata_attrs,
+                tags=tags,
+                extra_attrs=extra_attrs,
             )
+            self._start_entity(agent)
+            return
 
-        if not parent_known:
-            workflow_name = name
-        else:
-            workflow_name = self.get_workflow_name(parent_run_id)
-            entity_path = self.get_entity_path(parent_run_id)
+        if parent_entity is None:
+            workflow = self._build_workflow(
+                name=name,
+                run_id=run_id,
+                metadata_attrs=metadata_attrs,
+                extra_attrs=extra_attrs,
+            )
+            workflow.parent_run_id = parent_run_id
+            self._store_serialized_payload(workflow, "initial_input", inputs)
+            self._start_entity(workflow)
+            return
 
-        span = self._create_task_span(
-            run_id,
-            parent_run_id,
-            name,
-            kind,
-            workflow_name,
-            name,
-            entity_path,
-            metadata,
+        task = self._build_task(
+            name=name,
+            run_id=run_id,
+            parent=parent_entity,
+            parent_run_id=parent_run_id,
+            metadata_attrs=metadata_attrs,
+            extra_attrs=extra_attrs,
+            tags=tags,
+            task_type="chain",
+            inputs=inputs,
         )
-        if not should_emit_events() and should_send_prompts():
-            span.set_attribute(
-                SpanAttributes.TRACELOOP_ENTITY_INPUT,
-                json.dumps(
-                    {
-                        "inputs": inputs,
-                        "tags": tags,
-                        "metadata": metadata,
-                        "kwargs": kwargs,
-                    },
-                    cls=CallbackFilteredJSONEncoder,
-                ),
-            )
-
-        if is_agent_run and run_id not in self._agents:
-            try:
-                agent = self._build_agent_invocation(
-                    name=name,
-                    run_id=run_id,
-                    parent_run_id=parent_run_id,
-                    inputs=inputs,
-                    metadata=metadata,
-                    tags=tags,
-                )
-                self._telemetry_handler.start_agent(agent)
-                with self._lock:
-                    self._agents[run_id] = agent
-            except Exception:  # pragma: no cover - defensive
-                pass
-
-        # The start_time is now automatically set when creating the SpanHolder
+        self._start_entity(task)
 
     @dont_throw
     def on_chain_end(
@@ -689,29 +691,22 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
 
-        span_holder = self.spans[run_id]
-        span = span_holder.span
-        if not should_emit_events() and should_send_prompts():
-            span.set_attribute(
-                SpanAttributes.TRACELOOP_ENTITY_OUTPUT,
-                json.dumps(
-                    {"outputs": outputs, "kwargs": kwargs},
-                    cls=CallbackFilteredJSONEncoder,
-                ),
-            )
+        entity = self._get_entity(run_id)
+        if entity is None:
+            return
 
-        self._end_span(span, run_id)
-        agent_to_finish: Optional[UtilAgent] = None
-        with self._lock:
-            agent_to_finish = self._agents.pop(run_id, None)
-        if agent_to_finish is not None:
-            serialized_output = self._serialize_payload(outputs)
-            if serialized_output is not None:
-                agent_to_finish.output_result = serialized_output
-            try:
-                self._telemetry_handler.stop_agent(agent_to_finish)
-            except Exception:  # pragma: no cover - defensive
-                pass
+        if not should_emit_events() and should_send_prompts():
+            self._capture_prompt_data(entity, "outputs", {"outputs": outputs, "kwargs": kwargs})
+
+        if isinstance(entity, UtilAgent):
+            self._store_serialized_payload(entity, "output_result", outputs)
+        elif isinstance(entity, UtilWorkflow):
+            self._store_serialized_payload(entity, "final_output", outputs)
+        elif isinstance(entity, UtilTask):
+            self._store_serialized_payload(entity, "output_data", outputs)
+
+        self._stop_entity(entity)
+
         if parent_run_id is None:
             try:
                 context_api.attach(
@@ -809,6 +804,9 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         callback_name = self._get_name_from_callback(serialized, kwargs=kwargs)
         if callback_name:
             extras["callback.name"] = callback_name
+        serialized_id = serialized.get("id")
+        if serialized_id is not None:
+            extras["callback.id"] = _sanitize_metadata_value(serialized_id)
         extras.setdefault("span.kind", "llm")
 
         def _record_ls_attribute(key: str, value: Any) -> None:
@@ -929,14 +927,47 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if tags:
             extras["tags"] = [str(tag) for tag in tags]
 
-        serialized_id = serialized.get("id")
-        if serialized_id is not None:
-            extras["callback.id"] = _sanitize_metadata_value(serialized_id)
+        attributes = self._collect_attributes(
+            metadata_attrs,
+            invocation_attrs,
+            extra=extras,
+            tags=None,
+        )
 
-        extras.update(metadata_attrs)
-        extras.update(invocation_attrs)
         if ls_metadata:
-            extras["_ls_metadata"] = ls_metadata
+            legacy = attributes.setdefault("langchain_legacy", {})
+            if isinstance(legacy, dict):
+                for key, value in ls_metadata.items():
+                    sanitized = _sanitize_metadata_value(value)
+                    if sanitized is not None:
+                        legacy[key] = sanitized
+            else:  # pragma: no cover - defensive
+                attributes["langchain_legacy"] = {
+                    key: _sanitize_metadata_value(value)
+                    for key, value in ls_metadata.items()
+                    if _sanitize_metadata_value(value) is not None
+                }
+
+        def _store_request_attribute(key: str, value: Any) -> None:
+            if value is None:
+                return
+            attributes[key] = value
+
+        _store_request_attribute("request_temperature", request_temperature)
+        _store_request_attribute("request_top_p", request_top_p)
+        _store_request_attribute("request_top_k", request_top_k)
+        _store_request_attribute(
+            "request_frequency_penalty", request_frequency_penalty
+        )
+        _store_request_attribute(
+            "request_presence_penalty", request_presence_penalty
+        )
+        _store_request_attribute("request_seed", request_seed)
+        _store_request_attribute("request_max_tokens", request_max_tokens)
+        _store_request_attribute("request_choice_count", request_choice_count)
+        if request_stop_sequences:
+            attributes["request_stop_sequences"] = request_stop_sequences
+        _store_request_attribute("request_service_tier", request_service_tier)
 
         request_functions = self._extract_request_functions(invocation_params)
         input_messages = self._build_input_messages(messages)
@@ -946,7 +977,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             "framework": "langchain",
             "input_messages": input_messages,
             "request_functions": request_functions,
-            "attributes": extras,
+            "attributes": attributes,
         }
         if request_temperature is not None:
             llm_kwargs["request_temperature"] = request_temperature
@@ -972,31 +1003,18 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         inv = UtilLLMInvocation(**llm_kwargs)
         inv.run_id = run_id
         inv.parent_run_id = parent_run_id
-        if parent_run_id is not None:
-            with self._lock:
-                parent_agent = self._agents.get(parent_run_id)
-            if parent_agent is not None:
-                inv.agent_name = parent_agent.name
-                inv.agent_id = str(parent_agent.run_id)
 
-        # no need for messages/chat_generations fields; generator uses input_messages and output_messages
-        self._telemetry_handler.start_llm(inv)
-        with self._lock:
-            self._invocations[run_id] = inv
-        # name = self._get_name_from_callback(serialized, kwargs=kwargs)
-        # span = self._create_llm_span(
-        #     run_id,
-        #     parent_run_id,
-        #     name,
-        #     LLMRequestTypeValues.CHAT,
-        #     metadata=metadata,
-        #     serialized=serialized,
-        # )
-        # set_request_params(span, kwargs, self.spans[run_id])
-        # if should_emit_events():
-        #     self._emit_chat_input_events(messages)
-        # else:
-        #     set_chat_request(span, serialized, messages, kwargs, self.spans[run_id])
+        parent_agent = self._find_agent(parent_run_id)
+        if parent_agent is not None:
+            inv.agent_name = parent_agent.name
+            inv.agent_id = str(parent_agent.run_id)
+
+        if should_emit_events():
+            self._emit_chat_input_events(messages)
+        elif should_send_prompts():
+            self._capture_prompt_data(inv, "inputs", {"messages": messages})
+
+        self._start_entity(inv)
 
     @dont_throw
     def on_llm_start(
@@ -1013,21 +1031,23 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         """Run when Chat Model starts running."""
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
+        message_batches: list[list[BaseMessage]] = []
+        for prompt in prompts:
+            message_batches.append([HumanMessage(content=prompt)])
 
-        name = self._get_name_from_callback(serialized, kwargs=kwargs)
-        span = self._create_llm_span(
-            run_id,
-            parent_run_id,
-            name,
-            LLMRequestTypeValues.COMPLETION,
+        self.on_chat_model_start(
             serialized=serialized,
+            messages=message_batches,
+            run_id=run_id,
+            tags=tags,
+            parent_run_id=parent_run_id,
+            metadata=metadata,
+            **kwargs,
         )
-        set_request_params(span, kwargs, self.spans[run_id])
-        if should_emit_events():
-            for prompt in prompts:
-                emit_event(MessageEvent(content=prompt, role="user"))
-        else:
-            set_llm_request(span, serialized, prompts, kwargs, self.spans[run_id])
+
+        invocation = self._llms.get(run_id)
+        if invocation is not None:
+            invocation.operation = "generate_text"
 
     @dont_throw
     def on_llm_end(
@@ -1040,9 +1060,8 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
     ):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
-        with self._lock:
-            inv = self._invocations.pop(run_id, None)
-        if not inv:
+        invocation = self._llms.get(run_id)
+        if invocation is None:
             return
         generations = getattr(response, "generations", [])
         content_text = None
@@ -1057,7 +1076,7 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
                         "finish_reason", finish_reason
                     )
         if content_text is not None:
-            inv.output_messages = [
+            invocation.output_messages = [
                 UtilOutputMessage(
                     role="assistant",
                     parts=[UtilText(content=str(content_text))],
@@ -1070,18 +1089,26 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         )
         response_id = llm_output.get("id")
         usage = llm_output.get("usage") or llm_output.get("token_usage") or {}
-        inv.response_model_name = response_model
-        inv.response_id = response_id
+        invocation.response_model_name = response_model
+        invocation.response_id = response_id
         if usage:
-            inv.input_tokens = usage.get("prompt_tokens")
-            inv.output_tokens = usage.get("completion_tokens")
-        # Stop LLM (emitters finish here, so invocation fields must be set first)
-        self._telemetry_handler.stop_llm(inv)
-        ### below is just a temporary hack, evaluations should be happening in the util-genai implicitly
-        try:
-            self._telemetry_handler.evaluate_llm(inv)
-        except Exception:  # pragma: no cover
-            pass
+            invocation.input_tokens = usage.get("prompt_tokens")
+            invocation.output_tokens = usage.get("completion_tokens")
+
+        if should_emit_events():
+            self._emit_llm_end_events(response)
+        elif should_send_prompts():
+            self._capture_prompt_data(
+                invocation,
+                "outputs",
+                {
+                    "generations": generations,
+                    "llm_output": llm_output,
+                    "kwargs": kwargs,
+                },
+            )
+
+        self._stop_entity(invocation)
 
     @dont_throw
     def on_tool_start(
@@ -1101,32 +1128,39 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             return
 
         name = self._get_name_from_callback(serialized, kwargs=kwargs)
-        workflow_name = self.get_workflow_name(parent_run_id)
-        entity_path = self.get_entity_path(parent_run_id)
+        parent_entity = self._get_entity(parent_run_id)
+        metadata_attrs = self._sanitize_metadata_dict(metadata)
+        extra_attrs: dict[str, Any] = {
+            "callback.name": name,
+            "callback.id": serialized.get("id"),
+        }
 
-        span = self._create_task_span(
-            run_id,
-            parent_run_id,
-            name,
-            SpanKindValues.TOOL,
-            workflow_name,
-            name,
-            entity_path,
+        task_inputs = inputs if inputs is not None else {"input_str": input_str}
+        task = self._build_task(
+            name=name,
+            run_id=run_id,
+            parent=parent_entity,
+            parent_run_id=parent_run_id,
+            metadata_attrs=metadata_attrs,
+            extra_attrs=extra_attrs,
+            tags=tags,
+            task_type="tool_use",
+            inputs=task_inputs,
         )
+
         if not should_emit_events() and should_send_prompts():
-            span.set_attribute(
-                SpanAttributes.TRACELOOP_ENTITY_INPUT,
-                json.dumps(
-                    {
-                        "input_str": input_str,
-                        "tags": tags,
-                        "metadata": metadata,
-                        "inputs": inputs,
-                        "kwargs": kwargs,
-                    },
-                    cls=CallbackFilteredJSONEncoder,
-                ),
+            self._capture_prompt_data(
+                task,
+                "inputs",
+                {
+                    "input_str": input_str,
+                    "inputs": inputs,
+                    "metadata": metadata,
+                    "kwargs": kwargs,
+                },
             )
+
+        self._start_entity(task)
 
     @dont_throw
     def on_tool_end(
@@ -1141,44 +1175,19 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
 
-        span = self._get_span(run_id)
+        entity = self._get_entity(run_id)
+        if not isinstance(entity, UtilTask):
+            return
+
         if not should_emit_events() and should_send_prompts():
-            span.set_attribute(
-                SpanAttributes.TRACELOOP_ENTITY_OUTPUT,
-                json.dumps(
-                    {"output": output, "kwargs": kwargs},
-                    cls=CallbackFilteredJSONEncoder,
-                ),
+            self._capture_prompt_data(
+                entity,
+                "outputs",
+                {"output": output, "kwargs": kwargs},
             )
-        self._end_span(span, run_id)
 
-    def get_parent_span(self, parent_run_id: Optional[str] = None):
-        if parent_run_id is None:
-            return None
-        return self.spans[parent_run_id]
-
-    def get_workflow_name(self, parent_run_id: str):
-        parent_span = self.get_parent_span(parent_run_id)
-
-        if parent_span is None:
-            return ""
-
-        return parent_span.workflow_name
-
-    def get_entity_path(self, parent_run_id: str):
-        parent_span = self.get_parent_span(parent_run_id)
-
-        if parent_span is None:
-            return ""
-        elif (
-            parent_span.entity_path == ""
-            and parent_span.entity_name == parent_span.workflow_name
-        ):
-            return ""
-        elif parent_span.entity_path == "":
-            return f"{parent_span.entity_name}"
-        else:
-            return f"{parent_span.entity_path}.{parent_span.entity_name}"
+        self._store_serialized_payload(entity, "output_data", output)
+        self._stop_entity(entity)
 
     def _handle_error(
         self,
@@ -1190,23 +1199,22 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         """Common error handling logic for all components."""
         if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
             return
+        entity = self._get_entity(run_id)
+        if entity is None:
+            return
 
-        span = self._get_span(run_id)
-        span.set_status(Status(StatusCode.ERROR))
-        span.record_exception(error)
-        self._end_span(span, run_id)
-        agent_to_fail: Optional[UtilAgent] = None
-        with self._lock:
-            agent_to_fail = self._agents.pop(run_id, None)
-        if agent_to_fail is not None:
-            agent_to_fail.output_result = str(error)
-            try:
-                self._telemetry_handler.fail_agent(
-                    agent_to_fail,
-                    UtilError(message=str(error), type=type(error)),
-                )
-            except Exception:  # pragma: no cover - defensive
-                pass
+        entity.attributes.setdefault("error_message", str(error))
+        if not should_emit_events() and should_send_prompts():
+            self._capture_prompt_data(
+                entity,
+                "error",
+                {
+                    "error": str(error),
+                    "kwargs": kwargs,
+                },
+            )
+
+        self._fail_entity(entity, error)
 
     @dont_throw
     def on_llm_error(

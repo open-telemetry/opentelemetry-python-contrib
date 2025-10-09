@@ -71,7 +71,7 @@ def test_agent_invocation_links_util_handler(handler_with_stub):
 
     assert stub.started_agents, "Agent start was not forwarded to util handler"
     agent = stub.started_agents[-1]
-    assert agent.operation == "invoke"
+    assert agent.operation == "invoke_agent"
     assert agent.input_context and "plan my trip" in agent.input_context
 
     llm_run_id = uuid4()
@@ -96,7 +96,7 @@ def test_agent_invocation_links_util_handler(handler_with_stub):
     assert stub.stopped_agents, "Agent stop was not forwarded to util handler"
     stopped_agent = stub.stopped_agents[-1]
     assert stopped_agent.output_result and "done" in stopped_agent.output_result
-    assert agent_run_id not in handler._agents  # type: ignore[attr-defined]
+    assert agent_run_id not in handler._entities  # type: ignore[attr-defined]
 
 
 def test_agent_failure_forwards_to_util(handler_with_stub):
@@ -117,7 +117,7 @@ def test_agent_failure_forwards_to_util(handler_with_stub):
     assert failed_agent.run_id == failing_run_id
     assert recorded_error.message == str(error)
     assert recorded_error.type is RuntimeError
-    assert failing_run_id not in handler._agents  # type: ignore[attr-defined]
+    assert failing_run_id not in handler._entities  # type: ignore[attr-defined]
 
 
 def test_llm_attributes_independent_of_emitters(monkeypatch):
@@ -178,7 +178,7 @@ def test_llm_attributes_independent_of_emitters(monkeypatch):
     assert "ls_provider" not in attrs
     assert "ls_max_tokens" not in attrs
     assert "ls_model_name" not in attrs
-    ls_meta = attrs.get("_ls_metadata")
+    ls_meta = attrs.get("langchain_legacy")
     assert isinstance(ls_meta, dict)
     assert ls_meta["ls_provider"] == "openai"
     assert ls_meta["ls_max_tokens"] == 256

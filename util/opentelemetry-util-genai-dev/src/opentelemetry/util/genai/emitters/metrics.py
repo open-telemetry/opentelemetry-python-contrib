@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from opentelemetry import trace
 from opentelemetry.metrics import Histogram, Meter, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -84,9 +85,13 @@ class MetricsEmitter(EmitterMeta):
                 invocation.input_tokens,
                 invocation.output_tokens,
                 metric_attrs,
+                span=getattr(invocation, "span", None),
             )
             _record_duration(
-                self._duration_histogram, invocation, metric_attrs
+                self._duration_histogram,
+                invocation,
+                metric_attrs,
+                span=getattr(invocation, "span", None),
             )
             return
         from ..types import ToolCall
@@ -107,7 +112,10 @@ class MetricsEmitter(EmitterMeta):
                 metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
-                self._duration_histogram, invocation, metric_attrs
+                self._duration_histogram,
+                invocation,
+                metric_attrs,
+                span=getattr(invocation, "span", None),
             )
 
         if isinstance(obj, EmbeddingInvocation):
@@ -128,7 +136,10 @@ class MetricsEmitter(EmitterMeta):
                 metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
-                self._duration_histogram, invocation, metric_attrs
+                self._duration_histogram,
+                invocation,
+                metric_attrs,
+                span=getattr(invocation, "span", None),
             )
 
     def on_error(self, error: Error, obj: Any) -> None:
@@ -181,7 +192,10 @@ class MetricsEmitter(EmitterMeta):
                 metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
-                self._duration_histogram, invocation, metric_attrs
+                self._duration_histogram,
+                invocation,
+                metric_attrs,
+                span=getattr(invocation, "span", None),
             )
 
         if isinstance(obj, EmbeddingInvocation):
@@ -202,7 +216,10 @@ class MetricsEmitter(EmitterMeta):
                 metric_attrs[GenAI.GEN_AI_AGENT_ID] = invocation.agent_id
 
             _record_duration(
-                self._duration_histogram, invocation, metric_attrs
+                self._duration_histogram,
+                invocation,
+                metric_attrs,
+                span=getattr(invocation, "span", None),
             )
 
     def handles(self, obj: Any) -> bool:
@@ -234,8 +251,16 @@ class MetricsEmitter(EmitterMeta):
         if workflow.framework:
             metric_attrs["gen_ai.framework"] = workflow.framework
 
+        context = None
+        span = getattr(workflow, "span", None)
+        if span is not None:
+            try:
+                context = trace.set_span_in_context(span)
+            except Exception:  # pragma: no cover - defensive
+                context = None
+
         self._workflow_duration_histogram.record(
-            duration, attributes=metric_attrs
+            duration, attributes=metric_attrs, context=context
         )
 
     def _record_agent_metrics(self, agent: AgentInvocation) -> None:
@@ -253,8 +278,16 @@ class MetricsEmitter(EmitterMeta):
         if agent.framework:
             metric_attrs["gen_ai.framework"] = agent.framework
 
+        context = None
+        span = getattr(agent, "span", None)
+        if span is not None:
+            try:
+                context = trace.set_span_in_context(span)
+            except Exception:  # pragma: no cover - defensive
+                context = None
+
         self._agent_duration_histogram.record(
-            duration, attributes=metric_attrs
+            duration, attributes=metric_attrs, context=context
         )
 
     def _record_task_metrics(self, task: Task) -> None:
@@ -272,4 +305,14 @@ class MetricsEmitter(EmitterMeta):
         if task.assigned_agent:
             metric_attrs[GenAI.GEN_AI_AGENT_NAME] = task.assigned_agent
 
-        self._task_duration_histogram.record(duration, attributes=metric_attrs)
+        context = None
+        span = getattr(task, "span", None)
+        if span is not None:
+            try:
+                context = trace.set_span_in_context(span)
+            except Exception:  # pragma: no cover - defensive
+                context = None
+
+        self._task_duration_histogram.record(
+            duration, attributes=metric_attrs, context=context
+        )

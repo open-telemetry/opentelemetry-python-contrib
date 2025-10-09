@@ -34,6 +34,7 @@ from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
+from opentelemetry.util.genai.handler import get_telemetry_handler
 
 
 @pytest.fixture(scope="function", name="span_exporter")
@@ -81,8 +82,38 @@ def fixture_meter_provider(metric_reader):
 
 @pytest.fixture(autouse=True)
 def environment():
-    if not os.getenv("OPENAI_API_KEY"):
+    original_api_key = os.environ.get("OPENAI_API_KEY")
+    original_evals = os.environ.get(
+        "OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS"
+    )
+    original_emitters = os.environ.get("OTEL_INSTRUMENTATION_GENAI_EMITTERS")
+
+    if not original_api_key:
         os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
+    os.environ["OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS"] = "none"
+    os.environ["OTEL_INSTRUMENTATION_GENAI_EMITTERS"] = "span_metric_event"
+    setattr(get_telemetry_handler, "_default_handler", None)
+
+    yield
+
+    if original_api_key is None:
+        os.environ.pop("OPENAI_API_KEY", None)
+    else:
+        os.environ["OPENAI_API_KEY"] = original_api_key
+
+    if original_evals is None:
+        os.environ.pop("OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS", None)
+    else:
+        os.environ[
+            "OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS"
+        ] = original_evals
+
+    if original_emitters is None:
+        os.environ.pop("OTEL_INSTRUMENTATION_GENAI_EMITTERS", None)
+    else:
+        os.environ["OTEL_INSTRUMENTATION_GENAI_EMITTERS"] = original_emitters
+
+    setattr(get_telemetry_handler, "_default_handler", None)
 
 
 @pytest.fixture

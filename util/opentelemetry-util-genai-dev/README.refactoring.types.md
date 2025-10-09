@@ -144,6 +144,46 @@ Initial planned entries:
 7. tests-update (planned)
 8. vendor-neutral-migration (planned)
 
+### 1-entities-registry-intro
+Status: done
+Summary: Replace span bookkeeping with GenAI entity registry.
+Details: Introduced `_entities`/`_llms` maps, lifecycle helpers, and removed direct span management.
+
+### 2-workflow-agent-task-mapping
+Status: done
+Summary: Map LangChain chain/tool callbacks to Workflow/Agent/Task dataclasses.
+Details: `on_chain_start`, `on_tool_start`, and related handlers now create/utilize GenAI types with parent propagation and payload capture.
+
+### 3-llm-span-removal
+Status: done
+Summary: Stop direct span creation for LLM callbacks.
+Details: Chat/completion handlers build `LLMInvocation` instances, manage prompt capture, and rely on telemetry handler for emission.
+
+### 4-error-path-refactor
+Status: done
+Summary: Centralize error handling through GenAI fail lifecycle.
+Details: `_handle_error` routes failures to `_fail_entity`, recording error metadata without span mutation.
+
+### 5-tool-task-consolidation
+Status: done
+Summary: Normalize chain/tool callbacks into `Task` entities.
+Details: Tool and nested chain flows share `_build_task`, including truncation-aware input/output capture.
+
+### 6-metadata-truncation
+Status: done
+Summary: Add neutral truncation strategy for large payloads.
+Details: Helpers enforce 8KB limits with `<truncated:N bytes>` markers and `orig_length` bookkeeping.
+
+### 7-tests-update
+Status: done
+Summary: Align unit tests with refactored handler API.
+Details: Updated expectations for agent operations, registry usage, and neutral metadata container.
+
+### 8-vendor-neutral-migration
+Status: done
+Summary: Preserve LangChain legacy data without vendor-prefixed attributes.
+Details: Attributes now use `langchain_legacy` buckets and neutral keys across entity lifecycles.
+
 ## 14. Prompt for AI Coder (Execute Incrementally)
 You are a senior software engineer refactoring LangChain instrumentation to use `opentelemetry.util.genai` dataclasses and handler lifecycle.
 
