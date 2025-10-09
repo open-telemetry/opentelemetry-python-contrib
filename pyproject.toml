@@ -203,6 +203,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-threading",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
+  "instrumentation-genai/opentelemetry-instrumentation-mcp",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
