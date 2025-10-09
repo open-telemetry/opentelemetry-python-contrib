@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import time
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
@@ -103,8 +102,6 @@ class LLMInvocation:
     request_model: str
     context_token: Optional[ContextToken] = None
     span: Optional[Span] = None
-    start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
     input_messages: List[InputMessage] = field(
         default_factory=_new_input_messages
     )

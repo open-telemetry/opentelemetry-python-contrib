@@ -154,7 +154,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert span_attrs.get("gen_ai.provider.name") == "test-provider"
         assert span.start_time is not None
         assert span.end_time is not None
-        assert span.end_time > span.start_time
+        assert span.end_time >= span.start_time
         assert invocation.attributes.get("custom_attr") == "value"
         assert invocation.attributes.get("extra") == "info"
 
@@ -210,7 +210,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert span.kind == trace.SpanKind.CLIENT
         assert span.start_time is not None
         assert span.end_time is not None
-        assert span.end_time > span.start_time
+        assert span.end_time >= span.start_time
 
         attrs = span.attributes
         assert attrs is not None
@@ -284,4 +284,6 @@ class TestTelemetryHandler(unittest.TestCase):
             span.attributes.get(ErrorAttributes.ERROR_TYPE)
             == BoomError.__qualname__
         )
-        assert invocation.end_time is not None
+        assert span.start_time is not None
+        assert span.end_time is not None
+        assert span.end_time >= span.start_time
