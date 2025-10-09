@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3795](#3795))
 - Make inputs / outputs / system instructions optional params to `on_completion`,
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3802](#3802)).
-- Use an md5 hash of the system instructions as it's upload filename, and check
+  - `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+  - Use an crc32 checksum of the system instructions as it's upload filename, and check
   if the file exists before re-uploading it, ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3814](#3814)).
 
 

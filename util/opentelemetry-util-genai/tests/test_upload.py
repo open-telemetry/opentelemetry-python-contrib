@@ -159,7 +159,8 @@ class TestUploadCompletionHook(TestCase):
         )
         # all items should be consumed
         self.hook.shutdown()
-
+        # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
+        time.sleep(2)
         self.assertEqual(
             self.mock_fs.open.call_count,
             3,
