@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
+from dataclasses import dataclass
+from typing import Literal
 
 from google.genai import types as genai_types
 
 from opentelemetry.util.genai.types import (
-    BlobPart,
-    FileDataPart,
     FinishReason,
     InputMessage,
     MessagePart,
@@ -37,6 +37,23 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     TOOL = "tool"
+
+
+@dataclass
+class BlobPart:
+    data: bytes
+    mime_type: str
+    type: Literal["blob"] = "blob"
+
+
+@dataclass
+class FileDataPart:
+    mime_type: str
+    uri: str
+    type: Literal["file_data"] = "file_data"
+
+    class Config:
+        extra = "allow"
 
 
 _logger = logging.getLogger(__name__)

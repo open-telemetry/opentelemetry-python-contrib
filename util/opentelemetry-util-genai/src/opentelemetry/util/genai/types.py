@@ -55,23 +55,6 @@ class Text:
     type: Literal["text"] = "text"
 
 
-@dataclass
-class BlobPart:
-    data: bytes
-    mime_type: str
-    type: Literal["blob"] = "blob"
-
-
-@dataclass
-class FileDataPart:
-    mime_type: str
-    uri: str
-    type: Literal["file_data"] = "file_data"
-
-    class Config:
-        extra = "allow"
-
-
 MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
 
 
