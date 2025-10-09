@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from threading import RLock
+from time import time_ns
 from typing import Any
 from urllib.parse import urlparse
 
@@ -26,6 +27,15 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+
+_CLIENT_SPAN_TYPES = frozenset(
+    {
+        "generation",
+        "response",
+        "speech",
+        "transcription",
+    }
+)
 
 
 def _parse_iso8601(timestamp: str | None) -> int | None:
@@ -143,8 +153,10 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def _span_kind(self, span_data: Any) -> SpanKind:
         span_type = getattr(span_data, "type", None)
-        if span_type in {"generation", "response", "speech", "transcription"}:
+        if span_type in _CLIENT_SPAN_TYPES:
             return SpanKind.CLIENT
+        # Tool invocations (e.g. span type "function") execute inside the agent
+        # runtime, so there is no remote peer to model; we keep them INTERNAL.
         return SpanKind.INTERNAL
 
     def _span_name(self, operation: str, attributes: Mapping[str, Any]) -> str:
@@ -330,7 +342,9 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def on_trace_start(self, trace: AgentsTrace) -> None:
         attributes = self._base_attributes()
-        start_time = _parse_iso8601(getattr(trace, "started_at", None))
+        start_time = (
+            _parse_iso8601(getattr(trace, "started_at", None)) or time_ns()
+        )
 
         with self._lock:
             span = self._tracer.start_span(
