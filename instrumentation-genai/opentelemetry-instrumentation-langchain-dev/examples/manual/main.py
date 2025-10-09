@@ -353,13 +353,47 @@ def agent_demo(llm: ChatOpenAI):
         "What is the capital city of Brazil?",
     ]
 
-    print("\n--- LangGraph Agent Demo ---")
+    print("\n--- LangGraph Agent Demo (with manual Workflow/Agent) ---")
+    handler = None
+    try:  # Obtain util-genai handler if available
+        handler = get_telemetry_handler()
+    except Exception:
+        handler = None
+
+    workflow = agent_entity = None
+    if handler is not None:
+        from opentelemetry.util.genai.types import Workflow, AgentInvocation
+        # Start a workflow representing the overall demo run
+        workflow = Workflow(name="langgraph_demo", description="LangGraph capital & general QA demo")
+        workflow.framework = "langchain"
+        handler.start_workflow(workflow)
+        # Start an agent invocation to group the routing + tool decisions
+        agent_entity = AgentInvocation(
+            name="routing_agent",
+            operation="invoke_agent",
+            description="Classifier + capital specialist or general LLM",
+            model=getattr(llm, "model", None) or getattr(llm, "model_name", None),
+            tools=["get_capital"],
+        )
+        agent_entity.framework = "langchain"
+        agent_entity.parent_run_id = workflow.run_id
+        handler.start_agent(agent_entity)
+
     for q in demo_questions:
         print(f"\nUser Question: {q}")
         # Initialize state with additive messages list.
         result_state = app.invoke({"input": q, "messages": []})
         print("Agent Output:", result_state.get("output"))
         _flush_evaluations()
+
+    # Stop agent & workflow in reverse order
+    if handler is not None:
+        if agent_entity is not None:
+            agent_entity.output_result = "completed"
+            handler.stop_agent(agent_entity)
+        if workflow is not None:
+            workflow.final_output = "demo_complete"
+            handler.stop_workflow(workflow)
     print("--- End Agent Demo ---\n")
 
 
@@ -378,10 +412,10 @@ def main():
     api_key = token_manager.get_token()
 
     # ChatOpenAI setup
+    user_md = {"appkey": cisco_app_key} if cisco_app_key else {}
     llm = ChatOpenAI(
         model="gpt-4.1",
         temperature=0.1,
-        max_tokens=100,
         top_p=0.9,
         frequency_penalty=0.5,
         presence_penalty=0.5,
@@ -390,18 +424,18 @@ def main():
         api_key=api_key,
         base_url="https://chat-ai.cisco.com/openai/deployments/gpt-4.1",
         default_headers={"api-key": api_key},
-        model_kwargs={"user": '{"appkey": "' + cisco_app_key + '"}'},
+        model_kwargs={"user": json.dumps(user_md)} if user_md else {},  # always supply dict
     )
 
     # LLM invocation demo (simple)
-    llm_invocation_demo(llm)
+    # llm_invocation_demo(llm)
 
     # Embedding invocation demo
     # TODO: fix api keys
     # embedding_invocation_demo()
 
     # Run agent demo (tool + subagent). Safe if LangGraph unavailable.
-    # agent_demo(llm)
+    agent_demo(llm)
 
     _flush_evaluations()  # final flush before shutdown
 

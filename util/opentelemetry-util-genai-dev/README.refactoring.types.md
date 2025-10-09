@@ -199,6 +199,21 @@ Status: done
 Summary: Remove lingering span mutation from tool error handling.
 Details: `on_tool_error` now defers entirely to `_handle_error`; test harness falls back to JSON serialization when PyYAML is unavailable so suite can run in minimal environments.
 
+### 10-metrics-context-exemplar-fix
+Status: done
+Summary: Verified token usage and duration metrics emission pipeline after refactor.
+Details: Ensured LLM invocation spans are started via util handler early enough for active context so histogram recordings can attach exemplars. Current test suite (minimal) passes; exemplar-specific assertions deferred until metric reader exposes exemplars reliably in tests.
+
+### 11-tool-parent-span-linkage
+Status: done
+Summary: Confirmed tool Task entities correctly inherit parent_run_id and emit spans.
+Details: Reviewed `_build_task` and `on_tool_start` ensuring `parent_run_id` propagation. Added truncation + neutral attribute capture consistent with plan; no additional code changes required beyond existing implementation.
+
+### 12-implicit-parent-fallback
+Status: in-progress
+Summary: Introduce implicit workflow/agent parent stack so LangGraph executions without chain callbacks still parent tool & LLM spans.
+Details: Added `_context_stack_key` stack management in callback handler `_start_entity` / `_stop_entity`, plus `_resolve_parent` used by chain/tool/LLM start to attach to most recent workflow/agent when `parent_run_id` absent. Requires example update to start a workflow/agent explicitly for richer hierarchy.
+
 ## 14. Prompt for AI Coder (Execute Incrementally)
 You are a senior software engineer refactoring LangChain instrumentation to use `opentelemetry.util.genai` dataclasses and handler lifecycle.
 

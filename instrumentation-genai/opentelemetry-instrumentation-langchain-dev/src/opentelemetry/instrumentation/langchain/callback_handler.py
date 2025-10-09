@@ -157,6 +157,9 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         self._llms: dict[UUID, UtilLLMInvocation] = {}
         self._lock = Lock()
         self._payload_truncation_bytes = 8 * 1024
+        # Implicit parent entity stack (workflow/agent) for contexts where
+        # LangGraph or manual calls do not emit chain callbacks providing parent_run_id.
+        self._context_stack_key = "genai_active_entity_stack"
 
     @staticmethod
     def _get_name_from_callback(
@@ -301,6 +304,15 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
                 self._telemetry_handler.start_llm(entity)
             else:
                 self._telemetry_handler.start(entity)
+            if isinstance(entity, (UtilWorkflow, UtilAgent)):
+                stack = context_api.get_value(self._context_stack_key) or []
+                try:
+                    new_stack = list(stack) + [entity.run_id]
+                except Exception:  # pragma: no cover - defensive
+                    new_stack = [entity.run_id]
+                entity.context_token = context_api.attach(
+                    context_api.set_value(self._context_stack_key, new_stack)
+                )
         except Exception:  # pragma: no cover - defensive
             return
         self._register_entity(entity)
@@ -324,6 +336,20 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
         except Exception:  # pragma: no cover - defensive
             pass
         finally:
+            if isinstance(entity, (UtilWorkflow, UtilAgent)):
+                try:
+                    stack = context_api.get_value(self._context_stack_key) or []
+                    if stack and stack[-1] == entity.run_id:
+                        new_stack = list(stack[:-1])
+                        if entity.context_token is not None:
+                            context_api.detach(entity.context_token)
+                        context_api.attach(
+                            context_api.set_value(self._context_stack_key, new_stack)
+                        )
+                    elif entity.context_token is not None:  # pragma: no cover
+                        context_api.detach(entity.context_token)
+                except Exception:  # pragma: no cover - defensive
+                    pass
             self._unregister_entity(entity.run_id)
 
     def _fail_entity(self, entity: GenAI, error: BaseException) -> None:
@@ -350,6 +376,20 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
             pass
         finally:
             self._unregister_entity(entity.run_id)
+
+    def _resolve_parent(self, explicit_parent_run_id: Optional[UUID]) -> Optional[GenAI]:
+        """Resolve parent entity using explicit id or implicit context stack fallback."""
+        if explicit_parent_run_id is not None:
+            ent = self._get_entity(explicit_parent_run_id)
+            if ent is not None:
+                return ent
+        try:
+            stack = context_api.get_value(self._context_stack_key) or []
+            if stack:
+                return self._get_entity(stack[-1])
+        except Exception:  # pragma: no cover - defensive
+            return None
+        return None
 
     def _sanitize_metadata_dict(
         self, metadata: Optional[dict[str, Any]]
@@ -1002,7 +1042,12 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
 
         inv = UtilLLMInvocation(**llm_kwargs)
         inv.run_id = run_id
-        inv.parent_run_id = parent_run_id
+        if parent_run_id is not None:
+            inv.parent_run_id = parent_run_id
+        else:
+            implicit_parent = self._resolve_parent(parent_run_id)
+            if implicit_parent is not None:
+                inv.parent_run_id = implicit_parent.run_id
 
         parent_agent = self._find_agent(parent_run_id)
         if parent_agent is not None:
