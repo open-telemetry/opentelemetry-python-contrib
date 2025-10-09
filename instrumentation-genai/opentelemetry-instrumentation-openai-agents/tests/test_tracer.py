@@ -82,6 +82,7 @@ def test_generation_span_creates_client_span():
         assert (
             client_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
         )
+        assert client_span.name == "chat gpt-4o-mini"
         assert client_span.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 12
         assert client_span.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 3
         assert (

@@ -162,7 +162,9 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
         return SpanKind.INTERNAL
 
     def _span_name(self, operation: str, attributes: Mapping[str, Any]) -> str:
-        model = attributes.get(GenAI.GEN_AI_REQUEST_MODEL)
+        model = attributes.get(GenAI.GEN_AI_REQUEST_MODEL) or attributes.get(
+            GenAI.GEN_AI_RESPONSE_MODEL
+        )
         agent_name = attributes.get(GenAI.GEN_AI_AGENT_NAME)
         tool_name = attributes.get(GenAI.GEN_AI_TOOL_NAME)
 
