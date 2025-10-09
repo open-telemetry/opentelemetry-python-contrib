@@ -110,6 +110,13 @@ Always present:
 
 Aggregation flag affects batching only (emitters remain active either way).
 
+Emitted attributes (core):
+- `gen_ai.evaluation.name` – metric name
+- `gen_ai.evaluation.score.value` – numeric score (events only; metrics use the histogram value)
+- `gen_ai.evaluation.score.label` – categorical outcome if provided (e.g. pass/fail/medium)
+- `gen_ai.evaluation.passed` – boolean convenience flag (True/False) derived from label (`pass|passed|success|ok|true` => True, `fail|failed|error|false` => False) or backend flag (e.g. `deepeval.success`). Omitted when indeterminate (e.g. label `medium`).
+- Agent/workflow identity: `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.workflow.id` when available.
+
 ## 5. Third-Party Emitters (External Packages)
 - Traceloop span compatibility (`opentelemetry-util-genai-emitters-traceloop`).
 - Splunk evaluation aggregation / extra metrics (`opentelemetry-util-genai-emitters-splunk`).

@@ -120,6 +120,22 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
                 attrs[GEN_AI_PROVIDER_NAME] = provider
             if res.label is not None:
                 attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
+            # Derive boolean pass indicator. Prefer explicit label mapping; fallback to success semantics.
+            passed: bool | None = None
+            if res.label is not None:
+                if isinstance(res.label, str):
+                    lowered = res.label.lower()
+                    if lowered in {"pass", "passed", "success", "ok", "true"}:
+                        passed = True
+                    elif lowered in {"fail", "failed", "error", "false"}:
+                        passed = False
+            # If no label-derived value, look for underlying success flags in attributes (e.g. deepeval.success) or threshold comparison.
+            if passed is None and isinstance(res.attributes, dict):
+                success_flag = res.attributes.get("deepeval.success")
+                if isinstance(success_flag, bool):
+                    passed = success_flag
+            if passed is not None:
+                attrs["gen_ai.evaluation.passed"] = passed
             if res.error is not None:
                 attrs["error.type"] = res.error.type.__qualname__
             try:
@@ -208,6 +224,20 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
                 base_attrs[GEN_AI_EVALUATION_SCORE_VALUE] = res.score
             if res.label is not None:
                 base_attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
+            # Same passed derivation logic as metrics emitter for parity.
+            passed: bool | None = None
+            if res.label is not None and isinstance(res.label, str):
+                lowered = res.label.lower()
+                if lowered in {"pass", "passed", "success", "ok", "true"}:
+                    passed = True
+                elif lowered in {"fail", "failed", "error", "false"}:
+                    passed = False
+            if passed is None and isinstance(res.attributes, dict):
+                success_flag = res.attributes.get("deepeval.success")
+                if isinstance(success_flag, bool):
+                    passed = success_flag
+            if passed is not None:
+                base_attrs["gen_ai.evaluation.passed"] = passed
             if res.error is not None:
                 base_attrs["error.type"] = res.error.type.__qualname__
 

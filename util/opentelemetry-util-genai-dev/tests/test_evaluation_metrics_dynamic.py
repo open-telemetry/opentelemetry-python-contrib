@@ -67,3 +67,9 @@ def test_dynamic_metric_histograms_created_per_metric():
         for _, attrs in bias_hist.points
     ]
     assert labels == [None, "medium"]
+    # passed attribute only expected on labeled result (mapped from label 'medium' -> unknown so not set) => ensure first None, second absent or None unless mapping added
+    passed_flags = [
+        attrs.get("gen_ai.evaluation.passed") for _, attrs in bias_hist.points
+    ]
+    # label 'medium' is neither pass nor fail; so passed should remain None for both entries
+    assert passed_flags == [None, None]
