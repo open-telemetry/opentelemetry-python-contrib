@@ -124,9 +124,14 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
 
 
 def _apply_error_attributes(span: Span, error: Error) -> None:
-    """Apply status and error attributes common to error() paths."""
-    span.set_status(Status(StatusCode.ERROR, error.message))
+    """Apply status and error attributes common to error() paths.
+
+    The helper stays separate from the context manager's exception handling so we can
+    attach the GenAI-specific error attributes defined in the semantic conventions
+    (see https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md).
+    """
     if span.is_recording():
+        span.set_status(Status(StatusCode.ERROR, error.message))
         span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
 
 
