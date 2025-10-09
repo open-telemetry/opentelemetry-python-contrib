@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from dataclasses import asdict
 from typing import Any, Dict, List
 
@@ -34,6 +33,7 @@ from opentelemetry.util.genai.types import (
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
+    gen_ai_json_dumps,
     get_content_capturing_mode,
     is_experimental_mode,
 )
@@ -95,12 +95,14 @@ def _maybe_set_span_messages(
     if input_messages:
         span.set_attribute(
             GenAI.GEN_AI_INPUT_MESSAGES,
-            json.dumps([asdict(message) for message in input_messages]),
+            gen_ai_json_dumps([asdict(message) for message in input_messages]),
         )
     if output_messages:
         span.set_attribute(
             GenAI.GEN_AI_OUTPUT_MESSAGES,
-            json.dumps([asdict(message) for message in output_messages]),
+            gen_ai_json_dumps(
+                [asdict(message) for message in output_messages]
+            ),
         )
 
 
