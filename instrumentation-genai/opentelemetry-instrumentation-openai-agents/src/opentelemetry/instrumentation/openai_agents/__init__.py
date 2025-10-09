@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import importlib
-import os
 from typing import TYPE_CHECKING, Any, Collection, Protocol
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -97,10 +96,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_28_0.value,
         )
 
-        system_override = kwargs.get("system") or os.getenv(
-            "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SYSTEM"
-        )
-        system = _resolve_system(system_override)
+        system = _resolve_system(kwargs.get("system"))
 
         processor = _OpenAIAgentsSpanProcessor(tracer=tracer, system=system)
 
