@@ -64,14 +64,12 @@ from contextlib import contextmanager
 from typing import Iterator, Optional
 
 from opentelemetry import context as otel_context
-from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
     SpanKind,
-    Tracer,
     TracerProvider,
     get_tracer,
     set_span_in_context,
@@ -91,13 +89,12 @@ class TelemetryHandler:
     """
 
     def __init__(self, tracer_provider: TracerProvider | None = None):
-        tracer = get_tracer(
+        self._tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
             schema_url=Schemas.V1_36_0.value,
         )
-        self._tracer: Tracer = tracer or trace.get_tracer(__name__)
 
     def start_llm(
         self,
