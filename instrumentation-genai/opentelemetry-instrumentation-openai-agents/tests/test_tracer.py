@@ -68,7 +68,7 @@ def test_generation_span_creates_client_span():
             span for span in spans if span.kind is SpanKind.CLIENT
         )
 
-        assert client_span.attributes[GenAI.GEN_AI_SYSTEM] == "openai"
+        assert client_span.attributes["gen_ai.provider.name"] == "openai"
         assert client_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "chat"
         assert (
             client_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
@@ -104,7 +104,7 @@ def test_function_span_records_tool_attributes():
         )
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_NAME] == "fetch_weather"
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
-        assert tool_span.attributes[GenAI.GEN_AI_SYSTEM] == "openai"
+        assert tool_span.attributes["gen_ai.provider.name"] == "openai"
     finally:
         instrumentor.uninstrument()
         exporter.clear()

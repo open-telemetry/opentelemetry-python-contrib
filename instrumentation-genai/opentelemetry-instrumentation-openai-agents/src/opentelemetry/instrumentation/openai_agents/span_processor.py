@@ -37,6 +37,8 @@ _CLIENT_SPAN_TYPES = frozenset(
     }
 )
 
+_GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
+
 
 def _parse_iso8601(timestamp: str | None) -> int | None:
     """Return nanosecond timestamp for ISO8601 string."""
@@ -180,7 +182,7 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
         return operation
 
     def _base_attributes(self) -> dict[str, Any]:
-        return {GenAI.GEN_AI_SYSTEM: self._system}
+        return {_GEN_AI_PROVIDER_NAME: self._system}
 
     def _attributes_from_generation(self, span_data: Any) -> dict[str, Any]:
         attributes = self._base_attributes()
