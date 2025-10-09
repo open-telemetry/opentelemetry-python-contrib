@@ -258,9 +258,9 @@ def test_response_span_records_response_attributes():
         )
         assert response.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 42
         assert response.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 9
-        assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == [
-            "stop"
-        ]
+        assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == (
+            "stop",
+        )
     finally:
         instrumentor.uninstrument()
         exporter.clear()
