@@ -47,14 +47,20 @@ class _EvaluationEmitterBase(EmitterMeta):
 
 
 class EvaluationMetricsEmitter(_EvaluationEmitterBase):
-    """Records evaluation scores to a unified histogram."""
+    """Records evaluation scores to metric-specific histograms.
+
+    Instead of a single shared histogram (gen_ai.evaluation.score), we emit to
+    gen_ai.evaluation.score.<metric_name>. This improves downstream aggregation
+    clarity at the cost of additional instruments. A callable factory provided
+    by the handler supplies (and caches) histogram instances.
+    """
 
     role = "evaluation_metrics"
 
     def __init__(
-        self, histogram
-    ) -> None:  # histogram: opentelemetry.metrics.Histogram
-        self._hist = histogram
+        self, histogram_factory
+    ) -> None:  # callable(metric_name)->Histogram|None
+        self._hist_factory = histogram_factory
 
     def on_evaluation_results(  # type: ignore[override]
         self,
@@ -65,32 +71,48 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
         if invocation is None:
             return
         for res in results:
-            if isinstance(res.score, (int, float)):
-                attrs: Dict[str, Any] = {
-                    GEN_AI_OPERATION_NAME: "evaluation",
-                    GEN_AI_EVALUATION_NAME: res.metric_name,
-                }
-                # If the source invocation carried agent identity, propagate
-                agent_name = getattr(invocation, "agent_name", None)
-                agent_id = getattr(invocation, "agent_id", None)
-                if agent_name:
-                    attrs["gen_ai.agent.name"] = agent_name
-                if agent_id:
-                    attrs["gen_ai.agent.id"] = agent_id
-                req_model = _get_request_model(invocation)
-                if req_model:
-                    attrs[GEN_AI_REQUEST_MODEL] = req_model
-                provider = getattr(invocation, "provider", None)
-                if provider:
-                    attrs[GEN_AI_PROVIDER_NAME] = provider
-                if res.label is not None:
-                    attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
-                if res.error is not None:
-                    attrs["error.type"] = res.error.type.__qualname__
-                try:
-                    self._hist.record(res.score, attributes=attrs)  # type: ignore[attr-defined]
-                except Exception:  # pragma: no cover - defensive
-                    pass
+            if not isinstance(res.score, (int, float)):
+                continue
+            metric_name = getattr(res, "metric_name", "unknown")
+            histogram = None
+            try:
+                histogram = (
+                    self._hist_factory(metric_name)
+                    if self._hist_factory
+                    else None
+                )  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive
+                histogram = None
+            if histogram is None:
+                continue
+            attrs: Dict[str, Any] = {
+                GEN_AI_OPERATION_NAME: "evaluation",
+                GEN_AI_EVALUATION_NAME: res.metric_name,
+            }
+            # If the source invocation carried agent identity, propagate
+            agent_name = getattr(invocation, "agent_name", None)
+            agent_id = getattr(invocation, "agent_id", None)
+            workflow_id = getattr(invocation, "workflow_id", None)
+            if agent_name:
+                attrs["gen_ai.agent.name"] = agent_name
+            if agent_id:
+                attrs["gen_ai.agent.id"] = agent_id
+            if workflow_id:
+                attrs["gen_ai.workflow.id"] = workflow_id
+            req_model = _get_request_model(invocation)
+            if req_model:
+                attrs[GEN_AI_REQUEST_MODEL] = req_model
+            provider = getattr(invocation, "provider", None)
+            if provider:
+                attrs[GEN_AI_PROVIDER_NAME] = provider
+            if res.label is not None:
+                attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
+            if res.error is not None:
+                attrs["error.type"] = res.error.type.__qualname__
+            try:
+                histogram.record(res.score, attributes=attrs)  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive
+                pass
 
 
 class EvaluationEventsEmitter(_EvaluationEmitterBase):
@@ -145,10 +167,13 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
             }
             agent_name = getattr(invocation, "agent_name", None)
             agent_id = getattr(invocation, "agent_id", None)
+            workflow_id = getattr(invocation, "workflow_id", None)
             if agent_name:
                 base_attrs["gen_ai.agent.name"] = agent_name
             if agent_id:
                 base_attrs["gen_ai.agent.id"] = agent_id
+            if workflow_id:
+                base_attrs["gen_ai.workflow.id"] = workflow_id
             if req_model:
                 base_attrs[GEN_AI_REQUEST_MODEL] = req_model
             if provider:

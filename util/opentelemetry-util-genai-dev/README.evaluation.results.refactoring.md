@@ -277,8 +277,9 @@ Add to `CHANGELOG.md` (splunk emitter package):
 | Key | Layer | Notes |
 |-----|-------|-------|
 | gen_ai.evaluation.name | Event + Metrics attr | Metric identity (redundant when embedded in metric name) |
-| gen_ai.evaluation.score.value | Event | Numeric score |
-| gen_ai.evaluation.score.label | Event + Metric attr | Low cardinality bucket |
+| gen_ai.evaluation.score.value | Event | Numeric score (events retain unified key for backward compatibility) |
+| gen_ai.evaluation.score.label | Event + Metric attr | Low cardinality bucket (label) |
+| gen_ai.evaluation.score.<metric> | Metric instrument | Numeric score distribution per evaluator |
 | gen_ai.evaluation.explanation | Event | Human-readable reasoning |
 | gen_ai.response.id | Event | Correlate when span missing |
 | gen_ai.evaluation.result.<metric_name> | Metric | One per evaluation type |

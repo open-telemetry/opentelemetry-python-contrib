@@ -112,7 +112,7 @@ Run the demo.
 
 - Each evaluation result produces its own `gen_ai.evaluation` event; the builtin length evaluator always yields a numeric score.
 - If optional evaluator packages (e.g., `opentelemetry-util-genai-evals-nltk`) are installed, include them in `OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS` alongside `length` (e.g., `length,nltk_sentiment`). These packages manage their own dependencies such as NLTK/VADER.
-- Histogram `gen_ai.evaluation.score` receives one point per numeric result emitted by the active evaluators (length is always numeric; additional evaluators may emit numeric or error-only results depending on their dependencies).
+- Histograms `gen_ai.evaluation.score.<metric>` each receive one point per numeric result emitted by the active evaluators (length is always numeric; additional evaluators may emit numeric or error-only results depending on their dependencies).
 - Invocation span attribute `gen_ai.evaluation.executed=true` set when at least one evaluator ran.
 
 If not visible:
@@ -144,7 +144,7 @@ Run the demo.
 
 Expect (once adapter implemented):
 - Additional per-result events for metrics such as `toxicity`, `bias`, and the builtin `length`.
-- Histogram `gen_ai.evaluation.score` includes new metric points (assuming numeric scores).
+- Corresponding histogram `gen_ai.evaluation.score.<metric>` includes new metric points (assuming numeric scores).
 - Errors (e.g., model not loaded) appear as evaluation events with the `error` field populated instead of a numeric score.
 
 Troubleshooting:
@@ -175,7 +175,7 @@ Run the demo.
 
 Expect:
 - Additional evaluation results with metric name `sentiment` containing the VADER-derived score and label (`positive`, `neutral`, `negative`).
-- Histogram `gen_ai.evaluation.score` receives an extra point per invocation for the sentiment result when the dependency is available.
+- Histogram `gen_ai.evaluation.score.sentiment` receives an extra point per invocation for the sentiment result when the dependency is available.
 - If NLTK or the VADER lexicon is missing the evaluator emits an `EvaluationResult` with the `error` field populated (no score) so that failures remain observable.
 
 Troubleshooting:
@@ -269,7 +269,7 @@ Emitted today when corresponding emitters are enabled:
 - gen_ai.workflow.duration (Histogram)
 - gen_ai.agent.duration (Histogram)
 - gen_ai.task.duration (Histogram)
-- gen_ai.evaluation.score (Histogram of numeric evaluation scores)
+- gen_ai.evaluation.score.<metric> (Histogram of numeric evaluation scores per evaluator)
 
 Token usage attributes also appear on spans (gen_ai.usage.input_tokens / output_tokens) and are bucketed into gen_ai.client.token.usage when MetricsEmitter is active.
 

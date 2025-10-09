@@ -136,7 +136,7 @@ def build_emitter_pipeline(
             name="EvaluationMetrics",
             category=_CATEGORY_EVALUATION,
             factory=lambda ctx: EvaluationMetricsEmitter(
-                ctx.evaluation_histogram
+                ctx.evaluation_histogram  # now a callable returning histogram per metric
             ),
         )
     )

@@ -298,9 +298,50 @@ class TraceloopCallbackHandler(BaseCallbackHandler):
                 self._telemetry_handler.start_workflow(entity)
             elif isinstance(entity, UtilAgent):
                 self._telemetry_handler.start_agent(entity)
+                # Provide default identity fields if not set
+                try:
+                    if getattr(entity, "agent_id", None) is None:
+                        entity.agent_id = str(entity.run_id)
+                    # Propagate workflow id from explicit parent or context stack
+                    parent_id = getattr(entity, "parent_run_id", None)
+                    parent_entity = None
+                    if parent_id is not None:
+                        parent_entity = self._get_entity(parent_id)
+                    if parent_entity is None:
+                        # attempt implicit parent (top of stack)
+                        stack = context_api.get_value(self._context_stack_key) or []
+                        if stack:
+                            parent_entity = self._get_entity(stack[-1])
+                    if parent_entity is not None:
+                        if isinstance(parent_entity, UtilWorkflow):
+                            entity.workflow_id = str(parent_entity.run_id)
+                        else:
+                            wf_id = getattr(parent_entity, "workflow_id", None)
+                            if wf_id is not None:
+                                entity.workflow_id = wf_id
+                except Exception:  # pragma: no cover - defensive
+                    pass
             elif isinstance(entity, UtilTask):
                 self._telemetry_handler.start_task(entity)
             elif isinstance(entity, UtilLLMInvocation):
+                # Propagate agent/workflow identity if parent available
+                try:
+                    parent = self._resolve_parent(entity.parent_run_id)
+                    if parent is not None:
+                        if getattr(entity, "agent_name", None) is None and hasattr(parent, "agent_name"):
+                            entity.agent_name = getattr(parent, "agent_name", None)
+                        if getattr(entity, "agent_id", None) is None and hasattr(parent, "agent_id"):
+                            entity.agent_id = getattr(parent, "agent_id", None)
+                        # Workflow id propagation
+                        wf_id = None
+                        if hasattr(parent, "workflow_id"):
+                            wf_id = getattr(parent, "workflow_id")
+                        elif parent and parent.__class__.__name__ == "Workflow":
+                            wf_id = str(parent.run_id)
+                        if wf_id and getattr(entity, "workflow_id", None) is None:
+                            entity.workflow_id = wf_id
+                except Exception:  # pragma: no cover
+                    pass
                 self._telemetry_handler.start_llm(entity)
             else:
                 self._telemetry_handler.start(entity)

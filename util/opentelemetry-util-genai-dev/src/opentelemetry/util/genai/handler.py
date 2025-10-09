@@ -114,12 +114,33 @@ class TelemetryHandler:
             meter = meter_provider.get_meter(__name__)
         else:
             meter = _metrics.get_meter(__name__)
-        # Single histogram for all evaluation scores (name stable across metrics)
-        self._evaluation_histogram = meter.create_histogram(
-            name="gen_ai.evaluation.score",
-            unit="1",
-            description="Scores produced by GenAI evaluators in [0,1] when applicable",
-        )
+        # Dynamic histograms per evaluation metric (gen_ai.evaluation.score.<metric_name>)
+        # We retain a cache to avoid recreating instrument objects repeatedly.
+        self._evaluation_histograms: dict[str, Any] = {}
+
+        def _get_eval_histogram(metric_name: str):
+            from re import sub
+
+            safe_name = (
+                sub(r"[^a-zA-Z0-9_.]", "_", metric_name.strip().lower())
+                or "unnamed"
+            )
+            full_name = f"gen_ai.evaluation.score.{safe_name}"
+            hist = self._evaluation_histograms.get(full_name)
+            if hist is not None:
+                return hist
+            try:
+                hist = meter.create_histogram(
+                    name=full_name,
+                    unit="1",
+                    description=f"Scores produced by GenAI evaluator '{metric_name}' in [0,1] when applicable",
+                )
+                self._evaluation_histograms[full_name] = hist
+            except Exception:  # pragma: no cover - defensive
+                return None
+            return hist
+
+        self._get_eval_histogram = _get_eval_histogram  # type: ignore[attr-defined]
 
         settings = parse_env()
         self._completion_callbacks: list[CompletionCallback] = []
@@ -128,7 +149,7 @@ class TelemetryHandler:
             meter=meter,
             event_logger=self._event_logger,
             content_logger=self._content_logger,
-            evaluation_histogram=self._evaluation_histogram,
+            evaluation_histogram=self._get_eval_histogram,
             settings=settings,
         )
         self._emitter = composite

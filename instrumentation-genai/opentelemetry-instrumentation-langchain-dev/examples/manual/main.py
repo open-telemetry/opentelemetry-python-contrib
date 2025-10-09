@@ -361,6 +361,7 @@ def agent_demo(llm: ChatOpenAI):
         handler = None
 
     workflow = agent_entity = None
+    transcript: list[str] = []  # accumulate Q/A for agent evaluation
     if handler is not None:
         from opentelemetry.util.genai.types import Workflow, AgentInvocation
         # Start a workflow representing the overall demo run
@@ -376,6 +377,10 @@ def agent_demo(llm: ChatOpenAI):
             tools=["get_capital"],
         )
         agent_entity.framework = "langchain"
+        agent_entity.system_instructions = (
+            "You are a routing agent. Decide if a user question asks for a capital city; "
+            "if so, delegate to a capital lookup tool, otherwise use the general LLM."
+        )
         agent_entity.parent_run_id = workflow.run_id
         handler.start_agent(agent_entity)
 
@@ -383,13 +388,21 @@ def agent_demo(llm: ChatOpenAI):
         print(f"\nUser Question: {q}")
         # Initialize state with additive messages list.
         result_state = app.invoke({"input": q, "messages": []})
-        print("Agent Output:", result_state.get("output"))
+        answer = result_state.get("output") or ""
+        print("Agent Output:", answer)
+        transcript.append(f"Q: {q}\nA: {answer}")
         _flush_evaluations()
 
     # Stop agent & workflow in reverse order
     if handler is not None:
         if agent_entity is not None:
-            agent_entity.output_result = "completed"
+            # Provide combined transcript as input_context for evaluator richness
+            if transcript and not agent_entity.input_context:
+                agent_entity.input_context = "\n\n".join(transcript)
+            # Set a meaningful summarized result as final agent output
+            agent_entity.output_result = (
+                "Answered {} questions; provided capitals where applicable.".format(len(demo_questions))
+            )
             handler.stop_agent(agent_entity)
         if workflow is not None:
             workflow.final_output = "demo_complete"

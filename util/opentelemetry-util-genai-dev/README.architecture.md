@@ -105,7 +105,7 @@ Emits **one** structured log record summarizing an entire LLM invocation (inputs
 
 ### 4.4 Evaluation Emitters
 Always present:
-- `EvaluationMetricsEmitter` – histogram `gen_ai.evaluation.score` per numeric score.
+- `EvaluationMetricsEmitter` – dynamic histograms `gen_ai.evaluation.score.<metric>` per numeric score (e.g. `gen_ai.evaluation.score.bias`).
 - `EvaluationEventsEmitter` – event per `EvaluationResult`; optional legacy variant via `OTEL_GENAI_EVALUATION_EVENT_LEGACY`.
 
 Aggregation flag affects batching only (emitters remain active either way).

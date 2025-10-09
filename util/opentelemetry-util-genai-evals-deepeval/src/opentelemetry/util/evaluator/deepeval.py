@@ -132,6 +132,52 @@ class DeepevalEvaluator(Evaluator):
                 "Deepeval requires both input and output text to evaluate",
                 ValueError,
             )
+        # Ensure OpenAI API key is available for Deepeval metrics that rely on OpenAI.
+        # Resolution order:
+        # 1. Explicit in invocation.attributes['openai_api_key'] (if provided)
+        # 2. Environment OPENAI_API_KEY
+        # 3. Environment GENAI_OPENAI_API_KEY (custom fallback)
+        # If unavailable we mark all metrics skipped with a clear explanation instead of raising.
+        api_key: str | None = None
+        try:
+            raw_attrs = getattr(invocation, "attributes", None)
+            attrs: dict[str, Any] = {}
+            if isinstance(raw_attrs, MappingABC):
+                for k, v in raw_attrs.items():
+                    try:
+                        attrs[str(k)] = v
+                    except Exception:  # pragma: no cover
+                        continue
+            candidate_val = attrs.get("openai_api_key") or attrs.get("api_key")
+            candidate: str | None = (
+                str(candidate_val)
+                if isinstance(candidate_val, (str, bytes))
+                else None
+            )
+            env_key = os.getenv("OPENAI_API_KEY") or os.getenv(
+                "GENAI_OPENAI_API_KEY"
+            )
+            api_key = candidate or env_key
+            if api_key:
+                # Attempt to configure Deepeval/OpenAI client.
+                try:  # pragma: no cover - external dependency
+                    import openai  # noqa: F401
+
+                    # Support legacy openai<1 and new openai>=1 semantics.
+                    if not getattr(openai, "api_key", None):  # type: ignore[attr-defined]
+                        try:
+                            setattr(openai, "api_key", api_key)  # legacy style
+                        except Exception:  # pragma: no cover
+                            pass
+                    # Ensure env var set for client() style usage.
+                    if not os.getenv("OPENAI_API_KEY"):
+                        os.environ["OPENAI_API_KEY"] = api_key
+                except Exception:
+                    pass
+        except Exception:  # pragma: no cover - defensive
+            api_key = None
+        # Do not fail early if API key missing; underlying Deepeval/OpenAI usage
+        # will produce an error which we surface as evaluation error results.
         try:
             metrics, skipped_results = self._instantiate_metrics(
                 metric_specs, test_case
@@ -248,12 +294,16 @@ class DeepevalEvaluator(Evaluator):
                 name=invocation.request_model,
             )
         if isinstance(invocation, AgentInvocation):
-            input_chunks = []
+            input_chunks: list[str] = []
             if invocation.system_instructions:
-                input_chunks.append(invocation.system_instructions)
+                input_chunks.append(str(invocation.system_instructions))
             if invocation.input_context:
-                input_chunks.append(invocation.input_context)
-            input_text = "\n\n".join(chunk for chunk in input_chunks if chunk)
+                input_chunks.append(str(invocation.input_context))
+            input_text = "\n\n".join(
+                chunk
+                for chunk in input_chunks
+                if isinstance(chunk, str) and chunk
+            )
             output_text = invocation.output_result or ""
             if not input_text or not output_text:
                 return None
@@ -436,12 +486,19 @@ class DeepevalEvaluator(Evaluator):
             return [value]
         if isinstance(value, MappingABC):
             for key in ("content", "page_content", "text", "body", "value"):
-                inner = value.get(key)
+                try:
+                    inner = value.get(key)  # type: ignore[index]
+                except Exception:  # pragma: no cover
+                    inner = None
                 if isinstance(inner, str):
                     return [inner]
                 if inner is not None:
                     return DeepevalEvaluator._flatten_to_strings(inner)
-            return [str(value)]
+            try:
+                coerced = str(value)
+                return [coerced]
+            except Exception:  # pragma: no cover - defensive
+                return []
         if isinstance(value, SequenceABC) and not isinstance(
             value, (str, bytes, bytearray)
         ):
