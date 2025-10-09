@@ -46,24 +46,24 @@ def _apply_common_span_attributes(
 
     Returns (genai_attributes) for use with metrics.
     """
-    request_model = invocation.request_model
-    provider = invocation.provider
     span.update_name(
-        f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}".strip()
+        f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}".strip()
     )
     span.set_attribute(
         GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
     )
-    if request_model:
-        span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
-    if provider is not None:
-        # TODO: clean provider name to match GenAiProviderNameValues?
-        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider)
-
-    finish_reasons = [gen.finish_reason for gen in invocation.output_messages]
-    if finish_reasons:
+    if invocation.request_model:
         span.set_attribute(
-            GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
+            GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model
+        )
+    if invocation.provider is not None:
+        # TODO: clean provider name to match GenAiProviderNameValues?
+        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, invocation.provider)
+
+    if invocation.output_messages:
+        span.set_attribute(
+            GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
+            [gen.finish_reason for gen in invocation.output_messages],
         )
 
     if invocation.response_model_name is not None:
