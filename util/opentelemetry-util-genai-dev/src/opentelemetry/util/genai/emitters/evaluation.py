@@ -92,6 +92,19 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
             # If the source invocation carried agent identity, propagate
             agent_name = getattr(invocation, "agent_name", None)
             agent_id = getattr(invocation, "agent_id", None)
+            # Fallbacks: if instrumentation didn't populate agent_name/id fields explicitly but
+            # the invocation is an AgentInvocation, derive them from core fields to preserve identity.
+            try:
+                from opentelemetry.util.genai.types import (
+                    AgentInvocation as _AI,  # local import to avoid cycle
+                )
+
+                if agent_name is None and isinstance(invocation, _AI):  # type: ignore[attr-defined]
+                    agent_name = getattr(invocation, "name", None)
+                if agent_id is None and isinstance(invocation, _AI):  # type: ignore[attr-defined]
+                    agent_id = str(getattr(invocation, "run_id", "")) or None
+            except Exception:  # pragma: no cover - defensive
+                pass
             workflow_id = getattr(invocation, "workflow_id", None)
             if agent_name:
                 attrs["gen_ai.agent.name"] = agent_name
@@ -167,6 +180,17 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
             }
             agent_name = getattr(invocation, "agent_name", None)
             agent_id = getattr(invocation, "agent_id", None)
+            try:
+                from opentelemetry.util.genai.types import (
+                    AgentInvocation as _AI,  # local import to avoid cycle
+                )
+
+                if agent_name is None and isinstance(invocation, _AI):  # type: ignore[attr-defined]
+                    agent_name = getattr(invocation, "name", None)
+                if agent_id is None and isinstance(invocation, _AI):  # type: ignore[attr-defined]
+                    agent_id = str(getattr(invocation, "run_id", "")) or None
+            except Exception:  # pragma: no cover - defensive
+                pass
             workflow_id = getattr(invocation, "workflow_id", None)
             if agent_name:
                 base_attrs["gen_ai.agent.name"] = agent_name
