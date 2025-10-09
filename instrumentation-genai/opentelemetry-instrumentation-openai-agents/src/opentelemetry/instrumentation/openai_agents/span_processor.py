@@ -34,6 +34,8 @@ _CLIENT_SPAN_TYPES = frozenset(
         "response",
         "speech",
         "transcription",
+        "agent",
+        "agent_creation",
     }
 )
 
@@ -141,12 +143,24 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def _operation_name(self, span_data: Any) -> str:
         span_type = getattr(span_data, "type", None)
+        explicit_operation = getattr(span_data, "operation", None)
+        normalized_operation = (
+            explicit_operation.strip().lower()
+            if isinstance(explicit_operation, str)
+            else None
+        )
         if span_type == "generation":
             if _looks_like_chat(getattr(span_data, "input", None)):
                 return GenAI.GenAiOperationNameValues.CHAT.value
             return GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
         if span_type == "agent":
+            if normalized_operation in {"create", "create_agent"}:
+                return GenAI.GenAiOperationNameValues.CREATE_AGENT.value
+            if normalized_operation in {"invoke", "invoke_agent"}:
+                return GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
             return GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        if span_type == "agent_creation":
+            return GenAI.GenAiOperationNameValues.CREATE_AGENT.value
         if span_type == "function":
             return GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
         if span_type == "response":
@@ -303,6 +317,31 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
         return attributes
 
+    def _attributes_from_agent_creation(
+        self, span_data: Any
+    ) -> dict[str, Any]:
+        attributes = self._base_attributes()
+        attributes[GenAI.GEN_AI_OPERATION_NAME] = (
+            GenAI.GenAiOperationNameValues.CREATE_AGENT.value
+        )
+
+        name = getattr(span_data, "name", None)
+        if name:
+            attributes[GenAI.GEN_AI_AGENT_NAME] = name
+        description = getattr(span_data, "description", None)
+        if description:
+            attributes[GenAI.GEN_AI_AGENT_DESCRIPTION] = description
+        agent_id = getattr(span_data, "agent_id", None) or getattr(
+            span_data, "id", None
+        )
+        if agent_id:
+            attributes[GenAI.GEN_AI_AGENT_ID] = agent_id
+        model = getattr(span_data, "model", None)
+        if model:
+            attributes[GenAI.GEN_AI_REQUEST_MODEL] = model
+
+        return attributes
+
     def _attributes_from_function(self, span_data: Any) -> dict[str, Any]:
         attributes = self._base_attributes()
         attributes[GenAI.GEN_AI_OPERATION_NAME] = (
@@ -330,7 +369,15 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
         if span_type == "response":
             return self._attributes_from_response(span_data)
         if span_type == "agent":
+            operation = getattr(span_data, "operation", None)
+            if isinstance(operation, str) and operation.strip().lower() in {
+                "create",
+                "create_agent",
+            }:
+                return self._attributes_from_agent_creation(span_data)
             return self._attributes_from_agent(span_data)
+        if span_type == "agent_creation":
+            return self._attributes_from_agent_creation(span_data)
         if span_type == "function":
             return self._attributes_from_function(span_data)
         if span_type in {

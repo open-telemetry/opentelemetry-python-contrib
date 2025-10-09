@@ -12,6 +12,7 @@ sys.modules.pop("agents", None)
 sys.modules.pop("agents.tracing", None)
 
 from agents.tracing import (  # noqa: E402
+    agent_span,
     function_span,
     generation_span,
     set_trace_processors,
@@ -115,6 +116,45 @@ def test_function_span_records_tool_attributes():
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_NAME] == "fetch_weather"
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
         assert tool_span.attributes["gen_ai.provider.name"] == "openai"
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_agent_create_span_records_attributes():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        with trace("workflow"):
+            with agent_span(
+                operation="create",
+                name="support_bot",
+                description="Answers support questions",
+                agent_id="agt_123",
+                model="gpt-4o-mini",
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        create_span = next(
+            span
+            for span in spans
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.CREATE_AGENT.value
+        )
+
+        assert create_span.kind is SpanKind.CLIENT
+        assert create_span.name == "create_agent support_bot"
+        assert create_span.attributes["gen_ai.provider.name"] == "openai"
+        assert create_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
+        assert (
+            create_span.attributes[GenAI.GEN_AI_AGENT_DESCRIPTION]
+            == "Answers support questions"
+        )
+        assert create_span.attributes[GenAI.GEN_AI_AGENT_ID] == "agt_123"
+        assert (
+            create_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
+        )
     finally:
         instrumentor.uninstrument()
         exporter.clear()

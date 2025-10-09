@@ -14,6 +14,7 @@ __all__ = [
     "get_trace_provider",
     "set_trace_processors",
     "trace",
+    "agent_span",
     "generation_span",
     "function_span",
     "AgentSpanData",
@@ -27,6 +28,10 @@ class AgentSpanData:
     name: str | None = None
     tools: list[str] | None = None
     output_type: str | None = None
+    description: str | None = None
+    agent_id: str | None = None
+    model: str | None = None
+    operation: str | None = None
 
     @property
     def type(self) -> str:
@@ -168,6 +173,17 @@ def trace(name: str, **kwargs: Any):
 @contextmanager
 def generation_span(**kwargs: Any):
     data = GenerationSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def agent_span(**kwargs: Any):
+    data = AgentSpanData(**kwargs)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:
