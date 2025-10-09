@@ -12,6 +12,7 @@ from .traces import Trace
 SPAN_TYPE_AGENT = "agent"
 SPAN_TYPE_FUNCTION = "function"
 SPAN_TYPE_GENERATION = "generation"
+SPAN_TYPE_RESPONSE = "response"
 
 __all__ = [
     "TraceProvider",
@@ -21,9 +22,11 @@ __all__ = [
     "agent_span",
     "generation_span",
     "function_span",
+    "response_span",
     "AgentSpanData",
     "GenerationSpanData",
     "FunctionSpanData",
+    "ResponseSpanData",
 ]
 
 
@@ -64,6 +67,15 @@ class GenerationSpanData:
     @property
     def type(self) -> str:
         return SPAN_TYPE_GENERATION
+
+
+@dataclass
+class ResponseSpanData:
+    response: Any = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_RESPONSE
 
 
 class _ProcessorFanout(TracingProcessor):
@@ -199,6 +211,17 @@ def agent_span(**kwargs: Any):
 @contextmanager
 def function_span(**kwargs: Any):
     data = FunctionSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def response_span(**kwargs: Any):
+    data = ResponseSpanData(**kwargs)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

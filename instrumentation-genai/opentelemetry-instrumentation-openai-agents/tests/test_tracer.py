@@ -15,6 +15,7 @@ from agents.tracing import (  # noqa: E402
     agent_span,
     function_span,
     generation_span,
+    response_span,
     set_trace_processors,
     trace,
 )
@@ -89,6 +90,37 @@ def test_generation_span_creates_client_span():
         assert (
             client_span.attributes[ServerAttributes.SERVER_ADDRESS]
             == "api.openai.com"
+        )
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_generation_span_without_roles_uses_text_completion():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        with trace("workflow"):
+            with generation_span(
+                input=[{"content": "tell me a joke"}],
+                model="gpt-4o-mini",
+                model_config={"temperature": 0.7},
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        completion_span = next(
+            span
+            for span in spans
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
+        )
+
+        assert completion_span.kind is SpanKind.CLIENT
+        assert completion_span.name == "text_completion gpt-4o-mini"
+        assert (
+            completion_span.attributes[GenAI.GEN_AI_REQUEST_MODEL]
+            == "gpt-4o-mini"
         )
     finally:
         instrumentor.uninstrument()
@@ -184,6 +216,51 @@ def test_agent_name_override_applied_to_agent_spans():
             agent_span_record.attributes[GenAI.GEN_AI_AGENT_NAME]
             == "Travel Concierge"
         )
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_records_response_attributes():
+    instrumentor, exporter = _instrument_with_provider()
+
+    class _Usage:
+        def __init__(self, input_tokens: int, output_tokens: int) -> None:
+            self.input_tokens = input_tokens
+            self.output_tokens = output_tokens
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-123"
+            self.model = "gpt-4o-mini"
+            self.usage = _Usage(42, 9)
+            self.output = [{"finish_reason": "stop"}]
+
+    try:
+        with trace("workflow"):
+            with response_span(response=_Response()):
+                pass
+
+        spans = exporter.get_finished_spans()
+        response = next(
+            span
+            for span in spans
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.CHAT.value
+        )
+
+        assert response.kind is SpanKind.CLIENT
+        assert response.name == "chat gpt-4o-mini"
+        assert response.attributes["gen_ai.provider.name"] == "openai"
+        assert response.attributes[GenAI.GEN_AI_RESPONSE_ID] == "resp-123"
+        assert (
+            response.attributes[GenAI.GEN_AI_RESPONSE_MODEL] == "gpt-4o-mini"
+        )
+        assert response.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 42
+        assert response.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 9
+        assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == [
+            "stop"
+        ]
     finally:
         instrumentor.uninstrument()
         exporter.clear()
