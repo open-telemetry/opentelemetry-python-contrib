@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from threading import RLock
 from typing import Any
 from urllib.parse import urlparse
@@ -26,6 +28,221 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+
+try:  # pragma: no cover - util may be absent in minimal environments
+    from opentelemetry.util.genai.utils import gen_ai_json_dumps
+except Exception:  # pragma: no cover - fallback to builtin json
+
+    def gen_ai_json_dumps(value: Any) -> str:
+        return json.dumps(value, default=str)
+
+
+_GEN_AI_SYSTEM_INSTRUCTIONS = getattr(
+    GenAI, "GEN_AI_SYSTEM_INSTRUCTIONS", "gen_ai.system_instructions"
+)
+_GEN_AI_INPUT_MESSAGES = getattr(
+    GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages"
+)
+_GEN_AI_OUTPUT_MESSAGES = getattr(
+    GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
+)
+_GEN_AI_TOOL_DEFINITIONS = getattr(
+    GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
+_GEN_AI_TOOL_CALL_ARGUMENTS = getattr(
+    GenAI, "GEN_AI_TOOL_CALL_ARGUMENTS", "gen_ai.tool.call.arguments"
+)
+_GEN_AI_TOOL_CALL_RESULT = getattr(
+    GenAI, "GEN_AI_TOOL_CALL_RESULT", "gen_ai.tool.call.result"
+)
+
+_INPUT_EVENT_NAME = "gen_ai.input"
+_OUTPUT_EVENT_NAME = "gen_ai.output"
+_TOOL_ARGS_EVENT_NAME = "gen_ai.tool.arguments"
+_TOOL_RESULT_EVENT_NAME = "gen_ai.tool.result"
+
+
+def _safe_json_loads(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+    return value
+
+
+def _to_primitive(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, Mapping):
+        return {
+            str(k): _to_primitive(v) for k, v in value.items() if v is not None
+        }
+
+    if isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    ):
+        return [_to_primitive(item) for item in value]
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        try:
+            return _to_primitive(model_dump())
+        except Exception:  # pragma: no cover - defensive fallback
+            pass
+
+    as_dict = getattr(value, "dict", None)
+    if callable(as_dict):
+        try:
+            return _to_primitive(as_dict())
+        except Exception:  # pragma: no cover - defensive fallback
+            pass
+
+    if hasattr(value, "__dict__") and value.__dict__:
+        return {
+            key: _to_primitive(val)
+            for key, val in vars(value).items()
+            if not key.startswith("_")
+        }
+
+    return str(value)
+
+
+def _ensure_sequence(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, (str, bytes, bytearray)):
+        return [value]
+    if isinstance(value, Sequence):
+        return list(value)
+    return [value]
+
+
+def _extract_field(container: Any, field: str) -> Any:
+    if isinstance(container, Mapping) and field in container:
+        return container[field]
+    return getattr(container, field, None)
+
+
+def _convert_part(part: Any) -> dict[str, Any]:
+    raw = _to_primitive(part)
+
+    if isinstance(raw, Mapping):
+        part_type = raw.get("type") or raw.get("kind")
+        if not part_type and "text" in raw:
+            part_type = "text"
+
+        if part_type:
+            normalized_type = str(part_type).lower()
+        else:
+            normalized_type = None
+
+        if normalized_type in {"text", "input_text", "output_text"}:
+            content = raw.get("text")
+            if content is None:
+                content = raw.get("content")
+            if content is None:
+                content = raw
+            return {"type": "text", "content": _to_primitive(content)}
+
+        if normalized_type in {"tool_call", "function_call"} or (
+            "arguments" in raw and "name" in raw
+        ):
+            arguments = raw.get("arguments") or raw.get("args")
+            return {
+                "type": "tool_call",
+                "id": raw.get("id") or raw.get("call_id"),
+                "name": raw.get("name"),
+                "arguments": _to_primitive(_safe_json_loads(arguments)),
+            }
+
+        if normalized_type in {"tool_call_response", "function_response"} or (
+            "response" in raw or "result" in raw
+        ):
+            response_value = raw.get("response")
+            if response_value is None:
+                response_value = raw.get("result") or raw.get("content")
+            return {
+                "type": "tool_call_response",
+                "id": raw.get("id") or raw.get("call_id"),
+                "response": _to_primitive(_safe_json_loads(response_value)),
+            }
+
+        if "text" in raw or "content" in raw:
+            content = raw.get("text") or raw.get("content")
+            return {
+                "type": "text",
+                "content": _to_primitive(content),
+            }
+
+        return {
+            "type": "text",
+            "content": _to_primitive(raw),
+        }
+
+    if isinstance(raw, Sequence) and not isinstance(
+        raw, (str, bytes, bytearray)
+    ):
+        return {
+            "type": "text",
+            "content": [_to_primitive(item) for item in raw],
+        }
+
+    return {"type": "text", "content": raw}
+
+
+def _convert_messages(messages: Sequence[Any] | None) -> list[dict[str, Any]]:
+    converted: list[dict[str, Any]] = []
+    for message in _ensure_sequence(messages):
+        if message is None:
+            continue
+
+        role = _extract_field(message, "role")
+        role = str(role) if role is not None else "unknown"
+
+        parts_value = _extract_field(message, "parts")
+        if parts_value is None:
+            parts_value = _extract_field(message, "content")
+
+        parts_list = [
+            part for part in _ensure_sequence(parts_value) if part is not None
+        ]
+
+        if not parts_list:
+            text_value = _extract_field(message, "text")
+            if text_value is not None:
+                parts_list = [text_value]
+            elif isinstance(message, str):
+                parts_list = [message]
+
+        converted_parts = [_convert_part(part) for part in parts_list]
+        converted.append({"role": role, "parts": converted_parts})
+
+    return converted
+
+
+def _convert_tool_payload(value: Any) -> Any:
+    primitive = _to_primitive(value)
+    if isinstance(primitive, str):
+        loaded = _safe_json_loads(primitive)
+        return _to_primitive(loaded)
+    return primitive
+
+
+class _ContentCaptureMode(Enum):
+    NO_CONTENT = "no_content"
+    SPAN_ONLY = "span_only"
+    EVENT_ONLY = "event_only"
+    SPAN_AND_EVENT = "span_and_event"
+
+    @property
+    def capture_in_span(self) -> bool:
+        return self in (self.SPAN_ONLY, self.SPAN_AND_EVENT)
+
+    @property
+    def capture_in_event(self) -> bool:
+        return self in (self.EVENT_ONLY, self.SPAN_AND_EVENT)
 
 
 def _parse_iso8601(timestamp: str | None) -> int | None:
@@ -120,12 +337,18 @@ class _SpanContext:
 class _OpenAIAgentsSpanProcessor(TracingProcessor):
     """Convert OpenAI Agents traces into OpenTelemetry spans."""
 
-    def __init__(self, tracer: Tracer, system: str) -> None:
+    def __init__(
+        self,
+        tracer: Tracer,
+        system: str,
+        content_mode: _ContentCaptureMode,
+    ) -> None:
         self._tracer = tracer
         self._system = system
         self._root_spans: dict[str, Span] = {}
         self._spans: dict[str, _SpanContext] = {}
         self._lock = RLock()
+        self._content_mode = content_mode
 
     def _operation_name(self, span_data: Any) -> str:
         span_type = getattr(span_data, "type", None)
@@ -169,6 +392,109 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def _base_attributes(self) -> dict[str, Any]:
         return {GenAI.GEN_AI_SYSTEM: self._system}
+
+    def _serialize_content(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        try:
+            return gen_ai_json_dumps(value)
+        except TypeError:
+            return json.dumps(value, default=str)
+
+    def _record_content(
+        self,
+        otel_span: Span,
+        attr_key: str,
+        value: Any,
+        event_name: str,
+    ) -> None:
+        serialized = self._serialize_content(value)
+        if serialized is None:
+            return
+
+        if self._content_mode.capture_in_span:
+            otel_span.set_attribute(attr_key, serialized)
+
+        if self._content_mode.capture_in_event:
+            otel_span.add_event(event_name, {attr_key: serialized})
+
+    def _maybe_record_content(
+        self,
+        otel_span: Span,
+        span_type: str | None,
+        span_data: Any,
+        when: str,
+    ) -> None:
+        if self._content_mode is _ContentCaptureMode.NO_CONTENT:
+            return
+
+        if span_type == "generation":
+            if when == "start":
+                self._record_content(
+                    otel_span,
+                    _GEN_AI_INPUT_MESSAGES,
+                    _convert_messages(getattr(span_data, "input", None)),
+                    _INPUT_EVENT_NAME,
+                )
+            else:
+                self._record_content(
+                    otel_span,
+                    _GEN_AI_OUTPUT_MESSAGES,
+                    _convert_messages(getattr(span_data, "output", None)),
+                    _OUTPUT_EVENT_NAME,
+                )
+        elif span_type == "response" and when == "end":
+            response = getattr(span_data, "response", None)
+            if response is not None:
+                self._record_content(
+                    otel_span,
+                    _GEN_AI_OUTPUT_MESSAGES,
+                    _convert_messages(getattr(response, "output", None)),
+                    _OUTPUT_EVENT_NAME,
+                )
+        elif span_type == "agent":
+            if when == "start":
+                instructions = getattr(span_data, "instructions", None)
+                if instructions is None:
+                    instructions = getattr(
+                        span_data, "system_instructions", None
+                    )
+                if (
+                    instructions is not None
+                    and self._content_mode.capture_in_span
+                ):
+                    if isinstance(instructions, str):
+                        serialized_instructions = instructions
+                    else:
+                        serialized_instructions = self._serialize_content(
+                            _to_primitive(instructions)
+                        ) or str(instructions)
+                    otel_span.set_attribute(
+                        _GEN_AI_SYSTEM_INSTRUCTIONS,
+                        serialized_instructions,
+                    )
+                tools = getattr(span_data, "tools", None)
+                if tools is not None and self._content_mode.capture_in_span:
+                    serialized = self._serialize_content(_to_primitive(tools))
+                    if serialized is not None:
+                        otel_span.set_attribute(
+                            _GEN_AI_TOOL_DEFINITIONS, serialized
+                        )
+        elif span_type == "function":
+            if when == "start":
+                self._record_content(
+                    otel_span,
+                    _GEN_AI_TOOL_CALL_ARGUMENTS,
+                    _convert_tool_payload(getattr(span_data, "input", None)),
+                    _TOOL_ARGS_EVENT_NAME,
+                )
+            else:
+                self._record_content(
+                    otel_span,
+                    _GEN_AI_TOOL_CALL_RESULT,
+                    _convert_tool_payload(getattr(span_data, "output", None)),
+                    _TOOL_RESULT_EVENT_NAME,
+                )
 
     def _attributes_from_generation(self, span_data: Any) -> dict[str, Any]:
         attributes = self._base_attributes()
@@ -352,6 +678,7 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def on_span_start(self, span: AgentsSpan[Any]) -> None:
         span_data = span.span_data
+        span_type = getattr(span_data, "type", None)
         start_time = _parse_iso8601(span.started_at)
         attributes = self._attributes_for_span(span_data)
         operation = attributes.get(GenAI.GEN_AI_OPERATION_NAME, "operation")
@@ -375,6 +702,8 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             )
             self._spans[span.span_id] = _SpanContext(span=otel_span, kind=kind)
 
+        self._maybe_record_content(otel_span, span_type, span_data, "start")
+
     def on_span_end(self, span: AgentsSpan[Any]) -> None:
         end_time = _parse_iso8601(span.ended_at)
 
@@ -385,8 +714,10 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             return
 
         otel_span = context.span
+        span_data = span.span_data
+        span_type = getattr(span_data, "type", None)
         if otel_span.is_recording():
-            attributes = self._attributes_for_span(span.span_data)
+            attributes = self._attributes_for_span(span_data)
             for key, value in attributes.items():
                 otel_span.set_attribute(key, value)
 
@@ -396,6 +727,8 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
                 otel_span.set_status(Status(StatusCode.ERROR, description))
             else:
                 otel_span.set_status(Status(StatusCode.OK))
+
+        self._maybe_record_content(otel_span, span_type, span_data, "end")
 
         otel_span.end(end_time=end_time)
 

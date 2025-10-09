@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import importlib
 import os
-from typing import Collection
+from typing import Any, Collection
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
@@ -28,10 +28,12 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .package import _instruments
-from .span_processor import _OpenAIAgentsSpanProcessor
+from .span_processor import _ContentCaptureMode, _OpenAIAgentsSpanProcessor
 from .version import __version__  # noqa: F401
 
 __all__ = ["OpenAIAgentsInstrumentor"]
+
+_CONTENT_CAPTURE_ENV = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 
 
 def _load_tracing_module():
@@ -55,6 +57,47 @@ def _get_registered_processors(provider) -> list:
     multi = getattr(provider, "_multi_processor", None)
     processors = getattr(multi, "_processors", ())
     return list(processors)
+
+
+def _resolve_content_mode(value: Any) -> _ContentCaptureMode:
+    if isinstance(value, _ContentCaptureMode):
+        return value
+    if isinstance(value, bool):
+        return (
+            _ContentCaptureMode.SPAN_AND_EVENT
+            if value
+            else _ContentCaptureMode.NO_CONTENT
+        )
+
+    if value is None:
+        return _ContentCaptureMode.SPAN_AND_EVENT
+
+    text = str(value).strip().lower()
+    if not text:
+        return _ContentCaptureMode.SPAN_AND_EVENT
+
+    mapping = {
+        "span_only": _ContentCaptureMode.SPAN_ONLY,
+        "span-only": _ContentCaptureMode.SPAN_ONLY,
+        "span": _ContentCaptureMode.SPAN_ONLY,
+        "event_only": _ContentCaptureMode.EVENT_ONLY,
+        "event-only": _ContentCaptureMode.EVENT_ONLY,
+        "event": _ContentCaptureMode.EVENT_ONLY,
+        "span_and_event": _ContentCaptureMode.SPAN_AND_EVENT,
+        "span-and-event": _ContentCaptureMode.SPAN_AND_EVENT,
+        "span_and_events": _ContentCaptureMode.SPAN_AND_EVENT,
+        "all": _ContentCaptureMode.SPAN_AND_EVENT,
+        "true": _ContentCaptureMode.SPAN_AND_EVENT,
+        "1": _ContentCaptureMode.SPAN_AND_EVENT,
+        "yes": _ContentCaptureMode.SPAN_AND_EVENT,
+        "no_content": _ContentCaptureMode.NO_CONTENT,
+        "false": _ContentCaptureMode.NO_CONTENT,
+        "0": _ContentCaptureMode.NO_CONTENT,
+        "no": _ContentCaptureMode.NO_CONTENT,
+        "none": _ContentCaptureMode.NO_CONTENT,
+    }
+
+    return mapping.get(text, _ContentCaptureMode.SPAN_AND_EVENT)
 
 
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
@@ -81,7 +124,17 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
         )
         system = _resolve_system(system_override)
 
-        processor = _OpenAIAgentsSpanProcessor(tracer=tracer, system=system)
+        content_override = kwargs.get("capture_message_content")
+        if content_override is None:
+            content_override = os.getenv(_CONTENT_CAPTURE_ENV)
+
+        content_mode = _resolve_content_mode(content_override)
+
+        processor = _OpenAIAgentsSpanProcessor(
+            tracer=tracer,
+            system=system,
+            content_mode=content_mode,
+        )
 
         tracing = _load_tracing_module()
         provider = tracing.get_trace_provider()
