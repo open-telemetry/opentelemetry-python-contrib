@@ -12,20 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This variant of the requirements aims to test the system using
-# the oldest supported version of external dependencies.
-
-pytest==7.4.4
-pytest-asyncio==0.21.0
-pytest-vcr==1.0.2
-
-google-auth==2.15.0
-google-genai==1.0.0
-opentelemetry-api==1.37.0
-opentelemetry-sdk==1.37.0
-opentelemetry-semantic-conventions==0.58b0
-opentelemetry-instrumentation==0.58b0
-
-# Install locally from the folder. This path is relative to the
-# root directory, given invocation from "tox" at root level.
--e instrumentation-genai/opentelemetry-instrumentation-google-genai
+_instruments = ("openai-agents >= 0.3.3",)
+_supports_metrics = False
