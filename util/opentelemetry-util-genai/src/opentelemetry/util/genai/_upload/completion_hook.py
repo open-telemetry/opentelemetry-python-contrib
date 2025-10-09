@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-import binascii
+import hashlib
 import logging
 import posixpath
 import threading
@@ -160,14 +160,13 @@ class UploadCompletionHook(CompletionHook):
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
         if all(isinstance(x, types.Text) for x in system_instruction):
-            # Get a checksum of the text.
-            system_instruction_hash = hex(
-                binascii.crc32(
-                    "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
-                        "utf-8"
-                    )
-                )
-            )
+            # Get a hash of the text.
+            system_instruction_hash = hashlib.sha256(
+                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
+                    "utf-8"
+                ),
+                usedforsecurity=False,
+            ).hexdigest()
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(

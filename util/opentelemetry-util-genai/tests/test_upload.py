@@ -14,7 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
-import binascii
+import hashlib
 import importlib
 import logging
 import sys
@@ -160,7 +160,7 @@ class TestUploadCompletionHook(TestCase):
         # all items should be consumed
         self.hook.shutdown()
         # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
-        time.sleep(2)
+        time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
             3,
@@ -172,13 +172,10 @@ class TestUploadCompletionHook(TestCase):
             types.Text(content="You are a helpful assistant."),
             types.Text(content="You will do your best."),
         ]
-        expected_hash = hex(
-            binascii.crc32(
-                "\n".join(x.content for x in system_instructions).encode(
-                    "utf-8"
-                )
-            )
-        )
+        expected_hash = hashlib.sha256(
+            "\n".join(x.content for x in system_instructions).encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()
         record = LogRecord()
         self.hook.on_completion(
             inputs=[],
@@ -187,7 +184,7 @@ class TestUploadCompletionHook(TestCase):
             log_record=record,
         )
         # Wait a bit for file upload to finish..
-        time.sleep(0.5)
+        time.sleep(2)
         self.mock_fs.exists.return_value = True
         self.hook.on_completion(
             inputs=[],
