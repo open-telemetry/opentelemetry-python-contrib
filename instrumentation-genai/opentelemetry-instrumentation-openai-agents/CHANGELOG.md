@@ -12,3 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3805](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3805))
 - Implement OpenAI Agents span processing aligned with GenAI semantic conventions.
   ([#3817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3817))
+- Capture prompts, responses, and tool payloads by default with configurable
+  capture modes handled via `OpenAIAgentsInstrumentor` and supporting
+  `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`.
+- Add content-capture and multi-agent examples demonstrating span events and
+  multi-agent workflows.
+- Extend test coverage around message and tool payload capture.
+- Depend on `opentelemetry-util-genai` for structured content serialization.
