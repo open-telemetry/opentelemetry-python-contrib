@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import importlib
 import os
-from typing import Collection
+from typing import TYPE_CHECKING, Any, Collection, Protocol
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
@@ -30,6 +30,20 @@ from opentelemetry.trace import get_tracer
 from .package import _instruments
 from .span_processor import _OpenAIAgentsSpanProcessor
 from .version import __version__  # noqa: F401
+
+if TYPE_CHECKING:
+    from agents.tracing.processor_interface import TracingProcessor
+else:  # pragma: no cover - runtime fallback when Agents SDK isn't installed
+    TracingProcessor = Any
+
+
+class _ProcessorHolder(Protocol):
+    _processors: Collection[TracingProcessor]
+
+
+class _TraceProviderLike(Protocol):
+    _multi_processor: _ProcessorHolder
+
 
 __all__ = ["OpenAIAgentsInstrumentor"]
 
@@ -51,7 +65,14 @@ def _resolve_system(value: str | None) -> str:
     return value
 
 
-def _get_registered_processors(provider) -> list:
+def _get_registered_processors(
+    provider: _TraceProviderLike,
+) -> list[TracingProcessor]:
+    """Return tracing processors registered on the OpenAI Agents trace provider.
+
+    The provider exposes a private `_multi_processor` attribute with a `_processors`
+    collection that stores the currently registered processors in execution order.
+    """
     multi = getattr(provider, "_multi_processor", None)
     processors = getattr(multi, "_processors", ())
     return list(processors)
