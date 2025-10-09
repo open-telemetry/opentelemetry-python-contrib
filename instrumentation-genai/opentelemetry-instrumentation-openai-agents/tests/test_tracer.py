@@ -75,9 +75,15 @@ def test_generation_span_creates_client_span():
                 pass
 
         spans = exporter.get_finished_spans()
-        client_span = next(
-            span for span in spans if span.kind is SpanKind.CLIENT
-        )
+        client_spans = [span for span in spans if span.kind is SpanKind.CLIENT]
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+
+        assert len(server_spans) == 1
+        server_span = server_spans[0]
+        assert server_span.name == "workflow"
+        assert server_span.attributes["gen_ai.provider.name"] == "openai"
+        assert client_spans
+        client_span = next(iter(client_spans))
 
         assert client_span.attributes["gen_ai.provider.name"] == "openai"
         assert client_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "chat"
@@ -115,6 +121,12 @@ def test_generation_span_without_roles_uses_text_completion():
             if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
             == GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
         )
+        assert completion_span.kind is SpanKind.CLIENT
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "workflow"
+        assert server_spans[0].attributes["gen_ai.provider.name"] == "openai"
+        assert [span for span in spans if span.kind is SpanKind.CLIENT]
 
         assert completion_span.kind is SpanKind.CLIENT
         assert completion_span.name == "text_completion gpt-4o-mini"
@@ -141,6 +153,11 @@ def test_function_span_records_tool_attributes():
         tool_span = next(
             span for span in spans if span.kind is SpanKind.INTERNAL
         )
+
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "workflow"
+        assert server_spans[0].attributes["gen_ai.provider.name"] == "openai"
 
         assert (
             tool_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "execute_tool"
@@ -174,6 +191,11 @@ def test_agent_create_span_records_attributes():
             if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
             == GenAI.GenAiOperationNameValues.CREATE_AGENT.value
         )
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "workflow"
+        assert server_spans[0].attributes["gen_ai.provider.name"] == "openai"
+        assert [span for span in spans if span.kind is SpanKind.CLIENT]
 
         assert create_span.kind is SpanKind.CLIENT
         assert create_span.name == "create_agent support_bot"
@@ -209,6 +231,11 @@ def test_agent_name_override_applied_to_agent_spans():
             if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
             == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "workflow"
+        assert server_spans[0].attributes["gen_ai.provider.name"] == "openai"
+        assert [span for span in spans if span.kind is SpanKind.CLIENT]
 
         assert agent_span_record.kind is SpanKind.CLIENT
         assert agent_span_record.name == "invoke_agent Travel Concierge"
@@ -261,6 +288,10 @@ def test_response_span_records_response_attributes():
         assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == (
             "stop",
         )
+        server_spans = [span for span in spans if span.kind is SpanKind.SERVER]
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "workflow"
+        assert server_spans[0].attributes["gen_ai.provider.name"] == "openai"
     finally:
         instrumentor.uninstrument()
         exporter.clear()

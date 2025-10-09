@@ -160,8 +160,8 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             and agent_name_override.strip()
             else None
         )
-        self._root_spans: dict[str, Span] = {}
         self._spans: dict[str, _SpanContext] = {}
+        self._root_spans: dict[str, Span] = {}
         self._lock = RLock()
 
     def _operation_name(self, span_data: Any) -> str:
