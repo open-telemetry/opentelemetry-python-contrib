@@ -306,7 +306,7 @@ class ToolCallInstrumentationTestCase(TestCase):
                 with patched_environ, patched_otel_mapping:
 
                     def handle(*args, **kwargs):
-                        calls.append((args, kwargs))
+                        calls.append((args, kwargs))  # pylint: disable=cell-var-from-loop
                         return "some result"
 
                     def somefunction(someparam, otherparam=2):
@@ -397,7 +397,7 @@ class ToolCallInstrumentationTestCase(TestCase):
                 with patched_environ, patched_otel_mapping:
 
                     def handle(*args, **kwargs):
-                        calls.append((args, kwargs))
+                        calls.append((args, kwargs))  # pylint: disable=cell-var-from-loop
                         return "some result"
 
                     def somefunction(x, y=2):
