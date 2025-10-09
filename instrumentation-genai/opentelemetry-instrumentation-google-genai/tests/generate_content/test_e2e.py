@@ -394,6 +394,7 @@ def fixture_nonvertex_client_factory(gemini_api_key):
             api_key=gemini_api_key,
             vertexai=False,
             http_options=types.HttpOptions(
+                # to prevent compression
                 headers={"accept-encoding": "identity"}
             ),
         )
