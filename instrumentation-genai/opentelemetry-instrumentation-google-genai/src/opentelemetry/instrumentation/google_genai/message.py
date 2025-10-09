@@ -15,8 +15,8 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal
 
 from google.genai import types as genai_types

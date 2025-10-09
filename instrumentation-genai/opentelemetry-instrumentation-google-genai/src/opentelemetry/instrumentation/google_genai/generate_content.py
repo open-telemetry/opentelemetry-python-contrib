@@ -221,15 +221,15 @@ def _add_request_options_to_span(
         span.set_attribute(key, value)
 
 
-def _get_gen_ai_request_attributes(config: Union[GenerateContentConfigOrDict, None]) -> dict[str, Any]:
+def _get_gen_ai_request_attributes(
+    config: Union[GenerateContentConfigOrDict, None],
+) -> dict[str, Any]:
     if not config:
         return {}
     attributes: dict[str, Any] = {}
     config = _coerce_config_to_object(config)
     if config.seed:
-        attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] = (
-            config.seed
-        )
+        attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] = config.seed
     if config.candidate_count:
         attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
             config.candidate_count
@@ -400,7 +400,9 @@ class _GenerateContentInstrumentationHelper:
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
         self._update_response(response)
-        self._maybe_log_completion_details(request, response.candidates or [], config)
+        self._maybe_log_completion_details(
+            request, response.candidates or [], config
+        )
 
     def process_error(self, e: Exception):
         self._error_type = str(e.__class__.__name__)
@@ -499,9 +501,7 @@ class _GenerateContentInstrumentationHelper:
         input_messages = to_input_messages(
             contents=transformers.t_contents(request)
         )
-        output_messages = to_output_messages(
-            candidates=candidates
-        )
+        output_messages = to_output_messages(candidates=candidates)
 
         span = trace.get_current_span()
         event = Event(
@@ -515,12 +515,10 @@ class _GenerateContentInstrumentationHelper:
             span=span,
             log_record=event,
         )
-        completion_details_attributes = (
-            _create_completion_details_attributes(
-                input_messages,
-                output_messages,
-                system_instructions,
-            )
+        completion_details_attributes = _create_completion_details_attributes(
+            input_messages,
+            output_messages,
+            system_instructions,
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
@@ -536,7 +534,12 @@ class _GenerateContentInstrumentationHelper:
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
-            span.set_attributes({k: gen_ai_json_dumps(v) for k, v in completion_details_attributes.items()})
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in completion_details_attributes.items()
+                }
+            )
             span.set_attributes(attributes)
 
     def _maybe_log_system_instruction(
@@ -844,7 +847,9 @@ def _create_instrumented_generate_content_stream(
                 helper.process_error(error)
                 raise
             finally:
-                helper._maybe_log_completion_details(contents, candidates, config)
+                helper._maybe_log_completion_details(
+                    contents, candidates, config
+                )
                 helper.finalize_processing()
 
     return instrumented_generate_content_stream
@@ -982,7 +987,9 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                         helper.process_error(error)
                         raise
                     finally:
-                        helper._maybe_log_completion_details(contents, candidates, config)
+                        helper._maybe_log_completion_details(
+                            contents, candidates, config
+                        )
                         helper.finalize_processing()
 
             return _response_async_generator_wrapper()

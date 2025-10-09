@@ -18,7 +18,7 @@ from typing import Any
 
 import google.genai
 
-from opentelemetry._logs import LogRecord, Logger, LoggerProvider
+from opentelemetry._logs import Logger, LoggerProvider, LogRecord
 from opentelemetry.metrics import Meter, MeterProvider
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
@@ -40,9 +40,7 @@ _SCOPE_ATTRIBUTES = {
 
 
 class OTelWrapper:
-    def __init__(
-        self, tracer: Tracer, logger: Logger, meter: Meter
-    ):
+    def __init__(self, tracer: Tracer, logger: Logger, meter: Meter):
         self._tracer = tracer
         self._logger = logger
         self._meter = meter
