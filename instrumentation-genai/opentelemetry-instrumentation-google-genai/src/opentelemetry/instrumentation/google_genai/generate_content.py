@@ -38,7 +38,7 @@ from google.genai.types import (
 )
 
 from opentelemetry import trace
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -504,8 +504,8 @@ class _GenerateContentInstrumentationHelper:
         output_messages = to_output_messages(candidates=candidates)
 
         span = trace.get_current_span()
-        event = Event(
-            name="gen_ai.client.inference.operation.details",
+        event = LogRecord(
+            event_name="gen_ai.client.inference.operation.details",
             attributes=attributes,
         )
         self.completion_hook.on_completion(
