@@ -217,18 +217,17 @@ class OpenTelemetryClientInterceptor(
             stream = invoker(request_or_iterator, metadata)
 
             def done_callback(future, span_):
-                logger.exception("done_callback")
                 try:
                     future.result()
                 except grpc.FutureCancelledError:
                     span_.set_status(Status(StatusCode.OK))
                     span_.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE, grpc.StatusCode.CANCELLED.value[0]
+                        RPC_GRPC_STATUS_CODE, grpc.StatusCode.CANCELLED.value[0]
                     )
                 except grpc.RpcError as err:
                     span_.set_status(Status(StatusCode.ERROR))
                     span_.set_attribute(
-                        SpanAttributes.RPC_GRPC_STATUS_CODE, err.code().value[0]
+                        RPC_GRPC_STATUS_CODE, err.code().value[0]
                     )
                 finally:
                     span_.end()
