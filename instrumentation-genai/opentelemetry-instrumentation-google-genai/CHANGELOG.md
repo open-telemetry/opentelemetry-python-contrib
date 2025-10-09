@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Implement the new semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
+A single event (`gen_ai.client.inference.operation.details`) is used to capture Chat History. This is opt-in,
+an environment variable OTEL_SEMCONV_STABILITY_OPT_IN needs to be set to `gen_ai_latest_experimental` to see them ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386))
+- Support CompletionHook for upload to cloud storage. 
+
 ## Version 0.3b0 (2025-07-08)
 
 - Add automatic instrumentation to tool call functions ([#3446](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3446))
