@@ -7,6 +7,7 @@ from typing import Dict
 
 from .emitters.spec import CategoryOverride
 from .environment_variables import (
+    OTEL_GENAI_EVALUATION_EVENT_LEGACY,
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES,
     OTEL_INSTRUMENTATION_GENAI_EMITTERS,
@@ -34,6 +35,7 @@ class Settings:
     capture_messages_mode: ContentCapturingMode
     capture_messages_override: bool
     legacy_capture_request: bool
+    emit_legacy_evaluation_event: bool
     category_overrides: Dict[str, CategoryOverride]
 
 
@@ -104,6 +106,11 @@ def parse_env() -> Settings:
         if override is not None:
             overrides[category] = override
 
+    legacy_event_flag = os.environ.get(
+        OTEL_GENAI_EVALUATION_EVENT_LEGACY, ""
+    ).strip()
+    emit_legacy_event = legacy_event_flag.lower() in {"1", "true", "yes"}
+
     return Settings(
         enable_span=enable_span,
         enable_metrics=enable_metrics,
@@ -114,6 +121,7 @@ def parse_env() -> Settings:
         capture_messages_mode=capture_mode,
         capture_messages_override=capture_messages_override,
         legacy_capture_request=legacy_capture_request,
+        emit_legacy_evaluation_event=emit_legacy_event,
         category_overrides=overrides,
     )
 

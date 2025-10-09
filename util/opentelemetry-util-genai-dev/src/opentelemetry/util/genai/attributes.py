@@ -21,6 +21,7 @@ GEN_AI_EVALUATION_NAME = "gen_ai.evaluation.name"
 GEN_AI_EVALUATION_SCORE_VALUE = "gen_ai.evaluation.score.value"
 GEN_AI_EVALUATION_SCORE_LABEL = "gen_ai.evaluation.score.label"
 GEN_AI_EVALUATION_EXPLANATION = "gen_ai.evaluation.explanation"
+GEN_AI_EVALUATION_ATTRIBUTES_PREFIX = "gen_ai.evaluation.attributes."
 
 # Agent attributes (from semantic conventions)
 GEN_AI_AGENT_NAME = "gen_ai.agent.name"

@@ -17,6 +17,8 @@ from ..environment_variables import (
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..handler import TelemetryHandler
+from opentelemetry.sdk.trace.sampling import Decision, TraceIdRatioBased
+
 from ..types import (
     AgentInvocation,
     EmbeddingInvocation,
@@ -29,7 +31,6 @@ from ..types import (
 )
 from .base import Evaluator
 from .registry import get_default_metrics, get_evaluator, list_evaluators
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBased, Decision
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,13 +106,23 @@ class Manager(CompletionCallback):
             return
         if invocation.span.get_span_context().trace_id:
             try:
-                sampling_result = self._sampler.should_sample(trace_id=invocation.span.get_span_context().trace_id, parent_context=None, name="")
-                if sampling_result and sampling_result.decision is Decision.RECORD_AND_SAMPLE:
+                sampling_result = self._sampler.should_sample(
+                    trace_id=invocation.span.get_span_context().trace_id,
+                    parent_context=None,
+                    name="",
+                )
+                if (
+                    sampling_result
+                    and sampling_result.decision is Decision.RECORD_AND_SAMPLE
+                ):
                     self.offer(invocation)
             except Exception:  # pragma: no cover - defensive
                 _LOGGER.debug("Sampler raised an exception", exc_info=True)
-        else: # TODO remove else branch when trace_id is set on all invocations
-            _LOGGER.debug("Trace based sampling not applied as trace id is not set.", exc_info=True)
+        else:  # TODO remove else branch when trace_id is set on all invocations
+            _LOGGER.debug(
+                "Trace based sampling not applied as trace id is not set.",
+                exc_info=True,
+            )
             self.offer(invocation)
 
     # Public API ---------------------------------------------------------
@@ -379,15 +390,19 @@ def _read_aggregation_flag() -> bool:
         return False
     return raw.strip().lower() in {"1", "true", "yes"}
 
+
 def _read_evaluation_sample_rate() -> float:
-    val = _get_env(OTEL_INSTRUMENTATION_GENAI_EVALUATION_SAMPLE_RATE)
+    raw = _get_env(OTEL_INSTRUMENTATION_GENAI_EVALUATION_SAMPLE_RATE)
+    if raw is None or raw == "":
+        return 1.0
     try:
-        val = float(val)
-        if val < 0.0 or val > 1.0:
-            val = 1.0
-    except ValueError:
-        val = 1.0
-    return val
+        value = float(raw)
+    except (TypeError, ValueError):
+        return 1.0
+    if value < 0.0 or value > 1.0:
+        return 1.0
+    return value
+
 
 def _get_env(name: str) -> str | None:
     import os
