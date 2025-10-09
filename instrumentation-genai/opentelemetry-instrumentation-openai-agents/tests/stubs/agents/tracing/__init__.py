@@ -9,6 +9,10 @@ from .processor_interface import TracingProcessor
 from .spans import Span
 from .traces import Trace
 
+SPAN_TYPE_AGENT = "agent"
+SPAN_TYPE_FUNCTION = "function"
+SPAN_TYPE_GENERATION = "generation"
+
 __all__ = [
     "TraceProvider",
     "get_trace_provider",
@@ -35,7 +39,7 @@ class AgentSpanData:
 
     @property
     def type(self) -> str:
-        return "agent"
+        return SPAN_TYPE_AGENT
 
 
 @dataclass
@@ -46,7 +50,7 @@ class FunctionSpanData:
 
     @property
     def type(self) -> str:
-        return "function"
+        return SPAN_TYPE_FUNCTION
 
 
 @dataclass
@@ -59,7 +63,7 @@ class GenerationSpanData:
 
     @property
     def type(self) -> str:
-        return "generation"
+        return SPAN_TYPE_GENERATION
 
 
 class _ProcessorFanout(TracingProcessor):

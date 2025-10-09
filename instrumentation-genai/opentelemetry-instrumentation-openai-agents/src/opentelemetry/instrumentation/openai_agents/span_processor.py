@@ -28,14 +28,26 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
+SPAN_TYPE_GENERATION = "generation"
+SPAN_TYPE_RESPONSE = "response"
+SPAN_TYPE_AGENT = "agent"
+SPAN_TYPE_AGENT_CREATION = "agent_creation"
+SPAN_TYPE_FUNCTION = "function"
+SPAN_TYPE_SPEECH = "speech"
+SPAN_TYPE_TRANSCRIPTION = "transcription"
+SPAN_TYPE_SPEECH_GROUP = "speech_group"
+SPAN_TYPE_GUARDRAIL = "guardrail"
+SPAN_TYPE_HANDOFF = "handoff"
+SPAN_TYPE_MCP_TOOLS = "mcp_tools"
+
 _CLIENT_SPAN_TYPES = frozenset(
     {
-        "generation",
-        "response",
-        "speech",
-        "transcription",
-        "agent",
-        "agent_creation",
+        SPAN_TYPE_GENERATION,
+        SPAN_TYPE_RESPONSE,
+        SPAN_TYPE_SPEECH,
+        SPAN_TYPE_TRANSCRIPTION,
+        SPAN_TYPE_AGENT,
+        SPAN_TYPE_AGENT_CREATION,
     }
 )
 
@@ -160,21 +172,21 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             if isinstance(explicit_operation, str)
             else None
         )
-        if span_type == "generation":
+        if span_type == SPAN_TYPE_GENERATION:
             if _looks_like_chat(getattr(span_data, "input", None)):
                 return GenAI.GenAiOperationNameValues.CHAT.value
             return GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
-        if span_type == "agent":
+        if span_type == SPAN_TYPE_AGENT:
             if normalized_operation in {"create", "create_agent"}:
                 return GenAI.GenAiOperationNameValues.CREATE_AGENT.value
             if normalized_operation in {"invoke", "invoke_agent"}:
                 return GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
             return GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
-        if span_type == "agent_creation":
+        if span_type == SPAN_TYPE_AGENT_CREATION:
             return GenAI.GenAiOperationNameValues.CREATE_AGENT.value
-        if span_type == "function":
+        if span_type == SPAN_TYPE_FUNCTION:
             return GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
-        if span_type == "response":
+        if span_type == SPAN_TYPE_RESPONSE:
             return GenAI.GenAiOperationNameValues.CHAT.value
         return span_type or "operation"
 
@@ -375,11 +387,11 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
 
     def _attributes_for_span(self, span_data: Any) -> dict[str, Any]:
         span_type = getattr(span_data, "type", None)
-        if span_type == "generation":
+        if span_type == SPAN_TYPE_GENERATION:
             return self._attributes_from_generation(span_data)
-        if span_type == "response":
+        if span_type == SPAN_TYPE_RESPONSE:
             return self._attributes_from_response(span_data)
-        if span_type == "agent":
+        if span_type == SPAN_TYPE_AGENT:
             operation = getattr(span_data, "operation", None)
             if isinstance(operation, str) and operation.strip().lower() in {
                 "create",
@@ -387,17 +399,17 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
             }:
                 return self._attributes_from_agent_creation(span_data)
             return self._attributes_from_agent(span_data)
-        if span_type == "agent_creation":
+        if span_type == SPAN_TYPE_AGENT_CREATION:
             return self._attributes_from_agent_creation(span_data)
-        if span_type == "function":
+        if span_type == SPAN_TYPE_FUNCTION:
             return self._attributes_from_function(span_data)
         if span_type in {
-            "guardrail",
-            "handoff",
-            "speech_group",
-            "speech",
-            "transcription",
-            "mcp_tools",
+            SPAN_TYPE_GUARDRAIL,
+            SPAN_TYPE_HANDOFF,
+            SPAN_TYPE_SPEECH_GROUP,
+            SPAN_TYPE_SPEECH,
+            SPAN_TYPE_TRANSCRIPTION,
+            SPAN_TYPE_MCP_TOOLS,
         }:
             return self._attributes_from_generic(span_data)
         return self._base_attributes()
