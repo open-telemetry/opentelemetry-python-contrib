@@ -40,3 +40,10 @@ values exported.
 
 You should see the agent response printed to the console while spans export to
 your configured observability backend.
+
+By default the instrumentation records prompts, responses, and tool payloads
+in both span attributes and events
+(``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=span_and_event``). Set
+the variable to ``span_only`` or ``event_only`` to limit capture to a single
+signal, or to ``no_content`` to opt out entirely before running the sample.
+Boolean strings such as ``true``/``false`` are also accepted.

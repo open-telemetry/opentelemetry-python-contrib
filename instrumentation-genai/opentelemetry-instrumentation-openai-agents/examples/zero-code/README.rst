@@ -39,3 +39,9 @@ also works when the required environment variables are already exported.
 
 You should see the agent response printed to the console while spans export to
 your observability backend.
+
+Prompts, completions, and tool payloads are captured by default in both span
+attributes and events. Set ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT``
+to ``span_only`` or ``event_only`` to narrow the capture, or to ``no_content``
+to suppress content entirely for this example. Boolean strings such as
+``true``/``false`` are also accepted.
