@@ -120,8 +120,8 @@ Emitted attributes (core):
 - `gen_ai.evaluation.name` – metric name
 - `gen_ai.evaluation.score.value` – numeric score (events only; histogram carries values)
 - `gen_ai.evaluation.score.label` – categorical label (pass/fail/neutral/etc.)
-- `gen_ai.evaluation.score.reasoning` – free‑text rationale / explanation from evaluator
 - `gen_ai.evaluation.score.units` – units of the numeric score (currently `score`)
+- `gen_ai.evaluation.passed` – boolean derived when label clearly indicates pass/fail (e.g. `pass`, `success`, `fail`); numeric-only heuristic currently disabled to prevent ambiguous semantics
 - Agent/workflow identity: `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.workflow.id` when available.
 
 ## 5. Third-Party Emitters (External Packages)

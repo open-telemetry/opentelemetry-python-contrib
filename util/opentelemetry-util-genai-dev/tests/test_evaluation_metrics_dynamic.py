@@ -68,7 +68,11 @@ def test_dynamic_metric_histograms_created_per_metric():
         for _, attrs in bias_hist.points
     ]
     assert labels == [None, "medium"]
-    # passed attribute only expected on labeled result (mapped from label 'medium' -> unknown so not set) => ensure first None, second absent or None unless mapping added
-    # Units should be set for each point; reasoning only when explanation present (not in this test)
+    # gen_ai.evaluation.passed derivation only when label clearly indicates pass/fail; 'medium' should not set it
+    passed_vals = [
+        attrs.get("gen_ai.evaluation.passed") for _, attrs in bias_hist.points
+    ]
+    assert passed_vals == [None, None]
+    # Units should be set for each point
     for _, attrs in bias_hist.points + tox_hist.points:
         assert attrs.get("gen_ai.evaluation.score.units") == "score"

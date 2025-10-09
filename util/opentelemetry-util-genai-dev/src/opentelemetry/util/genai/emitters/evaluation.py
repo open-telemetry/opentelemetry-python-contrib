@@ -141,8 +141,20 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
                 attrs[GEN_AI_PROVIDER_NAME] = provider
             if res.label is not None:
                 attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
-            if res.explanation:
-                attrs["gen_ai.evaluation.score.reasoning"] = res.explanation
+            # Derive boolean gen_ai.evaluation.passed
+            passed = None
+            if res.label:
+                lbl = str(res.label).lower()
+                if any(k in lbl for k in ("pass", "success", "ok", "true")):
+                    passed = True
+                elif any(k in lbl for k in ("fail", "error", "false")):
+                    passed = False
+            # NOTE: We deliberately do NOT infer pass/fail purely from numeric score
+            # without an accompanying categorical label to avoid accidental cardinality
+            # or semantic ambiguities across evaluators. Future extension could allow
+            # opt-in heuristic score->pass mapping.
+            if passed is not None:
+                attrs["gen_ai.evaluation.passed"] = passed
             attrs["gen_ai.evaluation.score.units"] = "score"
             if res.error is not None:
                 attrs["error.type"] = res.error.type.__qualname__
@@ -244,10 +256,16 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
                 base_attrs[GEN_AI_EVALUATION_SCORE_VALUE] = res.score
             if res.label is not None:
                 base_attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
-            if res.explanation:
-                base_attrs["gen_ai.evaluation.score.reasoning"] = (
-                    res.explanation
-                )
+            passed = None
+            if res.label:
+                lbl = str(res.label).lower()
+                if any(k in lbl for k in ("pass", "success", "ok", "true")):
+                    passed = True
+                elif any(k in lbl for k in ("fail", "error", "false")):
+                    passed = False
+            # Do not infer pass/fail solely from numeric score (see metrics emitter note)
+            if passed is not None:
+                base_attrs["gen_ai.evaluation.passed"] = passed
             if isinstance(res.score, (int, float)):
                 base_attrs["gen_ai.evaluation.score.units"] = "score"
             if res.error is not None:

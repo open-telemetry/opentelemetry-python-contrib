@@ -40,3 +40,5 @@ def test_agent_evaluation_metric_includes_agent_identity():
     # agent identity propagated
     assert attrs["gen_ai.agent.name"] == "router"
     assert attrs["gen_ai.agent.id"] == agent.agent_id
+    # pass boolean derived from label
+    assert attrs.get("gen_ai.evaluation.passed") is True
