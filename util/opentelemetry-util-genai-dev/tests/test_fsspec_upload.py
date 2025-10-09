@@ -26,20 +26,28 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
-    FsspecUploadHook,
-)
 from opentelemetry.util.genai.upload_hook import (
     _NoOpUploadHook,
     load_upload_hook,
 )
 
+try:
+    from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
+        FsspecUploadHook,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    FsspecUploadHook = None
+
+TestBase = pytest.importorskip("opentelemetry.test.test_base").TestBase
 fsspec = pytest.importorskip("fsspec")
 MemoryFileSystem = pytest.importorskip(
     "fsspec.implementations.memory"
 ).MemoryFileSystem
+
+
+if FsspecUploadHook is None:
+    pytest.skip("fsspec not installed", allow_module_level=True)
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem

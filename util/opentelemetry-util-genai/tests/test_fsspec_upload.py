@@ -14,6 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
+
 import importlib
 import logging
 import sys
@@ -24,18 +25,36 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-import fsspec
+import pytest
 
 from opentelemetry._logs import LogRecord
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
-from opentelemetry.util.genai._fsspec_upload.completion_hook import (
-    FsspecUploadCompletionHook,
-)
 from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
     load_completion_hook,
 )
+
+try:
+    from opentelemetry.util.genai._fsspec_upload.completion_hook import (
+        FsspecUploadCompletionHook,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    FsspecUploadCompletionHook = None
+
+try:
+    from opentelemetry.util.genai._fsspec_upload.fsspec_hook import (
+        FsspecUploadHook,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    FsspecUploadHook = None
+TestBase = pytest.importorskip("opentelemetry.test.test_base").TestBase
+fsspec = pytest.importorskip("fsspec")
+MemoryFileSystem = pytest.importorskip(
+    "fsspec.implementations.memory"
+).MemoryFileSystem
+
+if FsspecUploadCompletionHook is None:
+    pytest.skip("fsspec not installed", allow_module_level=True)
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem

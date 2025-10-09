@@ -14,6 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
+
 import importlib
 import logging
 import sys
@@ -23,10 +24,9 @@ from typing import Any
 from unittest import TestCase
 from unittest.mock import ANY, MagicMock, patch
 
-import fsspec
+import pytest
 
 from opentelemetry._logs import LogRecord
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai._upload.completion_hook import (
     UploadCompletionHook,
@@ -35,6 +35,9 @@ from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
     load_completion_hook,
 )
+
+TestBase = pytest.importorskip("opentelemetry.test.test_base").TestBase
+fsspec = pytest.importorskip("fsspec")
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem

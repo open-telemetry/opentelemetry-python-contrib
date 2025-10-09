@@ -7,6 +7,7 @@ from opentelemetry.util.genai.emitters.content_events import (
 )
 from opentelemetry.util.genai.emitters.span import SpanEmitter
 from opentelemetry.util.genai.types import (
+    EvaluationResult,
     InputMessage,
     LLMInvocation,
     OutputMessage,
@@ -64,6 +65,42 @@ def test_events_with_content_capture(sample_invocation, monkeypatch):
 
     assert inputs and inputs[0]["parts"][0]["content"] == "hello user"
     assert outputs and outputs[0]["parts"][0]["content"] == "hello back"
+
+
+class _RecordingEvaluationEmitter:
+    role = "evaluation"
+
+    def __init__(self) -> None:
+        self.call_log = []
+
+    def on_evaluation_results(self, results, obj=None):
+        self.call_log.append(("results", list(results)))
+
+    def on_end(self, obj):
+        self.call_log.append(("end", obj))
+
+    def on_error(self, error, obj):
+        self.call_log.append(("error", error))
+
+
+def test_evaluation_emitters_receive_lifecycle_callbacks():
+    emitter = _RecordingEvaluationEmitter()
+    composite = CompositeEmitter(
+        span_emitters=[],
+        metrics_emitters=[],
+        content_event_emitters=[],
+        evaluation_emitters=[emitter],
+    )
+    invocation = LLMInvocation(request_model="eval-model")
+    result = EvaluationResult(metric_name="bias", score=0.1)
+
+    composite.on_evaluation_results([result], invocation)
+    composite.on_end(invocation)
+    composite.on_error(RuntimeError("boom"), invocation)
+
+    assert ("results", [result]) in emitter.call_log
+    assert any(entry[0] == "end" for entry in emitter.call_log)
+    assert any(entry[0] == "error" for entry in emitter.call_log)
 
 
 @pytest.fixture

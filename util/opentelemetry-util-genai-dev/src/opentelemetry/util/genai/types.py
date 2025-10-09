@@ -25,6 +25,10 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.trace import Span
+
+# Backward compatibility: older semconv builds may miss new GEN_AI attributes
+if not hasattr(GenAIAttributes, "GEN_AI_PROVIDER_NAME"):
+    GenAIAttributes.GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
 from opentelemetry.util.types import AttributeValue
 
 ContextToken = Token  # simple alias; avoid TypeAlias warning tools

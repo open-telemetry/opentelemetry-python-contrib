@@ -20,6 +20,7 @@ from functools import partial
 from typing import Any
 
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
@@ -37,12 +38,23 @@ def get_content_capturing_mode() -> ContentCapturingMode:
 
     When the GEN_AI stability mode is DEFAULT this function will raise a ValueError -- see the code below."""
     envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
-    if (
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI,
+    try:
+        signal = _OpenTelemetryStabilitySignalType.GEN_AI
+    except AttributeError:
+        signal = None
+
+    if signal is not None:
+        stability_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal
         )
-        == _StabilityMode.DEFAULT
-    ):
+        default_mode = stability_mode == _StabilityMode.DEFAULT
+    else:
+        stability_value = os.environ.get(
+            OTEL_SEMCONV_STABILITY_OPT_IN, ""
+        ).lower()
+        default_mode = stability_value in {"", "default"}
+
+    if default_mode:
         raise ValueError(
             "This function should never be called when StabilityMode is default."
         )

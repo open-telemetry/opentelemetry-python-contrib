@@ -27,7 +27,10 @@ from time import time
 from typing import Any, Callable, Final, Literal
 from uuid import uuid4
 
-import fsspec
+try:
+    import fsspec  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    fsspec = None  # type: ignore
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -38,6 +41,12 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
 )
 from opentelemetry.util.genai.utils import gen_ai_json_dump
+
+
+def _ensure_fsspec_available() -> None:
+    if fsspec is None:  # type: ignore[truthy-bool]
+        raise ImportError("fsspec is required for UploadCompletionHook")
+
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
     gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
@@ -98,8 +107,9 @@ class UploadCompletionHook(CompletionHook):
         max_size: int = 20,
         upload_format: Format | None = None,
     ) -> None:
+        _ensure_fsspec_available()
         self._max_size = max_size
-        self._fs, base_path = fsspec.url_to_fs(base_path)
+        self._fs, base_path = fsspec.url_to_fs(base_path)  # type: ignore[union-attr]
         self._base_path = self._fs.unstrip_protocol(base_path)
 
         if upload_format not in _FORMATS + (None,):

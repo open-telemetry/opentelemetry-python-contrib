@@ -43,6 +43,7 @@ def _settings() -> Settings:
         capture_messages_mode=ContentCapturingMode.SPAN_ONLY,
         capture_messages_override=False,
         legacy_capture_request=False,
+        emit_legacy_evaluation_event=False,
         category_overrides={},
     )
 

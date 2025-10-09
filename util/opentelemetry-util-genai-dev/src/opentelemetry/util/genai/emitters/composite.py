@@ -9,7 +9,12 @@ from ..types import Error, EvaluationResult
 _LOGGER = logging.getLogger(__name__)
 
 _CATEGORY_START_ORDER: Sequence[str] = ("span", "metrics", "content_events")
-_CATEGORY_END_ORDER: Sequence[str] = ("metrics", "content_events", "span")
+_CATEGORY_END_ORDER: Sequence[str] = (
+    "evaluation",
+    "metrics",
+    "content_events",
+    "span",
+)
 _EVALUATION_CATEGORY = "evaluation"
 
 
@@ -23,7 +28,7 @@ class CompositeEmitter(EmitterMeta):
     * ``metrics`` emitters run before content emitters at the end of an invocation
     * ``content_events`` emitters observe invocations after metrics but before the
       final span closure
-    * ``evaluation`` emitters only participate in ``on_evaluation_results``
+    * ``evaluation`` emitters observe ``on_evaluation_results`` and receive ``on_end``/``on_error`` for flush-style behaviour
     """
 
     role = "composite"

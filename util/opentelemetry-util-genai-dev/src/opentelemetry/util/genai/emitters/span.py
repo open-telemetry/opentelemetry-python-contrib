@@ -60,7 +60,11 @@ from .utils import (
     filter_semconv_gen_ai_attributes,
 )
 
-_SPAN_ALLOWED_SUPPLEMENTAL_KEYS: tuple[str, ...] = ("gen_ai.framework",)
+_SPAN_ALLOWED_SUPPLEMENTAL_KEYS: tuple[str, ...] = (
+    "gen_ai.framework",
+    "gen_ai.request.id",
+)
+_SPAN_BLOCKED_SUPPLEMENTAL_KEYS: set[str] = {"request_top_p", "ls_temperature"}
 
 
 def _sanitize_span_attribute_value(value: Any) -> Optional[Any]:
@@ -160,9 +164,32 @@ class SpanEmitter(EmitterMeta):
                 GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model
             )
         _apply_gen_ai_semconv_attributes(span, semconv_attrs)
-        _apply_gen_ai_semconv_attributes(
-            span, getattr(invocation, "attributes", None)
-        )
+        supplemental = getattr(invocation, "attributes", None)
+        if supplemental:
+            semconv_subset = filter_semconv_gen_ai_attributes(
+                supplemental, extras=_SPAN_ALLOWED_SUPPLEMENTAL_KEYS
+            )
+            if semconv_subset:
+                _apply_gen_ai_semconv_attributes(span, semconv_subset)
+            for key, value in supplemental.items():
+                if key in (semconv_subset or {}):
+                    continue
+                if key in _SPAN_BLOCKED_SUPPLEMENTAL_KEYS:
+                    continue
+                if (
+                    not key.startswith("custom_")
+                    and key not in _SPAN_ALLOWED_SUPPLEMENTAL_KEYS
+                ):
+                    continue
+                if key in span.attributes:  # type: ignore[attr-defined]
+                    continue
+                sanitized = _sanitize_span_attribute_value(value)
+                if sanitized is None:
+                    continue
+                try:
+                    span.set_attribute(key, sanitized)
+                except Exception:  # pragma: no cover - defensive
+                    pass
         provider = getattr(invocation, "provider", None)
         if provider:
             span.set_attribute(GEN_AI_PROVIDER_NAME, provider)

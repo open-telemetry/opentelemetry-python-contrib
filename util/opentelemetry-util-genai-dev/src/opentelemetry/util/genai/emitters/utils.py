@@ -38,6 +38,15 @@ from ..types import (
     Workflow,
 )
 
+_MISSING_GEN_AI_ATTRS = {
+    "GEN_AI_INPUT_MESSAGES": "gen_ai.input.messages",
+    "GEN_AI_OUTPUT_MESSAGES": "gen_ai.output.messages",
+    "GEN_AI_SYSTEM_INSTRUCTIONS": "gen_ai.system.instructions",
+}
+for _attr, _value in _MISSING_GEN_AI_ATTRS.items():
+    if not hasattr(GenAI, _attr):
+        setattr(GenAI, _attr, _value)
+
 _SEMCONV_GEN_AI_KEYS: set[str] = {
     value
     for value in GenAI.__dict__.values()
