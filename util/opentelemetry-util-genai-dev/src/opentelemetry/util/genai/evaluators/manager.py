@@ -251,11 +251,19 @@ class Manager(CompletionCallback):
             )
             return []
         if not raw:
-            _LOGGER.info(
-                "GenAI evaluations disabled by default; set %s to enable specific evaluators",
-                OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS,
-            )
-            return []
+            # Auto-discover defaults when no explicit config provided.
+            plans = self._generate_default_plans()
+            if not plans:
+                _LOGGER.info(
+                    "GenAI evaluations disabled (no defaults registered); set %s to enable specific evaluators",
+                    OTEL_INSTRUMENTATION_GENAI_EVALS_EVALUATORS,
+                )
+            else:
+                _LOGGER.debug(
+                    "Auto-discovered evaluator default metrics: %s",
+                    [p.name for p in plans],
+                )
+            return plans
         try:
             requested = _parse_evaluator_config(raw)
         except ValueError as exc:

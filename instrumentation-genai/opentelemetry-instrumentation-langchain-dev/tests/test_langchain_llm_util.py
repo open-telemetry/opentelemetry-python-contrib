@@ -11,7 +11,7 @@ from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 @pytest.mark.vcr()
 def test_langchain_call_util(
-    span_exporter, instrument_with_content_util, monkeypatch
+    span_exporter, tracer_provider, instrument_with_content_util, monkeypatch
 ):
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv("APPKEY", "test-app-key")
@@ -29,6 +29,11 @@ def test_langchain_call_util(
         HumanMessage(content="What is the capital of France?"),
     ]
     response = llm.invoke(messages)
+    # Ensure spans flushed (defensive: some race conditions on fast teardown)
+    try:  # pragma: no cover - flush best effort
+        tracer_provider.force_flush()  # type: ignore[attr-defined]
+    except Exception:
+        pass
     assert "Paris" in response.content
     spans = span_exporter.get_finished_spans()
     assert spans, "No spans exported in util-genai path"

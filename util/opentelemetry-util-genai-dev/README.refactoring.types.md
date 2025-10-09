@@ -194,6 +194,11 @@ Status: done
 Summary: Preserve LangChain legacy data without vendor-prefixed attributes.
 Details: Attributes now use `langchain_legacy` buckets and neutral keys across entity lifecycles.
 
+### 9-legacy-span-cleanup
+Status: done
+Summary: Remove lingering span mutation from tool error handling.
+Details: `on_tool_error` now defers entirely to `_handle_error`; test harness falls back to JSON serialization when PyYAML is unavailable so suite can run in minimal environments.
+
 ## 14. Prompt for AI Coder (Execute Incrementally)
 You are a senior software engineer refactoring LangChain instrumentation to use `opentelemetry.util.genai` dataclasses and handler lifecycle.
 

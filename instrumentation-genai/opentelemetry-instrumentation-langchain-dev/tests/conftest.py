@@ -4,7 +4,10 @@ import json
 import os
 
 import pytest
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environments
+    yaml = None
 
 # from openai import AsyncOpenAI, OpenAI
 from langchain_openai import ChatOpenAI
@@ -201,6 +204,11 @@ def instrument_with_content_util(
             OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_ONLY",  # util-genai content gate
         }
     )
+    # Reset singleton so new env vars are applied
+    import opentelemetry.util.genai.handler as _util_handler_mod  # noqa: PLC0415
+
+    if hasattr(_util_handler_mod.get_telemetry_handler, "_default_handler"):
+        setattr(_util_handler_mod.get_telemetry_handler, "_default_handler", None)
     instrumentor = LangChainInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -223,7 +231,8 @@ def literal_block_scalar_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
+if yaml is not None:
+    yaml.add_representer(LiteralBlockScalar, literal_block_scalar_presenter)
 
 
 def process_string_value(string_value):
@@ -265,12 +274,16 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
+        if yaml is None:
+            return json.dumps(cassette_dict)
         return yaml.dump(
             cassette_dict, default_flow_style=False, allow_unicode=True
         )
 
     @staticmethod
     def deserialize(cassette_string):
+        if yaml is None:
+            return json.loads(cassette_string)
         return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
