@@ -360,19 +360,19 @@ class NonStreamingTestCase(TestCase):
                             span.attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
-                            '[{"role": "user", "parts": [{"content": "Some input", "type": "text"}]}]',
+                            '[{"role":"user","parts":[{"content":"Some input","type":"text"}]}]',
                         )
                         self.assertEqual(
                             span.attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
-                            '[{"role": "assistant", "parts": [{"content": "Some response content", "type": "text"}], "finish_reason": ""}]',
+                            '[{"role":"assistant","parts":[{"content":"Some response content","type":"text"}],"finish_reason":""}]',
                         )
                         self.assertEqual(
                             span.attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
-                            '[{"content": "System instruction", "type": "text"}]',
+                            '[{"content":"System instruction","type":"text"}]',
                         )
                     else:
                         self.assertNotIn(
