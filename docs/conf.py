@@ -130,6 +130,7 @@ intersphinx_mapping = {
         None,
     ),
     "redis": ("https://redis.readthedocs.io/en/latest/", None),
+    "fsspec": ("https://filesystem-spec.readthedocs.io/en/latest/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky
@@ -154,7 +155,14 @@ def getlistcfg(strval):
     ]
 
 
-ignore_categories = ["py-class", "py-func", "py-exc", "py-obj", "any"]
+ignore_categories = [
+    "py-class",
+    "py-func",
+    "py-exc",
+    "py-obj",
+    "py-data",
+    "any",
+]
 
 for category in ignore_categories:
     if category in mcfg:
