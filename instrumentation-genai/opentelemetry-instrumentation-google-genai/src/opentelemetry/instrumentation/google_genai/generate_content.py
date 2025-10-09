@@ -57,7 +57,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
-from opentelemetry.util.genai.utils import _GenAiJsonEncoder
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -314,12 +314,6 @@ def _create_completion_details_attributes(
             dataclasses.asdict(sys_instr) for sys_instr in system_instructions
         ]
 
-    if as_str:
-        return {
-            k: json.dumps(v, cls=_GenAiJsonEncoder)
-            for k, v in attributes.items()
-        }
-
     return attributes
 
 
@@ -521,36 +515,29 @@ class _GenerateContentInstrumentationHelper:
             span=span,
             log_record=event,
         )
-        if self._content_recording_enabled in [
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ]:
-            completion_details_attributes = (
-                _create_completion_details_attributes(
-                    input_messages,
-                    output_messages,
-                    system_instructions,
-                    as_str=True,
-                )
+        completion_details_attributes = (
+            _create_completion_details_attributes(
+                input_messages,
+                output_messages,
+                system_instructions,
             )
-            span.set_attributes(completion_details_attributes)
-            span.set_attributes(attributes)
+        )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]:
-            completion_details_attributes = (
-                _create_completion_details_attributes(
-                    input_messages,
-                    output_messages,
-                    system_instructions,
-                )
-            )
             event.attributes = {
                 **(event.attributes or {}),
                 **completion_details_attributes,
             }
         self._otel_wrapper.log_completion_details(event=event)
+
+        if self._content_recording_enabled in [
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]:
+            span.set_attributes({k: gen_ai_json_dumps(v) for k, v in completion_details_attributes.items()})
+            span.set_attributes(attributes)
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
