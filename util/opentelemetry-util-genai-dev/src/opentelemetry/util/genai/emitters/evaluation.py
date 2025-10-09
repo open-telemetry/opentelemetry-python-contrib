@@ -59,8 +59,19 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
 
     def __init__(
         self, histogram_factory
-    ) -> None:  # callable(metric_name)->Histogram|None
-        self._hist_factory = histogram_factory
+    ) -> None:  # callable(metric_name)->Histogram|None OR direct histogram
+        # Backward-compatible: tests may pass a histogram instance directly.
+        if hasattr(histogram_factory, "record") and not callable(  # type: ignore[arg-type]
+            getattr(histogram_factory, "__call__", None)
+        ):
+            direct_hist = histogram_factory
+
+            def _direct_factory(_name: str):  # ignore metric name, single hist
+                return direct_hist
+
+            self._hist_factory = _direct_factory
+        else:
+            self._hist_factory = histogram_factory
 
     def on_evaluation_results(  # type: ignore[override]
         self,
@@ -71,13 +82,23 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
         if invocation is None:
             return
         for res in results:
+            raw_name = getattr(res, "metric_name", "") or ""
+            lowered = raw_name.lower()
+            if lowered == "answer_relevancy":
+                canonical = "relevance"
+            elif lowered == "faithfulness":
+                canonical = "hallucination"
+            elif lowered == "sentiment":
+                canonical = "sentiment"
+            elif lowered in {"toxicity", "bias"}:
+                canonical = lowered
+            else:
+                continue  # unsupported metric
             if not isinstance(res.score, (int, float)):
                 continue
-            metric_name = getattr(res, "metric_name", "unknown")
-            histogram = None
             try:
                 histogram = (
-                    self._hist_factory(metric_name)
+                    self._hist_factory(canonical)
                     if self._hist_factory
                     else None
                 )  # type: ignore[attr-defined]
@@ -87,7 +108,7 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
                 continue
             attrs: Dict[str, Any] = {
                 GEN_AI_OPERATION_NAME: "evaluation",
-                GEN_AI_EVALUATION_NAME: res.metric_name,
+                GEN_AI_EVALUATION_NAME: canonical,
             }
             # If the source invocation carried agent identity, propagate
             agent_name = getattr(invocation, "agent_name", None)
@@ -120,22 +141,9 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
                 attrs[GEN_AI_PROVIDER_NAME] = provider
             if res.label is not None:
                 attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
-            # Derive boolean pass indicator. Prefer explicit label mapping; fallback to success semantics.
-            passed: bool | None = None
-            if res.label is not None:
-                if isinstance(res.label, str):
-                    lowered = res.label.lower()
-                    if lowered in {"pass", "passed", "success", "ok", "true"}:
-                        passed = True
-                    elif lowered in {"fail", "failed", "error", "false"}:
-                        passed = False
-            # If no label-derived value, look for underlying success flags in attributes (e.g. deepeval.success) or threshold comparison.
-            if passed is None and isinstance(res.attributes, dict):
-                success_flag = res.attributes.get("deepeval.success")
-                if isinstance(success_flag, bool):
-                    passed = success_flag
-            if passed is not None:
-                attrs["gen_ai.evaluation.passed"] = passed
+            if res.explanation:
+                attrs["gen_ai.evaluation.score.reasoning"] = res.explanation
+            attrs["gen_ai.evaluation.score.units"] = "score"
             if res.error is not None:
                 attrs["error.type"] = res.error.type.__qualname__
             try:
@@ -190,9 +198,21 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
         )
 
         for res in results:
+            raw_name = getattr(res, "metric_name", "") or ""
+            lowered = raw_name.lower()
+            if lowered == "answer_relevancy":
+                canonical = "relevance"
+            elif lowered == "faithfulness":
+                canonical = "hallucination"
+            elif lowered == "sentiment":
+                canonical = "sentiment"
+            elif lowered in {"toxicity", "bias"}:
+                canonical = lowered
+            else:
+                continue
             base_attrs: Dict[str, Any] = {
                 GEN_AI_OPERATION_NAME: "evaluation",
-                GEN_AI_EVALUATION_NAME: res.metric_name,
+                GEN_AI_EVALUATION_NAME: canonical,
             }
             agent_name = getattr(invocation, "agent_name", None)
             agent_id = getattr(invocation, "agent_id", None)
@@ -224,20 +244,12 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
                 base_attrs[GEN_AI_EVALUATION_SCORE_VALUE] = res.score
             if res.label is not None:
                 base_attrs[GEN_AI_EVALUATION_SCORE_LABEL] = res.label
-            # Same passed derivation logic as metrics emitter for parity.
-            passed: bool | None = None
-            if res.label is not None and isinstance(res.label, str):
-                lowered = res.label.lower()
-                if lowered in {"pass", "passed", "success", "ok", "true"}:
-                    passed = True
-                elif lowered in {"fail", "failed", "error", "false"}:
-                    passed = False
-            if passed is None and isinstance(res.attributes, dict):
-                success_flag = res.attributes.get("deepeval.success")
-                if isinstance(success_flag, bool):
-                    passed = success_flag
-            if passed is not None:
-                base_attrs["gen_ai.evaluation.passed"] = passed
+            if res.explanation:
+                base_attrs["gen_ai.evaluation.score.reasoning"] = (
+                    res.explanation
+                )
+            if isinstance(res.score, (int, float)):
+                base_attrs["gen_ai.evaluation.score.units"] = "score"
             if res.error is not None:
                 base_attrs["error.type"] = res.error.type.__qualname__
 

@@ -105,16 +105,23 @@ Emits **one** structured log record summarizing an entire LLM invocation (inputs
 
 ### 4.4 Evaluation Emitters
 Always present:
-- `EvaluationMetricsEmitter` – dynamic histograms `gen_ai.evaluation.score.<metric>` per numeric score (e.g. `gen_ai.evaluation.score.bias`).
+- `EvaluationMetricsEmitter` – fixed histograms:
+  - `gen_ai.evaluation.relevance`
+  - `gen_ai.evaluation.hallucination`
+  - `gen_ai.evaluation.sentiment`
+  - `gen_ai.evaluation.toxicity`
+  - `gen_ai.evaluation.bias`
+  (Legacy dynamic `gen_ai.evaluation.score.<metric>` instruments removed.)
 - `EvaluationEventsEmitter` – event per `EvaluationResult`; optional legacy variant via `OTEL_GENAI_EVALUATION_EVENT_LEGACY`.
 
 Aggregation flag affects batching only (emitters remain active either way).
 
 Emitted attributes (core):
 - `gen_ai.evaluation.name` – metric name
-- `gen_ai.evaluation.score.value` – numeric score (events only; metrics use the histogram value)
-- `gen_ai.evaluation.score.label` – categorical outcome if provided (e.g. pass/fail/medium)
-- `gen_ai.evaluation.passed` – boolean convenience flag (True/False) derived from label (`pass|passed|success|ok|true` => True, `fail|failed|error|false` => False) or backend flag (e.g. `deepeval.success`). Omitted when indeterminate (e.g. label `medium`).
+- `gen_ai.evaluation.score.value` – numeric score (events only; histogram carries values)
+- `gen_ai.evaluation.score.label` – categorical label (pass/fail/neutral/etc.)
+- `gen_ai.evaluation.score.reasoning` – free‑text rationale / explanation from evaluator
+- `gen_ai.evaluation.score.units` – units of the numeric score (currently `score`)
 - Agent/workflow identity: `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.workflow.id` when available.
 
 ## 5. Third-Party Emitters (External Packages)

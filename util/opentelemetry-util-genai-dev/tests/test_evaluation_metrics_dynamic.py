@@ -22,7 +22,8 @@ class _HistogramFactory:
         self.created: Dict[str, _RecordingHistogram] = {}
 
     def __call__(self, metric_name: str):
-        full = f"gen_ai.evaluation.score.{metric_name}"
+        # Canonical instruments now: gen_ai.evaluation.<metric>
+        full = f"gen_ai.evaluation.{metric_name}"
         if full not in self.created:
             self.created[full] = _RecordingHistogram(full)
         return self.created[full]
@@ -40,14 +41,14 @@ def test_dynamic_metric_histograms_created_per_metric():
 
     emitter.on_evaluation_results(results, invocation)
 
-    # Ensure two histograms were created
+    # Ensure two canonical histograms were created
     assert set(factory.created.keys()) == {
-        "gen_ai.evaluation.score.bias",
-        "gen_ai.evaluation.score.toxicity",
+        "gen_ai.evaluation.bias",
+        "gen_ai.evaluation.toxicity",
     }
 
-    bias_hist = factory.created["gen_ai.evaluation.score.bias"]
-    tox_hist = factory.created["gen_ai.evaluation.score.toxicity"]
+    bias_hist = factory.created["gen_ai.evaluation.bias"]
+    tox_hist = factory.created["gen_ai.evaluation.toxicity"]
 
     # Bias scores recorded twice
     bias_points = [p[0] for p in bias_hist.points]
@@ -60,7 +61,7 @@ def test_dynamic_metric_histograms_created_per_metric():
     # Attribute propagation
     for _, attrs in bias_hist.points + tox_hist.points:
         assert attrs["gen_ai.operation.name"] == "evaluation"
-        assert "gen_ai.evaluation.name" in attrs
+        assert attrs["gen_ai.evaluation.name"] in {"bias", "toxicity"}
     # label only present for second bias result
     labels = [
         attrs.get("gen_ai.evaluation.score.label")
@@ -68,8 +69,6 @@ def test_dynamic_metric_histograms_created_per_metric():
     ]
     assert labels == [None, "medium"]
     # passed attribute only expected on labeled result (mapped from label 'medium' -> unknown so not set) => ensure first None, second absent or None unless mapping added
-    passed_flags = [
-        attrs.get("gen_ai.evaluation.passed") for _, attrs in bias_hist.points
-    ]
-    # label 'medium' is neither pass nor fail; so passed should remain None for both entries
-    assert passed_flags == [None, None]
+    # Units should be set for each point; reasoning only when explanation present (not in this test)
+    for _, attrs in bias_hist.points + tox_hist.points:
+        assert attrs.get("gen_ai.evaluation.score.units") == "score"

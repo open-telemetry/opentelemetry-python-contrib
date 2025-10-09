@@ -114,18 +114,23 @@ class TelemetryHandler:
             meter = meter_provider.get_meter(__name__)
         else:
             meter = _metrics.get_meter(__name__)
-        # Dynamic histograms per evaluation metric (gen_ai.evaluation.score.<metric_name>)
-        # We retain a cache to avoid recreating instrument objects repeatedly.
+        # Fixed canonical evaluation histograms (no longer dynamic):
+        # gen_ai.evaluation.(relevance|hallucination|sentiment|toxicity|bias)
         self._evaluation_histograms: dict[str, Any] = {}
 
-        def _get_eval_histogram(metric_name: str):
-            from re import sub
+        _CANONICAL_METRICS = {
+            "relevance",
+            "hallucination",
+            "sentiment",
+            "toxicity",
+            "bias",
+        }
 
-            safe_name = (
-                sub(r"[^a-zA-Z0-9_.]", "_", metric_name.strip().lower())
-                or "unnamed"
-            )
-            full_name = f"gen_ai.evaluation.score.{safe_name}"
+        def _get_eval_histogram(canonical_name: str):
+            name = canonical_name.strip().lower()
+            if name not in _CANONICAL_METRICS:
+                return None  # ignore unknown metrics (no emission)
+            full_name = f"gen_ai.evaluation.{name}"
             hist = self._evaluation_histograms.get(full_name)
             if hist is not None:
                 return hist
@@ -133,7 +138,7 @@ class TelemetryHandler:
                 hist = meter.create_histogram(
                     name=full_name,
                     unit="1",
-                    description=f"Scores produced by GenAI evaluator '{metric_name}' in [0,1] when applicable",
+                    description=f"GenAI evaluation metric '{name}' (0-1 score where applicable)",
                 )
                 self._evaluation_histograms[full_name] = hist
             except Exception:  # pragma: no cover - defensive
@@ -154,8 +159,9 @@ class TelemetryHandler:
         )
         self._emitter = composite
         self._capture_control = capture_control
-
         self._evaluation_manager = None
+        # Active agent identity stack (name, id) for implicit propagation to nested operations
+        self._agent_context_stack: list[tuple[str, str]] = []
         self._initialize_default_callbacks()
 
     def _refresh_capture_content(
@@ -211,6 +217,15 @@ class TelemetryHandler:
         """Start an LLM invocation and create a pending span entry."""
         # Ensure capture content settings are current
         self._refresh_capture_content()
+        # Implicit agent inheritance
+        if (
+            not invocation.agent_name or not invocation.agent_id
+        ) and self._agent_context_stack:
+            top_name, top_id = self._agent_context_stack[-1]
+            if not invocation.agent_name:
+                invocation.agent_name = top_name
+            if not invocation.agent_id:
+                invocation.agent_id = top_id
         # Start invocation span; tracer context propagation handles parent/child links
         self._emitter.on_start(invocation)
         return invocation
@@ -253,6 +268,14 @@ class TelemetryHandler:
     ) -> EmbeddingInvocation:
         """Start an embedding invocation and create a pending span entry."""
         self._refresh_capture_content()
+        if (
+            not invocation.agent_name or not invocation.agent_id
+        ) and self._agent_context_stack:
+            top_name, top_id = self._agent_context_stack[-1]
+            if not invocation.agent_name:
+                invocation.agent_name = top_name
+            if not invocation.agent_id:
+                invocation.agent_id = top_id
         invocation.start_time = time.time()
         self._emitter.on_start(invocation)
         return invocation
@@ -295,6 +318,14 @@ class TelemetryHandler:
     # ToolCall lifecycle --------------------------------------------------
     def start_tool_call(self, invocation: ToolCall) -> ToolCall:
         """Start a tool call invocation and create a pending span entry."""
+        if (
+            not invocation.agent_name or not invocation.agent_id
+        ) and self._agent_context_stack:
+            top_name, top_id = self._agent_context_stack[-1]
+            if not invocation.agent_name:
+                invocation.agent_name = top_name
+            if not invocation.agent_id:
+                invocation.agent_id = top_id
         self._emitter.on_start(invocation)
         return invocation
 
@@ -416,6 +447,14 @@ class TelemetryHandler:
         """Start an agent operation (create or invoke) and create a pending span entry."""
         self._refresh_capture_content()
         self._emitter.on_start(agent)
+        # Push agent identity context (use run_id as canonical id)
+        try:
+            if agent.name:
+                self._agent_context_stack.append(
+                    (agent.name, str(agent.run_id))
+                )
+        except Exception:  # pragma: no cover - defensive
+            pass
         return agent
 
     def stop_agent(self, agent: AgentInvocation) -> AgentInvocation:
@@ -436,6 +475,14 @@ class TelemetryHandler:
                 self._meter_provider.force_flush()  # type: ignore[attr-defined]
             except Exception:
                 pass
+        # Pop context if matches top
+        try:
+            if self._agent_context_stack:
+                top_name, top_id = self._agent_context_stack[-1]
+                if top_name == agent.name and top_id == str(agent.run_id):
+                    self._agent_context_stack.pop()
+        except Exception:
+            pass
         return agent
 
     def fail_agent(
@@ -453,6 +500,14 @@ class TelemetryHandler:
                 self._meter_provider.force_flush()  # type: ignore[attr-defined]
             except Exception:
                 pass
+        # Pop context if this agent is active
+        try:
+            if self._agent_context_stack:
+                top_name, top_id = self._agent_context_stack[-1]
+                if top_name == agent.name and top_id == str(agent.run_id):
+                    self._agent_context_stack.pop()
+        except Exception:
+            pass
         return agent
 
     # Task lifecycle ------------------------------------------------------
