@@ -19,6 +19,7 @@ from typing import Optional
 from openai import Stream
 
 from opentelemetry._logs import Logger, LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -26,6 +27,7 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.trace.propagation import set_span_in_context
 
 from .instruments import Instruments
 from .utils import (
@@ -392,17 +394,13 @@ class StreamWrapper:
                 event_attributes = {
                     GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
                 }
-
-                # this span is not current, so we need to manually set the context on event
-                span_ctx = self.span.get_span_context()
+                context = set_span_in_context(self.span, get_current())
                 self.logger.emit(
                     LogRecord(
                         event_name="gen_ai.choice",
                         attributes=event_attributes,
                         body=body,
-                        trace_id=span_ctx.trace_id,
-                        span_id=span_ctx.span_id,
-                        trace_flags=span_ctx.trace_flags,
+                        context=context,
                     )
                 )
 
