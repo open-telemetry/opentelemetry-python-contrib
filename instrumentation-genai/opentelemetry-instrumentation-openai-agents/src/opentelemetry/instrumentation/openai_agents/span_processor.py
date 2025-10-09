@@ -415,6 +415,9 @@ class _OpenAIAgentsSpanProcessor(TracingProcessor):
         return self._base_attributes()
 
     def on_trace_start(self, trace: AgentsTrace) -> None:
+        # TODO: Confirm with the GenAI SIG whether emitting a SERVER workflow span
+        # is the desired long-term shape once the semantic conventions define
+        # top-level agent spans.
         attributes = self._base_attributes()
         start_time = (
             _parse_iso8601(getattr(trace, "started_at", None)) or time_ns()
