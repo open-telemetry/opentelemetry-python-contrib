@@ -28,6 +28,7 @@ from typing import Any
 from botocore.eventstream import EventStream
 from botocore.response import StreamingBody
 
+from opentelemetry.context import get_current
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
@@ -67,6 +68,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
 )
+from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -505,8 +507,8 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             choice = _Choice.from_converse(result, capture_content)
             # this path is used by streaming apis, in that case we are already out of the span
             # context so need to add the span context manually
-            span_ctx = span.get_span_context()
-            logger.emit(choice.to_choice_event(context=span_ctx))
+            context = set_span_in_context(span, get_current())
+            logger.emit(choice.to_choice_event(context=context))
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
