@@ -402,6 +402,11 @@ class TelemetryHandler:
         agent.end_time = time.time()
         self._emitter.on_end(agent)
         self._notify_completion(agent)
+        # Trigger agent evaluation once outputs are finalized.
+        try:  # pragma: no cover - defensive
+            self.evaluate_agent(agent)
+        except Exception:
+            pass
         if (
             hasattr(self, "_meter_provider")
             and self._meter_provider is not None
@@ -485,6 +490,24 @@ class TelemetryHandler:
                 "Direct evaluator overrides are ignored; using configured evaluators"
             )
         return manager.evaluate_now(invocation)  # type: ignore[attr-defined]
+
+    def evaluate_agent(
+        self,
+        agent: AgentInvocation,
+        evaluators: Optional[list[str]] = None,
+    ) -> list[EvaluationResult]:
+        """Run evaluators against an AgentInvocation.
+
+        Mirrors evaluate_llm to allow explicit agent evaluation triggering.
+        """
+        manager = getattr(self, "_evaluation_manager", None)
+        if manager is None or not manager.has_evaluators:
+            return []
+        if evaluators:
+            _LOGGER.warning(
+                "Direct evaluator overrides are ignored; using configured evaluators"
+            )
+        return manager.evaluate_now(agent)  # type: ignore[attr-defined]
 
     def wait_for_evaluations(self, timeout: Optional[float] = None) -> None:
         """Wait for all pending evaluations to complete, up to the specified timeout.

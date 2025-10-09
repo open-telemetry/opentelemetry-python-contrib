@@ -70,6 +70,13 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
                     GEN_AI_OPERATION_NAME: "evaluation",
                     GEN_AI_EVALUATION_NAME: res.metric_name,
                 }
+                # If the source invocation carried agent identity, propagate
+                agent_name = getattr(invocation, "agent_name", None)
+                agent_id = getattr(invocation, "agent_id", None)
+                if agent_name:
+                    attrs["gen_ai.agent.name"] = agent_name
+                if agent_id:
+                    attrs["gen_ai.agent.id"] = agent_id
                 req_model = _get_request_model(invocation)
                 if req_model:
                     attrs[GEN_AI_REQUEST_MODEL] = req_model
@@ -136,6 +143,12 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
                 GEN_AI_OPERATION_NAME: "evaluation",
                 GEN_AI_EVALUATION_NAME: res.metric_name,
             }
+            agent_name = getattr(invocation, "agent_name", None)
+            agent_id = getattr(invocation, "agent_id", None)
+            if agent_name:
+                base_attrs["gen_ai.agent.name"] = agent_name
+            if agent_id:
+                base_attrs["gen_ai.agent.id"] = agent_id
             if req_model:
                 base_attrs[GEN_AI_REQUEST_MODEL] = req_model
             if provider:

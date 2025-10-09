@@ -214,6 +214,11 @@ Status: in-progress
 Summary: Introduce implicit workflow/agent parent stack so LangGraph executions without chain callbacks still parent tool & LLM spans.
 Details: Added `_context_stack_key` stack management in callback handler `_start_entity` / `_stop_entity`, plus `_resolve_parent` used by chain/tool/LLM start to attach to most recent workflow/agent when `parent_run_id` absent. Requires example update to start a workflow/agent explicitly for richer hierarchy.
 
+### 13-agent-evaluation-enrichment
+Status: done
+Summary: Added `evaluate_agent` lifecycle hook and automatic invocation after `stop_agent`; evaluation metrics/events now include `gen_ai.agent.name` and `gen_ai.agent.id`.
+Details: Updated `TelemetryHandler.stop_agent` to trigger evaluator manager, extended evaluation metric & event emitters to propagate agent identity attributes, and added test `test_evaluation_agent_metrics.py` verifying histogram attribute presence.
+
 ## 14. Prompt for AI Coder (Execute Incrementally)
 You are a senior software engineer refactoring LangChain instrumentation to use `opentelemetry.util.genai` dataclasses and handler lifecycle.
 
