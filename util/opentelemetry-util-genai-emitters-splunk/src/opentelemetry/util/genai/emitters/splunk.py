@@ -12,22 +12,30 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    cast,
 )
 
 from opentelemetry.sdk._logs._internal import LogRecord as SDKLogRecord
-from opentelemetry.util.genai.attributes import (
-    GEN_AI_EVALUATION_NAME,
-    GEN_AI_EVALUATION_SCORE_LABEL,
-)
+
+# NOTE: We intentionally rely on the core ("original") evaluation metrics emitter
+# for recording canonical evaluation metrics. The Splunk emitters now focus solely
+# on providing a custom aggregated event schema for evaluation results and do NOT
+# emit their own metrics to avoid duplication or confusion.
 from opentelemetry.util.genai.emitters.spec import EmitterSpec
+from opentelemetry.util.genai.emitters.utils import (
+    _agent_to_log_record,
+    _llm_invocation_to_log_record,
+)
 from opentelemetry.util.genai.interfaces import EmitterMeta
-from opentelemetry.util.genai.types import EvaluationResult, LLMInvocation
+from opentelemetry.util.genai.types import (
+    AgentInvocation,
+    EvaluationResult,
+    LLMInvocation,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-_EVENT_NAME_CONVERSATION = "gen_ai.splunk.conversation"
 _EVENT_NAME_EVALUATIONS = "gen_ai.splunk.evaluations"
-_METRIC_PREFIX = "gen_ai.evaluation.result."
 _RANGE_ATTRIBUTE_KEYS = (
     "score_range",
     "range",
@@ -116,13 +124,15 @@ def _extract_range(
     return None
 
 
-def _sanitize_metric_suffix(name: str) -> str:
-    sanitized = re.sub(r"[^0-9a-zA-Z]+", "_", name).strip("_").lower()
-    return sanitized or "unknown"
+# _sanitize_metric_suffix retained historically; removed after metrics pruning.
 
 
 class SplunkConversationEventsEmitter(EmitterMeta):
-    """Emit Splunk-friendly conversation events from GenAI invocations."""
+    """Emit semantic-convention conversation / invocation events for LLM & Agent.
+
+    Backward compatibility with the older custom 'gen_ai.splunk.conversation' event
+    has been intentionally removed in this development branch.
+    """
 
     role = "content_event"
     name = "splunk_conversation_event"
@@ -140,57 +150,23 @@ class SplunkConversationEventsEmitter(EmitterMeta):
         return None
 
     def on_end(self, obj: Any) -> None:
-        if not isinstance(obj, LLMInvocation):
+        if self._event_logger is None:
             return
-        if not self._capture_content or self._event_logger is None:
-            return
-
-        conversation = {
-            "inputs": _coerce_messages(
-                obj.input_messages, self._capture_content
-            ),
-            "outputs": _coerce_messages(
-                obj.output_messages, self._capture_content
-            ),
-        }
-        system_instruction = obj.attributes.get("system_instruction")
-        if system_instruction:
-            conversation["system_instruction"] = _coerce_iterable(
-                system_instruction
-            )
-
-        span_context = obj.span.get_span_context() if obj.span else None
-        span_attrs: Dict[str, Any] = {}
-        if obj.span and hasattr(obj.span, "attributes"):
+        # Emit semantic convention-aligned events for LLM & Agent invocations.
+        if isinstance(obj, LLMInvocation):
             try:
-                span_attrs = dict(obj.span.attributes)  # type: ignore[attr-defined]
+                rec = _llm_invocation_to_log_record(obj, self._capture_content)
+                if rec:
+                    self._event_logger.emit(rec)
             except Exception:  # pragma: no cover - defensive
-                span_attrs = {}
-
-        if span_context and span_context.is_valid:
-            span_attrs.setdefault("trace_id", f"{span_context.trace_id:032x}")
-            span_attrs.setdefault("span_id", f"{span_context.span_id:016x}")
-
-        body: Dict[str, Any] = {
-            "conversation": conversation,
-            "span": span_attrs,
-        }
-        attributes = {
-            "event.name": _EVENT_NAME_CONVERSATION,
-            "gen_ai.request.model": obj.request_model,
-        }
-        if obj.provider:
-            attributes["gen_ai.provider.name"] = obj.provider
-
-        record = SDKLogRecord(
-            body=body,
-            attributes=attributes,
-            event_name=_EVENT_NAME_CONVERSATION,
-        )
-        try:
-            self._event_logger.emit(record)
-        except Exception:  # pragma: no cover - defensive
-            pass
+                pass
+        elif isinstance(obj, AgentInvocation):
+            try:
+                rec = _agent_to_log_record(obj, self._capture_content)
+                if rec:
+                    self._event_logger.emit(rec)
+            except Exception:  # pragma: no cover - defensive
+                pass
 
     def on_error(self, error: Any, obj: Any) -> None:
         return None
@@ -202,7 +178,12 @@ class SplunkConversationEventsEmitter(EmitterMeta):
 
 
 class SplunkEvaluationResultsEmitter(EmitterMeta):
-    """Aggregate evaluation results for Splunk ingestion."""
+    """Aggregate evaluation results for Splunk ingestion (events only).
+
+    Metrics emission has been removed; canonical evaluation metrics are handled
+    by the core evaluation metrics emitter. This class now buffers evaluation
+    results per invocation and emits a single aggregated event at invocation end.
+    """
 
     role = "evaluation_results"
     name = "splunk_evaluation_results"
@@ -210,19 +191,33 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
     def __init__(
         self,
         event_logger: Any,
-        meter: Any,
         capture_content: bool = False,
+        *_deprecated_args: Any,  # backward compatibility (accept ignored meter)
+        **_deprecated_kwargs: Any,
     ) -> None:
         self._event_logger = event_logger
-        self._meter = meter
         self._capture_content = capture_content
         self._pending: Dict[
             int, List[Tuple[EvaluationResult, Optional[float], Optional[str]]]
         ] = {}
-        self._histograms: Dict[str, Any] = {}
+        # Track invocations whose lifecycle end has already fired so that
+        # late-arriving evaluation results (e.g., async evaluators completing
+        # after model response) still get emitted immediately.
+        self._ended: set[int] = set()
 
     def handles(self, obj: Any) -> bool:
         return isinstance(obj, LLMInvocation)
+
+    # Explicit no-op implementations to satisfy emitter protocol expectations
+    def on_start(self, obj: Any) -> None:  # pragma: no cover - no-op
+        return None
+
+    def on_error(
+        self, error: Any, obj: Any
+    ) -> None:  # pragma: no cover - delegate to end emission for safety
+        if isinstance(obj, LLMInvocation):
+            self._emit_aggregated_event(obj)
+            self._ended.add(id(obj))
 
     def on_evaluation_results(
         self,
@@ -235,18 +230,18 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
         key = id(invocation)
         buffer = self._pending.setdefault(key, [])
         for result in results:
+            # We retain normalization purely for event enrichment; no metrics recorded.
             normalized, range_label = self._compute_normalized_score(result)
-            if normalized is not None:
-                self._record_metric(result, normalized)
             buffer.append((result, normalized, range_label))
+        # If the invocation already ended, flush immediately so results are not stranded.
+        if key in self._ended:
+            self._emit_aggregated_event(invocation)
 
     def on_end(self, obj: Any) -> None:
         if isinstance(obj, LLMInvocation):
             self._emit_aggregated_event(obj)
 
-    def on_error(self, error: Any, obj: Any) -> None:
-        if isinstance(obj, LLMInvocation):
-            self._emit_aggregated_event(obj)
+    # on_error handled above
 
     def _emit_aggregated_event(self, invocation: LLMInvocation) -> None:
         key = id(invocation)
@@ -290,8 +285,9 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
             )
         if invocation.provider:
             span_attrs.setdefault("gen_ai.provider.name", invocation.provider)
-        if getattr(invocation, "response_id", None):
-            span_attrs.setdefault("gen_ai.response.id", invocation.response_id)
+        resp_id = getattr(invocation, "response_id", None)
+        if isinstance(resp_id, str) and resp_id:
+            span_attrs.setdefault("gen_ai.response.id", resp_id)
 
         body: Dict[str, Any] = {
             "conversation": conversation,
@@ -307,8 +303,8 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
             attributes["gen_ai.request.model"] = invocation.request_model
         if invocation.provider:
             attributes["gen_ai.provider.name"] = invocation.provider
-        if getattr(invocation, "response_id", None):
-            attributes["gen_ai.response.id"] = invocation.response_id
+        if isinstance(resp_id, str) and resp_id:
+            attributes["gen_ai.response.id"] = resp_id
 
         record = SDKLogRecord(
             body=body,
@@ -320,36 +316,7 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
         except Exception:  # pragma: no cover - defensive
             pass
 
-    def _record_metric(self, result: EvaluationResult, value: float) -> None:
-        if self._meter is None:
-            return
-        metric_name = (
-            f"{_METRIC_PREFIX}{_sanitize_metric_suffix(result.metric_name)}"
-        )
-        histogram = self._histograms.get(metric_name)
-        if histogram is None:
-            description = f"Normalized evaluation score for metric '{result.metric_name}'"
-            try:
-                histogram = self._meter.create_histogram(
-                    name=metric_name,
-                    unit="1",
-                    description=description,
-                )
-            except Exception as exc:  # pragma: no cover - defensive
-                _LOGGER.debug(
-                    "Failed to create histogram '%s': %s", metric_name, exc
-                )
-                return
-            self._histograms[metric_name] = histogram
-        attributes = {GEN_AI_EVALUATION_NAME: result.metric_name}
-        if result.label is not None:
-            attributes[GEN_AI_EVALUATION_SCORE_LABEL] = result.label
-        try:
-            histogram.record(value, attributes=attributes)
-        except Exception as exc:  # pragma: no cover - defensive
-            _LOGGER.debug(
-                "Failed to record histogram '%s': %s", metric_name, exc
-            )
+    # _record_metric removed (metrics no longer emitted)
 
     def _compute_normalized_score(
         self, result: EvaluationResult
@@ -370,7 +337,8 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
             )
             return None, None
         start, end = bounds
-        if start is None or end is None or end <= start:
+        # start/end are floats here; retain defensive shape check
+        if end <= start:
             _LOGGER.debug(
                 "Invalid range %s for metric '%s'", bounds, result.metric_name
             )
@@ -420,18 +388,18 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
 
 
 def splunk_emitters() -> list[EmitterSpec]:
-    def _conversation_factory(ctx):
+    def _conversation_factory(ctx: Any) -> SplunkConversationEventsEmitter:
         capture_mode = getattr(ctx, "capture_event_content", False)
         return SplunkConversationEventsEmitter(
-            event_logger=ctx.event_logger, capture_content=capture_mode
+            event_logger=getattr(ctx, "event_logger", None),
+            capture_content=cast(bool, capture_mode),
         )
 
-    def _evaluation_factory(ctx):
+    def _evaluation_factory(ctx: Any) -> SplunkEvaluationResultsEmitter:
         capture_mode = getattr(ctx, "capture_event_content", False)
         return SplunkEvaluationResultsEmitter(
-            event_logger=ctx.event_logger,
-            meter=ctx.meter,
-            capture_content=capture_mode,
+            event_logger=getattr(ctx, "event_logger", None),
+            capture_content=cast(bool, capture_mode),
         )
 
     return [
@@ -454,12 +422,17 @@ def _coerce_messages(
 ) -> List[Dict[str, Any]]:
     result: List[Dict[str, Any]] = []
     for msg in messages or []:
+        data: Dict[str, Any]
         try:
-            data = asdict(msg)
+            data = asdict(msg)  # type: ignore[assignment]
         except TypeError:
-            data = dict(msg) if isinstance(msg, dict) else {"value": str(msg)}
+            if isinstance(msg, dict):
+                data = cast(Dict[str, Any], dict(msg))  # type: ignore[arg-type]
+            else:
+                data = {"value": str(msg)}
         if not capture_content:
-            for part in data.get("parts", []):
+            parts = data.get("parts", [])
+            for part in parts:
                 if isinstance(part, dict) and "content" in part:
                     part["content"] = ""
         result.append(data)
@@ -468,7 +441,7 @@ def _coerce_messages(
 
 def _coerce_iterable(values: Any) -> List[Any]:
     if isinstance(values, list):
-        return values
+        return cast(List[Any], values)
     if isinstance(values, tuple):
         return list(values)
     if values is None:

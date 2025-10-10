@@ -20,6 +20,7 @@ def load_emitter_specs(
     Entry points should return an iterable of :class:`EmitterSpec` instances or dictionaries
     matching the ``EmitterSpec`` constructor signature. When ``names`` is provided, only
     entry points whose name matches (case-insensitive) the selection are loaded.
+    Legacy group support has been removed; vendor packages must migrate to the new group.
     """
 
     selected = {name.lower() for name in names} if names else None

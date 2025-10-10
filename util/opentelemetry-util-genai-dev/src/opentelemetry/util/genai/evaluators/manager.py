@@ -217,7 +217,9 @@ class Manager(CompletionCallback):
     ) -> list[EvaluationResult]:
         if not buckets:
             return []
-        if self._aggregate_results:
+        # Dynamic aggregation: allow enabling aggregation via env var after manager initialization.
+        aggregate = self._aggregate_results or _read_aggregation_flag()
+        if aggregate:
             aggregated: list[EvaluationResult] = []
             for bucket in buckets:
                 aggregated.extend(bucket)

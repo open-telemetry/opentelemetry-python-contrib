@@ -31,8 +31,8 @@ dependencies = [
 ]
 
 
-[project.entry-points."opentelemetry_genai_emitters"]
-splunk = "opentelemetry.util.genai.emitters:splunk_emitters"
+[project.entry-points."opentelemetry_util_genai_emitters"]
+splunk = "opentelemetry.util.genai.emitters.splunk:splunk_emitters"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0.0"]

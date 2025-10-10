@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Sequence
 
 from opentelemetry import _events as _otel_events
@@ -56,6 +57,7 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
     """
 
     role = "evaluation_metrics"
+    name = "EvaluationMetrics"
 
     def __init__(
         self, histogram_factory
@@ -105,6 +107,17 @@ class EvaluationMetricsEmitter(_EvaluationEmitterBase):
             except Exception:  # pragma: no cover - defensive
                 histogram = None
             if histogram is None:
+                # Log once per metric name if histogram factory did not provide an instrument.
+                try:
+                    _once_key = f"_genai_eval_hist_missing_{canonical}"
+                    if not getattr(self, _once_key, False):
+                        logging.getLogger(__name__).debug(
+                            "EvaluationMetricsEmitter: no histogram for canonical metric '%s' (factory returned None)",
+                            canonical,
+                        )
+                        setattr(self, _once_key, True)
+                except Exception:
+                    pass
                 continue
             attrs: Dict[str, Any] = {
                 GEN_AI_OPERATION_NAME: "evaluation",
@@ -168,6 +181,7 @@ class EvaluationEventsEmitter(_EvaluationEmitterBase):
     """Emits one event per evaluation result."""
 
     role = "evaluation_events"
+    name = "EvaluationEvents"
 
     def __init__(
         self, event_logger, *, emit_legacy_event: bool = False

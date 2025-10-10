@@ -68,8 +68,7 @@ def get_content_capturing_mode() -> (
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES
     )
     if capture_messages:
-        if not is_experimental_mode():
-            return ContentCapturingMode.NO_CONTENT
+        # Experimental stability opt-in no longer required for message capture.
         normalized = capture_messages.strip().lower()
         mapping = {
             "span": ContentCapturingMode.SPAN_ONLY,
@@ -95,8 +94,7 @@ def get_content_capturing_mode() -> (
     )
     if not capture_message_content:
         return ContentCapturingMode.NO_CONTENT
-    if not is_experimental_mode():
-        return ContentCapturingMode.NO_CONTENT
+    # Experimental stability opt-in removed: allow capture based solely on flag values.
 
     primary = (capture_message_content or "").strip()
     secondary = (capture_message_content_mode or "").strip()

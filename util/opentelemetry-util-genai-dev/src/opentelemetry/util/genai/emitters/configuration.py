@@ -253,7 +253,25 @@ def _apply_category_overrides(
                     )
                     continue
                 replacement.append(spec)
-            category_specs[category] = replacement
+            if not replacement:
+                _logger.warning(
+                    "replace-category override for '%s' resolved to empty set; retaining existing emitters (fallback)",
+                    category,
+                )
+            else:
+                # Auto-augment evaluation if user attempted to replace with only SplunkEvaluationResults
+                if (
+                    category == _CATEGORY_EVALUATION
+                    and len(replacement) == 1
+                    and replacement[0].name == "SplunkEvaluationResults"
+                ):
+                    builtin_metrics = spec_registry.get("EvaluationMetrics")
+                    builtin_events = spec_registry.get("EvaluationEvents")
+                    if builtin_metrics and builtin_metrics not in replacement:
+                        replacement.insert(0, builtin_metrics)
+                    if builtin_events and builtin_events not in replacement:
+                        replacement.insert(1, builtin_events)
+                category_specs[category] = replacement
             continue
         if override.mode == "prepend":
             additions = _resolve_specs(
