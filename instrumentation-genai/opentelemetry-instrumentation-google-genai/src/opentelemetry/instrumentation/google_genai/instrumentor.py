@@ -14,7 +14,7 @@
 
 from typing import Any, Collection, Optional
 
-from opentelemetry._events import get_event_logger_provider
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter_provider
 from opentelemetry.trace import get_tracer_provider
@@ -49,13 +49,13 @@ class GoogleGenAiSdkInstrumentor(BaseInstrumentor):
         tracer_provider = (
             kwargs.get("tracer_provider") or get_tracer_provider()
         )
-        event_logger_provider = (
-            kwargs.get("event_logger_provider") or get_event_logger_provider()
+        logger_provider = (
+            kwargs.get("logger_provider") or get_logger_provider()
         )
         meter_provider = kwargs.get("meter_provider") or get_meter_provider()
         otel_wrapper = OTelWrapper.from_providers(
             tracer_provider=tracer_provider,
-            event_logger_provider=event_logger_provider,
+            logger_provider=logger_provider,
             meter_provider=meter_provider,
         )
         self._generate_content_snapshot = instrument_generate_content(

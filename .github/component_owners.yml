@@ -9,8 +9,12 @@ components:
   instrumentation/opentelemetry-instrumentation-asyncio:
     - bourbonkk
 
+  instrumentation/opentelemetry-instrumentation-botocore:
+    - lukeina2z
+    - yiyuan-he
+
   instrumentation/opentelemetry-instrumentation-pymssql:
-     - guillaumep
+    - guillaumep
 
   instrumentation/opentelemetry-instrumentation-urllib:
     - shalevr
