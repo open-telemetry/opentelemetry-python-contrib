@@ -20,7 +20,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.util._importlib_metadata import EntryPoint
 
 
-class MockInstrumetor(BaseInstrumentor):
+class MockInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self):
         return []
 
@@ -36,7 +36,7 @@ class MockEntryPoint(EntryPoint):
         pass
 
     def load(self, *args, **kwargs):  # pylint: disable=signature-differs
-        return MockInstrumetor
+        return MockInstrumentor
 
 
 class MockDistro(BaseDistro):
@@ -49,9 +49,9 @@ class TestDistro(TestCase):
         # pylint: disable=protected-access
         distro = MockDistro()
 
-        instrumentor = MockInstrumetor()
+        instrumentor = MockInstrumentor()
         entry_point = MockEntryPoint(
-            "MockInstrumetor",
+            "MockInstrumentor",
             value="opentelemetry",
             group="opentelemetry_distro",
         )

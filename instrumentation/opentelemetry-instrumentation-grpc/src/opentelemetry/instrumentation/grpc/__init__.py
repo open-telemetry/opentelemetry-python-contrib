@@ -264,7 +264,7 @@ You can also use the filters directly on the provided interceptors:
     server = grpc.server(futures.ThreadPoolExecutor(),
                          interceptors = [my_interceptor])
 
-``filter_`` option also applies to both global and manual client intrumentors.
+``filter_`` option also applies to both global and manual client instrumentors.
 
 
 Environment variable
