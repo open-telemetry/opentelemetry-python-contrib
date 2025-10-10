@@ -831,6 +831,21 @@ class TestWsgiAttributes(unittest.TestCase):
             expected.items(),
         )
 
+    def test_unicode_path_info_is_utf8_encoded(self):
+        self.environ["HTTP_HOST"] = "mock"
+        self.environ["PATH_INFO"] = "/заказ"
+        self.environ["QUERY_STRING"] = "foo=bar"
+
+        expected = {
+            HTTP_URL: "http://mock/%D0%B7%D0%B0%D0%BA%D0%B0%D0%B7?foo=bar",
+            NET_HOST_PORT: 80,
+        }
+
+        self.assertGreaterEqual(
+            otel_wsgi.collect_request_attributes(self.environ).items(),
+            expected.items(),
+        )
+
 
 class TestWsgiMiddlewareWithTracerProvider(WsgiTestBase):
     def validate_response(
