@@ -259,6 +259,45 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    def test_commenter_options_propagation(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            commenter_options={"opentelemetry_values": False},
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        with self.assertRaises(Exception):
+            cursor.execute("SELECT 1", throw_exception=True)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes.get("db.system"), "testcomponent")
+        self.assertIn("opentelemetry_values", db_integration.commenter_options)
+        self.assertFalse(
+            db_integration.commenter_options["opentelemetry_values"]
+        )
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    def test_trace_integration_passes_commenter_options(
+        self, mock_wrap_connect
+    ):
+        fake_connect_module = mock.Mock()
+        fake_options = {"opentelemetry_values": False, "foo": "bar"}
+        dbapi.trace_integration(
+            connect_module=fake_connect_module,
+            connect_method_name="connect",
+            database_system="testdb",
+            commenter_options=fake_options,
+        )
+        mock_wrap_connect.assert_called_once()
+        _, _, kwargs = mock_wrap_connect.mock_calls[0]
+
+        self.assertIn("commenter_options", kwargs)
+        self.assertEqual(kwargs["commenter_options"], fake_options)
+
     def test_executemany(self):
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name", "testcomponent"
