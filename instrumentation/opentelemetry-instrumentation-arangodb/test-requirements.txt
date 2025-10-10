@@ -1,0 +1,4 @@
+python-arango==8.2.2
+pytest==7.4.4
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-arangodb

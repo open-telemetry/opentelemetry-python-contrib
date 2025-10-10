@@ -45,6 +45,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-aiopg==0.59b0.dev",
     },
     {
+        "library": "python-arango >= 8.0, < 9.0",
+        "instrumentation": "opentelemetry-instrumentation-arangodb==0.59b0.dev",
+    },
+    {
         "library": "asgiref ~= 3.0",
         "instrumentation": "opentelemetry-instrumentation-asgi==0.59b0.dev",
     },
