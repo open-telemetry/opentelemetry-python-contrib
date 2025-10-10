@@ -27,6 +27,9 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -136,6 +139,9 @@ class TestTelemetryHandler(unittest.TestCase):
             invocation.input_messages = [message]
             invocation.provider = "test-provider"
             invocation.attributes = {"custom_attr": "value"}
+            invocation.temperature = 0.5
+            invocation.top_p = 0.9
+            invocation.stop_sequences = ["stop"]
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
@@ -152,6 +158,9 @@ class TestTelemetryHandler(unittest.TestCase):
         span_attrs = span.attributes
         assert span_attrs.get("gen_ai.operation.name") == "chat"
         assert span_attrs.get("gen_ai.provider.name") == "test-provider"
+        assert span_attrs.get(GenAI.GEN_AI_REQUEST_TEMPERATURE) == 0.5
+        assert span_attrs.get(GenAI.GEN_AI_REQUEST_TOP_P) == 0.9
+        assert span_attrs.get(GenAI.GEN_AI_REQUEST_STOP_SEQUENCES) == ("stop",)
         assert span.start_time is not None
         assert span.end_time is not None
         assert span.end_time >= span.start_time
@@ -273,6 +282,8 @@ class TestTelemetryHandler(unittest.TestCase):
         with self.assertRaises(BoomError):
             with self.telemetry_handler.llm(invocation):
                 # Simulate user code that fails inside the invocation
+                invocation.max_tokens = 128
+                invocation.seed = 123
                 raise BoomError("boom")
 
         # One span should have been exported and should be in error state
@@ -284,6 +295,8 @@ class TestTelemetryHandler(unittest.TestCase):
             span.attributes.get(ErrorAttributes.ERROR_TYPE)
             == BoomError.__qualname__
         )
+        assert span.attributes.get(GenAI.GEN_AI_REQUEST_MAX_TOKENS) == 128
+        assert span.attributes.get(GenAI.GEN_AI_REQUEST_SEED) == 123
         assert span.start_time is not None
         assert span.end_time is not None
         assert span.end_time >= span.start_time

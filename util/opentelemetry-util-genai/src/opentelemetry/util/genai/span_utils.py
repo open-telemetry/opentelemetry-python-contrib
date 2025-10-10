@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import asdict
-from typing import List
+from typing import Any, Dict, List
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -112,6 +112,7 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
     _maybe_set_span_messages(
         span, invocation.input_messages, invocation.output_messages
     )
+    _apply_request_attributes(span, invocation)
     span.set_attributes(invocation.attributes)
 
 
@@ -122,7 +123,35 @@ def _apply_error_attributes(span: Span, error: Error) -> None:
         span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
 
 
+def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
+    """Attach GenAI request semantic convention attributes to the span."""
+    attributes: Dict[str, Any] = {}
+    if invocation.temperature is not None:
+        attributes[GenAI.GEN_AI_REQUEST_TEMPERATURE] = invocation.temperature
+    if invocation.top_p is not None:
+        attributes[GenAI.GEN_AI_REQUEST_TOP_P] = invocation.top_p
+    if invocation.frequency_penalty is not None:
+        attributes[GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
+            invocation.frequency_penalty
+        )
+    if invocation.presence_penalty is not None:
+        attributes[GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY] = (
+            invocation.presence_penalty
+        )
+    if invocation.max_tokens is not None:
+        attributes[GenAI.GEN_AI_REQUEST_MAX_TOKENS] = invocation.max_tokens
+    if invocation.stop_sequences is not None:
+        attributes[GenAI.GEN_AI_REQUEST_STOP_SEQUENCES] = (
+            invocation.stop_sequences
+        )
+    if invocation.seed is not None:
+        attributes[GenAI.GEN_AI_REQUEST_SEED] = invocation.seed
+    if attributes:
+        span.set_attributes(attributes)
+
+
 __all__ = [
     "_apply_finish_attributes",
     "_apply_error_attributes",
+    "_apply_request_attributes",
 ]
