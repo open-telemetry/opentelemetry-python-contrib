@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # pylint:disable=cyclic-import
-import logging
 
 import threading
-import time
 from unittest import mock
 
 import grpc
@@ -64,24 +62,24 @@ class Interceptor(
         pass
 
     def intercept_unary_unary(
-            self, continuation, client_call_details, request
+        self, continuation, client_call_details, request
     ):
         return self._intercept_call(continuation, client_call_details, request)
 
     def intercept_unary_stream(
-            self, continuation, client_call_details, request
+        self, continuation, client_call_details, request
     ):
         return self._intercept_call(continuation, client_call_details, request)
 
     def intercept_stream_unary(
-            self, continuation, client_call_details, request_iterator
+        self, continuation, client_call_details, request_iterator
     ):
         return self._intercept_call(
             continuation, client_call_details, request_iterator
         )
 
     def intercept_stream_stream(
-            self, continuation, client_call_details, request_iterator
+        self, continuation, client_call_details, request_iterator
     ):
         return self._intercept_call(
             continuation, client_call_details, request_iterator
@@ -89,7 +87,7 @@ class Interceptor(
 
     @staticmethod
     def _intercept_call(
-            continuation, client_call_details, request_or_iterator
+        continuation, client_call_details, request_or_iterator
     ):
         return continuation(client_call_details, request_or_iterator)
 
@@ -177,9 +175,9 @@ class TestClientProto(TestBase):
     def test_unary_stream_can_be_cancel(self):
         done = threading.Event()
         responses = server_streaming_method(self._stub, serialize=False)
-        responses.add_done_callback(lambda: done.set())
-        for i, _ in enumerate(responses):
-            if i == 1:
+        responses.add_done_callback(lambda _: done.set())
+        for resp, _ in enumerate(responses):
+            if resp == 1:
                 responses.cancel()
                 break
         self.assertEqual(responses.code(), grpc.StatusCode.CANCELLED)
@@ -202,9 +200,7 @@ class TestClientProto(TestBase):
                 RPC_METHOD: "ServerStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
-                    0
-                ],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[0],
             },
         )
 
@@ -261,9 +257,9 @@ class TestClientProto(TestBase):
     def test_stream_stream_can_be_cancel(self):
         done = threading.Event()
         responses = bidirectional_streaming_method(self._stub, serialize=False)
-        responses.add_done_callback(lambda: done.set())
-        for i, _ in enumerate(responses):
-            if i == 1:
+        responses.add_done_callback(lambda _: done.set())
+        for resp, _ in enumerate(responses):
+            if resp == 1:
                 responses.cancel()
                 break
         self.assertEqual(responses.code(), grpc.StatusCode.CANCELLED)
@@ -272,7 +268,9 @@ class TestClientProto(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
 
-        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
@@ -286,12 +284,9 @@ class TestClientProto(TestBase):
                 RPC_METHOD: "BidirectionalStreamingMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[
-                    0
-                ],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.CANCELLED.value[0],
             },
         )
-
 
     def test_error_simple(self):
         with self.assertRaises(grpc.RpcError):
@@ -368,7 +363,7 @@ class TestClientProto(TestBase):
             self.assertEqual(span_end_mock.call_count, 1)
 
     def test_client_interceptor_trace_context_propagation(
-            self,
+        self,
     ):  # pylint: disable=no-self-use
         """ensure that client interceptor correctly inject trace context into all outgoing requests."""
         previous_propagator = get_global_textmap()

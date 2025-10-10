@@ -25,6 +25,7 @@ from functools import partial
 from typing import Callable, MutableMapping
 
 import grpc
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
@@ -77,11 +78,12 @@ def _safe_invoke(function: Callable, *args):
             "Error when invoking function '%s'", function_name, exc_info=ex
         )
 
+
 class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
     def __init__(
-            self, tracer, filter_=None, request_hook=None, response_hook=None
+        self, tracer, filter_=None, request_hook=None, response_hook=None
     ):
         self._tracer = tracer
         self._filter = filter_
@@ -135,10 +137,10 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
         with self._start_span(
-                client_info.full_method,
-                end_on_exit=False,
-                record_exception=False,
-                set_status_on_exception=False,
+            client_info.full_method,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
         ) as span:
             result = None
             try:
@@ -192,7 +194,7 @@ class OpenTelemetryClientInterceptor(
     # the span across the generated responses and detect any errors, we wrap
     # the result in a new generator that yields the response values.
     def _intercept_server_stream(
-            self, request_or_iterator, metadata, client_info, invoker
+        self, request_or_iterator, metadata, client_info, invoker
     ):
         if not metadata:
             mutable_metadata = OrderedDict()
@@ -200,8 +202,7 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict(metadata)
 
         with self._start_span(
-                client_info.full_method,
-                end_on_exit=False
+            client_info.full_method, end_on_exit=False
         ) as span:
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
@@ -222,7 +223,8 @@ class OpenTelemetryClientInterceptor(
                 except grpc.FutureCancelledError:
                     span_.set_status(Status(StatusCode.OK))
                     span_.set_attribute(
-                        RPC_GRPC_STATUS_CODE, grpc.StatusCode.CANCELLED.value[0]
+                        RPC_GRPC_STATUS_CODE,
+                        grpc.StatusCode.CANCELLED.value[0],
                     )
                 except grpc.RpcError as err:
                     span_.set_status(Status(StatusCode.ERROR))
@@ -236,7 +238,7 @@ class OpenTelemetryClientInterceptor(
             return stream
 
     def intercept_stream(
-            self, request_or_iterator, metadata, client_info, invoker
+        self, request_or_iterator, metadata, client_info, invoker
     ):
         if not is_instrumentation_enabled():
             return invoker(request_or_iterator, metadata)
