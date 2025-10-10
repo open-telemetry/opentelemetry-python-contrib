@@ -3,7 +3,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 
 # NOTE: OpenTelemetry Python Logs and Events APIs are in beta
-from opentelemetry import _events, _logs, trace
+from opentelemetry import _logs, trace
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
     OTLPLogExporter,
 )
@@ -11,7 +11,6 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.trace import TracerProvider
@@ -28,7 +27,6 @@ _logs.set_logger_provider(LoggerProvider())
 _logs.get_logger_provider().add_log_record_processor(
     BatchLogRecordProcessor(OTLPLogExporter())
 )
-_events.set_event_logger_provider(EventLoggerProvider())
 
 # instrument VertexAI
 VertexAIInstrumentor().instrument()
