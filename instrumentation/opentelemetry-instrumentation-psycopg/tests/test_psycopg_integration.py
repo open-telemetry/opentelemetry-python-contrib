@@ -264,6 +264,24 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(spans_list[6].name, "postgresql")
         self.assertEqual(spans_list[7].name, "--")
 
+    def test_span_params_attribute(self):
+        PsycopgInstrumentor().instrument(capture_parameters=True)
+        cnx = psycopg.connect(database="test")
+        query = "SELECT * FROM mytable WHERE myparam1 = %s AND myparam2 = %s"
+        params = ("test", 42)
+
+        cursor = cnx.cursor()
+
+        cursor.execute(query, params)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        assert spans_list[0].attributes is not None
+        self.assertEqual(spans_list[0].attributes["db.statement"], query)
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], str(params)
+        )
+
     # pylint: disable=unused-argument
     def test_not_recording(self):
         mock_tracer = mock.Mock()
@@ -478,6 +496,23 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(spans_list[3].name, "query")
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
+
+    async def test_span_params_attribute(self):
+        PsycopgInstrumentor().instrument(capture_parameters=True)
+        cnx = await psycopg.AsyncConnection.connect("test")
+        query = "SELECT * FROM mytable WHERE myparam1 = %s AND myparam2 = %s"
+        params = ("test", 42)
+        async with cnx.cursor() as cursor:
+            await cursor.execute(query, params)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        assert spans_list[0].attributes is not None
+        self.assertEqual(spans_list[0].attributes["db.statement"], query)
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], str(params)
+        )
 
     # pylint: disable=unused-argument
     async def test_not_recording_async(self):
