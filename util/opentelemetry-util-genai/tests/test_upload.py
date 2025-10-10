@@ -172,7 +172,9 @@ class TestUploadCompletionHook(TestCase):
             types.Text(content="You will do your best."),
         ]
         expected_hash = hashlib.sha256(
-            "\n".join(x.content for x in system_instructions).encode("utf-8"),
+            "\n".join(text.content for text in system_instructions).encode(
+                "utf-8"
+            ),
             usedforsecurity=False,
         ).hexdigest()
         record = LogRecord()
@@ -222,7 +224,7 @@ class TestUploadCompletionHook(TestCase):
             )
         )
         # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
-        for x in range(5):
+        for iteration in range(5):
             self.assertTrue(
                 record.attributes["gen_ai.system_instructions_ref"]
                 in self.hook.lru_dict
@@ -230,9 +232,9 @@ class TestUploadCompletionHook(TestCase):
             self.hook.on_completion(
                 inputs=[],
                 outputs=[],
-                system_instruction=[types.Text(content=str(x))],
+                system_instruction=[types.Text(content=str(iteration))],
             )
-        print(self.hook.lru_dict)
+        self.hook.shutdown()
         self.assertFalse(
             record.attributes["gen_ai.system_instructions_ref"]
             in self.hook.lru_dict

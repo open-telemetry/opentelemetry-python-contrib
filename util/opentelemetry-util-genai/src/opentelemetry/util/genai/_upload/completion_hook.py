@@ -80,9 +80,11 @@ UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 
 
 def is_system_instructions_hashable(
-    system_instruction: list[types.MessagePart],
+    system_instruction: list[types.MessagePart] | None,
 ) -> bool:
-    return all(isinstance(x, types.Text) for x in system_instruction)
+    return bool(system_instruction) and all(
+        isinstance(x, types.Text) for x in system_instruction
+    )
 
 
 class UploadCompletionHook(CompletionHook):
@@ -110,7 +112,7 @@ class UploadCompletionHook(CompletionHook):
         self._max_size = max_size
         self._fs, base_path = fsspec.url_to_fs(base_path)
         self._base_path = self._fs.unstrip_protocol(base_path)
-        self.lru_dict = OrderedDict()
+        self.lru_dict: OrderedDict[str, bool] = OrderedDict()
         self.lru_cache_max_size = lru_cache_max_size
 
         if upload_format not in _FORMATS + (None,):
