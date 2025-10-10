@@ -8,7 +8,6 @@ from typing import Dict
 from .emitters.spec import CategoryOverride
 from .environment_variables import (
     OTEL_GENAI_EVALUATION_EVENT_LEGACY,
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES,
     OTEL_INSTRUMENTATION_GENAI_EMITTERS,
     OTEL_INSTRUMENTATION_GENAI_EMITTERS_CONTENT_EVENTS,
@@ -81,12 +80,8 @@ def parse_env() -> Settings:
     )
     capture_mode = get_content_capturing_mode()
 
-    # Legacy compat flag retained for handler refresh to honour previous
-    # message capture overrides tied to CAPTURE_MESSAGE_CONTENT
-    legacy_flag = os.environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
-    ).strip()
-    legacy_capture_request = legacy_flag.lower() in {"true", "1", "yes"}
+    # Legacy flag removed: always False now
+    legacy_capture_request = False
 
     overrides: Dict[str, CategoryOverride] = {}
     override_env_map = {

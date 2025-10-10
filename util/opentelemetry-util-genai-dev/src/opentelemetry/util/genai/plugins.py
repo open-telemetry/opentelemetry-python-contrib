@@ -26,6 +26,7 @@ def load_emitter_specs(
     selected = {name.lower() for name in names} if names else None
     loaded_specs: list[EmitterSpec] = []
     seen: set[str] = set()
+    # Primary (new) group
     for ep in entry_points(group="opentelemetry_util_genai_emitters"):
         ep_name = getattr(ep, "name", "")
         seen.add(ep_name.lower())
@@ -42,6 +43,35 @@ def load_emitter_specs(
             _logger.exception(
                 "Emitter entry point %s returned an unsupported value", ep_name
             )
+    # Silent legacy fallback (temporary for transition/tests). Only consult if specific names requested
+    # or if no specs loaded yet and legacy group is present.
+    if (selected and loaded_specs) or (not selected and loaded_specs):
+        pass  # already satisfied
+    else:
+        try:
+            for ep in entry_points(group="opentelemetry_genai_emitters"):
+                ep_name = getattr(ep, "name", "")
+                if ep_name.lower() in seen:
+                    continue
+                if selected and ep_name.lower() not in selected:
+                    continue
+                try:
+                    provider = ep.load()
+                except Exception:  # pragma: no cover - defensive
+                    _logger.exception(
+                        "(legacy group) Emitter entry point %s failed to load",
+                        ep_name,
+                    )
+                    continue
+                try:
+                    loaded_specs.extend(_coerce_to_specs(provider, ep_name))
+                except Exception:  # pragma: no cover - defensive
+                    _logger.exception(
+                        "(legacy group) Emitter entry point %s returned an unsupported value",
+                        ep_name,
+                    )
+        except Exception:  # pragma: no cover - defensive
+            _logger.debug("Legacy emitter entry point group not available")
     if selected:
         missing = selected - seen
         for name in missing:

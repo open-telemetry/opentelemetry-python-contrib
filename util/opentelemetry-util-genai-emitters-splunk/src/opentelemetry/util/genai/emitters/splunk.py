@@ -71,7 +71,8 @@ def _to_float(value: Any) -> Optional[float]:
 
 
 def _parse_range_spec(value: Any) -> Optional[Tuple[float, float]]:
-    if isinstance(value, (list, tuple)) and len(value) >= 2:
+    # Elements may be heterogeneous/unknown; length check is safe.
+    if isinstance(value, (list, tuple)) and len(value) >= 2:  # type: ignore[arg-type]
         start = _to_float(value[0])
         end = _to_float(value[1])
         if start is not None and end is not None:
@@ -192,18 +193,11 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
         self,
         event_logger: Any,
         capture_content: bool = False,
-        *_deprecated_args: Any,  # backward compatibility (accept ignored meter)
+        *_deprecated_args: Any,
         **_deprecated_kwargs: Any,
     ) -> None:
         self._event_logger = event_logger
         self._capture_content = capture_content
-        self._pending: Dict[
-            int, List[Tuple[EvaluationResult, Optional[float], Optional[str]]]
-        ] = {}
-        # Track invocations whose lifecycle end has already fired so that
-        # late-arriving evaluation results (e.g., async evaluators completing
-        # after model response) still get emitted immediately.
-        self._ended: set[int] = set()
 
     def handles(self, obj: Any) -> bool:
         return isinstance(obj, LLMInvocation)
@@ -212,12 +206,8 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
     def on_start(self, obj: Any) -> None:  # pragma: no cover - no-op
         return None
 
-    def on_error(
-        self, error: Any, obj: Any
-    ) -> None:  # pragma: no cover - delegate to end emission for safety
-        if isinstance(obj, LLMInvocation):
-            self._emit_aggregated_event(obj)
-            self._ended.add(id(obj))
+    def on_error(self, error: Any, obj: Any) -> None:  # pragma: no cover
+        return None
 
     def on_evaluation_results(
         self,
@@ -227,88 +217,158 @@ class SplunkEvaluationResultsEmitter(EmitterMeta):
         invocation = obj if isinstance(obj, LLMInvocation) else None
         if invocation is None or not results:
             return
-        key = id(invocation)
-        buffer = self._pending.setdefault(key, [])
-        for result in results:
-            # We retain normalization purely for event enrichment; no metrics recorded.
-            normalized, range_label = self._compute_normalized_score(result)
-            buffer.append((result, normalized, range_label))
-        # If the invocation already ended, flush immediately so results are not stranded.
-        if key in self._ended:
-            self._emit_aggregated_event(invocation)
+        # Manager now handles aggregation; it emits either one aggregated batch
+        # or multiple smaller batches. Each call here represents what should be
+        # a single Splunk event.
+        enriched: List[
+            Tuple[EvaluationResult, Optional[float], Optional[str]]
+        ] = []
+        for r in results:
+            normalized, range_label = self._compute_normalized_score(r)
+            enriched.append((r, normalized, range_label))
+        self._emit_event(invocation, enriched)
 
     def on_end(self, obj: Any) -> None:
-        if isinstance(obj, LLMInvocation):
-            self._emit_aggregated_event(obj)
+        return None
 
     # on_error handled above
 
-    def _emit_aggregated_event(self, invocation: LLMInvocation) -> None:
-        key = id(invocation)
-        records = self._pending.pop(key, None)
+    def _emit_event(
+        self,
+        invocation: LLMInvocation,
+        records: List[Tuple[EvaluationResult, Optional[float], Optional[str]]],
+    ) -> None:
         if not records or self._event_logger is None:
             return
-
-        conversation: Dict[str, Any] = {
-            "inputs": _coerce_messages(
-                invocation.input_messages, self._capture_content
-            ),
-            "outputs": _coerce_messages(
-                invocation.output_messages, self._capture_content
-            ),
-        }
+        # Build messages & system instructions
+        input_messages = _coerce_messages(
+            invocation.input_messages, self._capture_content
+        )
+        output_messages = _coerce_messages(
+            invocation.output_messages, self._capture_content
+        )
         system_instruction = invocation.attributes.get(
             "system_instruction"
         ) or invocation.attributes.get("system_instructions")
         if not system_instruction and getattr(invocation, "system", None):
             system_instruction = invocation.system
-        if system_instruction:
-            conversation["system_instructions"] = _coerce_iterable(
-                system_instruction
-            )
+        system_instructions = (
+            _coerce_iterable(system_instruction)
+            if system_instruction is not None
+            else []
+        )
 
-        span_attrs: Dict[str, Any] = {}
+        # Span / invocation attributes used as baseline
+        attrs: Dict[str, Any] = {
+            "event.name": _EVENT_NAME_EVALUATIONS,
+            # Distinguish this aggregated evaluation logical operation
+            "gen_ai.operation.name": "data_evaluation_results",
+        }
+        # Merge underlying span attributes first (APM attributes requirement)
+        span_attr_map: Dict[str, Any] = {}
         if invocation.span and hasattr(invocation.span, "attributes"):
-            try:
-                span_attrs = dict(invocation.span.attributes)  # type: ignore[attr-defined]
-            except Exception:  # pragma: no cover - defensive
-                span_attrs = {}
+            try:  # pragma: no cover - defensive
+                span_attr_map = dict(invocation.span.attributes)  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover
+                span_attr_map = {}
+        for k, v in span_attr_map.items():
+            attrs.setdefault(k, v)
+        # Merge invocation-level attributes (excluding those we explicitly derive)
+        for k, v in (invocation.attributes or {}).items():
+            if k in ("system_instruction", "system_instructions"):
+                continue
+            attrs.setdefault(k, v)
+        if invocation.provider:
+            attrs["gen_ai.system"] = invocation.provider
+            attrs["gen_ai.provider.name"] = invocation.provider
+        if invocation.request_model:
+            attrs["gen_ai.request.model"] = invocation.request_model
+        resp_id = getattr(invocation, "response_id", None)
+        if isinstance(resp_id, str) and resp_id:
+            attrs["gen_ai.response.id"] = resp_id
+        if getattr(invocation, "response_model_name", None):
+            attrs["gen_ai.response.model"] = invocation.response_model_name
+        # Usage tokens if available
+        if getattr(invocation, "input_tokens", None) is not None:
+            attrs["gen_ai.usage.input_tokens"] = invocation.input_tokens
+        if getattr(invocation, "output_tokens", None) is not None:
+            attrs["gen_ai.usage.output_tokens"] = invocation.output_tokens
+        # Finish reasons (aggregate from output messages)
+        finish_reasons: List[str] = []
+        for msg in invocation.output_messages or []:
+            fr = getattr(msg, "finish_reason", None) or getattr(
+                msg, "finish_reasons", None
+            )
+            if fr:
+                if isinstance(fr, (list, tuple)):
+                    finish_reasons.extend([str(x) for x in fr])  # type: ignore[arg-type]
+                else:
+                    finish_reasons.append(str(fr))
+        if finish_reasons:
+            attrs["gen_ai.response.finish_reasons"] = finish_reasons
+
+        # Evaluation results array
+        evaluations: list[Dict[str, Any]] = []
+        for (
+            result,
+            _normalized,
+            range_label,
+        ) in (
+            records
+        ):  # normalized retained only for potential future enrichment
+            ev: Dict[str, Any] = {
+                "gen_ai.operation.name": "evaluation",
+                "gen_ai.evaluation.name": result.metric_name.lower(),
+            }
+            if isinstance(result.score, (int, float)):
+                ev["gen_ai.evaluation.score"] = result.score
+            if result.label is not None:
+                ev["gen_ai.evaluation.label"] = result.label
+            # Provide numeric range label if present
+            if range_label:
+                ev["gen_ai.evaluation.range"] = range_label
+            # Map explanation -> reasoning (Splunk format requirement)
+            if result.explanation:
+                ev["gen_ai.evaluation.reasoning"] = result.explanation
+            # Preserve original attributes under a nested dict if present
+            if result.attributes:
+                ev["gen_ai.evaluation.attributes"] = dict(result.attributes)
+            if result.error is not None:
+                ev["gen_ai.evaluation.error.type"] = (
+                    result.error.type.__qualname__
+                )
+                if getattr(result.error, "message", None):
+                    ev["gen_ai.evaluation.error.message"] = (
+                        result.error.message
+                    )
+            evaluations.append(ev)
+        attrs["gen_ai.evaluations"] = evaluations
+
+        # Add conversation content arrays
+        if input_messages:
+            attrs["gen_ai.input.messages"] = input_messages
+        if output_messages:
+            attrs["gen_ai.output.messages"] = output_messages
+        if system_instructions:
+            attrs["gen_ai.system_instructions"] = system_instructions
+
+        # Trace/span correlation
         span_context = (
             invocation.span.get_span_context() if invocation.span else None
         )
+        trace_id_hex = None
+        span_id_hex = None
         if span_context and getattr(span_context, "is_valid", False):
-            span_attrs.setdefault("trace_id", f"{span_context.trace_id:032x}")
-            span_attrs.setdefault("span_id", f"{span_context.span_id:016x}")
-        if invocation.request_model:
-            span_attrs.setdefault(
-                "gen_ai.request.model", invocation.request_model
-            )
-        if invocation.provider:
-            span_attrs.setdefault("gen_ai.provider.name", invocation.provider)
-        resp_id = getattr(invocation, "response_id", None)
-        if isinstance(resp_id, str) and resp_id:
-            span_attrs.setdefault("gen_ai.response.id", resp_id)
+            trace_id_hex = f"{span_context.trace_id:032x}"
+            span_id_hex = f"{span_context.span_id:016x}"
+            # Also attach as attributes for downstream search (Splunk style)
+            attrs.setdefault("trace_id", trace_id_hex)
+            attrs.setdefault("span_id", span_id_hex)
 
-        body: Dict[str, Any] = {
-            "conversation": conversation,
-            "span": span_attrs,
-            "evaluations": [
-                self._serialize_result(result, normalized, range_label)
-                for result, normalized, range_label in records
-            ],
-        }
-
-        attributes = {"event.name": _EVENT_NAME_EVALUATIONS}
-        if invocation.request_model:
-            attributes["gen_ai.request.model"] = invocation.request_model
-        if invocation.provider:
-            attributes["gen_ai.provider.name"] = invocation.provider
-        if isinstance(resp_id, str) and resp_id:
-            attributes["gen_ai.response.id"] = resp_id
-
+        # SDKLogRecord signature in current OTel version used elsewhere: body, attributes, event_name
         record = SDKLogRecord(
-            body=body,
-            attributes=attributes,
+            body=None,
+            attributes=attrs,
             event_name=_EVENT_NAME_EVALUATIONS,
         )
         try:
@@ -424,7 +484,7 @@ def _coerce_messages(
     for msg in messages or []:
         data: Dict[str, Any]
         try:
-            data = asdict(msg)  # type: ignore[assignment]
+            data = asdict(msg)
         except TypeError:
             if isinstance(msg, dict):
                 data = cast(Dict[str, Any], dict(msg))  # type: ignore[arg-type]
@@ -443,7 +503,7 @@ def _coerce_iterable(values: Any) -> List[Any]:
     if isinstance(values, list):
         return cast(List[Any], values)
     if isinstance(values, tuple):
-        return list(values)
+        return [*values]
     if values is None:
         return []
     return [values]

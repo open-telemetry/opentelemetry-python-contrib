@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
-    OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.sdk.metrics import MeterProvider
@@ -17,7 +16,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES,
     OTEL_INSTRUMENTATION_GENAI_EMITTERS,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
@@ -29,9 +28,7 @@ from opentelemetry.util.genai.types import (
     Text,
 )
 
-STABILITY_EXPERIMENTAL = {
-    OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
-}
+STABILITY_EXPERIMENTAL: dict[str, str] = {}
 
 
 class TestMetricsEmission(unittest.TestCase):
@@ -50,9 +47,9 @@ class TestMetricsEmission(unittest.TestCase):
         self.meter_provider = MeterProvider(
             metric_readers=[self.metric_reader]
         )
-        # Reset semconv stability for each test after environment patching
-        _OpenTelemetrySemanticConventionStability._initialized = False
-        _OpenTelemetrySemanticConventionStability._initialize()
+        # Reset handler singleton
+        if hasattr(get_telemetry_handler, "_default_handler"):
+            delattr(get_telemetry_handler, "_default_handler")
         # Reset handler singleton
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
@@ -68,7 +65,7 @@ class TestMetricsEmission(unittest.TestCase):
         env = {
             **STABILITY_EXPERIMENTAL,
             OTEL_INSTRUMENTATION_GENAI_EMITTERS: generator,
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: capture_mode,
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES: capture_mode.lower(),
         }
         with patch.dict(os.environ, env, clear=False):
             _OpenTelemetrySemanticConventionStability._initialized = False
@@ -145,7 +142,7 @@ class TestMetricsEmission(unittest.TestCase):
         return []
 
     def test_span_flavor_has_no_metrics(self):
-        self._invoke("span", "SPAN_ONLY")
+        self._invoke("span", "span")
         metrics_list = self._collect_metrics()
         print(
             "[DEBUG span] collected metrics:", [m.name for m in metrics_list]
@@ -155,7 +152,7 @@ class TestMetricsEmission(unittest.TestCase):
         self.assertNotIn("gen_ai.client.token.usage", names)
 
     def test_span_metric_flavor_emits_metrics(self):
-        self._invoke("span_metric", "SPAN_ONLY")
+        self._invoke("span_metric", "span")
         # Probe metric to validate pipeline
         probe_hist = self.meter_provider.get_meter("probe").create_histogram(
             "probe.metric"
@@ -174,7 +171,7 @@ class TestMetricsEmission(unittest.TestCase):
         self.assertIn("gen_ai.client.token.usage", names)
 
     def test_span_metric_event_flavor_emits_metrics(self):
-        self._invoke("span_metric_event", "EVENT_ONLY")
+        self._invoke("span_metric_event", "events")
         probe_hist = self.meter_provider.get_meter("probe2").create_histogram(
             "probe2.metric"
         )
@@ -194,7 +191,7 @@ class TestMetricsEmission(unittest.TestCase):
     def test_llm_metrics_include_agent_identity_when_present(self):
         self._invoke(
             "span_metric",
-            "SPAN_ONLY",
+            "span",
             agent_name="router_agent",
             agent_id="agent-123",
         )
@@ -238,7 +235,7 @@ class TestMetricsEmission(unittest.TestCase):
         env = {
             **STABILITY_EXPERIMENTAL,
             OTEL_INSTRUMENTATION_GENAI_EMITTERS: "span_metric",
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_ONLY",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGES: "span",
         }
         with patch.dict(os.environ, env, clear=False):
             if hasattr(get_telemetry_handler, "_default_handler"):

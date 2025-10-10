@@ -217,21 +217,25 @@ class Manager(CompletionCallback):
     ) -> list[EvaluationResult]:
         if not buckets:
             return []
-        # Dynamic aggregation: allow enabling aggregation via env var after manager initialization.
+        # Central aggregation: if enabled we collapse all evaluator buckets into
+        # a single list and emit exactly once. This shifts any downstream
+        # aggregation burden (e.g., Splunk single-event formatting) out of the
+        # emitters and into this manager loop.
         aggregate = self._aggregate_results or _read_aggregation_flag()
-        if aggregate:
-            aggregated: list[EvaluationResult] = []
-            for bucket in buckets:
-                aggregated.extend(bucket)
-            if aggregated:
-                self._handler.evaluation_results(invocation, aggregated)
-            return aggregated
-        for bucket in buckets:
-            if bucket:
-                self._handler.evaluation_results(invocation, list(bucket))
         flattened: list[EvaluationResult] = []
         for bucket in buckets:
             flattened.extend(bucket)
+        if aggregate:
+            if flattened:
+                attrs = getattr(invocation, "attributes", None)
+                if isinstance(attrs, dict):
+                    attrs.setdefault("gen_ai.evaluation.aggregated", True)
+                self._handler.evaluation_results(invocation, flattened)
+            return flattened
+        # Non-aggregated path: emit each bucket individually (legacy behavior)
+        for bucket in buckets:
+            if bucket:
+                self._handler.evaluation_results(invocation, list(bucket))
         return flattened
 
     def _flag_invocation(self, invocation: GenAI) -> None:
