@@ -19,10 +19,11 @@ import hashlib
 import logging
 import posixpath
 import threading
+from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
-from functools import lru_cache, partial
+from functools import partial
 from os import environ
 from time import time
 from typing import Any, Callable, Final, Literal
@@ -78,6 +79,12 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[str, Callable[[], JsonEncodeable]]
 
 
+def is_system_instructions_hashable(
+    system_instruction: list[types.MessagePart],
+) -> bool:
+    return all(isinstance(x, types.Text) for x in system_instruction)
+
+
 class UploadCompletionHook(CompletionHook):
     """An completion hook using ``fsspec`` to upload to external storage
 
@@ -98,10 +105,13 @@ class UploadCompletionHook(CompletionHook):
         base_path: str,
         max_size: int = 20,
         upload_format: Format | None = None,
+        lru_cache_max_size: int = 1024,
     ) -> None:
         self._max_size = max_size
         self._fs, base_path = fsspec.url_to_fs(base_path)
         self._base_path = self._fs.unstrip_protocol(base_path)
+        self.lru_dict = OrderedDict()
+        self.lru_cache_max_size = lru_cache_max_size
 
         if upload_format not in _FORMATS + (None,):
             raise ValueError(
@@ -159,7 +169,7 @@ class UploadCompletionHook(CompletionHook):
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
-        if all(isinstance(x, types.Text) for x in system_instruction):
+        if is_system_instructions_hashable(system_instruction):
             # Get a hash of the text.
             system_instruction_hash = hashlib.sha256(
                 "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
@@ -181,10 +191,18 @@ class UploadCompletionHook(CompletionHook):
             ),
         )
 
-    @lru_cache(maxsize=512)
     def _file_exists(self, path: str) -> bool:
+        if path in self.lru_dict:
+            self.lru_dict.move_to_end(path)
+            return True
         # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
-        return self._fs.exists(path)
+        file_exists = self._fs.exists(path)
+        if not file_exists:
+            return False
+        self.lru_dict[path] = True
+        if len(self.lru_dict) > self.lru_cache_max_size:
+            self.lru_dict.popitem(last=False)
+        return True
 
     def _do_upload(
         self, path: str, json_encodeable: Callable[[], JsonEncodeable]
@@ -213,6 +231,11 @@ class UploadCompletionHook(CompletionHook):
             for message in message_lines:
                 gen_ai_json_dump(message, file)
                 file.write("\n")
+
+        if "_system_instruction" in path:
+            self.lru_dict[path] = True
+            if len(self.lru_dict) > self.lru_cache_max_size:
+                self.lru_dict.popitem(last=False)
 
     def on_completion(
         self,

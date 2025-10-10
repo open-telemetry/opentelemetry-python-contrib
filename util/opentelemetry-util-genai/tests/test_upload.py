@@ -125,8 +125,7 @@ class TestUploadCompletionHook(TestCase):
         self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
-            base_path=BASE_PATH,
-            max_size=MAXSIZE,
+            base_path=BASE_PATH, max_size=MAXSIZE, lru_cache_max_size=5
         )
 
     def tearDown(self) -> None:
@@ -184,7 +183,7 @@ class TestUploadCompletionHook(TestCase):
             log_record=record,
         )
         # Wait a bit for file upload to finish..
-        time.sleep(2)
+        time.sleep(0.5)
         self.mock_fs.exists.return_value = True
         self.hook.on_completion(
             inputs=[],
@@ -204,6 +203,39 @@ class TestUploadCompletionHook(TestCase):
         self.assertEqual(
             record.attributes["gen_ai.system_instructions_ref"].split("/")[-1],
             f"{expected_hash}_system_instruction.json",
+        )
+
+    def test_lru_cache_works(self):
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        assert record.attributes is not None
+        self.assertTrue(
+            self.hook._file_exists(
+                record.attributes["gen_ai.system_instructions_ref"]
+            )
+        )
+        # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
+        for x in range(5):
+            self.assertTrue(
+                record.attributes["gen_ai.system_instructions_ref"]
+                in self.hook.lru_dict
+            )
+            self.hook.on_completion(
+                inputs=[],
+                outputs=[],
+                system_instruction=[types.Text(content=str(x))],
+            )
+        print(self.hook.lru_dict)
+        self.assertFalse(
+            record.attributes["gen_ai.system_instructions_ref"]
+            in self.hook.lru_dict
         )
 
     def test_upload_when_inputs_outputs_empty(self):
