@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-instrumentation-celery`: Fix a memory leak where a reference to a task identifier is kept indefinitely
-  ([#3463](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3463))
+  ([#3690](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3690))
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
