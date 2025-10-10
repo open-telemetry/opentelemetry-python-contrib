@@ -222,8 +222,8 @@ class TestCeleryInstrumentation(TestBase):
 
         unwrap(utils, "retrieve_context")
 
-    def test_task_use_links(self):
-        CeleryInstrumentor().instrument(use_links=True)
+    def test_task_use_span_links(self):
+        CeleryInstrumentor().instrument(use_span_links=True)
 
         result = task_add.delay(1, 2)
 

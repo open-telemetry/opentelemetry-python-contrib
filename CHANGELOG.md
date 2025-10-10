@@ -11,11 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
-- `opentelemetry-instrumentation-celery`: Add `use_links` parameter to allow creating span links instead of parent-child relationships between task creation and execution spans.
-  ([#3002](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3002))
-
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
@@ -37,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
 - `opentelemetry-instrumentation-dbapi`: Adds sqlcommenter to documentation.
   ([#3720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3720))
+- `opentelemetry-instrumentation-celery`: Add `use_span_links` parameter to allow creating span links instead of parent-child relationships between task creation and execution spans.
+  ([#3002](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3002))
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 

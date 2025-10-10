@@ -52,7 +52,7 @@ Configuration
 
 The ``CeleryInstrumentor().instrument()`` method accepts the following arguments:
 
-* ``use_links`` (bool): When ``True``, Celery task execution spans will be linked to the
+* ``use_span_links`` (bool): When ``True``, Celery task execution spans will be linked to the
   task creation spans instead of being created as child spans. This provides a looser
   coupling between spans in distributed systems. Defaults to ``False`` to maintain
   backward compatibility.
@@ -132,7 +132,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
-        use_links = kwargs.get("use_links", False)
+        use_span_links = kwargs.get("use_span_links", False)
 
         # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
@@ -142,7 +142,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
         # pylint: disable=attribute-defined-outside-init
-        self._use_links = use_links
+        self._use_span_links = use_span_links
 
         meter_provider = kwargs.get("meter_provider")
         meter = get_meter(
@@ -188,7 +188,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         operation_name = f"{_TASK_RUN}/{task.name}"
 
-        if self._use_links and tracectx is not None:
+        if self._use_span_links and tracectx is not None:
             parent_span_context = trace.get_current_span(
                 tracectx
             ).get_span_context()
