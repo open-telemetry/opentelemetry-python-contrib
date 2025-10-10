@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-django`: Add `_DjangoMiddleware._get_span` for easier customization ([#3652](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3652))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
