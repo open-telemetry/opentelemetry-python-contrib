@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
 - `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default 
   Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. [#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
+- `opentelemetry-instrumentation-psycopg` Add missing parameter `capture_parameters` to instrumentor.
+  ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
