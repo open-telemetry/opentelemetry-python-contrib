@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Iterable, Literal
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.util.types import AnyValue
 
@@ -36,7 +36,7 @@ def user_event(
     *,
     role: str = "user",
     content: AnyValue = None,
-) -> Event:
+) -> LogRecord:
     """Creates a User event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#user-event
     """
@@ -45,8 +45,8 @@ def user_event(
     }
     if content is not None:
         body["content"] = content
-    return Event(
-        name="gen_ai.user.message",
+    return LogRecord(
+        event_name="gen_ai.user.message",
         attributes={
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },
@@ -58,7 +58,7 @@ def assistant_event(
     *,
     role: str = "assistant",
     content: AnyValue = None,
-) -> Event:
+) -> LogRecord:
     """Creates an Assistant event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#assistant-event
     """
@@ -67,8 +67,8 @@ def assistant_event(
     }
     if content is not None:
         body["content"] = content
-    return Event(
-        name="gen_ai.assistant.message",
+    return LogRecord(
+        event_name="gen_ai.assistant.message",
         attributes={
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },
@@ -80,7 +80,7 @@ def system_event(
     *,
     role: str = "system",
     content: AnyValue = None,
-) -> Event:
+) -> LogRecord:
     """Creates a System event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#system-event
     """
@@ -89,8 +89,8 @@ def system_event(
     }
     if content is not None:
         body["content"] = content
-    return Event(
-        name="gen_ai.system.message",
+    return LogRecord(
+        event_name="gen_ai.system.message",
         attributes={
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },
@@ -103,7 +103,7 @@ def tool_event(
     role: str | None,
     id_: str,
     content: AnyValue = None,
-) -> Event:
+) -> LogRecord:
     """Creates a Tool message event
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#event-gen_aitoolmessage
     """
@@ -116,8 +116,8 @@ def tool_event(
     }
     if content is not None:
         body["content"] = content
-    return Event(
-        name="gen_ai.tool.message",
+    return LogRecord(
+        event_name="gen_ai.tool.message",
         attributes={
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },
@@ -158,7 +158,7 @@ def choice_event(
     index: int,
     message: ChoiceMessage,
     tool_calls: Iterable[ChoiceToolCall] = (),
-) -> Event:
+) -> LogRecord:
     """Creates a choice event, which describes the Gen AI response message.
     https://github.com/open-telemetry/semantic-conventions/blob/v1.28.0/docs/gen-ai/gen-ai-events.md#event-gen_aichoice
     """
@@ -174,8 +174,8 @@ def choice_event(
     if tool_calls_list:
         body["tool_calls"] = tool_calls_list
 
-    return Event(
-        name="gen_ai.choice",
+    return LogRecord(
+        event_name="gen_ai.choice",
         attributes={
             gen_ai_attributes.GEN_AI_SYSTEM: gen_ai_attributes.GenAiSystemValues.VERTEX_AI.value,
         },

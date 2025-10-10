@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Update instrumentation to use the latest semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
+Now only a single event and span (`gen_ai.client.inference.operation.details`) are used to capture prompt and response content. These changes are opt-in,
+users will need to set the environment variable OTEL_SEMCONV_STABILITY_OPT_IN to `gen_ai_latest_experimental` to see them ([#3799](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3799)) and ([#3709](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3709)).
 - Implement uninstrument for `opentelemetry-instrumentation-vertexai`
   ([#3328](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3328))
 - VertexAI support for async calling
   ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386))
+  - `opentelemetry-instrumentation-vertexai`: migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3626))
 
 ## Version 2.0b0 (2025-02-24)
 
