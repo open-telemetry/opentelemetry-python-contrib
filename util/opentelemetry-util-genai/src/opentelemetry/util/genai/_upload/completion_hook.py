@@ -75,8 +75,8 @@ class CompletionRefs:
 
 JsonEncodeable = list[dict[str, Any]]
 
-# mapping of upload path to function computing upload data dict
-UploadData = dict[str, Callable[[], JsonEncodeable]]
+# mapping of upload path and whether the contents were hashed to the filename to function computing upload data dict
+UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 
 
 def is_system_instructions_hashable(
@@ -143,7 +143,10 @@ class UploadCompletionHook(CompletionHook):
             finally:
                 self._semaphore.release()
 
-        for path, json_encodeable in upload_data.items():
+        for (
+            path,
+            contents_hashed_to_filename,
+        ), json_encodeable in upload_data.items():
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
@@ -154,7 +157,10 @@ class UploadCompletionHook(CompletionHook):
 
             try:
                 fut = self._executor.submit(
-                    self._do_upload, path, json_encodeable
+                    self._do_upload,
+                    path,
+                    contents_hashed_to_filename,
+                    json_encodeable,
                 )
                 fut.add_done_callback(done)
             except RuntimeError:
@@ -197,6 +203,7 @@ class UploadCompletionHook(CompletionHook):
             return True
         # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
         file_exists = self._fs.exists(path)
+        # don't cache this because soon the file will exist..
         if not file_exists:
             return False
         self.lru_dict[path] = True
@@ -205,11 +212,12 @@ class UploadCompletionHook(CompletionHook):
         return True
 
     def _do_upload(
-        self, path: str, json_encodeable: Callable[[], JsonEncodeable]
+        self,
+        path: str,
+        contents_hashed_to_filename: bool,
+        json_encodeable: Callable[[], JsonEncodeable],
     ) -> None:
-        # Only check for system instruction file existence as that's the only file where the filename is a hash
-        # of the content.
-        if "_system_instruction" in path and self._file_exists(path):
+        if contents_hashed_to_filename and self._file_exists(path):
             return
         if self._format == "json":
             # output as a single line with the json messages array
@@ -232,7 +240,7 @@ class UploadCompletionHook(CompletionHook):
                 gen_ai_json_dump(message, file)
                 file.write("\n")
 
-        if "_system_instruction" in path:
+        if contents_hashed_to_filename:
             self.lru_dict[path] = True
             if len(self.lru_dict) > self.lru_cache_max_size:
                 self.lru_dict.popitem(last=False)
@@ -266,35 +274,40 @@ class UploadCompletionHook(CompletionHook):
             return [asdict(dc) for dc in dataclass_list]
 
         references = [
-            (ref_name, ref, ref_attr)
-            for ref_name, ref, ref_attr in [
+            (ref_name, ref, ref_attr, contents_hashed_to_filename)
+            for ref_name, ref, ref_attr, contents_hashed_to_filename in [
                 (
                     ref_names.inputs_ref,
                     completion.inputs,
                     GEN_AI_INPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.outputs_ref,
                     completion.outputs,
                     GEN_AI_OUTPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
+                    is_system_instructions_hashable(
+                        completion.system_instruction
+                    ),
                 ),
             ]
-            if ref
+            if ref  # Filter out empty input/output/sys instruction
         ]
         self._submit_all(
             {
-                ref_name: partial(to_dict, ref)
-                for ref_name, ref, _ in references
+                (ref_name, contents_hashed_to_filename): partial(to_dict, ref)
+                for ref_name, ref, _, contents_hashed_to_filename in references
             }
         )
 
         # stamp the refs on telemetry
-        references = {ref_attr: name for name, _, ref_attr in references}
+        references = {ref_attr: name for name, _, ref_attr, _ in references}
         if span:
             span.set_attributes(references)
         if log_record:
