@@ -22,7 +22,8 @@ from typing import Any, Callable, Dict, Iterator, Sequence, Union
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.instrumentation.botocore.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
@@ -117,7 +118,7 @@ class ConverseStreamWrapper(ObjectProxy):
                         self._content_block["toolUse"]["input"] = json.loads(
                             self._tool_json_input_buf
                         )
-                    except json.DecodeError:
+                    except json.JSONDecodeError:
                         self._content_block["toolUse"]["input"] = (
                             self._tool_json_input_buf
                         )
@@ -492,7 +493,7 @@ def extract_tool_results(
 
 def message_to_event(
     message: dict[str, Any], capture_content: bool
-) -> Iterator[Event]:
+) -> Iterator[LogRecord]:
     attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
     role = message.get("role")
     content = message.get("content")
@@ -507,16 +508,18 @@ def message_to_event(
     elif role == "user":
         # in case of tool calls we send one tool event for tool call and one for the user event
         for tool_body in extract_tool_results(message, capture_content):
-            yield Event(
-                name="gen_ai.tool.message",
+            yield LogRecord(
+                event_name="gen_ai.tool.message",
                 attributes=attributes,
                 body=tool_body,
+                context=get_current(),
             )
 
-    yield Event(
-        name=f"gen_ai.{role}.message",
+    yield LogRecord(
+        event_name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
+        context=get_current(),
     )
 
 
@@ -617,10 +620,10 @@ class _Choice:
             "message": self.message,
         }
 
-    def to_choice_event(self, **event_kwargs) -> Event:
+    def to_choice_event(self, **event_kwargs) -> LogRecord:
         attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
-        return Event(
-            name="gen_ai.choice",
+        return LogRecord(
+            event_name="gen_ai.choice",
             attributes=attributes,
             body=self._to_body_dict(),
             **event_kwargs,
