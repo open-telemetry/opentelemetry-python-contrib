@@ -166,6 +166,21 @@ class _DjangoMiddleware(MiddlewareMixin):
     )
 
     @staticmethod
+    def format_request_objects_in_headers(attributes):
+        for _, value_list in attributes.items():
+            for index, value in enumerate(value_list):
+                if isinstance(value, HttpRequest):
+                    try:
+                        method = getattr(value, "method", "UNKNOWN")
+                        request_path = getattr(value, "path", "UNKNOWN")
+                        value_list[index] = (
+                            f"HttpRequest({method} {request_path})"
+                        )
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        value_list[index] = "HttpRequest(...)"
+        return attributes
+
+    @staticmethod
     def _get_span_name(request):
         method = sanitize_method(request.method.strip())
         if method == "_OTHER":
@@ -276,6 +291,11 @@ class _DjangoMiddleware(MiddlewareMixin):
                     custom_attributes = (
                         wsgi_collect_custom_request_headers_attributes(carrier)
                     )
+                    # Process custom attributes to handle WSGIRequest objects
+                    custom_attributes = self.format_request_objects_in_headers(
+                        custom_attributes
+                    )
+
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)
 
