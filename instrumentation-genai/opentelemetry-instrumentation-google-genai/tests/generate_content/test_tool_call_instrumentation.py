@@ -16,6 +16,13 @@ from unittest.mock import patch
 
 import google.genai.types as genai_types
 
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
+from opentelemetry.util.genai.types import ContentCapturingMode
+
 from .base import TestCase
 
 
@@ -275,3 +282,161 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.assertNotIn(
             "code.function.return.value", generated_span.attributes
         )
+
+    def test_new_semconv_tool_calls_record_parameter_values(self):
+        for mode in ContentCapturingMode:
+            calls = []
+            patched_environ = patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                },
+            )
+            patched_otel_mapping = patch.dict(
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
+            )
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
+                self.setUp()
+                with patched_environ, patched_otel_mapping:
+
+                    def handle(*args, **kwargs):
+                        calls.append((args, kwargs))  # pylint: disable=cell-var-from-loop
+                        return "some result"
+
+                    def somefunction(someparam, otherparam=2):
+                        print(
+                            "someparam=%s, otherparam=%s",
+                            someparam,
+                            otherparam,
+                        )
+
+                    self.mock_generate_content.side_effect = handle
+                    self.client.models.generate_content(
+                        model="some-model-name",
+                        contents="Some content",
+                        config={
+                            "tools": [somefunction],
+                        },
+                    )
+                    self.assertEqual(len(calls), 1)
+                    config = calls[0][1]["config"]
+                    tools = config.tools
+                    wrapped_somefunction = tools[0]
+                    wrapped_somefunction(123, otherparam="abc")
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
+                    self.assertEqual(
+                        generated_span.attributes[
+                            "code.function.parameters.someparam.type"
+                        ],
+                        "int",
+                    )
+                    self.assertEqual(
+                        generated_span.attributes[
+                            "code.function.parameters.otherparam.type"
+                        ],
+                        "str",
+                    )
+                    if mode in [
+                        ContentCapturingMode.SPAN_ONLY,
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                    ]:
+                        self.assertEqual(
+                            generated_span.attributes[
+                                "code.function.parameters.someparam.value"
+                            ],
+                            123,
+                        )
+                        self.assertEqual(
+                            generated_span.attributes[
+                                "code.function.parameters.otherparam.value"
+                            ],
+                            "abc",
+                        )
+                    else:
+                        self.assertNotIn(
+                            "code.function.parameters.someparam.value",
+                            generated_span.attributes,
+                        )
+                        self.assertNotIn(
+                            "code.function.parameters.otherparam.value",
+                            generated_span.attributes,
+                        )
+                self.tearDown()
+
+    def test_new_semconv_tool_calls_record_return_values(self):
+        for mode in ContentCapturingMode:
+            calls = []
+            patched_environ = patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                },
+            )
+            patched_otel_mapping = patch.dict(
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
+            )
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
+                self.setUp()
+                with patched_environ, patched_otel_mapping:
+
+                    def handle(*args, **kwargs):
+                        calls.append((args, kwargs))  # pylint: disable=cell-var-from-loop
+                        return "some result"
+
+                    def somefunction(x, y=2):
+                        return x + y
+
+                    self.mock_generate_content.side_effect = handle
+                    self.client.models.generate_content(
+                        model="some-model-name",
+                        contents="Some content",
+                        config={
+                            "tools": [somefunction],
+                        },
+                    )
+                    self.assertEqual(len(calls), 1)
+                    config = calls[0][1]["config"]
+                    tools = config.tools
+                    wrapped_somefunction = tools[0]
+                    wrapped_somefunction(123)
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
+                    self.assertEqual(
+                        generated_span.attributes["code.function.return.type"],
+                        "int",
+                    )
+                    if mode in [
+                        ContentCapturingMode.SPAN_ONLY,
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                    ]:
+                        self.assertIn(
+                            "code.function.return.value",
+                            generated_span.attributes,
+                        )
+                    else:
+                        self.assertNotIn(
+                            "code.function.return.value",
+                            generated_span.attributes,
+                        )
+                self.tearDown()

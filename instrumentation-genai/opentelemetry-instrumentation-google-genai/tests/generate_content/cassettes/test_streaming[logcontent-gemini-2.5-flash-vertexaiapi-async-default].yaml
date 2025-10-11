@@ -1,0 +1,96 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse
+  response:
+    body:
+      string: "data: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"In digital realms, where tangled systems weave,\\nAnd microservices\
+        \ hum, our trust they receive,\\nA complex dance of logic, fast and grand,\\\
+        nTo truly see their heart, a guiding hand.\\n\\nFor this, Open Telemetry takes\
+        \ its stand,\\nA common tongue across the digital land.\\nWith\"}]}}],\"usageMetadata\"\
+        : {\"trafficType\": \"ON_DEMAND\"},\"modelVersion\": \"gemini-2.5-flash\"\
+        ,\"createTime\": \"2025-10-10T15:57:01.802582Z\",\"responseId\": \"zSzpaJb-MPXZnvgPisGa2A0\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" **Traces**, pathways clear, from start to end they sweep,\\\
+        nUnveiling journeys where the secrets sleep.\\n\\nAnd **Metrics** rise, in\
+        \ numbers, stark and true,\\nCPU's soft hum, latency's quick, measured queue.\\\
+        nWhile **Logs** recount each moment, event, and\"}]}}],\"usageMetadata\":\
+        \ {\"trafficType\": \"ON_DEMAND\"},\"modelVersion\": \"gemini-2.5-flash\"\
+        ,\"createTime\": \"2025-10-10T15:57:01.802582Z\",\"responseId\": \"zSzpaJb-MPXZnvgPisGa2A0\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" plight,\\nIlluminating shadows with their burning light.\\\
+        n\\nNo longer bound by proprietary sway,\\nIt gathers data, come what vendor\
+        \ may.\\nAn open hand, a standard, strong and free,\\nFor every language,\
+        \ for each API.\\n\\nFrom failing links to bottlenecks unseen,\\nIt paints\
+        \ the picture, vibrant\"}]}}],\"usageMetadata\": {\"trafficType\": \"ON_DEMAND\"\
+        },\"modelVersion\": \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:01.802582Z\"\
+        ,\"responseId\": \"zSzpaJb-MPXZnvgPisGa2A0\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \" and serene.\\\
+        nEmpowering insight, from the core to edge,\\nA clear advantage, every silent\
+        \ pledge.\\n\\nSo hail the standard, unifying and bright,\\nThat brings our\
+        \ complex systems into light.\\nOpen Telemetry, a bridge across the maze,\\\
+        nUnlocking wisdom in these data-driven days.\"}]},\"finishReason\": \"STOP\"\
+        }],\"usageMetadata\": {\"promptTokenCount\": 8,\"candidatesTokenCount\": 257,\"\
+        totalTokenCount\": 1522,\"trafficType\": \"ON_DEMAND\",\"promptTokensDetails\"\
+        : [{\"modality\": \"TEXT\",\"tokenCount\": 8}],\"candidatesTokensDetails\"\
+        : [{\"modality\": \"TEXT\",\"tokenCount\": 257}],\"thoughtsTokenCount\": 1257},\"\
+        modelVersion\": \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:01.802582Z\"\
+        ,\"responseId\": \"zSzpaJb-MPXZnvgPisGa2A0\"}\r\n\r\n"
+    headers:
+      Content-Disposition:
+      - attachment
+      Content-Type:
+      - text/event-stream
+      Date:
+      - Fri, 10 Oct 2025 15:57:09 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
