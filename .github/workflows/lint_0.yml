@@ -241,6 +241,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-aiopg
 
+  lint-instrumentation-arangodb:
+    name: instrumentation-arangodb
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-arangodb
+
   lint-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda
     runs-on: ubuntu-latest
