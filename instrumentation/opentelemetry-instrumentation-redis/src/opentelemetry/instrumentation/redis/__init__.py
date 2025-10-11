@@ -248,7 +248,7 @@ def _traced_execute_factory(
                         span.set_attribute("network.transport", "unix")
                     if (
                         args
-                        and args[0] in ("EVALSHA", "EVAL")
+                        and args[0] in ("EVALSHA", "FCALL")
                         and len(args) > 1
                     ):
                         span.set_attribute("db.stored_procedure.name", args[1])
@@ -258,6 +258,10 @@ def _traced_execute_factory(
                 request_hook(span, instance, args, kwargs)
             try:
                 response = func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                if span.is_recording():
+                    span.set_status(StatusCode.UNSET)
+                raise watch_exception
             except Exception as exc:
                 if _report_new(semconv_opt_in_mode) and span.is_recording():
                     error_type = getattr(exc, "args", [None])[0]
@@ -392,7 +396,7 @@ def _async_traced_execute_factory(
                         span.set_attribute("network.transport", "unix")
                     if (
                         args
-                        and args[0] in ("EVALSHA", "EVAL")
+                        and args[0] in ("EVALSHA", "FCALL")
                         and len(args) > 1
                     ):
                         span.set_attribute("db.stored_procedure.name", args[1])
@@ -400,6 +404,10 @@ def _async_traced_execute_factory(
                 request_hook(span, instance, args, kwargs)
             try:
                 response = await func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                if span.is_recording():
+                    span.set_status(StatusCode.UNSET)
+                raise watch_exception
             except Exception as exc:
                 if _report_new(semconv_opt_in_mode) and span.is_recording():
                     error_type = getattr(exc, "args", [None])[0]
@@ -477,20 +485,27 @@ def _async_traced_execute_pipeline_factory(
             response = None
             try:
                 response = await func(*args, **kwargs)
-            except Exception as exc:
-                if _report_new(semconv_opt_in_mode) and span.is_recording():
-                    error_type = getattr(exc, "args", [None])[0]
-                    if error_type and isinstance(error_type, str):
-                        prefix = error_type.split(" ")[0]
-                        span.set_attribute("db.response.status_code", prefix)
-                        span.set_attribute("error.type", prefix)
-                    else:
-                        span.set_attribute(
-                            "error.type", type(exc).__qualname__
-                        )
+            except redis.WatchError as watch_exception:
                 if span.is_recording():
+                    span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                if span.is_recording():
+                    if _report_new(semconv_opt_in_mode):
+                        error_type = getattr(exc, "args", [None])[0]
+                        if error_type and isinstance(error_type, str):
+                            prefix = error_type.split(" ")[0]
+                            span.set_attribute(
+                                "db.response.status_code", prefix
+                            )
+                            span.set_attribute("error.type", prefix)
+                        else:
+                            span.set_attribute(
+                                "error.type", type(exc).__qualname__
+                            )
                     span.set_status(StatusCode.ERROR)
-                raise
+                exception = exc
+
             if callable(response_hook):
                 response_hook(span, instance, response)
 
