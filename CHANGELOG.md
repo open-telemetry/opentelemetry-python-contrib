@@ -13,14 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
+  ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+- `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
+  ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
+
 ### Added
-- `opentelemetry-instrumentation`: botocore: Add support for AWS Secrets Manager semantic convention attribute
+
+- `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
+- `opentelemetry-instrumentation-dbapi`: Add support for `commenter_options` in `trace_integration` function to control SQLCommenter behavior
+  ([#3743](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3743))
 - Add `rstcheck` to pre-commit to stop introducing invalid RST
   ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
-- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. 
-[#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
-- `opentelemetry-instrumentation-redis`: Add support for semantic convention opt-in and stable Redis span attributes ([#3826](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3826))
+- `opentelemetry-instrumentation-redis`: Add support for semantic convention opt-in and stable Redis span attributes 
+  ([#3826](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3826))
+- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default 
+  Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. [#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
+- `opentelemetry-instrumentation-psycopg`: Add missing parameter `capture_parameters` to instrumentor.
+  ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
+- `opentelemetry-instrumentation-dbapi`: Adds sqlcommenter to documentation.
+  ([#3720](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3720))
 
 ## Version 1.37.0/0.58b0 (2025-09-11)
 
