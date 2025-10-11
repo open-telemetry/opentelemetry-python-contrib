@@ -88,8 +88,10 @@ API
 ---
 """
 
+import inspect
 import types
 import typing
+from collections.abc import Awaitable
 from timeit import default_timer
 from typing import Collection
 from urllib.parse import urlparse
@@ -139,7 +141,10 @@ from opentelemetry.util.http import redact_url, sanitize_method
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
-    typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
+    typing.Callable[
+        [Span, aiohttp.TraceRequestStartParams],
+        typing.Union[None, Awaitable[None]],
+    ]
 ]
 _ResponseHookT = typing.Optional[
     typing.Callable[
@@ -150,7 +155,7 @@ _ResponseHookT = typing.Optional[
                 aiohttp.TraceRequestExceptionParams,
             ],
         ],
-        None,
+        typing.Union[None, Awaitable[None]],
     ]
 ]
 
@@ -367,7 +372,9 @@ def create_trace_config(
         )
 
         if callable(request_hook):
-            request_hook(trace_config_ctx.span, params)
+            call = request_hook(trace_config_ctx.span, params)
+            if inspect.isawaitable(call):
+                await call
 
         trace_config_ctx.token = context_api.attach(
             trace.set_span_in_context(trace_config_ctx.span)
@@ -384,7 +391,10 @@ def create_trace_config(
             return
 
         if callable(response_hook):
-            response_hook(trace_config_ctx.span, params)
+            call = response_hook(trace_config_ctx.span, params)
+            if inspect.isawaitable(call):
+                await call
+
         _set_http_status_code_attribute(
             trace_config_ctx.span,
             params.response.status,
@@ -414,7 +424,9 @@ def create_trace_config(
             trace_config_ctx.span.record_exception(params.exception)
 
         if callable(response_hook):
-            response_hook(trace_config_ctx.span, params)
+            call = response_hook(trace_config_ctx.span, params)
+            if inspect.isawaitable(call):
+                await call
 
         _end_trace(trace_config_ctx)
 
