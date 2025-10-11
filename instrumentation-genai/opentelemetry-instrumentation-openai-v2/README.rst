@@ -56,7 +56,7 @@ Check out the `manual example <examples/manual>`_ for more details.
 Instrumenting all clients
 *************************
 
-When using the instrumentor, all clients will automatically trace OpenAI chat completion operations.
+When using the instrumentor, all clients will automatically trace OpenAI operations including chat completions and embeddings.
 You can also optionally capture prompts and completions as log events.
 
 Make sure to configure OpenTelemetry tracing, logging, and events to capture all telemetry emitted by the instrumentation.
@@ -68,11 +68,18 @@ Make sure to configure OpenTelemetry tracing, logging, and events to capture all
     OpenAIInstrumentor().instrument()
 
     client = OpenAI()
+    # Chat completion example
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "user", "content": "Write a short poem on open telemetry."},
         ],
+    )
+    
+    # Embeddings example
+    embedding_response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input="Generate vector embeddings for this text"
     )
 
 Enabling message content
