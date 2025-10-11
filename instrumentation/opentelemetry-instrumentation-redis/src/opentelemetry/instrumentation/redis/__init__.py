@@ -123,6 +123,12 @@ import redis
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
@@ -137,12 +143,6 @@ from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
-)
-from opentelemetry.instrumentation._semconv import (
-    _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-    _report_new,
-    _report_old,
 )
 from opentelemetry.trace import (
     StatusCode,
@@ -190,6 +190,7 @@ if _CLIENT_ASYNCIO_SUPPORT:
 
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
+
 def _get_redis_conn_info(instance):
     host, port, db, unix_sock = None, None, None, None
     pool = getattr(instance, "connection_pool", None)
@@ -200,6 +201,7 @@ def _get_redis_conn_info(instance):
         db = conn_kwargs.get("db", 0)
         unix_sock = conn_kwargs.get("path")
     return host, port, db, unix_sock
+
 
 def _traced_execute_factory(
     tracer: Tracer,
@@ -244,7 +246,11 @@ def _traced_execute_factory(
                     if unix_sock:
                         span.set_attribute("network.peer.address", unix_sock)
                         span.set_attribute("network.transport", "unix")
-                    if args and args[0] in ("EVALSHA", "EVAL") and len(args) > 1:
+                    if (
+                        args
+                        and args[0] in ("EVALSHA", "EVAL")
+                        and len(args) > 1
+                    ):
                         span.set_attribute("db.stored_procedure.name", args[1])
                 if span.name == "redis.create_index":
                     _add_create_attributes(span, args)
@@ -260,7 +266,9 @@ def _traced_execute_factory(
                         span.set_attribute("db.response.status_code", prefix)
                         span.set_attribute("error.type", prefix)
                     else:
-                        span.set_attribute("error.type", type(exc).__qualname__)
+                        span.set_attribute(
+                            "error.type", type(exc).__qualname__
+                        )
                 if span.is_recording():
                     span.set_status(StatusCode.ERROR)
                 raise
@@ -300,7 +308,9 @@ def _traced_execute_pipeline_factory(
                 if _report_old(semconv_opt_in_mode):
                     span.set_attribute(DB_STATEMENT, resource)
                     _set_connection_attributes(span, instance)
-                    span.set_attribute("db.redis.pipeline_length", len(command_stack))
+                    span.set_attribute(
+                        "db.redis.pipeline_length", len(command_stack)
+                    )
                 if _report_new(semconv_opt_in_mode):
                     span.set_attribute("db.system.name", "redis")
                     span.set_attribute("db.operation.name", "PIPELINE")
@@ -309,7 +319,9 @@ def _traced_execute_pipeline_factory(
                         span.set_attribute("db.namespace", str(db))
                     span.set_attribute("db.query.text", resource)
                     if len(command_stack) > 1:
-                        span.set_attribute("db.operation.batch.size", len(command_stack))
+                        span.set_attribute(
+                            "db.operation.batch.size", len(command_stack)
+                        )
                     if host:
                         span.set_attribute("server.address", host)
                         span.set_attribute("network.peer.address", host)
@@ -378,7 +390,11 @@ def _async_traced_execute_factory(
                     if unix_sock:
                         span.set_attribute("network.peer.address", unix_sock)
                         span.set_attribute("network.transport", "unix")
-                    if args and args[0] in ("EVALSHA", "EVAL") and len(args) > 1:
+                    if (
+                        args
+                        and args[0] in ("EVALSHA", "EVAL")
+                        and len(args) > 1
+                    ):
                         span.set_attribute("db.stored_procedure.name", args[1])
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
@@ -392,7 +408,9 @@ def _async_traced_execute_factory(
                         span.set_attribute("db.response.status_code", prefix)
                         span.set_attribute("error.type", prefix)
                     else:
-                        span.set_attribute("error.type", type(exc).__qualname__)
+                        span.set_attribute(
+                            "error.type", type(exc).__qualname__
+                        )
                 if span.is_recording():
                     span.set_status(StatusCode.ERROR)
                 raise
@@ -433,7 +451,9 @@ def _async_traced_execute_pipeline_factory(
                 if _report_old(semconv_opt_in_mode):
                     span.set_attribute(DB_STATEMENT, resource)
                     _set_connection_attributes(span, instance)
-                    span.set_attribute("db.redis.pipeline_length", len(command_stack))
+                    span.set_attribute(
+                        "db.redis.pipeline_length", len(command_stack)
+                    )
                 if _report_new(semconv_opt_in_mode):
                     span.set_attribute("db.system.name", "redis")
                     span.set_attribute("db.operation.name", "PIPELINE")
@@ -442,7 +462,9 @@ def _async_traced_execute_pipeline_factory(
                         span.set_attribute("db.namespace", str(db))
                     span.set_attribute("db.query.text", resource)
                     if len(command_stack) > 1:
-                        span.set_attribute("db.operation.batch.size", len(command_stack))
+                        span.set_attribute(
+                            "db.operation.batch.size", len(command_stack)
+                        )
                     if host:
                         span.set_attribute("server.address", host)
                         span.set_attribute("network.peer.address", host)
@@ -463,14 +485,16 @@ def _async_traced_execute_pipeline_factory(
                         span.set_attribute("db.response.status_code", prefix)
                         span.set_attribute("error.type", prefix)
                     else:
-                        span.set_attribute("error.type", type(exc).__qualname__)
+                        span.set_attribute(
+                            "error.type", type(exc).__qualname__
+                        )
                 if span.is_recording():
                     span.set_status(StatusCode.ERROR)
                 raise
             if callable(response_hook):
                 response_hook(span, instance, response)
 
-        if exception:
+        if exception is not None:
             raise exception
 
         return response
