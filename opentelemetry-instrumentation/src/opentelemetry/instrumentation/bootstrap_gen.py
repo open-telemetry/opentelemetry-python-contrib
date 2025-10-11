@@ -197,6 +197,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-system-metrics==0.59b0.dev",
     },
     {
+        "library": "taskiq >= 0.11",
+        "instrumentation": "opentelemetry-instrumentation-taskiq==0.59b0.dev",
+    },
+    {
         "library": "tornado >= 5.1.1",
         "instrumentation": "opentelemetry-instrumentation-tornado==0.59b0.dev",
     },
