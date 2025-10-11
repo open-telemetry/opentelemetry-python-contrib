@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("celery >= 0.11.0",)
+_instruments = ("taskiq >= 0.11.0",)

@@ -46,7 +46,7 @@
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | development
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette >= 0.13 | Yes | development
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | development
-| [opentelemetry-instrumentation-taskiq](./opentelemetry-instrumentation-taskiq) | taskiq >= 0.11 | No | development
+| [opentelemetry-instrumentation-taskiq](./opentelemetry-instrumentation-taskiq) | taskiq >= 0.11.0 | No | development
 | [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | development
 | [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | development
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | development
