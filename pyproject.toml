@@ -55,6 +55,7 @@ dependencies = [
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
   "opentelemetry-instrumentation-system-metrics",
+  "opentelemetry-instrumentation-taskiq[instruments]",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
   "opentelemetry-instrumentation-tortoiseorm",
@@ -126,6 +127,7 @@ opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
+opentelemetry-instrumentation-taskiq = { workspace = true }
 opentelemetry-instrumentation-threading = { workspace = true }
 opentelemetry-instrumentation-tornado = { workspace = true }
 opentelemetry-instrumentation-tortoiseorm = { workspace = true }
