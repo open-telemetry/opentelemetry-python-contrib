@@ -14,6 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
+import hashlib
 import importlib
 import logging
 import sys
@@ -121,13 +122,14 @@ class TestUploadCompletionHook(TestCase):
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
+        self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
-            base_path=BASE_PATH,
-            max_size=MAXSIZE,
+            base_path=BASE_PATH, max_size=MAXSIZE, lru_cache_max_size=5
         )
 
     def tearDown(self) -> None:
+        self.mock_fs.reset_mock()
         self.hook.shutdown()
         self._fsspec_patcher.stop()
 
@@ -157,11 +159,85 @@ class TestUploadCompletionHook(TestCase):
         # all items should be consumed
         self.hook.shutdown()
         # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
-        time.sleep(2)
+        time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
+        )
+
+    def test_system_insruction_is_hashed_to_avoid_reupload(self):
+        system_instructions = [
+            types.Text(content="You are a helpful assistant."),
+            types.Text(content="You will do your best."),
+        ]
+        expected_hash = hashlib.sha256(
+            "\n".join(text.content for text in system_instructions).encode(
+                "utf-8"
+            ),
+            usedforsecurity=False,
+        ).hexdigest()
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        self.mock_fs.exists.return_value = True
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        # all items should be consumed
+        self.hook.shutdown()
+
+        self.assertEqual(
+            self.mock_fs.open.call_count,
+            1,
+            "should have uploaded 1 file",
+        )
+        assert record.attributes is not None
+        self.assertEqual(
+            record.attributes["gen_ai.system_instructions_ref"].split("/")[-1],
+            f"{expected_hash}_system_instruction.json",
+        )
+
+    def test_lru_cache_works(self):
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        assert record.attributes is not None
+        self.assertTrue(
+            self.hook._file_exists(
+                record.attributes["gen_ai.system_instructions_ref"]
+            )
+        )
+        # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
+        for iteration in range(5):
+            self.assertTrue(
+                record.attributes["gen_ai.system_instructions_ref"]
+                in self.hook.lru_dict
+            )
+            self.hook.on_completion(
+                inputs=[],
+                outputs=[],
+                system_instruction=[types.Text(content=str(iteration))],
+            )
+        self.hook.shutdown()
+        self.assertFalse(
+            record.attributes["gen_ai.system_instructions_ref"]
+            in self.hook.lru_dict
         )
 
     def test_upload_when_inputs_outputs_empty(self):
