@@ -27,7 +27,7 @@ interactions:
       host:
       - us-central1-aiplatform.googleapis.com
       user-agent:
-      - google-genai-sdk/1.32.0 gl-python/3.11.9
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
       x-goog-api-client:
       - <REDACTED>
       x-goog-user-project:
@@ -44,18 +44,18 @@ interactions:
                 "role": "model",
                 "parts": [
                   {
-                    "text": "In lands of code, where microservices roam,\nAnd hidden pathways lead our data home,\nWhere errors lurk and mysteries reside,\nA guiding light we desperately confide.\n\nThen from the open source, a beacon gleams,\nUnifying visions, waking dormant dreams.\nNo longer bound by vendor's watchful hand,\nOpenTelemetry, across the digital land.\n\nIt weaves the **Traces**, threads of golden light,\nThrough every service, in the darkest night.\nEach **Span** a step, a function's brief embrace,\nRevealing journeys, time, and hidden space.\n\nThen **Metrics** rise, in counters and in gauges,\nPerformance stories, told on countless pages.\nCPU hum, latency's slow tide,\nThe health of systems, nowhere left to hide.\n\nAnd **Logs**, the whispers from each busy node,\nA chronicle of actions, burdens freely showed.\nFrom info messages to errors stark and plain,\nContextual wisdom, banishing the pain.\n\nWith SDKs and agents, code aware it grows,\nThrough sturdy Collectors, the data swiftly flows.\nTo chosen backends, be they new or old,\nA unified stream, a story to unfold.\n\nNo longer blind, to whispers in the dark,\nWe find the culprits, leaving their dark mark.\nUnderstand the flow, the logic and the strain,\nAnd build with confidence, again and again.\n\nSo hail the standard, vibrant, strong, and free,\nFor every system, for you, for me.\nOpenTelemetry, a power understood,\nIlluminating darkness, for the common good."
+                    "text": "When systems grow, a tangled, vast domain,\nWhere microservices dance, through sun and rain,\nA shadow falls, where logic hides its plea,\nAnd whispers vanish, lost for all to see.\n\nThen from the cloud, a guiding star takes flight,\nDispelling gloom with its clear, steady light.\nOpenTelemetry, the name we praise,\nUnifying vision through digital haze.\n\nA golden thread, a trace begins to gleam,\nThrough every service, like a waking dream.\nWith parent-child spans, a timeline clear,\nWhat once was hidden, now begins to appear.\n\nThe metrics flow, a system's vital pulse,\nWith counters climbing, no evasive impulse.\nGauges ascend and dip, where loads reside,\nThe heartbeat known, with nowhere left to hide.\n\nAnd logs appear, with context richly cast,\nEach crucial event, for future and for past.\nAttached to spans, a detailed, storied chime,\nUnveiling insights, lost to passing time.\n\nThrough RPC calls, and message queues that bind,\nContext propagates, for every searching mind.\nA hidden thread, connecting all the parts,\nRevealing patterns, igniting thoughtful starts.\n\nNo vendor lock, no proprietary chain,\nYour data streams, through sunshine and through rain.\nTo chosen backends, it will freely roam,\nObservability, now finds its rightful home.\n\nSo hail to Otel, the standard, strong and true,\nBringing clarity, for all our dev crews.\nFrom dark unknowns, to light, a clear display,\nOpenTelemetry illuminates the way."
                   }
                 ]
               },
               "finishReason": "STOP",
-              "avgLogprobs": -1.8066022087545957
+              "avgLogprobs": -2.441835476585546
             }
           ],
           "usageMetadata": {
             "promptTokenCount": 8,
-            "candidatesTokenCount": 340,
-            "totalTokenCount": 2275,
+            "candidatesTokenCount": 339,
+            "totalTokenCount": 2639,
             "trafficType": "ON_DEMAND",
             "promptTokensDetails": [
               {
@@ -66,14 +66,14 @@ interactions:
             "candidatesTokensDetails": [
               {
                 "modality": "TEXT",
-                "tokenCount": 340
+                "tokenCount": 339
               }
             ],
-            "thoughtsTokenCount": 1927
+            "thoughtsTokenCount": 2292
           },
           "modelVersion": "gemini-2.5-flash",
-          "createTime": "2025-10-06T15:50:08.533649Z",
-          "responseId": "MOXjaJHJIPP02PgP1dnn0Qo"
+          "createTime": "2025-10-10T15:56:16.631749Z",
+          "responseId": "oCzpaMXHJo_B2PgPq7j_8AY"
         }
     headers:
       Accept-Ranges:
@@ -81,7 +81,7 @@ interactions:
       Content-Type:
       - application/json; charset=UTF-8
       Date:
-      - Mon, 06 Oct 2025 15:50:20 GMT
+      - Fri, 10 Oct 2025 15:56:30 GMT
       Server:
       - scaffolding on HTTPServer2
       Transfer-Encoding:

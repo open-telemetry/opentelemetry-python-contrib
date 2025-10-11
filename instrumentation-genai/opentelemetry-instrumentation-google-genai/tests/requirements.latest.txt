@@ -47,4 +47,4 @@ google-genai==1.32.0
 # root directory, given invocation from "tox" at root level.
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-google-genai
--e util/opentelemetry-util-genai
+-e util/opentelemetry-util-genai[upload]

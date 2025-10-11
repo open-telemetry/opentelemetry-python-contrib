@@ -29,4 +29,4 @@ opentelemetry-instrumentation==0.58b0
 # Install locally from the folder. This path is relative to the
 # root directory, given invocation from "tox" at root level.
 -e instrumentation-genai/opentelemetry-instrumentation-google-genai
--e util/opentelemetry-util-genai
+-e util/opentelemetry-util-genai[upload]

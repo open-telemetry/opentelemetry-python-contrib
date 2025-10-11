@@ -27,7 +27,7 @@ interactions:
       host:
       - us-central1-aiplatform.googleapis.com
       user-agent:
-      - google-genai-sdk/1.32.0 gl-python/3.11.9
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
       x-goog-api-client:
       - <REDACTED>
       x-goog-user-project:
@@ -44,18 +44,18 @@ interactions:
                 "role": "model",
                 "parts": [
                   {
-                    "text": "In tangled clouds, where microservices roam,\nAnd data streams find a circuitous home,\nA dark abyss, where errors often hide,\nWith mysteries deep, there's nowhere to confide.\n\nBut from the void, a standard takes its flight,\nTo bring the hidden processes to light.\nOpenTelemetry, a unified design,\nA beacon in the digital divine.\n\nWith traces keen, a journey we embark,\nEach operation leaves its vital mark.\nFrom service entry to a database's keep,\nContext propagated, secrets now don't sleep.\n\nThen metrics gleam, in charts and graphs displayed,\nResponse times measured, no detail delayed.\nThrough counters, gauges, histograms so precise,\nPerformance whispered, at a measurable price.\n\nAnd logs, the tales of moments as they pass,\nDiscrete events within the digital glass.\nWith structured wisdom, messages unfold,\nA narrative of what the systems hold.\n\nThrough instrumentation, code begins to speak,\nA common language that all systems seek.\nThe Collector waits, a sentinel so grand,\nTo process, batch, and send across the land.\n\nNo vendor binds, no proprietary chain,\nBut open standards, free from selfish gain.\nA universal tongue, for insight to arise,\nReflecting truth before observing eyes.\n\nFrom scattered signals, patterns now emerge,\nTo quell the chaos, stem the error's surge.\nWith deep observability, we understand,\nThe intricate dance across the digital sand.\n\nSo hail this standard, built with thoughtful grace,\nTo light the corners of computing space.\nOpenTelemetry, a steadfast, vital guide,\nWhere understanding and precision ride."
+                    "text": "In tangled webs of code, where logic spins,\nA silent plea for sight, when trouble wins.\nDistributed dreams, where microservices hum,\nCan hide the fault, from whence the failures come.\n\nThen from the void, a beacon starts to gleam,\nOpenTelemetry, a developer's dream.\nA standard hand, a vendor-neutral plea,\nTo weave the fabric of observability.\n\nIt paints the journey, step by fragile step,\nA request's life, where secrets often slept.\nEach function call, a \"span\" upon the thread,\nConnecting dots, where errors might have spread.\n\nThe system's heartbeat, captured, clear, and bright,\nIn counters climbing, through the digital night.\nGauges that measure, histograms that show,\nThe ebb and flow, of where the currents go.\n\nAnd logs, the narratives, of every deed,\nA detailed story, planted like a seed.\nContext attached, for clarity and grace,\nTo pinpoint flaws, and put them in their place.\n\nNo vendor lock, no proprietary chain,\nJust open arms, to ease the developer's pain.\nA unified approach, for all to see,\nThe core of insight, growing strong and free.\n\nThrough careful pipelines, data starts to flow,\nTo trusted backends, where the insights grow.\nNo matter where your services reside,\nIts watchful eye, has nowhere left to hide.\n\nSo hail the standard, comprehensive, vast,\nA future built, where understanding's cast.\nFor complex systems, now a guiding light,\nOpenTelemetry, makes everything bright."
                   }
                 ]
               },
               "finishReason": "STOP",
-              "avgLogprobs": -2.298871321801128
+              "avgLogprobs": -1.920527738683364
             }
           ],
           "usageMetadata": {
             "promptTokenCount": 8,
-            "candidatesTokenCount": 349,
-            "totalTokenCount": 2326,
+            "candidatesTokenCount": 340,
+            "totalTokenCount": 2040,
             "trafficType": "ON_DEMAND",
             "promptTokensDetails": [
               {
@@ -66,14 +66,14 @@ interactions:
             "candidatesTokensDetails": [
               {
                 "modality": "TEXT",
-                "tokenCount": 349
+                "tokenCount": 340
               }
             ],
-            "thoughtsTokenCount": 1969
+            "thoughtsTokenCount": 1692
           },
           "modelVersion": "gemini-2.5-flash",
-          "createTime": "2025-10-06T15:50:52.185046Z",
-          "responseId": "XOXjaNalC4-nnvgPsaPcuAw"
+          "createTime": "2025-10-10T15:56:04.095069Z",
+          "responseId": "lCzpaN3mBYqCnvgP5dCT6AU"
         }
     headers:
       Accept-Ranges:
@@ -81,7 +81,7 @@ interactions:
       Content-Type:
       - application/json; charset=UTF-8
       Date:
-      - Mon, 06 Oct 2025 15:51:05 GMT
+      - Fri, 10 Oct 2025 15:56:14 GMT
       Server:
       - scaffolding on HTTPServer2
       Transfer-Encoding:
