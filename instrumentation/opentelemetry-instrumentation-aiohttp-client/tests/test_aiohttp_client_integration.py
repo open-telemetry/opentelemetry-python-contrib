@@ -87,7 +87,35 @@ def run_with_test_server(
     return loop.run_until_complete(do_request())
 
 
-class TestAioHttpIntegration(TestBase):
+class HttpRequestMixin:
+    @staticmethod
+    def _http_request(
+        trace_config,
+        url: str,
+        method: str = "GET",
+        status_code: int = HTTPStatus.OK,
+        request_handler: typing.Callable = None,
+        **kwargs,
+    ) -> typing.Tuple[str, int]:
+        """Helper to start an aiohttp test server and send an actual HTTP request to it."""
+
+        async def default_handler(request):
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response(status=int(status_code))
+
+        async def client_request(server: aiohttp.test_utils.TestServer):
+            async with aiohttp.test_utils.TestClient(
+                server, trace_configs=[trace_config]
+            ) as client:
+                await client.request(
+                    method, url, trace_request_ctx={}, **kwargs
+                )
+
+        handler = request_handler or default_handler
+        return run_with_test_server(client_request, url, handler)
+
+
+class TestAioHttpIntegration(TestBase, HttpRequestMixin):
     _test_status_codes = (
         (HTTPStatus.OK, StatusCode.UNSET),
         (HTTPStatus.TEMPORARY_REDIRECT, StatusCode.UNSET),
@@ -120,32 +148,6 @@ class TestAioHttpIntegration(TestBase):
         metrics = self.get_sorted_metrics()
         self.assertEqual(len(metrics), num_metrics)
         return metrics
-
-    @staticmethod
-    def _http_request(
-        trace_config,
-        url: str,
-        method: str = "GET",
-        status_code: int = HTTPStatus.OK,
-        request_handler: typing.Callable = None,
-        **kwargs,
-    ) -> typing.Tuple[str, int]:
-        """Helper to start an aiohttp test server and send an actual HTTP request to it."""
-
-        async def default_handler(request):
-            assert "traceparent" in request.headers
-            return aiohttp.web.Response(status=int(status_code))
-
-        async def client_request(server: aiohttp.test_utils.TestServer):
-            async with aiohttp.test_utils.TestClient(
-                server, trace_configs=[trace_config]
-            ) as client:
-                await client.request(
-                    method, url, trace_request_ctx={}, **kwargs
-                )
-
-        handler = request_handler or default_handler
-        return run_with_test_server(client_request, url, handler)
 
     def test_status_codes(self):
         index = 0
@@ -804,7 +806,7 @@ class TestAioHttpIntegration(TestBase):
         self.memory_exporter.clear()
 
 
-class TestAioHttpIntegrationAsync(TestAioHttpIntegration, IsolatedAsyncioTestCase):
+class TestAioHttpIntegrationAsync(TestBase, IsolatedAsyncioTestCase, HttpRequestMixin):
     def test_async_hooks(self):
         method = "PATCH"
         path = "/some/path"
