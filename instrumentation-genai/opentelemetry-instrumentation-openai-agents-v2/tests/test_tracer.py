@@ -48,12 +48,6 @@ from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
 from opentelemetry.trace import SpanKind  # noqa: E402
 
 GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
-GEN_AI_INPUT_MESSAGES = getattr(
-    GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages"
-)
-GEN_AI_OUTPUT_MESSAGES = getattr(
-    GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
-)
 
 
 def _instrument_with_provider(**instrument_kwargs):
