@@ -29,16 +29,29 @@ import json
 import os
 import subprocess
 import sys
+import time
 
+import fsspec
 import google.auth
 import google.auth.credentials
 import google.genai
 import pytest
 import yaml
+from google.genai import types
 from vcr.record_mode import RecordMode
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.google_genai import (
     GoogleGenAiSdkInstrumentor,
+)
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH,
 )
 
 from ..common.auth import FakeCredentials
@@ -308,8 +321,25 @@ def fixture_instrumentor():
     return GoogleGenAiSdkInstrumentor()
 
 
+@pytest.fixture(name="enable_completion_hook")
+def fixture_enable_completion_hook(request):
+    return getattr(request, "param", "default")
+
+
+@pytest.fixture(name="semconv_version")
+def fixture_semconv_version(request):
+    return getattr(request, "param", "default")
+
+
 @pytest.fixture(name="internal_instrumentation_setup", autouse=True)
-def fixture_setup_instrumentation(instrumentor):
+def fixture_setup_instrumentation(instrumentor, enable_completion_hook):
+    if enable_completion_hook == "enable_completion_hook":
+        os.environ.update(
+            {
+                OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH: "memory://",
+                "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
+            }
+        )
     instrumentor.instrument()
     yield
     instrumentor.uninstrument()
@@ -328,11 +358,30 @@ def fixture_otel_mocker():
     autouse=True,
     params=["logcontent", "excludecontent"],
 )
-def fixture_setup_content_recording(request):
+def fixture_setup_content_recording(request, semconv_version):
     enabled = request.param == "logcontent"
-    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = str(
-        enabled
-    )
+    # due to some init weirdness, this needs to be updated manually to work, and later restored,
+    # otherwise, state of this dict leaks to other tests and breaks them.
+    orig_dict = _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.copy()
+    if semconv_version == "experimental":
+        capture_content = "SPAN_AND_EVENT" if enabled else "NO_CONTENT"
+        os.environ.update(
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: capture_content,
+            }
+        )
+        _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.update(
+            {
+                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+            }
+        )
+    else:
+        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = str(
+            enabled
+        )
+    yield
+    _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = orig_dict
 
 
 @pytest.fixture(name="vcr_record_mode")
@@ -389,7 +438,14 @@ def fixture_gcloud_api_key(gemini_api_key):
 @pytest.fixture(name="nonvertex_client_factory")
 def fixture_nonvertex_client_factory(gemini_api_key):
     def _factory():
-        return google.genai.Client(api_key=gemini_api_key, vertexai=False)
+        return google.genai.Client(
+            api_key=gemini_api_key,
+            vertexai=False,
+            http_options=types.HttpOptions(
+                # to prevent compression
+                headers={"accept-encoding": "identity"}
+            ),
+        )
 
     return _factory
 
@@ -404,6 +460,9 @@ def fixture_vertex_client_factory(
             project=gcloud_project,
             location=gcloud_location,
             credentials=gcloud_credentials,
+            http_options=types.HttpOptions(
+                headers={"accept-encoding": "identity"}
+            ),
         )
 
     return _factory
@@ -435,7 +494,7 @@ def fixture_is_async(request):
     return request.param == "async"
 
 
-@pytest.fixture(name="model", params=["gemini-1.5-flash-002"])
+@pytest.fixture(name="model", params=["gemini-2.5-flash"])
 def fixture_model(request):
     return request.param
 
@@ -479,6 +538,7 @@ def fixture_generate_content_stream(client, is_async):
     return _sync_impl
 
 
+@pytest.mark.parametrize("semconv_version", ["default"], indirect=True)
 @pytest.mark.vcr
 def test_non_streaming(generate_content, model, otel_mocker):
     response = generate_content(
@@ -490,6 +550,7 @@ def test_non_streaming(generate_content, model, otel_mocker):
     otel_mocker.assert_has_span_named(f"generate_content {model}")
 
 
+@pytest.mark.parametrize("semconv_version", ["default"], indirect=True)
 @pytest.mark.vcr
 def test_streaming(generate_content_stream, model, otel_mocker):
     count = 0
@@ -502,3 +563,59 @@ def test_streaming(generate_content_stream, model, otel_mocker):
         count += 1
     assert count > 0
     otel_mocker.assert_has_span_named(f"generate_content {model}")
+
+
+@pytest.mark.parametrize("semconv_version", ["experimental"], indirect=True)
+@pytest.mark.parametrize(
+    "enable_completion_hook", ["enable_completion_hook"], indirect=True
+)
+@pytest.mark.vcr
+def test_upload_hook_non_streaming(
+    generate_content, model, otel_mocker: OTelMocker
+):
+    expected_input = [
+        {
+            "parts": [
+                {
+                    "content": "Create a haiku about Open Telemetry.",
+                    "type": "text",
+                }
+            ],
+            "role": "user",
+        }
+    ]
+    expected_output = [
+        {
+            "role": "assistant",
+            "parts": [
+                {
+                    "content": "Open data streams,\nMetrics, logs, and traces flow,\nClearly see inside.",
+                    "type": "text",
+                }
+            ],
+            "finish_reason": "stop",
+        }
+    ]
+    _ = generate_content(
+        model=model, contents="Create a haiku about Open Telemetry."
+    )
+    time.sleep(2)
+
+    event = otel_mocker.get_event_named(
+        "gen_ai.client.inference.operation.details"
+    )
+    assert_fsspec_equal(
+        event.attributes["gen_ai.input.messages_ref"], expected_input
+    )
+
+    span = otel_mocker.get_span_named(f"generate_content {model}")
+    assert_fsspec_equal(
+        span.attributes["gen_ai.output.messages_ref"], expected_output
+    )
+
+
+def assert_fsspec_equal(path, value):
+    # Hide this function and its calls from traceback.
+    __tracebackhide__ = True  # pylint: disable=unused-variable
+    with fsspec.open(path, "r") as file:
+        assert json.load(file) == value
