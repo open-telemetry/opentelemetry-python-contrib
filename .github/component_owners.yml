@@ -48,3 +48,6 @@ components:
   instrumentation-genai/opentelemetry-instrumentation-langchain:
     - zhirafovod
     - wrisa
+
+  instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
+    - nagkumar91
