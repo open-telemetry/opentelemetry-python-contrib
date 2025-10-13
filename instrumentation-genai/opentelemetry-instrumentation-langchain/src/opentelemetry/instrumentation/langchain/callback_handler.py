@@ -263,7 +263,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         # If this is an agent chain, set agent-specific attributes
         if metadata and "agent_name" in metadata:
             span.set_attribute(GenAI.GEN_AI_AGENT_NAME, metadata["agent_name"])
-            span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, _OPERATION_INVOKE_AGENT)
+            span.set_attribute(
+                GenAI.GEN_AI_OPERATION_NAME, _OPERATION_INVOKE_AGENT
+            )
 
     def on_chain_end(
         self,
