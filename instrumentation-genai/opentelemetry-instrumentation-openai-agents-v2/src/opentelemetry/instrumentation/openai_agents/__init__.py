@@ -44,6 +44,14 @@ _CAPTURE_CONTENT_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT"
 _CAPTURE_METRICS_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS"
 
 
+_AGENT_NAME_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_NAME"
+_AGENT_ID_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_ID"
+_AGENT_DESCRIPTION_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_DESCRIPTION"
+_BASE_URL_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_BASE_URL"
+_SERVER_ADDRESS_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_ADDRESS"
+_SERVER_PORT_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_PORT"
+
+
 def _load_tracing_module():  # pragma: no cover - exercised via tests
     return importlib.import_module("agents.tracing")
 
@@ -121,6 +129,39 @@ def _resolve_bool(value: Any, default: bool) -> bool:
     return default
 
 
+def _resolve_optional_str(value: Any, env_name: str) -> str | None:
+    if isinstance(value, str):
+        candidate = value.strip()
+        if candidate:
+            return candidate
+    elif value is not None:
+        candidate = str(value).strip()
+        if candidate:
+            return candidate
+    env_val = os.getenv(env_name)
+    if env_val and env_val.strip():
+        return env_val.strip()
+    return None
+
+
+def _resolve_optional_int(value: Any, env_name: str) -> int | None:
+    if value is not None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            logger.debug(
+                "Invalid integer override for %s: %r", env_name, value
+            )
+            return None
+    env_val = os.getenv(env_name)
+    if env_val and env_val.strip():
+        try:
+            return int(env_val)
+        except ValueError:
+            logger.debug("Invalid integer from env %s: %r", env_name, env_val)
+    return None
+
+
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
     """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry."""
 
@@ -157,6 +198,21 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             metrics_override = os.getenv(_CAPTURE_METRICS_ENV)
         metrics_enabled = _resolve_bool(metrics_override, default=True)
 
+        agent_name = _resolve_optional_str(
+            kwargs.get("agent_name"), _AGENT_NAME_ENV
+        )
+        agent_id = _resolve_optional_str(kwargs.get("agent_id"), _AGENT_ID_ENV)
+        agent_description = _resolve_optional_str(
+            kwargs.get("agent_description"), _AGENT_DESCRIPTION_ENV
+        )
+        base_url = _resolve_optional_str(kwargs.get("base_url"), _BASE_URL_ENV)
+        server_address = _resolve_optional_str(
+            kwargs.get("server_address"), _SERVER_ADDRESS_ENV
+        )
+        server_port = _resolve_optional_int(
+            kwargs.get("server_port"), _SERVER_PORT_ENV
+        )
+
         processor = GenAISemanticProcessor(
             tracer=tracer,
             system_name=system,
@@ -164,12 +220,12 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             != ContentCaptureMode.NO_CONTENT,
             content_mode=content_mode,
             metrics_enabled=metrics_enabled,
-            agent_name=kwargs.get("agent_name"),
-            agent_id=kwargs.get("agent_id"),
-            agent_description=kwargs.get("agent_description"),
-            base_url=kwargs.get("base_url"),
-            server_address=kwargs.get("server_address"),
-            server_port=kwargs.get("server_port"),
+            agent_name=agent_name,
+            agent_id=agent_id,
+            agent_description=agent_description,
+            base_url=base_url,
+            server_address=server_address,
+            server_port=server_port,
         )
 
         tracing = _load_tracing_module()

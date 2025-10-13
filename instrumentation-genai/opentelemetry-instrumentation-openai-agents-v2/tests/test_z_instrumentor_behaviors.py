@@ -42,3 +42,45 @@ def test_double_instrument_is_noop():
 def test_instrumentation_dependencies_exposed():
     instrumentor = OpenAIAgentsInstrumentor()
     assert instrumentor.instrumentation_dependencies() == _instruments
+
+
+def test_env_fallback_configuration(monkeypatch):
+    set_trace_processors([])
+    provider = TracerProvider()
+    instrumentor = OpenAIAgentsInstrumentor()
+
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_NAME", "EnvAgent"
+    )
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_ID", "agent-env"
+    )
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_DESCRIPTION",
+        "Env provided description",
+    )
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_BASE_URL",
+        "https://env.example.com",
+    )
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_ADDRESS", "env.example.com"
+    )
+    monkeypatch.setenv(
+        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_PORT",
+        "8080",
+    )
+
+    try:
+        instrumentor.instrument(tracer_provider=provider)
+        processor = instrumentor._processor
+        assert processor is not None
+        assert processor.agent_name == "EnvAgent"
+        assert processor.agent_id == "agent-env"
+        assert processor.agent_description == "Env provided description"
+        assert processor.base_url == "https://env.example.com"
+        assert processor.server_address == "env.example.com"
+        assert processor.server_port == 8080
+    finally:
+        instrumentor.uninstrument()
+        set_trace_processors([])
