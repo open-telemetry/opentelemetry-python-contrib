@@ -47,7 +47,7 @@ members = [
     "opentelemetry-instrumentation-logging",
     "opentelemetry-instrumentation-mysql",
     "opentelemetry-instrumentation-mysqlclient",
-    "opentelemetry-instrumentation-openai-agents",
+    "opentelemetry-instrumentation-openai-agents-v2",
     "opentelemetry-instrumentation-openai-v2",
     "opentelemetry-instrumentation-pika",
     "opentelemetry-instrumentation-psycopg",
@@ -3348,8 +3348,8 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-openai-agents"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-openai-agents" }
+name = "opentelemetry-instrumentation-openai-agents-v2"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
