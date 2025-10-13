@@ -16,9 +16,11 @@
 
 from __future__ import annotations
 
-import importlib
 import os
-from typing import TYPE_CHECKING, Any, Collection, Protocol
+from typing import Collection, Protocol
+
+from agents import tracing
+from agents.tracing.processor_interface import TracingProcessor
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
@@ -31,11 +33,6 @@ from .package import _instruments
 from .span_processor import _OpenAIAgentsSpanProcessor
 from .version import __version__  # noqa: F401
 
-if TYPE_CHECKING:
-    from agents.tracing.processor_interface import TracingProcessor
-else:  # pragma: no cover - runtime fallback when Agents SDK isn't installed
-    TracingProcessor = Any
-
 
 class _ProcessorHolder(Protocol):
     _processors: Collection[TracingProcessor]
@@ -46,10 +43,6 @@ class _TraceProviderLike(Protocol):
 
 
 __all__ = ["OpenAIAgentsInstrumentor"]
-
-
-def _load_tracing_module():
-    return importlib.import_module("agents.tracing")
 
 
 def _resolve_system(value: str | None) -> str:
@@ -108,7 +101,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             agent_name_override=agent_name_override,
         )
 
-        tracing = _load_tracing_module()
         provider = tracing.get_trace_provider()
         existing = _get_registered_processors(provider)
         provider.set_processors([*existing, processor])
@@ -118,7 +110,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
         if self._processor is None:
             return
 
-        tracing = _load_tracing_module()
         provider = tracing.get_trace_provider()
         current = _get_registered_processors(provider)
         filtered = [proc for proc in current if proc is not self._processor]
