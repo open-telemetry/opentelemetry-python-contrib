@@ -203,6 +203,110 @@ def _get_redis_conn_info(instance):
     return host, port, db, unix_sock
 
 
+# Helper function to set old semantic convention attributes
+def _set_old_semconv_attributes(
+    span,
+    instance,
+    args,
+    query,
+    command_stack,
+    resource,
+    is_pipeline,
+):
+    span.set_attribute(DB_STATEMENT, query if not is_pipeline else resource)
+    _set_connection_attributes(span, instance)
+    if not is_pipeline:
+        span.set_attribute("db.redis.args_length", len(args))
+    else:
+        span.set_attribute("db.redis.pipeline_length", len(command_stack))
+
+
+# Helper function to set new semantic convention attributes
+def _set_new_semconv_attributes(
+    span,
+    instance,
+    args,
+    query,
+    command_stack,
+    resource,
+    is_pipeline,
+):
+    span.set_attribute("db.system.name", "redis")
+
+    if not is_pipeline:
+        if args and len(args) > 0:
+            span.set_attribute("db.operation.name", args[0])
+    else:
+        span.set_attribute("db.operation.name", "PIPELINE")
+        if len(command_stack) > 1:
+            span.set_attribute("db.operation.batch.size", len(command_stack))
+
+    host, port, db, unix_sock = _get_redis_conn_info(instance)
+    if db is not None:
+        span.set_attribute("db.namespace", str(db))
+    span.set_attribute("db.query.text", query if not is_pipeline else resource)
+    if host:
+        span.set_attribute("server.address", host)
+        span.set_attribute("network.peer.address", host)
+    if port:
+        span.set_attribute("server.port", port)
+        span.set_attribute("network.peer.port", port)
+    if unix_sock:
+        span.set_attribute("network.peer.address", unix_sock)
+        span.set_attribute("network.transport", "unix")
+
+    # db.stored_procedure.name (only for individual commands)
+    if not is_pipeline:
+        if args and args[0] in ("EVALSHA", "FCALL") and len(args) > 1:
+            span.set_attribute("db.stored_procedure.name", args[1])
+
+
+# Helper function to set all common span attributes
+def _set_span_attributes(
+    span,
+    instance,
+    args,  # For individual commands
+    query,  # For individual commands
+    command_stack,  # For pipelines
+    resource,  # For pipelines
+    semconv_opt_in_mode,
+):
+    if not span.is_recording():
+        return
+
+    is_pipeline = command_stack is not None
+
+    if _report_old(semconv_opt_in_mode):
+        _set_old_semconv_attributes(
+            span, instance, args, query, command_stack, resource, is_pipeline
+        )
+
+    if _report_new(semconv_opt_in_mode):
+        _set_new_semconv_attributes(
+            span, instance, args, query, command_stack, resource, is_pipeline
+        )
+
+    # Command-specific attributes that depend on span.name (e.g., redis.create_index)
+    if not is_pipeline and span.name == "redis.create_index":
+        _add_create_attributes(span, args)
+
+
+# Helper function to set error attributes on a span
+def _set_span_error_attributes(span, exc, semconv_opt_in_mode):
+    if not span.is_recording():
+        return
+
+    if _report_new(semconv_opt_in_mode):
+        error_type = getattr(exc, "args", [None])[0]
+        if error_type and isinstance(error_type, str):
+            prefix = error_type.split(" ")[0]
+            span.set_attribute("db.response.status_code", prefix)
+            span.set_attribute("error.type", prefix)
+        else:
+            span.set_attribute("error.type", type(exc).__qualname__)
+    span.set_status(StatusCode.ERROR)
+
+
 def _traced_execute_factory(
     tracer: Tracer,
     request_hook: RequestHook | None = None,
@@ -222,38 +326,10 @@ def _traced_execute_factory(
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                # Old/existing attributes:
-                if _report_old(semconv_opt_in_mode):
-                    span.set_attribute(DB_STATEMENT, query)
-                    _set_connection_attributes(span, instance)
-                    span.set_attribute("db.redis.args_length", len(args))
-                # New semantic conventions:
-                if _report_new(semconv_opt_in_mode):
-                    span.set_attribute("db.system.name", "redis")
-                    if args and len(args) > 0:
-                        span.set_attribute("db.operation.name", args[0])
-                    host, port, db, unix_sock = _get_redis_conn_info(instance)
-                    if db is not None:
-                        span.set_attribute("db.namespace", str(db))
-                    span.set_attribute("db.query.text", query)
-                    if host:
-                        span.set_attribute("server.address", host)
-                        span.set_attribute("network.peer.address", host)
-                    if port:
-                        span.set_attribute("server.port", port)
-                        span.set_attribute("network.peer.port", port)
-                    if unix_sock:
-                        span.set_attribute("network.peer.address", unix_sock)
-                        span.set_attribute("network.transport", "unix")
-                    if (
-                        args
-                        and args[0] in ("EVALSHA", "FCALL")
-                        and len(args) > 1
-                    ):
-                        span.set_attribute("db.stored_procedure.name", args[1])
-                if span.name == "redis.create_index":
-                    _add_create_attributes(span, args)
+            _set_span_attributes(
+                span, instance, args, query, None, None, semconv_opt_in_mode
+            )
+
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             try:
@@ -262,19 +338,8 @@ def _traced_execute_factory(
                 if span.is_recording():
                     span.set_status(StatusCode.UNSET)
                 raise watch_exception
-            except Exception as exc:
-                if _report_new(semconv_opt_in_mode) and span.is_recording():
-                    error_type = getattr(exc, "args", [None])[0]
-                    if error_type and isinstance(error_type, str):
-                        prefix = error_type.split(" ")[0]
-                        span.set_attribute("db.response.status_code", prefix)
-                        span.set_attribute("error.type", prefix)
-                    else:
-                        span.set_attribute(
-                            "error.type", type(exc).__qualname__
-                        )
-                if span.is_recording():
-                    span.set_status(StatusCode.ERROR)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                _set_span_error_attributes(span, exc, semconv_opt_in_mode)
                 raise
             if span.is_recording() and span.name == "redis.search":
                 _add_search_attributes(span, response, args)
@@ -308,39 +373,26 @@ def _traced_execute_pipeline_factory(
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                if _report_old(semconv_opt_in_mode):
-                    span.set_attribute(DB_STATEMENT, resource)
-                    _set_connection_attributes(span, instance)
-                    span.set_attribute(
-                        "db.redis.pipeline_length", len(command_stack)
-                    )
-                if _report_new(semconv_opt_in_mode):
-                    span.set_attribute("db.system.name", "redis")
-                    span.set_attribute("db.operation.name", "PIPELINE")
-                    host, port, db, unix_sock = _get_redis_conn_info(instance)
-                    if db is not None:
-                        span.set_attribute("db.namespace", str(db))
-                    span.set_attribute("db.query.text", resource)
-                    if len(command_stack) > 1:
-                        span.set_attribute(
-                            "db.operation.batch.size", len(command_stack)
-                        )
-                    if host:
-                        span.set_attribute("server.address", host)
-                        span.set_attribute("network.peer.address", host)
-                    if port:
-                        span.set_attribute("server.port", port)
-                        span.set_attribute("network.peer.port", port)
-                    if unix_sock:
-                        span.set_attribute("network.peer.address", unix_sock)
-                        span.set_attribute("network.transport", "unix")
+            _set_span_attributes(
+                span,
+                instance,
+                None,
+                None,
+                command_stack,
+                resource,
+                semconv_opt_in_mode,
+            )
+
             response = None
             try:
                 response = func(*args, **kwargs)
             except redis.WatchError as watch_exception:
-                span.set_status(StatusCode.UNSET)
+                if span.is_recording():
+                    span.set_status(StatusCode.UNSET)
                 exception = watch_exception
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                _set_span_error_attributes(span, exc, semconv_opt_in_mode)
+                exception = exc
 
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -372,34 +424,10 @@ def _async_traced_execute_factory(
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                if _report_old(semconv_opt_in_mode):
-                    span.set_attribute(DB_STATEMENT, query)
-                    _set_connection_attributes(span, instance)
-                    span.set_attribute("db.redis.args_length", len(args))
-                if _report_new(semconv_opt_in_mode):
-                    span.set_attribute("db.system.name", "redis")
-                    if args and len(args) > 0:
-                        span.set_attribute("db.operation.name", args[0])
-                    host, port, db, unix_sock = _get_redis_conn_info(instance)
-                    if db is not None:
-                        span.set_attribute("db.namespace", str(db))
-                    span.set_attribute("db.query.text", query)
-                    if host:
-                        span.set_attribute("server.address", host)
-                        span.set_attribute("network.peer.address", host)
-                    if port:
-                        span.set_attribute("server.port", port)
-                        span.set_attribute("network.peer.port", port)
-                    if unix_sock:
-                        span.set_attribute("network.peer.address", unix_sock)
-                        span.set_attribute("network.transport", "unix")
-                    if (
-                        args
-                        and args[0] in ("EVALSHA", "FCALL")
-                        and len(args) > 1
-                    ):
-                        span.set_attribute("db.stored_procedure.name", args[1])
+            _set_span_attributes(
+                span, instance, args, query, None, None, semconv_opt_in_mode
+            )
+
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             try:
@@ -408,19 +436,8 @@ def _async_traced_execute_factory(
                 if span.is_recording():
                     span.set_status(StatusCode.UNSET)
                 raise watch_exception
-            except Exception as exc:
-                if _report_new(semconv_opt_in_mode) and span.is_recording():
-                    error_type = getattr(exc, "args", [None])[0]
-                    if error_type and isinstance(error_type, str):
-                        prefix = error_type.split(" ")[0]
-                        span.set_attribute("db.response.status_code", prefix)
-                        span.set_attribute("error.type", prefix)
-                    else:
-                        span.set_attribute(
-                            "error.type", type(exc).__qualname__
-                        )
-                if span.is_recording():
-                    span.set_status(StatusCode.ERROR)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                _set_span_error_attributes(span, exc, semconv_opt_in_mode)
                 raise
             if span.is_recording() and span.name == "redis.search":
                 _add_search_attributes(span, response, args)
@@ -455,33 +472,16 @@ def _async_traced_execute_pipeline_factory(
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                if _report_old(semconv_opt_in_mode):
-                    span.set_attribute(DB_STATEMENT, resource)
-                    _set_connection_attributes(span, instance)
-                    span.set_attribute(
-                        "db.redis.pipeline_length", len(command_stack)
-                    )
-                if _report_new(semconv_opt_in_mode):
-                    span.set_attribute("db.system.name", "redis")
-                    span.set_attribute("db.operation.name", "PIPELINE")
-                    host, port, db, unix_sock = _get_redis_conn_info(instance)
-                    if db is not None:
-                        span.set_attribute("db.namespace", str(db))
-                    span.set_attribute("db.query.text", resource)
-                    if len(command_stack) > 1:
-                        span.set_attribute(
-                            "db.operation.batch.size", len(command_stack)
-                        )
-                    if host:
-                        span.set_attribute("server.address", host)
-                        span.set_attribute("network.peer.address", host)
-                    if port:
-                        span.set_attribute("server.port", port)
-                        span.set_attribute("network.peer.port", port)
-                    if unix_sock:
-                        span.set_attribute("network.peer.address", unix_sock)
-                        span.set_attribute("network.transport", "unix")
+            _set_span_attributes(
+                span,
+                instance,
+                None,
+                None,
+                command_stack,
+                resource,
+                semconv_opt_in_mode,
+            )
+
             response = None
             try:
                 response = await func(*args, **kwargs)
@@ -490,20 +490,7 @@ def _async_traced_execute_pipeline_factory(
                     span.set_status(StatusCode.UNSET)
                 exception = watch_exception
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                if span.is_recording():
-                    if _report_new(semconv_opt_in_mode):
-                        error_type = getattr(exc, "args", [None])[0]
-                        if error_type and isinstance(error_type, str):
-                            prefix = error_type.split(" ")[0]
-                            span.set_attribute(
-                                "db.response.status_code", prefix
-                            )
-                            span.set_attribute("error.type", prefix)
-                        else:
-                            span.set_attribute(
-                                "error.type", type(exc).__qualname__
-                            )
-                    span.set_status(StatusCode.ERROR)
+                _set_span_error_attributes(span, exc, semconv_opt_in_mode)
                 exception = exc
 
             if callable(response_hook):
