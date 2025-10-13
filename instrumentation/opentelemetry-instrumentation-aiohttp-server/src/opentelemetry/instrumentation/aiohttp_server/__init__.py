@@ -35,6 +35,25 @@ Usage
     app.add_routes([web.get('/', hello)])
 
     web.run_app(app)
+
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 """
 
 import urllib
