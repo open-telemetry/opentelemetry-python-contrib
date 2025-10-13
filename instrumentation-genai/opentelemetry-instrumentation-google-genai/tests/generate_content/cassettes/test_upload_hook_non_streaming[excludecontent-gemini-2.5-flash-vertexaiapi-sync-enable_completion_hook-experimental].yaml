@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a haiku about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '93'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "Open data streams,\nMetrics, logs, and traces flow,\nClearly see inside."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -28.687652587890625
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 20,
+            "totalTokenCount": 1341,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 20
+              }
+            ],
+            "thoughtsTokenCount": 1313
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-10T16:32:34.499409Z",
+          "responseId": "IjXpaNG9HoC4nvgPk77D6Ak"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Fri, 10 Oct 2025 16:32:42 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
