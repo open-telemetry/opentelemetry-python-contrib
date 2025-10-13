@@ -15,20 +15,23 @@ import os
 from typing import Any
 
 from agents.tracing import agent_span, function_span, generation_span, trace
+from dotenv import load_dotenv
 
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
+)
 from opentelemetry.instrumentation.openai_agents import (
     OpenAIAgentsInstrumentor,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    ConsoleSpanExporter,
-    SimpleSpanProcessor,
-)
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+load_dotenv()  # take environment variables from .env.
 
 
 def configure_tracing() -> None:
-    """Configure a tracer provider that writes spans to stdout."""
+    """Configure a tracer provider that exports spans via OTLP."""
     resource = Resource.create(
         {
             "service.name": os.environ.get(
@@ -37,7 +40,7 @@ def configure_tracing() -> None:
         }
     )
     provider = TracerProvider(resource=resource)
-    provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
     # Instrument with explicit content capture mode to ensure prompts/responses are recorded.
     OpenAIAgentsInstrumentor().instrument(
@@ -72,7 +75,7 @@ def run_workflow() -> None:
     }
 
     with trace("travel-booking-workflow"):
-        with agent_span(operation="invoke", name="travel_planner") as agent:
+        with agent_span(name="travel_planner") as agent:
             dump(
                 "Agent span started",
                 {"span_id": agent.span_id, "trace_id": agent.trace_id},
@@ -105,7 +108,9 @@ def run_workflow() -> None:
             ):
                 pass
 
-    print("\nWorkflow complete – spans exported to console above.")
+    print(
+        "\nWorkflow complete – spans exported to the configured OTLP endpoint."
+    )
 
 
 def main() -> None:

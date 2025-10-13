@@ -116,7 +116,6 @@ from .constants import (
     GEN_AI_TOOL_TYPE,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
-    GEN_AI_USAGE_TOTAL_TOKENS,
     GenAIOperationName,
     GenAIOutputType,
 )
@@ -1053,16 +1052,92 @@ class GenAISemanticProcessor(TracingProcessor):
         if isinstance(output, Sequence) and output:
             first = output[0]
             if isinstance(first, dict):
-                # Check for image/speech indicators
-                if first.get("type") == "image":
-                    return GenAIOutputType.IMAGE
-                if first.get("type") == "audio":
-                    return GenAIOutputType.SPEECH
-                # Check if it's structured JSON
-                if "type" in first or len(first) > 1:
+                item_type = first.get("type")
+                if isinstance(item_type, str):
+                    normalized = item_type.strip().lower()
+                    if normalized in {"image", "image_url"}:
+                        return GenAIOutputType.IMAGE
+                    if normalized in {"audio", "speech", "audio_url"}:
+                        return GenAIOutputType.SPEECH
+                    if normalized in {
+                        "json",
+                        "json_object",
+                        "jsonschema",
+                        "function_call",
+                        "tool_call",
+                        "tool_result",
+                    }:
+                        return GenAIOutputType.JSON
+                    if normalized in {
+                        "text",
+                        "output_text",
+                        "message",
+                        "assistant",
+                    }:
+                        return GenAIOutputType.TEXT
+
+                # Conversation style payloads
+                if "role" in first:
+                    parts = first.get("parts")
+                    if isinstance(parts, Sequence) and parts:
+                        # If all parts are textual (or missing explicit type), treat as text
+                        textual = True
+                        for part in parts:
+                            if isinstance(part, dict):
+                                part_type = str(part.get("type", "")).lower()
+                                if part_type in {"image", "image_url"}:
+                                    return GenAIOutputType.IMAGE
+                                if part_type in {
+                                    "audio",
+                                    "speech",
+                                    "audio_url",
+                                }:
+                                    return GenAIOutputType.SPEECH
+                                if part_type and part_type not in {
+                                    "text",
+                                    "output_text",
+                                    "assistant",
+                                }:
+                                    textual = False
+                            elif not isinstance(part, str):
+                                textual = False
+                        if textual:
+                            return GenAIOutputType.TEXT
+                    content_value = first.get("content")
+                    if isinstance(content_value, str):
+                        return GenAIOutputType.TEXT
+
+                # Detect structured data without explicit type
+                json_like_keys = {
+                    "schema",
+                    "properties",
+                    "arguments",
+                    "result",
+                    "data",
+                    "json",
+                    "output_json",
+                }
+                if json_like_keys.intersection(first.keys()):
                     return GenAIOutputType.JSON
 
         return GenAIOutputType.TEXT
+
+    @staticmethod
+    def _sanitize_usage_payload(usage: Any) -> None:
+        """Remove non-spec usage fields (e.g., total tokens) in-place."""
+        if not usage:
+            return
+        if isinstance(usage, dict):
+            usage.pop("total_tokens", None)
+            return
+        if hasattr(usage, "total_tokens"):
+            try:
+                setattr(usage, "total_tokens", None)
+            except Exception:  # pragma: no cover - defensive
+                try:
+                    delattr(usage, "total_tokens")
+                except Exception:  # pragma: no cover - defensive
+                    pass
 
     def _get_span_kind(self, span_data: Any) -> SpanKind:
         """Determine appropriate span kind based on span data type."""
@@ -1410,6 +1485,7 @@ class GenAISemanticProcessor(TracingProcessor):
         # Usage information
         if span_data.usage:
             usage = span_data.usage
+            self._sanitize_usage_payload(usage)
             if "prompt_tokens" in usage or "input_tokens" in usage:
                 tokens = usage.get("prompt_tokens") or usage.get(
                     "input_tokens"
@@ -1422,8 +1498,6 @@ class GenAISemanticProcessor(TracingProcessor):
                 )
                 if tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, tokens
-            if "total_tokens" in usage:
-                yield GEN_AI_USAGE_TOTAL_TOKENS, usage["total_tokens"]
 
         # Model configuration
         if span_data.model_config:
@@ -1692,6 +1766,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 and span_data.response.usage
             ):
                 usage = span_data.response.usage
+                self._sanitize_usage_payload(usage)
                 input_tokens = getattr(usage, "input_tokens", None)
                 if input_tokens is None:
                     input_tokens = getattr(usage, "prompt_tokens", None)
@@ -1703,11 +1778,6 @@ class GenAISemanticProcessor(TracingProcessor):
                     output_tokens = getattr(usage, "completion_tokens", None)
                 if output_tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
-                if (
-                    hasattr(usage, "total_tokens")
-                    and usage.total_tokens is not None
-                ):
-                    yield GEN_AI_USAGE_TOTAL_TOKENS, usage.total_tokens
 
         # Input/output messages
         if (

@@ -29,7 +29,6 @@ _OPERATION_DETAILS_CORE_KEYS = {
     "gen_ai.response.model",
     "gen_ai.usage.input_tokens",
     "gen_ai.usage.output_tokens",
-    "gen_ai.usage.total_tokens",
     "gen_ai.output.type",
     "gen_ai.system_instructions",
     "gen_ai.input.messages",

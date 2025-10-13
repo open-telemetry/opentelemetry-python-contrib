@@ -1,7 +1,7 @@
 openai-agents~=0.3.3
 python-dotenv~=1.0
 
-opentelemetry-sdk~=1.36.0
-opentelemetry-exporter-otlp-proto-grpc~=1.36.0
-opentelemetry-distro~=0.57b0
-opentelemetry-instrumentation-openai-agents-v2~=0.1.0.dev
+opentelemetry-sdk @ git+https://github.com/open-telemetry/opentelemetry-python@main#subdirectory=opentelemetry-sdk
+opentelemetry-semantic-conventions @ git+https://github.com/open-telemetry/opentelemetry-python@main#subdirectory=opentelemetry-semantic-conventions
+opentelemetry-exporter-otlp-proto-grpc @ git+https://github.com/open-telemetry/opentelemetry-python@main#subdirectory=exporter/opentelemetry-exporter-otlp-proto-grpc
+-e ../..
