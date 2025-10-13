@@ -1055,7 +1055,9 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
         }
         expected_attributes = {
-            "http.request.header.test_wsgirequest_header": str(mock_wsgi_request)
+            "http.request.header.test_wsgirequest_header": str(
+                mock_wsgi_request
+            )
         }
 
         formatted_attributes = (
