@@ -270,6 +270,12 @@ class GenAISemanticProcessor(TracingProcessor):
         server_address: Optional[str] = None,
         server_port: Optional[int] = None,
         metrics_enabled: bool = True,
+        agent_name_default: Optional[str] = None,
+        agent_id_default: Optional[str] = None,
+        agent_description_default: Optional[str] = None,
+        base_url_default: Optional[str] = None,
+        server_address_default: Optional[str] = None,
+        server_port_default: Optional[int] = None,
     ):
         """Initialize processor with metrics support.
 
@@ -291,7 +297,8 @@ class GenAISemanticProcessor(TracingProcessor):
         self.include_sensitive_data = include_sensitive_data and (
             content_mode.capture_in_span or content_mode.capture_in_event
         )
-        self.base_url = base_url
+        effective_base_url = base_url or base_url_default
+        self.base_url = effective_base_url
         # Legacy emission removed; parameter retained for compatibility but unused
         self.emit_legacy = False
 
@@ -299,14 +306,22 @@ class GenAISemanticProcessor(TracingProcessor):
         self.agent_name = agent_name
         self.agent_id = agent_id
         self.agent_description = agent_description
+        self._agent_name_default = agent_name_default
+        self._agent_id_default = agent_id_default
+        self._agent_description_default = agent_description_default
 
         # Server information - use init parameters, then base_url inference
-        self.server_address = server_address
-        self.server_port = server_port
+        self.server_address = server_address or server_address_default
+        resolved_port = (
+            server_port if server_port is not None else server_port_default
+        )
+        self.server_port = resolved_port
 
         # If server info not provided, try to extract from base_url
-        if (not self.server_address or not self.server_port) and base_url:
-            server_attrs = _infer_server_attributes(base_url)
+        if (
+            not self.server_address or not self.server_port
+        ) and effective_base_url:
+            server_attrs = _infer_server_attributes(effective_base_url)
             if not self.server_address:
                 self.server_address = server_attrs.get("server.address")
             if not self.server_port:
@@ -1139,6 +1154,8 @@ class GenAISemanticProcessor(TracingProcessor):
         agent_name = self.agent_name
         if not agent_name and _is_instance_of(span.span_data, AgentSpanData):
             agent_name = getattr(span.span_data, "name", None)
+        if not agent_name:
+            agent_name = self._agent_name_default
 
         tool_name = (
             getattr(span.span_data, "name", None)
@@ -1157,12 +1174,17 @@ class GenAISemanticProcessor(TracingProcessor):
         # Legacy emission removed
 
         # Add configured agent and server attributes
-        if self.agent_name:
-            attributes[GEN_AI_AGENT_NAME] = self.agent_name
-        if self.agent_id:
-            attributes[GEN_AI_AGENT_ID] = self.agent_id
-        if self.agent_description:
-            attributes[GEN_AI_AGENT_DESCRIPTION] = self.agent_description
+        agent_name_override = self.agent_name or self._agent_name_default
+        agent_id_override = self.agent_id or self._agent_id_default
+        agent_desc_override = (
+            self.agent_description or self._agent_description_default
+        )
+        if agent_name_override:
+            attributes[GEN_AI_AGENT_NAME] = agent_name_override
+        if agent_id_override:
+            attributes[GEN_AI_AGENT_ID] = agent_id_override
+        if agent_desc_override:
+            attributes[GEN_AI_AGENT_DESCRIPTION] = agent_desc_override
         attributes.update(self._get_server_attributes())
 
         otel_span = self._tracer.start_span(
@@ -1328,12 +1350,17 @@ class GenAISemanticProcessor(TracingProcessor):
         # Legacy emission removed
 
         # Add configured agent attributes (always include when set)
-        if self.agent_name:
-            yield GEN_AI_AGENT_NAME, self.agent_name
-        if self.agent_id:
-            yield GEN_AI_AGENT_ID, self.agent_id
-        if self.agent_description:
-            yield GEN_AI_AGENT_DESCRIPTION, self.agent_description
+        agent_name_override = self.agent_name or self._agent_name_default
+        agent_id_override = self.agent_id or self._agent_id_default
+        agent_desc_override = (
+            self.agent_description or self._agent_description_default
+        )
+        if agent_name_override:
+            yield GEN_AI_AGENT_NAME, agent_name_override
+        if agent_id_override:
+            yield GEN_AI_AGENT_ID, agent_id_override
+        if agent_desc_override:
+            yield GEN_AI_AGENT_DESCRIPTION, agent_desc_override
 
         # Server attributes
         for key, value in self._get_server_attributes().items():
@@ -1493,16 +1520,26 @@ class GenAISemanticProcessor(TracingProcessor):
         """Extract attributes from agent span."""
         yield GEN_AI_OPERATION_NAME, self._get_operation_name(span_data)
 
-        name = self.agent_name or getattr(span_data, "name", None)
+        name = (
+            self.agent_name
+            or getattr(span_data, "name", None)
+            or self._agent_name_default
+        )
         if name:
             yield GEN_AI_AGENT_NAME, name
 
-        agent_id = self.agent_id or getattr(span_data, "agent_id", None)
+        agent_id = (
+            self.agent_id
+            or getattr(span_data, "agent_id", None)
+            or self._agent_id_default
+        )
         if agent_id:
             yield GEN_AI_AGENT_ID, agent_id
 
-        description = self.agent_description or getattr(
-            span_data, "description", None
+        description = (
+            self.agent_description
+            or getattr(span_data, "description", None)
+            or self._agent_description_default
         )
         if description:
             yield GEN_AI_AGENT_DESCRIPTION, description

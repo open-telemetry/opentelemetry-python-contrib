@@ -44,43 +44,24 @@ def test_instrumentation_dependencies_exposed():
     assert instrumentor.instrumentation_dependencies() == _instruments
 
 
-def test_env_fallback_configuration(monkeypatch):
+def test_default_agent_configuration():
     set_trace_processors([])
     provider = TracerProvider()
     instrumentor = OpenAIAgentsInstrumentor()
-
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_NAME", "EnvAgent"
-    )
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_ID", "agent-env"
-    )
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_AGENT_DESCRIPTION",
-        "Env provided description",
-    )
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_BASE_URL",
-        "https://env.example.com",
-    )
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_ADDRESS", "env.example.com"
-    )
-    monkeypatch.setenv(
-        "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SERVER_PORT",
-        "8080",
-    )
 
     try:
         instrumentor.instrument(tracer_provider=provider)
         processor = instrumentor._processor
         assert processor is not None
-        assert processor.agent_name == "EnvAgent"
-        assert processor.agent_id == "agent-env"
-        assert processor.agent_description == "Env provided description"
-        assert processor.base_url == "https://env.example.com"
-        assert processor.server_address == "env.example.com"
-        assert processor.server_port == 8080
+        assert getattr(processor, "_agent_name_default") == "OpenAI Agent"
+        assert getattr(processor, "_agent_id_default") == "agent"
+        assert (
+            getattr(processor, "_agent_description_default")
+            == "OpenAI Agents instrumentation"
+        )
+        assert processor.base_url == "https://api.openai.com"
+        assert processor.server_address == "api.openai.com"
+        assert processor.server_port == 443
     finally:
         instrumentor.uninstrument()
         set_trace_processors([])
