@@ -15,6 +15,7 @@
 import json
 import os
 import unittest
+from typing import Any, Mapping, Optional
 from unittest.mock import patch
 
 from opentelemetry import trace
@@ -22,7 +23,7 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -66,6 +67,76 @@ def patch_env_vars(stability_mode, content_capturing):
         return wrapper
 
     return decorator
+
+
+def _create_input_message(
+    content: str = "hello world", role: str = "Human"
+) -> InputMessage:
+    return InputMessage(role=role, parts=[Text(content=content)])
+
+
+def _create_output_message(
+    content: str = "hello back", finish_reason: str = "stop", role: str = "AI"
+) -> OutputMessage:
+    return OutputMessage(
+        role=role, parts=[Text(content=content)], finish_reason=finish_reason
+    )
+
+
+def _get_single_span(span_exporter: InMemorySpanExporter) -> ReadableSpan:
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    return spans[0]
+
+
+def _assert_span_time_order(span: ReadableSpan) -> None:
+    assert span.start_time is not None
+    assert span.end_time is not None
+    assert span.end_time >= span.start_time
+
+
+def _get_span_attributes(span: ReadableSpan) -> Mapping[str, Any]:
+    attrs = span.attributes
+    assert attrs is not None
+    return attrs
+
+
+def _assert_span_attributes(
+    span_attrs: Mapping[str, Any], expected_values: Mapping[str, Any]
+) -> None:
+    for key, value in expected_values.items():
+        assert span_attrs.get(key) == value
+
+
+def _get_messages_from_attr(
+    span_attrs: Mapping[str, Any], attribute_name: str
+) -> list[dict[str, Any]]:
+    payload = span_attrs.get(attribute_name)
+    assert payload is not None
+    assert isinstance(payload, str)
+    return json.loads(payload)
+
+
+def _get_single_message(
+    span_attrs: Mapping[str, Any], attribute_name: str
+) -> dict[str, Any]:
+    messages = _get_messages_from_attr(span_attrs, attribute_name)
+    assert len(messages) == 1
+    return messages[0]
+
+
+def _assert_text_message(
+    message: Mapping[str, Any],
+    role: str,
+    content: str,
+    finish_reason: Optional[str] = None,
+) -> None:
+    assert message.get("role") == role
+    parts = message.get("parts")
+    assert isinstance(parts, list) and parts
+    assert parts[0].get("content") == content
+    if finish_reason is not None:
+        assert message.get("finish_reason") == finish_reason
 
 
 class TestVersion(unittest.TestCase):
@@ -126,78 +197,71 @@ class TestTelemetryHandler(unittest.TestCase):
         content_capturing="SPAN_ONLY",
     )
     def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
-        message = InputMessage(
-            role="Human", parts=[Text(content="hello world")]
-        )
-        chat_generation = OutputMessage(
-            role="AI", parts=[Text(content="hello back")], finish_reason="stop"
-        )
+        message = _create_input_message("hello world")
+        chat_generation = _create_output_message("hello back")
 
-        # Start and stop LLM invocation using context manager
         with self.telemetry_handler.llm() as invocation:
-            invocation.request_model = "test-model"
-            invocation.input_messages = [message]
-            invocation.provider = "test-provider"
-            invocation.attributes = {"custom_attr": "value"}
-            invocation.temperature = 0.5
-            invocation.top_p = 0.9
-            invocation.stop_sequences = ["stop"]
+            for attr, value in {
+                "request_model": "test-model",
+                "input_messages": [message],
+                "provider": "test-provider",
+                "attributes": {"custom_attr": "value"},
+                "temperature": 0.5,
+                "top_p": 0.9,
+                "stop_sequences": ["stop"],
+                "response_finish_reasons": ["stop"],
+                "response_model_name": "test-response-model",
+                "response_id": "response-id",
+                "input_tokens": 321,
+                "output_tokens": 654,
+            }.items():
+                setattr(invocation, attr, value)
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
 
-        # Get the spans that were created
-        spans = self.span_exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
-        assert span.name == "chat test-model"
-        assert span.kind == trace.SpanKind.CLIENT
+        span = _get_single_span(self.span_exporter)
+        self.assertEqual(span.name, "chat test-model")
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        _assert_span_time_order(span)
 
-        # Verify span attributes
-        assert span.attributes is not None
-        span_attrs = span.attributes
-        assert span_attrs.get("gen_ai.operation.name") == "chat"
-        assert span_attrs.get("gen_ai.provider.name") == "test-provider"
-        assert span_attrs.get(GenAI.GEN_AI_REQUEST_TEMPERATURE) == 0.5
-        assert span_attrs.get(GenAI.GEN_AI_REQUEST_TOP_P) == 0.9
-        assert span_attrs.get(GenAI.GEN_AI_REQUEST_STOP_SEQUENCES) == ("stop",)
-        assert span.start_time is not None
-        assert span.end_time is not None
-        assert span.end_time >= span.start_time
-        assert invocation.attributes.get("custom_attr") == "value"
-        assert invocation.attributes.get("extra") == "info"
-
-        # Check messages captured on span
-        input_messages_json = span_attrs.get("gen_ai.input.messages")
-        output_messages_json = span_attrs.get("gen_ai.output.messages")
-        assert input_messages_json is not None
-        assert output_messages_json is not None
-        assert isinstance(input_messages_json, str)
-        assert isinstance(output_messages_json, str)
-        input_messages = json.loads(input_messages_json)
-        output_messages = json.loads(output_messages_json)
-        assert len(input_messages) == 1
-        assert len(output_messages) == 1
-        assert input_messages[0].get("role") == "Human"
-        assert output_messages[0].get("role") == "AI"
-        assert output_messages[0].get("finish_reason") == "stop"
-        assert (
-            output_messages[0].get("parts")[0].get("content") == "hello back"
+        span_attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            span_attrs,
+            {
+                "gen_ai.operation.name": "chat",
+                "gen_ai.provider.name": "test-provider",
+                GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
+                GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
+                GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
+                GenAI.GEN_AI_RESPONSE_MODEL: "test-response-model",
+                GenAI.GEN_AI_RESPONSE_ID: "response-id",
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 321,
+                GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 654,
+                "extra": "info",
+                "custom_attr": "value",
+            },
         )
 
-        # Check that extra attributes are added to the span
-        assert span_attrs.get("extra") == "info"
-        assert span_attrs.get("custom_attr") == "value"
+        input_message = _get_single_message(
+            span_attrs, "gen_ai.input.messages"
+        )
+        output_message = _get_single_message(
+            span_attrs, "gen_ai.output.messages"
+        )
+        _assert_text_message(input_message, "Human", "hello world")
+        _assert_text_message(output_message, "AI", "hello back", "stop")
+        self.assertEqual(invocation.attributes.get("custom_attr"), "value")
+        self.assertEqual(invocation.attributes.get("extra"), "info")
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
     )
     def test_llm_manual_start_and_stop_creates_span(self):
-        message = InputMessage(role="Human", parts=[Text(content="hi")])
-        chat_generation = OutputMessage(
-            role="AI", parts=[Text(content="ok")], finish_reason="stop"
-        )
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
 
         invocation = LLMInvocation(
             request_model="manual-model",
@@ -212,40 +276,71 @@ class TestTelemetryHandler(unittest.TestCase):
         invocation.attributes.update({"extra_manual": "yes"})
         self.telemetry_handler.stop_llm(invocation)
 
-        spans = self.span_exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
+        span = _get_single_span(self.span_exporter)
         assert span.name == "chat manual-model"
         assert span.kind == trace.SpanKind.CLIENT
-        assert span.start_time is not None
-        assert span.end_time is not None
-        assert span.end_time >= span.start_time
+        _assert_span_time_order(span)
 
-        attrs = span.attributes
-        assert attrs is not None
-        assert attrs.get("manual") is True
-        assert attrs.get("extra_manual") == "yes"
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                "manual": True,
+                "extra_manual": "yes",
+            },
+        )
+
+    def test_llm_span_finish_reasons_without_output_messages(self):
+        invocation = LLMInvocation(
+            request_model="model-without-output",
+            provider="test-provider",
+            response_finish_reasons=["length"],
+            response_model_name="alt-model",
+            response_id="resp-001",
+            input_tokens=12,
+            output_tokens=34,
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        _assert_span_time_order(span)
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("length",),
+                GenAI.GEN_AI_RESPONSE_MODEL: "alt-model",
+                GenAI.GEN_AI_RESPONSE_ID: "resp-001",
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 12,
+                GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 34,
+            },
+        )
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
     )
     def test_parent_child_span_relationship(self):
-        message = InputMessage(role="Human", parts=[Text(content="hi")])
-        chat_generation = OutputMessage(
-            role="AI", parts=[Text(content="ok")], finish_reason="stop"
-        )
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
 
         with self.telemetry_handler.llm() as parent_invocation:
-            parent_invocation.request_model = "parent-model"
-            parent_invocation.input_messages = [message]
-            parent_invocation.provider = "test-provider"
-            # Perform things here, calling a tool, processing, etc.
+            for attr, value in {
+                "request_model": "parent-model",
+                "input_messages": [message],
+                "provider": "test-provider",
+            }.items():
+                setattr(parent_invocation, attr, value)
             with self.telemetry_handler.llm() as child_invocation:
-                child_invocation.request_model = "child-model"
-                child_invocation.input_messages = [message]
-                child_invocation.provider = "test-provider"
-                # Perform things here, calling a tool, processing, etc.
+                for attr, value in {
+                    "request_model": "child-model",
+                    "input_messages": [message],
+                    "provider": "test-provider",
+                }.items():
+                    setattr(child_invocation, attr, value)
                 # Stop child first by exiting inner context
                 child_invocation.output_messages = [chat_generation]
             # Then stop parent by exiting outer context
@@ -272,7 +367,7 @@ class TestTelemetryHandler(unittest.TestCase):
         class BoomError(RuntimeError):
             pass
 
-        message = InputMessage(role="user", parts=[Text(content="hi")])
+        message = _create_input_message("hi", role="user")
         invocation = LLMInvocation(
             request_model="test-model",
             input_messages=[message],
@@ -281,22 +376,32 @@ class TestTelemetryHandler(unittest.TestCase):
 
         with self.assertRaises(BoomError):
             with self.telemetry_handler.llm(invocation):
-                # Simulate user code that fails inside the invocation
-                invocation.max_tokens = 128
-                invocation.seed = 123
+                for attr, value in {
+                    "max_tokens": 128,
+                    "seed": 123,
+                    "response_finish_reasons": ["error"],
+                    "response_model_name": "error-model",
+                    "response_id": "error-response",
+                    "input_tokens": 11,
+                    "output_tokens": 22,
+                }.items():
+                    setattr(invocation, attr, value)
                 raise BoomError("boom")
 
-        # One span should have been exported and should be in error state
-        spans = self.span_exporter.get_finished_spans()
-        assert len(spans) == 1
-        span = spans[0]
+        span = _get_single_span(self.span_exporter)
         assert span.status.status_code == StatusCode.ERROR
-        assert (
-            span.attributes.get(ErrorAttributes.ERROR_TYPE)
-            == BoomError.__qualname__
+        _assert_span_time_order(span)
+        span_attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            span_attrs,
+            {
+                ErrorAttributes.ERROR_TYPE: BoomError.__qualname__,
+                GenAI.GEN_AI_REQUEST_MAX_TOKENS: 128,
+                GenAI.GEN_AI_REQUEST_SEED: 123,
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("error",),
+                GenAI.GEN_AI_RESPONSE_MODEL: "error-model",
+                GenAI.GEN_AI_RESPONSE_ID: "error-response",
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 11,
+                GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 22,
+            },
         )
-        assert span.attributes.get(GenAI.GEN_AI_REQUEST_MAX_TOKENS) == 128
-        assert span.attributes.get(GenAI.GEN_AI_REQUEST_SEED) == 123
-        assert span.start_time is not None
-        assert span.end_time is not None
-        assert span.end_time >= span.start_time

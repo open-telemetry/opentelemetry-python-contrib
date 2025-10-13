@@ -111,6 +111,7 @@ class LLMInvocation:
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
+    response_finish_reasons: Optional[List[str]] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
