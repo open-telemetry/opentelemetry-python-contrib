@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ if str(stub_path) not in sys.path:
 sys.modules.pop("agents", None)
 sys.modules.pop("agents.tracing", None)
 
+import agents.tracing as agents_tracing  # noqa: E402
 from agents.tracing import (  # noqa: E402
     agent_span,
     function_span,
@@ -46,6 +48,12 @@ from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
 from opentelemetry.trace import SpanKind  # noqa: E402
 
 GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
+GEN_AI_INPUT_MESSAGES = getattr(
+    GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages"
+)
+GEN_AI_OUTPUT_MESSAGES = getattr(
+    GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
+)
 
 
 def _instrument_with_provider(**instrument_kwargs):
@@ -194,6 +202,62 @@ def test_agent_create_span_records_attributes():
         exporter.clear()
 
 
+def test_agent_span_collects_child_messages():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        provider = agents_tracing.get_trace_provider()
+
+        with trace("workflow") as workflow:
+            agent_span_obj = provider.create_span(
+                agents_tracing.AgentSpanData(name="helper"),
+                parent=workflow,
+            )
+            agent_span_obj.start()
+
+            generation = agents_tracing.GenerationSpanData(
+                input=[{"role": "user", "content": "hi"}],
+                output=[{"type": "text", "content": "hello"}],
+                model="gpt-4o-mini",
+            )
+            gen_span = provider.create_span(generation, parent=agent_span_obj)
+            gen_span.start()
+            gen_span.finish()
+
+            agent_span_obj.finish()
+
+        spans = exporter.get_finished_spans()
+        agent_span = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        )
+
+        prompt = json.loads(agent_span.attributes[GEN_AI_INPUT_MESSAGES])
+        completion = json.loads(agent_span.attributes[GEN_AI_OUTPUT_MESSAGES])
+
+        assert prompt == [
+            {
+                "role": "user",
+                "parts": [{"type": "text", "content": "hi"}],
+            }
+        ]
+        assert completion == [
+            {
+                "role": "assistant",
+                "parts": [{"type": "text", "content": "hello"}],
+            }
+        ]
+
+        event_names = {event.name for event in agent_span.events}
+        assert "gen_ai.input" in event_names
+        assert "gen_ai.output" in event_names
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
 def test_agent_name_override_applied_to_agent_spans():
     instrumentor, exporter = _instrument_with_provider(
         agent_name="Travel Concierge"
@@ -218,6 +282,35 @@ def test_agent_name_override_applied_to_agent_spans():
             agent_span_record.attributes[GenAI.GEN_AI_AGENT_NAME]
             == "Travel Concierge"
         )
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_capture_mode_can_be_disabled():
+    instrumentor, exporter = _instrument_with_provider(
+        capture_message_content="no_content"
+    )
+
+    try:
+        with trace("workflow"):
+            with generation_span(
+                input=[{"role": "user", "content": "hi"}],
+                output=[{"role": "assistant", "content": "hello"}],
+                model="gpt-4o-mini",
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        client_span = next(
+            span for span in spans if span.kind is SpanKind.CLIENT
+        )
+
+        assert GEN_AI_INPUT_MESSAGES not in client_span.attributes
+        assert GEN_AI_OUTPUT_MESSAGES not in client_span.attributes
+        for event in client_span.events:
+            assert GEN_AI_INPUT_MESSAGES not in event.attributes
+            assert GEN_AI_OUTPUT_MESSAGES not in event.attributes
     finally:
         instrumentor.uninstrument()
         exporter.clear()
