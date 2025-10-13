@@ -178,6 +178,19 @@ class ContentPayload:
     tool_result: Any = None
 
 
+def _is_instance_of(value: Any, classes: Any) -> bool:
+    """Safe isinstance that tolerates typing.Any placeholders."""
+    if not isinstance(classes, tuple):
+        classes = (classes,)
+    for cls in classes:
+        try:
+            if isinstance(value, cls):
+                return True
+        except TypeError:
+            continue
+    return False
+
+
 def _infer_server_attributes(base_url: Optional[str]) -> dict[str, Any]:
     """Return server.address / server.port attributes if base_url provided."""
     out: dict[str, Any] = {}
@@ -292,10 +305,10 @@ class GenAISemanticProcessor(TracingProcessor):
         # Legacy emission removed; parameter retained for compatibility but unused
         self.emit_legacy = False
 
-        # Agent information - use init parameters or defaults
-        self.agent_name = agent_name or "agent"
-        self.agent_id = agent_id or "unknown"
-        self.agent_description = agent_description or "instrumented agent"
+        # Agent information - prefer explicit overrides; otherwise defer to span data
+        self.agent_name = agent_name
+        self.agent_id = agent_id
+        self.agent_description = agent_description
 
         # Server information - use init parameters, then base_url inference
         self.server_address = server_address
@@ -446,7 +459,7 @@ class GenAISemanticProcessor(TracingProcessor):
             return
 
         try:
-            if isinstance(span_data, GenerationSpanData):
+            if _is_instance_of(span_data, GenerationSpanData):
                 if payload.input_messages:
                     otel_span.add_event(
                         _INPUT_EVENT_NAME,
@@ -466,7 +479,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         },
                     )
 
-            elif isinstance(span_data, ResponseSpanData):
+            elif _is_instance_of(span_data, ResponseSpanData):
                 if payload.output_messages:
                     otel_span.add_event(
                         _OUTPUT_EVENT_NAME,
@@ -477,7 +490,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         },
                     )
 
-            elif isinstance(span_data, FunctionSpanData):
+            elif _is_instance_of(span_data, FunctionSpanData):
                 if payload.tool_arguments is not None:
                     otel_span.add_event(
                         _TOOL_ARGS_EVENT_NAME,
@@ -489,7 +502,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         {GEN_AI_TOOL_CALL_RESULT: payload.tool_result},
                     )
             elif (
-                isinstance(span_data, AgentSpanData)
+                _is_instance_of(span_data, AgentSpanData)
                 and agent_content
                 and self._capture_messages
             ):
@@ -911,20 +924,22 @@ class GenAISemanticProcessor(TracingProcessor):
         )
         capture_tools = self._content_mode.capture_in_span or (
             self._content_mode.capture_in_event
-            and isinstance(span_data, FunctionSpanData)
+            and _is_instance_of(span_data, FunctionSpanData)
         )
 
-        if isinstance(span_data, GenerationSpanData):
-            if capture_messages and span_data.input:
+        if _is_instance_of(span_data, GenerationSpanData):
+            span_input = getattr(span_data, "input", None)
+            if capture_messages and span_input:
                 payload.input_messages = (
-                    self._normalize_messages_to_role_parts(span_data.input)
+                    self._normalize_messages_to_role_parts(span_input)
                 )
-            if capture_system and span_data.input:
-                sys_instr = self._collect_system_instructions(span_data.input)
+            if capture_system and span_input:
+                sys_instr = self._collect_system_instructions(span_input)
                 if sys_instr:
                     payload.system_instructions = sys_instr
             if capture_messages and (
-                span_data.output or getattr(span_data, "response", None)
+                getattr(span_data, "output", None)
+                or getattr(span_data, "response", None)
             ):
                 normalized_out = self._normalize_output_messages_to_role_parts(
                     span_data
@@ -932,13 +947,14 @@ class GenAISemanticProcessor(TracingProcessor):
                 if normalized_out:
                     payload.output_messages = normalized_out
 
-        elif isinstance(span_data, ResponseSpanData):
-            if capture_messages and span_data.input:
+        elif _is_instance_of(span_data, ResponseSpanData):
+            span_input = getattr(span_data, "input", None)
+            if capture_messages and span_input:
                 payload.input_messages = (
-                    self._normalize_messages_to_role_parts(span_data.input)
+                    self._normalize_messages_to_role_parts(span_input)
                 )
-            if capture_system and span_data.input:
-                sys_instr = self._collect_system_instructions(span_data.input)
+            if capture_system and span_input:
+                sys_instr = self._collect_system_instructions(span_input)
                 if sys_instr:
                     payload.system_instructions = sys_instr
             if capture_messages:
@@ -948,7 +964,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 if normalized_out:
                     payload.output_messages = normalized_out
 
-        elif isinstance(span_data, FunctionSpanData) and capture_tools:
+        elif _is_instance_of(span_data, FunctionSpanData) and capture_tools:
 
             def _serialize_tool_value(value: Any) -> Optional[str]:
                 if value is None:
@@ -957,8 +973,12 @@ class GenAISemanticProcessor(TracingProcessor):
                     return safe_json_dumps(value)
                 return str(value)
 
-            payload.tool_arguments = _serialize_tool_value(span_data.input)
-            payload.tool_result = _serialize_tool_value(span_data.output)
+            payload.tool_arguments = _serialize_tool_value(
+                getattr(span_data, "input", None)
+            )
+            payload.tool_result = _serialize_tool_value(
+                getattr(span_data, "output", None)
+            )
 
         return payload
 
@@ -1007,20 +1027,20 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
-        if isinstance(span_data, FunctionSpanData):
+        if _is_instance_of(span_data, FunctionSpanData):
             # Tool results are typically JSON
             return GenAIOutputType.JSON
-        if isinstance(span_data, TranscriptionSpanData):
+        if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOutputType.TEXT
-        if isinstance(span_data, SpeechSpanData):
+        if _is_instance_of(span_data, SpeechSpanData):
             return GenAIOutputType.SPEECH
-        if isinstance(span_data, GuardrailSpanData):
+        if _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOutputType.TEXT
-        if isinstance(span_data, HandoffSpanData):
+        if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOutputType.TEXT
 
         # Check for embeddings operation
-        if isinstance(span_data, GenerationSpanData):
+        if _is_instance_of(span_data, GenerationSpanData):
             if hasattr(span_data, "embedding_dimension"):
                 return (
                     GenAIOutputType.TEXT
@@ -1046,9 +1066,9 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _get_span_kind(self, span_data: Any) -> SpanKind:
         """Determine appropriate span kind based on span data type."""
-        if isinstance(span_data, FunctionSpanData):
+        if _is_instance_of(span_data, FunctionSpanData):
             return SpanKind.INTERNAL  # Tool execution is internal
-        if isinstance(
+        if _is_instance_of(
             span_data,
             (
                 GenerationSpanData,
@@ -1058,9 +1078,9 @@ class GenAISemanticProcessor(TracingProcessor):
             ),
         ):
             return SpanKind.CLIENT  # API calls to model providers
-        if isinstance(
-            span_data, (AgentSpanData, GuardrailSpanData, HandoffSpanData)
-        ):
+        if _is_instance_of(span_data, AgentSpanData):
+            return SpanKind.CLIENT
+        if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
             return SpanKind.INTERNAL  # Agent operations are internal
         return SpanKind.INTERNAL
 
@@ -1104,7 +1124,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
         self._span_parents[span.span_id] = span.parent_id
         if (
-            isinstance(span.span_data, AgentSpanData)
+            _is_instance_of(span.span_data, AgentSpanData)
             and span.span_id not in self._agent_content
         ):
             self._agent_content[span.span_id] = {
@@ -1123,15 +1143,18 @@ class GenAISemanticProcessor(TracingProcessor):
         # Get operation details for span naming
         operation_name = self._get_operation_name(span.span_data)
         model = getattr(span.span_data, "model", None)
+        if model is None:
+            response_obj = getattr(span.span_data, "response", None)
+            model = getattr(response_obj, "model", None)
 
         # Use configured agent name or get from span data
         agent_name = self.agent_name
-        if not agent_name and isinstance(span.span_data, AgentSpanData):
+        if not agent_name and _is_instance_of(span.span_data, AgentSpanData):
             agent_name = getattr(span.span_data, "name", None)
 
         tool_name = (
             getattr(span.span_data, "name", None)
-            if isinstance(span.span_data, FunctionSpanData)
+            if _is_instance_of(span.span_data, FunctionSpanData)
             else None
         )
 
@@ -1172,7 +1195,7 @@ class GenAISemanticProcessor(TracingProcessor):
         self._update_agent_aggregate(span, payload)
         agent_content = (
             self._agent_content.get(span.span_id)
-            if isinstance(span.span_data, AgentSpanData)
+            if _is_instance_of(span.span_data, AgentSpanData)
             else None
         )
 
@@ -1194,7 +1217,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     span.span_id,
                     e,
                 )
-            if isinstance(span.span_data, AgentSpanData):
+            if _is_instance_of(span.span_data, AgentSpanData):
                 self._agent_content.pop(span.span_id, None)
             self._span_parents.pop(span.span_id, None)
             return
@@ -1240,7 +1263,7 @@ class GenAISemanticProcessor(TracingProcessor):
             otel_span.set_status(Status(StatusCode.ERROR, str(e)))
             otel_span.end()
         finally:
-            if isinstance(span.span_data, AgentSpanData):
+            if _is_instance_of(span.span_data, AgentSpanData):
                 self._agent_content.pop(span.span_id, None)
             self._span_parents.pop(span.span_id, None)
 
@@ -1270,7 +1293,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _get_operation_name(self, span_data: Any) -> str:
         """Determine operation name from span data type."""
-        if isinstance(span_data, GenerationSpanData):
+        if _is_instance_of(span_data, GenerationSpanData):
             # Check if it's embeddings
             if hasattr(span_data, "embedding_dimension"):
                 return GenAIOperationName.EMBEDDINGS
@@ -1280,21 +1303,30 @@ class GenAISemanticProcessor(TracingProcessor):
                 if isinstance(first_input, dict) and "role" in first_input:
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
-        elif isinstance(span_data, AgentSpanData):
+        elif _is_instance_of(span_data, AgentSpanData):
             # Could be create_agent or invoke_agent based on context
-            # Default to invoke_agent (more common)
+            operation = getattr(span_data, "operation", None)
+            normalized = (
+                operation.strip().lower()
+                if isinstance(operation, str)
+                else None
+            )
+            if normalized in {"create", "create_agent"}:
+                return GenAIOperationName.CREATE_AGENT
+            if normalized in {"invoke", "invoke_agent"}:
+                return GenAIOperationName.INVOKE_AGENT
             return GenAIOperationName.INVOKE_AGENT
-        elif isinstance(span_data, FunctionSpanData):
+        elif _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
-        elif isinstance(span_data, ResponseSpanData):
+        elif _is_instance_of(span_data, ResponseSpanData):
             return GenAIOperationName.CHAT  # Response typically from chat
-        elif isinstance(span_data, TranscriptionSpanData):
+        elif _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOperationName.TRANSCRIPTION
-        elif isinstance(span_data, SpeechSpanData):
+        elif _is_instance_of(span_data, SpeechSpanData):
             return GenAIOperationName.SPEECH
-        elif isinstance(span_data, GuardrailSpanData):
+        elif _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOperationName.GUARDRAIL
-        elif isinstance(span_data, HandoffSpanData):
+        elif _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
         return "unknown"
 
@@ -1325,31 +1357,31 @@ class GenAISemanticProcessor(TracingProcessor):
             yield key, value
 
         # Process different span types
-        if isinstance(span_data, GenerationSpanData):
+        if _is_instance_of(span_data, GenerationSpanData):
             yield from self._get_attributes_from_generation_span_data(
                 span_data, payload
             )
-        elif isinstance(span_data, AgentSpanData):
+        elif _is_instance_of(span_data, AgentSpanData):
             yield from self._get_attributes_from_agent_span_data(
                 span_data, agent_content
             )
-        elif isinstance(span_data, FunctionSpanData):
+        elif _is_instance_of(span_data, FunctionSpanData):
             yield from self._get_attributes_from_function_span_data(
                 span_data, payload
             )
-        elif isinstance(span_data, ResponseSpanData):
+        elif _is_instance_of(span_data, ResponseSpanData):
             yield from self._get_attributes_from_response_span_data(
                 span_data, payload
             )
-        elif isinstance(span_data, TranscriptionSpanData):
+        elif _is_instance_of(span_data, TranscriptionSpanData):
             yield from self._get_attributes_from_transcription_span_data(
                 span_data
             )
-        elif isinstance(span_data, SpeechSpanData):
+        elif _is_instance_of(span_data, SpeechSpanData):
             yield from self._get_attributes_from_speech_span_data(span_data)
-        elif isinstance(span_data, GuardrailSpanData):
+        elif _is_instance_of(span_data, GuardrailSpanData):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
-        elif isinstance(span_data, HandoffSpanData):
+        elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
 
     def _get_attributes_from_generation_span_data(
@@ -1477,23 +1509,26 @@ class GenAISemanticProcessor(TracingProcessor):
         agent_content: Optional[Dict[str, list[Any]]] = None,
     ) -> Iterator[tuple[str, AttributeValue]]:
         """Extract attributes from agent span."""
-        yield GEN_AI_OPERATION_NAME, GenAIOperationName.INVOKE_AGENT
+        yield GEN_AI_OPERATION_NAME, self._get_operation_name(span_data)
 
-        # Use span data values only if not configured globally
-        if not self.agent_name and span_data.name:
-            yield GEN_AI_AGENT_NAME, span_data.name
-        if (
-            not self.agent_id
-            and hasattr(span_data, "agent_id")
-            and span_data.agent_id
-        ):
-            yield GEN_AI_AGENT_ID, span_data.agent_id
-        if (
-            not self.agent_description
-            and hasattr(span_data, "description")
-            and span_data.description
-        ):
-            yield GEN_AI_AGENT_DESCRIPTION, span_data.description
+        name = self.agent_name or getattr(span_data, "name", None)
+        if name:
+            yield GEN_AI_AGENT_NAME, name
+
+        agent_id = self.agent_id or getattr(span_data, "agent_id", None)
+        if agent_id:
+            yield GEN_AI_AGENT_ID, agent_id
+
+        description = self.agent_description or getattr(
+            span_data, "description", None
+        )
+        if description:
+            yield GEN_AI_AGENT_DESCRIPTION, description
+
+        model = getattr(span_data, "model", None)
+        if model:
+            yield GEN_AI_REQUEST_MODEL, model
+
         if hasattr(span_data, "conversation_id") and span_data.conversation_id:
             yield GEN_AI_CONVERSATION_ID, span_data.conversation_id
 
@@ -1640,7 +1675,12 @@ class GenAISemanticProcessor(TracingProcessor):
                 and span_data.response.output
             ):
                 for part in span_data.response.output:
-                    fr = getattr(part, "finish_reason", None)
+                    if isinstance(part, dict):
+                        fr = part.get("finish_reason") or part.get(
+                            "stop_reason"
+                        )
+                    else:
+                        fr = getattr(part, "finish_reason", None)
                     if fr:
                         finish_reasons.append(fr)
             if finish_reasons:
@@ -1652,16 +1692,17 @@ class GenAISemanticProcessor(TracingProcessor):
                 and span_data.response.usage
             ):
                 usage = span_data.response.usage
-                if (
-                    hasattr(usage, "prompt_tokens")
-                    and usage.prompt_tokens is not None
-                ):
-                    yield GEN_AI_USAGE_INPUT_TOKENS, usage.prompt_tokens
-                if (
-                    hasattr(usage, "completion_tokens")
-                    and usage.completion_tokens is not None
-                ):
-                    yield GEN_AI_USAGE_OUTPUT_TOKENS, usage.completion_tokens
+                input_tokens = getattr(usage, "input_tokens", None)
+                if input_tokens is None:
+                    input_tokens = getattr(usage, "prompt_tokens", None)
+                if input_tokens is not None:
+                    yield GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+
+                output_tokens = getattr(usage, "output_tokens", None)
+                if output_tokens is None:
+                    output_tokens = getattr(usage, "completion_tokens", None)
+                if output_tokens is not None:
+                    yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
                 if (
                     hasattr(usage, "total_tokens")
                     and usage.total_tokens is not None
