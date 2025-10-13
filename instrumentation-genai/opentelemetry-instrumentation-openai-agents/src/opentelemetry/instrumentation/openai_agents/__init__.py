@@ -45,17 +45,9 @@ class _TraceProviderLike(Protocol):
 __all__ = ["OpenAIAgentsInstrumentor"]
 
 
-def _resolve_system(value: str | None) -> str:
-    if not value:
-        return GenAI.GenAiSystemValues.OPENAI.value
-
-    normalized = value.strip().lower()
-    for member in GenAI.GenAiSystemValues:
-        if normalized == member.value:
-            return member.value
-        if normalized == member.name.lower():
-            return member.value
-    return value
+def _resolve_system(_: str | None) -> str:
+    # OpenAI spans must report provider name "openai" per semantic conventions.
+    return GenAI.GenAiSystemValues.OPENAI.value
 
 
 def _get_registered_processors(
