@@ -51,7 +51,7 @@ _CLIENT_SPAN_TYPES = frozenset(
     }
 )
 
-_GEN_AI_PROVIDER_NAME = "gen_ai.provider.name"
+_GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
 
 
 def _parse_iso8601(timestamp: str | None) -> int | None:

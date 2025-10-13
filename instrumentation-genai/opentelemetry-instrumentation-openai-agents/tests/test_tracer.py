@@ -45,6 +45,8 @@ from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
 )
 from opentelemetry.trace import SpanKind  # noqa: E402
 
+GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
+
 
 def _instrument_with_provider(**instrument_kwargs):
     set_trace_processors([])
@@ -79,7 +81,7 @@ def test_generation_span_creates_client_span():
             span for span in spans if span.kind is SpanKind.CLIENT
         )
 
-        assert client_span.attributes["gen_ai.provider.name"] == "openai"
+        assert client_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
         assert client_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "chat"
         assert (
             client_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
@@ -147,7 +149,7 @@ def test_function_span_records_tool_attributes():
         )
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_NAME] == "fetch_weather"
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
-        assert tool_span.attributes["gen_ai.provider.name"] == "openai"
+        assert tool_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
@@ -177,7 +179,7 @@ def test_agent_create_span_records_attributes():
 
         assert create_span.kind is SpanKind.CLIENT
         assert create_span.name == "create_agent support_bot"
-        assert create_span.attributes["gen_ai.provider.name"] == "openai"
+        assert create_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
         assert create_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
         assert (
             create_span.attributes[GenAI.GEN_AI_AGENT_DESCRIPTION]
@@ -251,7 +253,7 @@ def test_response_span_records_response_attributes():
 
         assert response.kind is SpanKind.CLIENT
         assert response.name == "chat gpt-4o-mini"
-        assert response.attributes["gen_ai.provider.name"] == "openai"
+        assert response.attributes[GEN_AI_PROVIDER_NAME] == "openai"
         assert response.attributes[GenAI.GEN_AI_RESPONSE_ID] == "resp-123"
         assert (
             response.attributes[GenAI.GEN_AI_RESPONSE_MODEL] == "gpt-4o-mini"
