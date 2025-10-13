@@ -1031,7 +1031,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         }
         expected_attributes = {
             "http.request.header.test_wsgirequest_header": [
-                "HttpRequest(GET /test/path)"
+                str(mock_wsgi_request)
             ]
         }
 
@@ -1055,7 +1055,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
             "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
         }
         expected_attributes = {
-            "http.request.header.test_wsgirequest_header": ["HttpRequest(...)"]
+            "http.request.header.test_wsgirequest_header": str(mock_wsgi_request)
         }
 
         formatted_attributes = (
@@ -1077,7 +1077,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         }
         expected_attributes = {
             "http.request.header.test_httprequest_header": [
-                "HttpRequest(POST /api/data)"
+                str(mock_http_request)
             ]
         }
 
@@ -1101,7 +1101,7 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         }
         expected_attributes = {
             "http.request.header.test_wsgirequest_header": [
-                "HttpRequest(GET /test/path)"
+                str(mock_wsgi_request)
             ],
             "http.request.header.test_regular_header": ["regular-value"],
         }

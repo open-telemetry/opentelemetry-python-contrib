@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
   ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
+- `opentelemetry-instrumentation-django`: Fixes invalid type at WSGI request headers and attributes collection.
+  ([#3731](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3731))
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
@@ -87,8 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3673](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3673))
 - `opentelemetry-instrumentation-starlette`/`opentelemetry-instrumentation-fastapi`: Fixes a crash when host-based routing is used
   ([#3507](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3507))
-- `opentelemetry-instrumentation-django`: Fixes invalid type at WSGI request headers and attributes collection.
-  ([#3731](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3731))
 - Fix documentation order of sections and headers for Django, Flask, MySQL, mysqlclient, psycopg, psycopg2, pymysql, sqlalchemy instrumentations.
   ([#3719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3719))
 - `opentelemetry-instrumentation-asgi` Fixed an issue where FastAPI reports IP instead of URL.

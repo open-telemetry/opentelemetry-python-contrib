@@ -180,14 +180,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         for _, value_list in attributes.items():
             for index, value in enumerate(value_list):
                 if isinstance(value, HttpRequest):
-                    try:
-                        method = getattr(value, "method", "UNKNOWN")
-                        request_path = getattr(value, "path", "UNKNOWN")
-                        value_list[index] = (
-                            f"HttpRequest({method} {request_path})"
-                        )
-                    except Exception:  # pylint: disable=broad-exception-caught
-                        value_list[index] = "HttpRequest(...)"
+                    value_list[index] = str(value)
         return attributes
 
     @staticmethod
