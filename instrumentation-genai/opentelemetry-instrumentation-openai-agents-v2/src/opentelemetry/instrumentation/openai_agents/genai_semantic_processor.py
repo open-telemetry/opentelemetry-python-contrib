@@ -119,9 +119,8 @@ from .constants import (
     GenAIOperationName,
     GenAIOutputType,
 )
-from .events import emit_operation_details_event
 
-# Import utilities and event helpers
+# Import utilities
 from .utils import (
     normalize_output_type,
     normalize_provider,
@@ -135,11 +134,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_INPUT_EVENT_NAME = "gen_ai.input"
-_OUTPUT_EVENT_NAME = "gen_ai.output"
-_TOOL_ARGS_EVENT_NAME = "gen_ai.tool.arguments"
-_TOOL_RESULT_EVENT_NAME = "gen_ai.tool.result"
-_SYSTEM_EVENT_NAME = "gen_ai.system.instructions"
 GEN_AI_SYSTEM_KEY = getattr(GenAIAttributes, "GEN_AI_SYSTEM", "gen_ai.system")
 
 
@@ -265,7 +259,6 @@ class GenAISemanticProcessor(TracingProcessor):
     def __init__(
         self,
         tracer: Optional[Tracer] = None,
-        event_logger: Optional[Any] = None,
         system_name: str = "openai",
         include_sensitive_data: bool = True,
         content_mode: ContentCaptureMode = ContentCaptureMode.SPAN_AND_EVENT,
@@ -282,7 +275,6 @@ class GenAISemanticProcessor(TracingProcessor):
 
         Args:
             tracer: Optional OpenTelemetry tracer
-            event_logger: Optional event logger for detailed events
             system_name: Provider name (openai/azure.ai.inference/etc.)
             include_sensitive_data: Include model/tool IO when True
             base_url: API endpoint for server.address/port
@@ -294,7 +286,6 @@ class GenAISemanticProcessor(TracingProcessor):
             server_port: Server port (can be overridden by env var or base_url)
         """
         self._tracer = tracer
-        self._event_logger = event_logger
         self.system_name = normalize_provider(system_name) or system_name
         self._content_mode = content_mode
         self.include_sensitive_data = include_sensitive_data and (
@@ -445,7 +436,7 @@ class GenAISemanticProcessor(TracingProcessor):
         payload: ContentPayload,
         agent_content: Optional[Dict[str, list[Any]]] = None,
     ) -> None:
-        """Emit span events for captured content if configured."""
+        """Intentionally skip emitting gen_ai.* events to avoid payload duplication."""
         if (
             not self.include_sensitive_data
             or not self._content_mode.capture_in_event
@@ -453,89 +444,11 @@ class GenAISemanticProcessor(TracingProcessor):
         ):
             return
 
-        span_data = getattr(span, "span_data", None)
-        if span_data is None:
-            return
-
-        try:
-            if _is_instance_of(span_data, GenerationSpanData):
-                if payload.input_messages:
-                    otel_span.add_event(
-                        _INPUT_EVENT_NAME,
-                        {
-                            GEN_AI_INPUT_MESSAGES: safe_json_dumps(
-                                payload.input_messages
-                            )
-                        },
-                    )
-                if payload.output_messages:
-                    otel_span.add_event(
-                        _OUTPUT_EVENT_NAME,
-                        {
-                            GEN_AI_OUTPUT_MESSAGES: safe_json_dumps(
-                                payload.output_messages
-                            )
-                        },
-                    )
-
-            elif _is_instance_of(span_data, ResponseSpanData):
-                if payload.output_messages:
-                    otel_span.add_event(
-                        _OUTPUT_EVENT_NAME,
-                        {
-                            GEN_AI_OUTPUT_MESSAGES: safe_json_dumps(
-                                payload.output_messages
-                            )
-                        },
-                    )
-
-            elif _is_instance_of(span_data, FunctionSpanData):
-                if payload.tool_arguments is not None:
-                    otel_span.add_event(
-                        _TOOL_ARGS_EVENT_NAME,
-                        {GEN_AI_TOOL_CALL_ARGUMENTS: payload.tool_arguments},
-                    )
-                if payload.tool_result is not None:
-                    otel_span.add_event(
-                        _TOOL_RESULT_EVENT_NAME,
-                        {GEN_AI_TOOL_CALL_RESULT: payload.tool_result},
-                    )
-            elif (
-                _is_instance_of(span_data, AgentSpanData)
-                and agent_content
-                and self._capture_messages
-            ):
-                if agent_content.get("input_messages"):
-                    otel_span.add_event(
-                        _INPUT_EVENT_NAME,
-                        {
-                            GEN_AI_INPUT_MESSAGES: safe_json_dumps(
-                                agent_content["input_messages"]
-                            )
-                        },
-                    )
-                if agent_content.get("system_instructions"):
-                    otel_span.add_event(
-                        _SYSTEM_EVENT_NAME,
-                        {
-                            GEN_AI_SYSTEM_INSTRUCTIONS: safe_json_dumps(
-                                agent_content["system_instructions"]
-                            )
-                        },
-                    )
-                if agent_content.get("output_messages"):
-                    otel_span.add_event(
-                        _OUTPUT_EVENT_NAME,
-                        {
-                            GEN_AI_OUTPUT_MESSAGES: safe_json_dumps(
-                                agent_content["output_messages"]
-                            )
-                        },
-                    )
-        except Exception:  # pragma: no cover - defensive
-            logger.debug(
-                "Failed to emit content events for span %s", span.span_id
-            )
+        logger.debug(
+            "Event capture requested for span %s but is currently disabled",
+            getattr(span, "span_id", "<unknown>"),
+        )
+        return
 
     def _collect_system_instructions(
         self, messages: Sequence[Any] | None
@@ -1314,11 +1227,6 @@ class GenAISemanticProcessor(TracingProcessor):
             self._emit_content_events(span, otel_span, payload, agent_content)
 
             # Emit operation details event if configured
-            if self._event_logger:
-                emit_operation_details_event(
-                    self._event_logger, attributes, otel_span
-                )
-
             # Set error status if applicable
             otel_span.set_status(status=_get_span_status(span))
             if getattr(span, "error", None):

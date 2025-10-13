@@ -7,7 +7,6 @@ import logging
 import os
 from typing import Any, Collection
 
-from opentelemetry._events import get_event_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -141,14 +140,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_28_0.value,
         )
 
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
-            __name__,
-            "",
-            schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_logger_provider,
-        )
-
         system_override = kwargs.get("system") or os.getenv(
             _SYSTEM_OVERRIDE_ENV
         )
@@ -168,7 +159,6 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
 
         processor = GenAISemanticProcessor(
             tracer=tracer,
-            event_logger=event_logger,
             system_name=system,
             include_sensitive_data=content_mode
             != ContentCaptureMode.NO_CONTENT,

@@ -250,9 +250,7 @@ def test_agent_span_collects_child_messages():
             }
         ]
 
-        event_names = {event.name for event in agent_span.events}
-        assert "gen_ai.input" in event_names
-        assert "gen_ai.output" in event_names
+        assert not agent_span.events
     finally:
         instrumentor.uninstrument()
         exporter.clear()
