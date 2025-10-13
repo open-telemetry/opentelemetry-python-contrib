@@ -351,10 +351,7 @@ def _rewrapped_app(
         request_route = None
 
         def _start_response(status, response_headers, *args, **kwargs):
-            if flask.request and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
-            ):
+            if _should_exclude_request(excluded_urls):
                 nonlocal request_route
                 request_route = flask.request.url_rule
 
@@ -395,10 +392,7 @@ def _rewrapped_app(
             return start_response(status, response_headers, *args, **kwargs)
 
         result = wsgi_app(wrapped_app_environ, _start_response)
-        if flask.request and (
-            excluded_urls is None
-            or not excluded_urls.url_disabled(flask.request.url)
-        ):
+        if _should_exclude_request(excluded_urls):
             duration_s = default_timer() - start
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(
@@ -425,6 +419,13 @@ def _rewrapped_app(
                 )
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
+
+    def _should_exclude_request(excluded_urls):
+        if flask.request:
+            return excluded_urls is None or not excluded_urls.url_disabled(
+                flask.request.url
+            )
+        return False
 
     return _wrapped_app
 
