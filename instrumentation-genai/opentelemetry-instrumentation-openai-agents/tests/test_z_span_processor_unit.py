@@ -60,7 +60,7 @@ def test_extract_server_attributes_variants(monkeypatch):
     assert attrs[ServerAttributes.SERVER_PORT] == 8080
 
     def boom(_: str):
-        raise ValueError("unparseable url")
+        raise ValueError("unparsable url")
 
     monkeypatch.setattr(sp, "urlparse", boom)
     assert sp._extract_server_attributes({"base_url": "bad"}) == {}
