@@ -194,7 +194,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         # Read more about request.META here:
         # https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.META
 
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._url_is_disabled(request):
             return
 
         is_asgi_request = _is_asgi_request(request)
@@ -305,7 +305,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     def process_view(self, request, view_func, *args, **kwargs):
         # Process view is executed before the view function, here we get the
         # route template from request.resolver_match.  It is not set yet in process_request
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._url_is_disabled(request):
             return
 
         if (
@@ -330,7 +330,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                         duration_attrs[HTTP_ROUTE] = route
 
     def process_exception(self, request, exception):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._url_is_disabled(request):
             return
 
         if self._environ_activation_key in request.META.keys():
@@ -340,7 +340,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def process_response(self, request, response):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._url_is_disabled(request):
             return response
 
         is_asgi_request = _is_asgi_request(request)
@@ -452,6 +452,15 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META.pop(self._environ_token)
 
         return response
+
+    def _url_is_disabled(self, request):
+        """
+        Avoid `request.get_host` to bypass Django's `ALLOWED_HOSTS` check
+        """
+        url = "{}://{}{}".format(
+            request.scheme, request._get_raw_host(), request.path
+        )
+        return self._excluded_urls.url_disabled(url)
 
 
 def _parse_duration_attrs(
