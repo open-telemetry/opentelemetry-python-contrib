@@ -499,6 +499,11 @@ def test_span_lifecycle_and_shutdown(processor_setup):
         statuses["linger"].status_code is StatusCode.ERROR
         and statuses["linger"].description == "Application shutdown"
     )
+    workflow_span = next(span for span in finished if span.name == "workflow")
+    assert (
+        workflow_span.attributes[sp.GEN_AI_OPERATION_NAME]
+        == sp.GenAIOperationName.INVOKE_AGENT
+    )
 
 
 def test_chat_span_renamed_with_model(processor_setup):

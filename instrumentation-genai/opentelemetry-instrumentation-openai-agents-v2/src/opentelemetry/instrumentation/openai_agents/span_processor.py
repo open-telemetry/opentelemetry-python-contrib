@@ -1273,6 +1273,7 @@ class GenAISemanticProcessor(TracingProcessor):
             attributes = {
                 GEN_AI_PROVIDER_NAME: self.system_name,
                 GEN_AI_SYSTEM_KEY: self.system_name,
+                GEN_AI_OPERATION_NAME: GenAIOperationName.INVOKE_AGENT,
             }
             # Legacy emission removed
 
