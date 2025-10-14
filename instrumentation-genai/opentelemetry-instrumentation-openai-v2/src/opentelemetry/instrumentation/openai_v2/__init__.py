@@ -54,7 +54,12 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .instruments import Instruments
-from .patch import async_chat_completions_create, chat_completions_create
+from .patch import (
+    async_chat_completions_create,
+    async_responses_create,
+    chat_completions_create,
+    responses_create,
+)
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -106,8 +111,26 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        wrap_function_wrapper(
+            module="openai.resources.responses.responses",
+            name="Responses.create",
+            wrapper=responses_create(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
+        wrap_function_wrapper(
+            module="openai.resources.responses.responses",
+            name="AsyncResponses.create",
+            wrapper=async_responses_create(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+        unwrap(openai.resources.responses.responses.Responses, "create")
+        unwrap(openai.resources.responses.responses.AsyncResponses, "create")

@@ -37,6 +37,7 @@ from .utils import (
     is_streaming,
     message_to_event,
     set_span_attribute,
+    get_property_value,
 )
 
 
@@ -528,3 +529,280 @@ class StreamWrapper:
         self.set_response_service_tier(chunk)
         self.build_streaming_response(chunk)
         self.set_usage(chunk)
+
+
+def responses_create(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `Responses` class to trace it."""
+
+    def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            # Log input if applicable
+            input_data = kwargs.get("input")
+            if input_data and capture_content:
+                if isinstance(input_data, str):
+                    # Simple string input
+                    logger.emit(message_to_event({"role": "user", "content": input_data}, capture_content))
+                elif isinstance(input_data, dict):
+                    # Dictionary input
+                    logger.emit(message_to_event(input_data, capture_content))
+
+            start = default_timer()
+            result = None
+            error_type = None
+            try:
+                result = wrapped(*args, **kwargs)
+                if is_streaming(kwargs):
+                    return StreamWrapper(result, span, logger, capture_content)
+
+                if span.is_recording():
+                    _set_responses_attributes(span, result, logger, capture_content)
+                
+                # Log output messages
+                if hasattr(result, "output") and result.output:
+                    for output_item in result.output:
+                        if hasattr(output_item, "type") and output_item.type == "message":
+                            # Convert output message to event format
+                            message_dict = {"role": "assistant"}
+                            if capture_content and hasattr(output_item, "content"):
+                                content_items = output_item.content
+                                if content_items:
+                                    # Extract text content
+                                    text_parts = []
+                                    for content_item in content_items:
+                                        if hasattr(content_item, "type") and content_item.type == "text":
+                                            text_parts.append(content_item.text)
+                                    if text_parts:
+                                        message_dict["content"] = " ".join(text_parts)
+                            logger.emit(message_to_event(message_dict, capture_content))
+
+                span.end()
+                return result
+
+            except Exception as error:
+                error_type = type(error).__qualname__
+                handle_span_exception(span, error)
+                raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_responses_metrics(
+                    instruments,
+                    duration,
+                    result,
+                    span_attributes,
+                    error_type,
+                )
+
+    return traced_method
+
+
+def async_responses_create(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `AsyncResponses` class to trace it."""
+
+    async def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            # Log input if applicable
+            input_data = kwargs.get("input")
+            if input_data and capture_content:
+                if isinstance(input_data, str):
+                    # Simple string input
+                    logger.emit(message_to_event({"role": "user", "content": input_data}, capture_content))
+                elif isinstance(input_data, dict):
+                    # Dictionary input
+                    logger.emit(message_to_event(input_data, capture_content))
+
+            start = default_timer()
+            result = None
+            error_type = None
+            try:
+                result = await wrapped(*args, **kwargs)
+                if is_streaming(kwargs):
+                    return StreamWrapper(result, span, logger, capture_content)
+
+                if span.is_recording():
+                    _set_responses_attributes(span, result, logger, capture_content)
+                
+                # Log output messages
+                if hasattr(result, "output") and result.output:
+                    for output_item in result.output:
+                        if hasattr(output_item, "type") and output_item.type == "message":
+                            # Convert output message to event format
+                            message_dict = {"role": "assistant"}
+                            if capture_content and hasattr(output_item, "content"):
+                                content_items = output_item.content
+                                if content_items:
+                                    # Extract text content
+                                    text_parts = []
+                                    for content_item in content_items:
+                                        if hasattr(content_item, "type") and content_item.type == "text":
+                                            text_parts.append(content_item.text)
+                                    if text_parts:
+                                        message_dict["content"] = " ".join(text_parts)
+                            logger.emit(message_to_event(message_dict, capture_content))
+
+                span.end()
+                return result
+
+            except Exception as error:
+                error_type = type(error).__qualname__
+                handle_span_exception(span, error)
+                raise
+            finally:
+                duration = max((default_timer() - start), 0)
+                _record_responses_metrics(
+                    instruments,
+                    duration,
+                    result,
+                    span_attributes,
+                    error_type,
+                )
+
+    return traced_method
+
+
+def _set_responses_attributes(span, result, logger: Logger, capture_content: bool):
+    """Set span attributes for responses API."""
+    model = get_property_value(result, "model")
+    if model:
+        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, model)
+
+    response_id = get_property_value(result, "id")
+    if response_id:
+        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id)
+
+    service_tier = get_property_value(result, "service_tier")
+    if service_tier:
+        set_span_attribute(
+            span,
+            GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            service_tier,
+        )
+
+    # Get the usage
+    usage = get_property_value(result, "usage")
+    if usage:
+        input_tokens = get_property_value(usage, "input_tokens")
+        if input_tokens is not None:
+            set_span_attribute(
+                span,
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                input_tokens,
+            )
+        output_tokens = get_property_value(usage, "output_tokens")
+        if output_tokens is not None:
+            set_span_attribute(
+                span,
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                output_tokens,
+            )
+
+    # Set finish reasons from output
+    output = get_property_value(result, "output")
+    if output:
+        finish_reasons = []
+        for item in output:
+            if hasattr(item, "type") and item.type == "message":
+                # For message type, we can consider it as "stop"
+                finish_reasons.append("stop")
+        if finish_reasons:
+            set_span_attribute(
+                span,
+                GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                finish_reasons,
+            )
+
+
+def _record_responses_metrics(
+    instruments: Instruments,
+    duration: float,
+    result,
+    span_attributes: dict,
+    error_type: Optional[str],
+):
+    """Record metrics for responses API."""
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        ],
+    }
+
+    if error_type:
+        common_attributes["error.type"] = error_type
+
+    if result:
+        model = get_property_value(result, "model")
+        if model:
+            common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = model
+
+        service_tier = get_property_value(result, "service_tier")
+        if service_tier:
+            common_attributes[
+                GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+            ] = service_tier
+
+    if ServerAttributes.SERVER_ADDRESS in span_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = span_attributes[
+            ServerAttributes.SERVER_ADDRESS
+        ]
+
+    if ServerAttributes.SERVER_PORT in span_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = span_attributes[
+            ServerAttributes.SERVER_PORT
+        ]
+
+    instruments.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+    if result:
+        usage = get_property_value(result, "usage")
+        if usage:
+            input_tokens = get_property_value(usage, "input_tokens")
+            if input_tokens is not None:
+                input_attributes = {
+                    **common_attributes,
+                    GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+                }
+                instruments.token_usage_histogram.record(
+                    input_tokens,
+                    attributes=input_attributes,
+                )
+
+            output_tokens = get_property_value(usage, "output_tokens")
+            if output_tokens is not None:
+                completion_attributes = {
+                    **common_attributes,
+                    GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+                }
+                instruments.token_usage_histogram.record(
+                    output_tokens,
+                    attributes=completion_attributes,
+                )
