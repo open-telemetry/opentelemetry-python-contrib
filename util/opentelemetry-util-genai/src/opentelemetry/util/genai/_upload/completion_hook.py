@@ -15,9 +15,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import posixpath
 import threading
+from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
@@ -73,8 +75,16 @@ class CompletionRefs:
 
 JsonEncodeable = list[dict[str, Any]]
 
-# mapping of upload path to function computing upload data dict
-UploadData = dict[str, Callable[[], JsonEncodeable]]
+# mapping of upload path and whether the contents were hashed to the filename to function computing upload data dict
+UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
+
+
+def is_system_instructions_hashable(
+    system_instruction: list[types.MessagePart] | None,
+) -> bool:
+    return bool(system_instruction) and all(
+        isinstance(x, types.Text) for x in system_instruction
+    )
 
 
 class UploadCompletionHook(CompletionHook):
@@ -97,10 +107,13 @@ class UploadCompletionHook(CompletionHook):
         base_path: str,
         max_size: int = 20,
         upload_format: Format | None = None,
+        lru_cache_max_size: int = 1024,
     ) -> None:
         self._max_size = max_size
         self._fs, base_path = fsspec.url_to_fs(base_path)
         self._base_path = self._fs.unstrip_protocol(base_path)
+        self.lru_dict: OrderedDict[str, bool] = OrderedDict()
+        self.lru_cache_max_size = lru_cache_max_size
 
         if upload_format not in _FORMATS + (None,):
             raise ValueError(
@@ -132,7 +145,10 @@ class UploadCompletionHook(CompletionHook):
             finally:
                 self._semaphore.release()
 
-        for path, json_encodeable in upload_data.items():
+        for (
+            path,
+            contents_hashed_to_filename,
+        ), json_encodeable in upload_data.items():
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
@@ -143,7 +159,10 @@ class UploadCompletionHook(CompletionHook):
 
             try:
                 fut = self._executor.submit(
-                    self._do_upload, path, json_encodeable
+                    self._do_upload,
+                    path,
+                    contents_hashed_to_filename,
+                    json_encodeable,
                 )
                 fut.add_done_callback(done)
             except RuntimeError:
@@ -152,10 +171,20 @@ class UploadCompletionHook(CompletionHook):
                 )
                 self._semaphore.release()
 
-    def _calculate_ref_path(self) -> CompletionRefs:
+    def _calculate_ref_path(
+        self, system_instruction: list[types.MessagePart]
+    ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
-
+        system_instruction_hash = None
+        if is_system_instructions_hashable(system_instruction):
+            # Get a hash of the text.
+            system_instruction_hash = hashlib.sha256(
+                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
+                    "utf-8"
+                ),
+                usedforsecurity=False,
+            ).hexdigest()
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
@@ -166,13 +195,32 @@ class UploadCompletionHook(CompletionHook):
             ),
             system_instruction_ref=posixpath.join(
                 self._base_path,
-                f"{uuid_str}_system_instruction.{self._format}",
+                f"{system_instruction_hash or uuid_str}_system_instruction.{self._format}",
             ),
         )
 
+    def _file_exists(self, path: str) -> bool:
+        if path in self.lru_dict:
+            self.lru_dict.move_to_end(path)
+            return True
+        # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
+        file_exists = self._fs.exists(path)
+        # don't cache this because soon the file will exist..
+        if not file_exists:
+            return False
+        self.lru_dict[path] = True
+        if len(self.lru_dict) > self.lru_cache_max_size:
+            self.lru_dict.popitem(last=False)
+        return True
+
     def _do_upload(
-        self, path: str, json_encodeable: Callable[[], JsonEncodeable]
+        self,
+        path: str,
+        contents_hashed_to_filename: bool,
+        json_encodeable: Callable[[], JsonEncodeable],
     ) -> None:
+        if contents_hashed_to_filename and self._file_exists(path):
+            return
         if self._format == "json":
             # output as a single line with the json messages array
             message_lines = [json_encodeable()]
@@ -194,6 +242,11 @@ class UploadCompletionHook(CompletionHook):
                 gen_ai_json_dump(message, file)
                 file.write("\n")
 
+        if contents_hashed_to_filename:
+            self.lru_dict[path] = True
+            if len(self.lru_dict) > self.lru_cache_max_size:
+                self.lru_dict.popitem(last=False)
+
     def on_completion(
         self,
         *,
@@ -213,7 +266,7 @@ class UploadCompletionHook(CompletionHook):
             system_instruction=system_instruction or None,
         )
         # generate the paths to upload to
-        ref_names = self._calculate_ref_path()
+        ref_names = self._calculate_ref_path(system_instruction)
 
         def to_dict(
             dataclass_list: list[types.InputMessage]
@@ -223,35 +276,40 @@ class UploadCompletionHook(CompletionHook):
             return [asdict(dc) for dc in dataclass_list]
 
         references = [
-            (ref_name, ref, ref_attr)
-            for ref_name, ref, ref_attr in [
+            (ref_name, ref, ref_attr, contents_hashed_to_filename)
+            for ref_name, ref, ref_attr, contents_hashed_to_filename in [
                 (
                     ref_names.inputs_ref,
                     completion.inputs,
                     GEN_AI_INPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.outputs_ref,
                     completion.outputs,
                     GEN_AI_OUTPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
+                    is_system_instructions_hashable(
+                        completion.system_instruction
+                    ),
                 ),
             ]
-            if ref
+            if ref  # Filter out empty input/output/sys instruction
         ]
         self._submit_all(
             {
-                ref_name: partial(to_dict, ref)
-                for ref_name, ref, _ in references
+                (ref_name, contents_hashed_to_filename): partial(to_dict, ref)
+                for ref_name, ref, _, contents_hashed_to_filename in references
             }
         )
 
         # stamp the refs on telemetry
-        references = {ref_attr: name for name, _, ref_attr in references}
+        references = {ref_attr: name for name, _, ref_attr, _ in references}
         if span:
             span.set_attributes(references)
         if log_record:
