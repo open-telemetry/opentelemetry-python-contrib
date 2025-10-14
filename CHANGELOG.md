@@ -43,7 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
   ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
 - `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization
-  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919)) 
+  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919))
+- build: bump ruff to 0.14.1
+  ([#3842](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3842))
 
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
