@@ -272,6 +272,7 @@ def test_attribute_builders(processor_setup):
     assert gen_attrs[ServerAttributes.SERVER_PORT] == 443
     assert gen_attrs[sp.GEN_AI_USAGE_INPUT_TOKENS] == 10
     assert gen_attrs[sp.GEN_AI_USAGE_OUTPUT_TOKENS] == 3
+    assert gen_attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["stop"]
     assert json.loads(gen_attrs[sp.GEN_AI_INPUT_MESSAGES])[0]["role"] == "user"
     assert (
         json.loads(gen_attrs[sp.GEN_AI_OUTPUT_MESSAGES])[0]["role"]
@@ -306,6 +307,7 @@ def test_attribute_builders(processor_setup):
     )
     assert response_attrs[sp.GEN_AI_RESPONSE_ID] == "resp-1"
     assert response_attrs[sp.GEN_AI_RESPONSE_MODEL] == "gpt-4o"
+    assert response_attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["stop"]
     assert response_attrs[sp.GEN_AI_USAGE_INPUT_TOKENS] == 7
     assert response_attrs[sp.GEN_AI_USAGE_OUTPUT_TOKENS] == 2
     assert response_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT

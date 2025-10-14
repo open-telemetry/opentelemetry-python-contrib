@@ -1618,6 +1618,20 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "data_source_id"):
             yield GEN_AI_DATA_SOURCE_ID, span_data.data_source_id
 
+        finish_reasons: list[Any] = []
+        if span_data.output:
+            for part in span_data.output:
+                if isinstance(part, dict):
+                    fr = part.get("finish_reason") or part.get("stop_reason")
+                else:
+                    fr = getattr(part, "finish_reason", None)
+                if fr:
+                    finish_reasons.append(
+                        fr if isinstance(fr, str) else str(fr)
+                    )
+        if finish_reasons:
+            yield GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
+
         # Usage information
         if span_data.usage:
             usage = span_data.usage
