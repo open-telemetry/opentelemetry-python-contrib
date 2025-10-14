@@ -360,10 +360,11 @@ def _normalize_url(
         scheme, host, port, path = [
             part.decode() if isinstance(part, bytes) else part for part in url
         ]
-        if port:
-            return f"{scheme}://{host}:{port}{path}"
-        else:
-            return f"{scheme}://{host}{path}"
+        return (
+            f"{scheme}://{host}:{port}{path}"
+            if port
+            else f"{scheme}://{host}{path}"
+        )
 
     return str(url)
 
@@ -1263,7 +1264,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
     @classmethod
     def instrument_client(
         cls,
