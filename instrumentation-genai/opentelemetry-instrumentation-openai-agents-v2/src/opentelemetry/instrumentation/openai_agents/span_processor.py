@@ -397,13 +397,6 @@ def _get_span_status(span: Span[Any]) -> Status:
     return Status(StatusCode.OK)
 
 
-_SPAN_NAME_BASE_OVERRIDES: dict[str, str] = {
-    GenAIOperationName.SPEECH: "speech",
-    GenAIOperationName.GUARDRAIL: "guardrail",
-    GenAIOperationName.HANDOFF: "handoff",
-}
-
-
 def get_span_name(
     operation_name: str,
     model: Optional[str] = None,
@@ -411,7 +404,7 @@ def get_span_name(
     tool_name: Optional[str] = None,
 ) -> str:
     """Generate spec-compliant span name based on operation type."""
-    base_name = _SPAN_NAME_BASE_OVERRIDES.get(operation_name, operation_name)
+    base_name = operation_name
 
     if operation_name in {
         GenAIOperationName.CHAT,
@@ -447,7 +440,6 @@ class GenAISemanticProcessor(TracingProcessor):
         include_sensitive_data: bool = True,
         content_mode: ContentCaptureMode = ContentCaptureMode.SPAN_AND_EVENT,
         base_url: Optional[str] = None,
-        emit_legacy: bool = True,
         agent_name: Optional[str] = None,
         agent_id: Optional[str] = None,
         agent_description: Optional[str] = None,
@@ -469,7 +461,6 @@ class GenAISemanticProcessor(TracingProcessor):
             include_sensitive_data: Include model/tool IO when True.
             content_mode: Control where message content is captured.
             base_url: API endpoint for server.address/port.
-            emit_legacy: Retained for compatibility; legacy emission disabled.
             agent_name: Name of the agent (can be overridden by env var).
             agent_id: ID of the agent (can be overridden by env var).
             agent_description: Description of the agent (can be overridden by
@@ -496,8 +487,6 @@ class GenAISemanticProcessor(TracingProcessor):
         )
         effective_base_url = base_url or base_url_default
         self.base_url = effective_base_url
-        # Legacy emission removed; parameter retained for compatibility but unused
-        self.emit_legacy = False
 
         # Agent information - prefer explicit overrides; otherwise defer to span data
         self.agent_name = agent_name
