@@ -1020,7 +1020,9 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument_client(self.client)
 
         def tearDown(self):
-            HTTPXClientInstrumentor().uninstrument_client(self.client)
+            # TODO: uninstrument() is required in order to avoid leaks for instrumentations
+            # but we should audit the single tests and fix any missing uninstrumentation
+            HTTPXClientInstrumentor().uninstrument()
 
         def create_proxy_mounts(self):
             return {
