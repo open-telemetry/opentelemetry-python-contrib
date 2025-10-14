@@ -37,20 +37,55 @@ API
 """
 
 import os
-from typing import Any, Callable, Collection
+from importlib import import_module
+from types import SimpleNamespace
+from typing import Any, Callable, Collection, cast
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from wrapt import wrap_function_wrapper  # type: ignore
 
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
 from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+
+_instrumentor_module = SimpleNamespace(BaseInstrumentor=object)
+try:
+    _instrumentor_module = import_module(
+        "opentelemetry.instrumentation.instrumentor"
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pass
+
+BaseInstrumentor = cast(
+    type,
+    getattr(_instrumentor_module, "BaseInstrumentor", object),
+)
+
+_utils_module = SimpleNamespace(
+    unwrap=lambda *_args, **_kwargs: None,
+)
+try:
+    _utils_module = import_module("opentelemetry.instrumentation.utils")
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pass
+
+unwrap = cast(
+    Callable[..., None],
+    getattr(_utils_module, "unwrap", lambda *_args, **_kwargs: None),
+)
+
+_schemas_module = SimpleNamespace()
+try:
+    _schemas_module = import_module("opentelemetry.semconv.schemas")
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pass
+
+SchemasModule = cast(
+    Any, getattr(_schemas_module, "Schemas", SimpleNamespace())
+)
 
 
 class LangChainInstrumentor(BaseInstrumentor):
@@ -74,11 +109,13 @@ class LangChainInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
         capture_messages = self._resolve_capture_messages(kwargs)
+        schema_entry = getattr(SchemasModule, "V1_37_0", None)
+        schema_url = getattr(schema_entry, "value", None)
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(

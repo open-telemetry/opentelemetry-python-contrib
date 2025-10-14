@@ -15,27 +15,112 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from importlib import import_module
+from types import SimpleNamespace
+from typing import Any, Mapping, Protocol, Sequence, TypedDict, cast
 from urllib.parse import urlparse
 from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
-from langchain_core.messages import BaseMessage  # type: ignore
-from langchain_core.outputs import LLMResult  # type: ignore
-
 from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAI,
-)
-from opentelemetry.semconv._incubating.attributes.azure_attributes import (
-    AZURE_RESOURCE_PROVIDER_NAMESPACE,
-)
-from opentelemetry.semconv._incubating.attributes.openai_attributes import (
-    OPENAI_REQUEST_SERVICE_TIER,
-    OPENAI_RESPONSE_SERVICE_TIER,
-    OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
-)
 from opentelemetry.trace import Span, Tracer
+
+try:
+    from langchain_core.callbacks import (
+        BaseCallbackHandler,  # type: ignore[import]
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    BaseCallbackHandler = object  # type: ignore[assignment]
+
+
+class _SerializedMessage(TypedDict, total=False):
+    type: str
+    content: Any
+    additional_kwargs: Any
+    response_metadata: Mapping[str, Any] | None
+    tool_call_id: str
+    tool_calls: Any
+    usage_metadata: Mapping[str, Any] | None
+    id: str
+    name: str
+
+
+class _MessageLike(Protocol):
+    type: str
+
+    @property
+    def content(self) -> Any: ...
+
+    def __getattr__(self, name: str) -> Any: ...
+
+
+class _ChatGenerationLike(Protocol):
+    message: _MessageLike | None
+    generation_info: Mapping[str, Any] | None
+
+    def __getattr__(self, name: str) -> Any: ...
+
+
+class _LLMResultLike(Protocol):
+    generations: Sequence[Sequence[_ChatGenerationLike]]
+    llm_output: Mapping[str, Any] | None
+
+    def __getattr__(self, name: str) -> Any: ...
+
+
+try:
+    _azure_attributes = import_module(
+        "opentelemetry.semconv._incubating.attributes.azure_attributes"
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    _azure_attributes = SimpleNamespace()
+
+try:
+    _gen_ai_attributes = import_module(
+        "opentelemetry.semconv._incubating.attributes.gen_ai_attributes"
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    _gen_ai_attributes = SimpleNamespace()
+
+try:
+    _openai_attributes = import_module(
+        "opentelemetry.semconv._incubating.attributes.openai_attributes"
+    )
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    _openai_attributes = SimpleNamespace()
+
+GenAI = cast(Any, _gen_ai_attributes)
+AZURE_RESOURCE_PROVIDER_NAMESPACE = cast(
+    Any,
+    getattr(
+        _azure_attributes,
+        "AZURE_RESOURCE_PROVIDER_NAMESPACE",
+        "Microsoft.CognitiveServices",
+    ),
+)
+OPENAI_REQUEST_SERVICE_TIER = cast(
+    Any,
+    getattr(
+        _openai_attributes,
+        "OPENAI_REQUEST_SERVICE_TIER",
+        "genai.openai.request.service_tier",
+    ),
+)
+OPENAI_RESPONSE_SERVICE_TIER = cast(
+    Any,
+    getattr(
+        _openai_attributes,
+        "OPENAI_RESPONSE_SERVICE_TIER",
+        "genai.openai.response.service_tier",
+    ),
+)
+OPENAI_RESPONSE_SYSTEM_FINGERPRINT = cast(
+    Any,
+    getattr(
+        _openai_attributes,
+        "OPENAI_RESPONSE_SYSTEM_FINGERPRINT",
+        "genai.openai.response.system_fingerprint",
+    ),
+)
 
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
@@ -81,7 +166,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def on_chat_model_start(
         self,
         serialized: dict[str, Any],
-        messages: list[list[BaseMessage]],  # type: ignore
+        messages: Sequence[Sequence[_MessageLike]],
         *,
         run_id: UUID,
         tags: list[str] | None,
@@ -95,7 +180,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         if provider_name is None:
             return
 
-        params = self._extract_params(kwargs)
+        kwargs_dict: dict[str, Any] = dict(kwargs)
+        params = self._extract_params(kwargs_dict)
         request_model = self._extract_request_model(params, metadata)
 
         span = self.span_manager.create_chat_span(
@@ -124,7 +210,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             )
 
     def _resolve_provider(
-        self, llm_name: str | None, metadata: dict[str, Any] | None
+        self, llm_name: str | None, metadata: Mapping[str, Any] | None
     ) -> str | None:
         if llm_name:
             provider = self._CHAT_MODEL_PROVIDER_MAPPING.get(llm_name)
@@ -144,11 +230,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
         return provider_key
 
-    def _extract_params(self, kwargs: dict[str, Any]) -> dict[str, Any] | None:
+    def _extract_params(
+        self, kwargs: Mapping[str, Any]
+    ) -> Mapping[str, Any] | None:
         invocation_params = kwargs.get("invocation_params")
-        if isinstance(invocation_params, dict):
+        if isinstance(invocation_params, Mapping):
             params = invocation_params.get("params") or invocation_params
-            if isinstance(params, dict):
+            if isinstance(params, Mapping):
                 return params
             return None
 
@@ -156,8 +244,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def _extract_request_model(
         self,
-        params: dict[str, Any] | None,
-        metadata: dict[str, Any] | None,
+        params: Mapping[str, Any] | None,
+        metadata: Mapping[str, Any] | None,
     ) -> str | None:
         search_order = (
             "model_name",
@@ -168,10 +256,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             "deployment_name",
         )
 
-        sources: list[dict[str, Any]] = []
-        if isinstance(params, dict):
+        sources: list[Mapping[str, Any]] = []
+        if isinstance(params, Mapping):
             sources.append(params)
-        if isinstance(metadata, dict):
+        if isinstance(metadata, Mapping):
             sources.append(metadata)
 
         for key in search_order:
@@ -185,8 +273,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def _apply_request_attributes(
         self,
         span: Span,
-        params: dict[str, Any] | None,
-        metadata: dict[str, Any] | None,
+        params: Mapping[str, Any] | None,
+        metadata: Mapping[str, Any] | None,
     ) -> None:
         if params:
             top_p = params.get("top_p")
@@ -257,7 +345,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
 
     def _maybe_set_server_attributes(
-        self, span: Span, params: dict[str, Any]
+        self, span: Span, params: Mapping[str, Any]
     ) -> None:
         potential_url = None
         for key in self._SERVER_URL_KEYS:
@@ -282,7 +370,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             if port is not None:
                 span.set_attribute("server.port", port)
 
-    def _extract_output_type(self, params: dict[str, Any]) -> str | None:
+    def _extract_output_type(self, params: Mapping[str, Any]) -> str | None:
         response_format = params.get("response_format")
         output_type: str | None = None
         if isinstance(response_format, dict):
@@ -306,28 +394,33 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         return mapping.get(lowered)
 
     def _serialize_input_messages(
-        self, messages: list[list[BaseMessage]]
-    ) -> list[dict[str, Any]]:
-        serialized: list[dict[str, Any]] = []
+        self, messages: Sequence[Sequence[_MessageLike]]
+    ) -> list[_SerializedMessage]:
+        serialized: list[_SerializedMessage] = []
         for conversation in messages:
             for message in conversation:
                 serialized.append(self._serialize_message(message))
         return serialized
 
     def _serialize_output_messages(
-        self, response: LLMResult
-    ) -> list[dict[str, Any]]:
-        serialized: list[dict[str, Any]] = []
-        generations = getattr(response, "generations", [])  # type: ignore
+        self, response: _LLMResultLike
+    ) -> list[_SerializedMessage]:
+        serialized: list[_SerializedMessage] = []
+        generations_attr = getattr(response, "generations", ())
+        generations = cast(
+            Sequence[Sequence[_ChatGenerationLike]], generations_attr
+        )
         for generation in generations:
             for item in generation:
-                message = getattr(item, "message", None)
+                message = cast(
+                    _MessageLike | None, getattr(item, "message", None)
+                )
                 if message is not None:
                     serialized.append(self._serialize_message(message))
         return serialized
 
-    def _serialize_message(self, message: BaseMessage) -> dict[str, Any]:
-        payload: dict[str, Any] = {
+    def _serialize_message(self, message: _MessageLike) -> _SerializedMessage:
+        payload: _SerializedMessage = {
             "type": getattr(message, "type", message.__class__.__name__),
             "content": getattr(message, "content", None),
         }
@@ -360,7 +453,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def on_llm_end(
         self,
-        response: LLMResult,  # type: ignore [reportUnknownParameterType]
+        response: _LLMResultLike,
         *,
         run_id: UUID,
         parent_run_id: UUID | None,
@@ -372,11 +465,18 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             # If the span does not exist, we cannot set attributes or end it
             return
 
+        generations_attr = getattr(response, "generations", ())
+        generations = cast(
+            Sequence[Sequence[_ChatGenerationLike]], generations_attr
+        )
+
         finish_reasons: list[str] = []
-        for generation in getattr(response, "generations", []):  # type: ignore
+        message_usage_metadata: Mapping[str, Any] | None
+        for generation in generations:
             for chat_generation in generation:
-                generation_info = getattr(
-                    chat_generation, "generation_info", None
+                generation_info = cast(
+                    Mapping[str, Any] | None,
+                    getattr(chat_generation, "generation_info", None),
                 )
                 if generation_info is not None:
                     finish_reason = generation_info.get(
@@ -384,28 +484,35 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     )
                     if finish_reason is not None:
                         finish_reasons.append(str(finish_reason))
-                if chat_generation.message:
-                    if (
-                        generation_info is None
-                        and chat_generation.message.response_metadata
+                message = cast(
+                    _MessageLike | None,
+                    getattr(chat_generation, "message", None),
+                )
+                if message is not None:
+                    if generation_info is None and getattr(
+                        message, "response_metadata", None
                     ):
+                        response_metadata = cast(
+                            Mapping[str, Any] | None,
+                            getattr(message, "response_metadata", None),
+                        )
                         finish_reason = (
-                            chat_generation.message.response_metadata.get(
-                                "stopReason", "unknown"
-                            )
+                            response_metadata.get("stopReason", "unknown")
+                            if response_metadata is not None
+                            else "unknown"
                         )
                         if finish_reason is not None:
                             finish_reasons.append(str(finish_reason))
-                    if chat_generation.message.usage_metadata:
-                        input_tokens = (
-                            chat_generation.message.usage_metadata.get(
-                                "input_tokens", 0
-                            )
+                    message_usage_metadata = cast(
+                        Mapping[str, Any] | None,
+                        getattr(message, "usage_metadata", None),
+                    )
+                    if message_usage_metadata:
+                        input_tokens = message_usage_metadata.get(
+                            "input_tokens", 0
                         )
-                        output_tokens = (
-                            chat_generation.message.usage_metadata.get(
-                                "output_tokens", 0
-                            )
+                        output_tokens = message_usage_metadata.get(
+                            "output_tokens", 0
                         )
                         span.set_attribute(
                             GenAI.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
@@ -418,7 +525,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
         )
 
-        llm_output = getattr(response, "llm_output", None)  # type: ignore
+        llm_output = cast(
+            Mapping[str, Any] | None, getattr(response, "llm_output", None)
+        )
         if llm_output is not None:
             response_model = llm_output.get("model_name") or llm_output.get(
                 "model"
