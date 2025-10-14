@@ -80,6 +80,8 @@ _PROVIDER_VALUES = _enum_values(GenAIAttributes.GenAiProviderNameValues)
 
 
 class GenAIProvider:
+    """String constants for known GenAI provider names."""
+
     OPENAI = _PROVIDER_VALUES["OPENAI"]
     GCP_GEN_AI = _PROVIDER_VALUES["GCP_GEN_AI"]
     GCP_VERTEX_AI = _PROVIDER_VALUES["GCP_VERTEX_AI"]
@@ -103,6 +105,8 @@ _OPERATION_VALUES = _enum_values(GenAIAttributes.GenAiOperationNameValues)
 
 
 class GenAIOperationName:
+    """Normalized GenAI operation names used by the processor."""
+
     CHAT = _OPERATION_VALUES["CHAT"]
     GENERATE_CONTENT = _OPERATION_VALUES["GENERATE_CONTENT"]
     TEXT_COMPLETION = _OPERATION_VALUES["TEXT_COMPLETION"]
@@ -129,6 +133,8 @@ _OUTPUT_VALUES = _enum_values(GenAIAttributes.GenAiOutputTypeValues)
 
 
 class GenAIOutputType:
+    """Supported GenAI output types normalized by the processor."""
+
     TEXT = _OUTPUT_VALUES["TEXT"]
     JSON = _OUTPUT_VALUES["JSON"]
     IMAGE = _OUTPUT_VALUES["IMAGE"]
@@ -136,6 +142,8 @@ class GenAIOutputType:
 
 
 class GenAIToolType:
+    """Canonical tool type values for tool spans."""
+
     FUNCTION = "function"
     EXTENSION = "extension"
     DATASTORE = "datastore"
@@ -144,6 +152,8 @@ class GenAIToolType:
 
 
 class GenAIEvaluationAttributes:
+    """Attribute names used to describe GenAI evaluation metadata."""
+
     NAME = "gen_ai.evaluation.name"
     SCORE_VALUE = "gen_ai.evaluation.score.value"
     SCORE_LABEL = "gen_ai.evaluation.score.label"
@@ -151,6 +161,7 @@ class GenAIEvaluationAttributes:
 
 
 def _attr(name: str, fallback: str) -> str:
+    """Return semantic attribute name with fallback for older SDK versions."""
     return getattr(GenAIAttributes, name, fallback)
 
 
@@ -308,6 +319,7 @@ class ContentCaptureMode(Enum):
 
     @property
     def capture_in_span(self) -> bool:
+        """Return True when content should be captured on span attributes."""
         return self in (
             ContentCaptureMode.SPAN_ONLY,
             ContentCaptureMode.SPAN_AND_EVENT,
@@ -315,6 +327,7 @@ class ContentCaptureMode(Enum):
 
     @property
     def capture_in_event(self) -> bool:
+        """Return True when content should be captured on span events."""
         return self in (
             ContentCaptureMode.EVENT_ONLY,
             ContentCaptureMode.SPAN_AND_EVENT,
@@ -451,16 +464,29 @@ class GenAISemanticProcessor(TracingProcessor):
         """Initialize processor with metrics support.
 
         Args:
-            tracer: Optional OpenTelemetry tracer
-            system_name: Provider name (openai/azure.ai.inference/etc.)
-            include_sensitive_data: Include model/tool IO when True
-            base_url: API endpoint for server.address/port
-            emit_legacy: Also emit deprecated attribute names
-            agent_name: Name of the agent (can be overridden by env var)
-            agent_id: ID of the agent (can be overridden by env var)
-            agent_description: Description of the agent (can be overridden by env var)
-            server_address: Server address (can be overridden by env var or base_url)
-            server_port: Server port (can be overridden by env var or base_url)
+            tracer: Optional OpenTelemetry tracer.
+            system_name: Provider name (openai/azure.ai.inference/etc.).
+            include_sensitive_data: Include model/tool IO when True.
+            content_mode: Control where message content is captured.
+            base_url: API endpoint for server.address/port.
+            emit_legacy: Retained for compatibility; legacy emission disabled.
+            agent_name: Name of the agent (can be overridden by env var).
+            agent_id: ID of the agent (can be overridden by env var).
+            agent_description: Description of the agent (can be overridden by
+                env var).
+            server_address: Server address (can be overridden by env var or
+                base_url).
+            server_port: Server port (can be overridden by env var or base_url).
+            metrics_enabled: Enable GenAI metrics when True.
+            agent_name_default: Fallback agent name when span data omits one.
+            agent_id_default: Fallback agent id when span data omits one.
+            agent_description_default: Fallback agent description when span data
+                omits one.
+            base_url_default: Default API endpoint when not supplied explicitly.
+            server_address_default: Default server address when not supplied
+                explicitly.
+            server_port_default: Default server port when not supplied
+                explicitly.
         """
         self._tracer = tracer
         self.system_name = normalize_provider(system_name) or system_name
@@ -1068,6 +1094,7 @@ class GenAISemanticProcessor(TracingProcessor):
         elif _is_instance_of(span_data, FunctionSpanData) and capture_tools:
 
             def _serialize_tool_value(value: Any) -> Optional[str]:
+                """Serialize tool payloads while preserving JSON structures."""
                 if value is None:
                     return None
                 if isinstance(value, (dict, list)):
@@ -1783,6 +1810,7 @@ class GenAISemanticProcessor(TracingProcessor):
         return result
 
     def _clone_message(self, message: Any) -> Any:
+        """Return a deep copy of normalized message content."""
         if isinstance(message, dict):
             return {
                 key: self._clone_message(value)
@@ -1795,6 +1823,7 @@ class GenAISemanticProcessor(TracingProcessor):
         return message
 
     def _is_placeholder_message(self, message: Any) -> bool:
+        """Return True when message only contains redacted placeholder text."""
         if not isinstance(message, dict):
             return False
         parts = message.get("parts")
