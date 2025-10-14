@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 TESTS_ROOT = Path(__file__).resolve().parent
 stub_path = TESTS_ROOT / "stubs"
@@ -24,6 +26,10 @@ from agents.tracing import (  # noqa: E402
 
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
+)
+from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import (  # noqa: E402
+    ContentPayload,
+    GenAISemanticProcessor,
 )
 from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
 
@@ -200,6 +206,160 @@ def test_agent_create_span_records_attributes():
     finally:
         instrumentor.uninstrument()
         exporter.clear()
+
+
+def _placeholder_message() -> dict[str, Any]:
+    return {
+        "role": "user",
+        "parts": [{"type": "text", "content": "readacted"}],
+    }
+
+
+def test_normalize_messages_skips_empty_when_sensitive_enabled():
+    processor = GenAISemanticProcessor(metrics_enabled=False)
+    normalized = processor._normalize_messages_to_role_parts(
+        [{"role": "user", "content": None}]
+    )
+    assert normalized == []
+
+
+def test_normalize_messages_emits_placeholder_when_sensitive_disabled():
+    processor = GenAISemanticProcessor(
+        include_sensitive_data=False, metrics_enabled=False
+    )
+    normalized = processor._normalize_messages_to_role_parts(
+        [{"role": "user", "content": None}]
+    )
+    assert normalized == [_placeholder_message()]
+
+
+def test_agent_content_aggregation_skips_duplicate_snapshots():
+    processor = GenAISemanticProcessor(metrics_enabled=False)
+    agent_id = "agent-span"
+    processor._agent_content[agent_id] = {
+        "input_messages": [],
+        "output_messages": [],
+        "system_instructions": [],
+    }
+
+    payload = ContentPayload(
+        input_messages=[
+            {"role": "user", "parts": [{"type": "text", "content": "hello"}]},
+            {
+                "role": "user",
+                "parts": [{"type": "text", "content": "readacted"}],
+            },
+        ]
+    )
+
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
+        payload,
+    )
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-2", parent_id=agent_id, span_data=None),
+        payload,
+    )
+
+    aggregated = processor._agent_content[agent_id]["input_messages"]
+    assert aggregated == [
+        {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
+    ]
+    # ensure data copied rather than reused to prevent accidental mutation
+    assert aggregated is not payload.input_messages
+
+
+def test_agent_content_aggregation_filters_placeholder_append_when_sensitive():
+    processor = GenAISemanticProcessor(metrics_enabled=False)
+    agent_id = "agent-span"
+    processor._agent_content[agent_id] = {
+        "input_messages": [],
+        "output_messages": [],
+        "system_instructions": [],
+    }
+
+    initial_payload = ContentPayload(
+        input_messages=[
+            {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
+        ]
+    )
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
+        initial_payload,
+    )
+
+    placeholder_payload = ContentPayload(
+        input_messages=[_placeholder_message()]
+    )
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-2", parent_id=agent_id, span_data=None),
+        placeholder_payload,
+    )
+
+    aggregated = processor._agent_content[agent_id]["input_messages"]
+    assert aggregated == [
+        {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
+    ]
+
+
+def test_agent_content_aggregation_retains_placeholder_when_sensitive_disabled():
+    processor = GenAISemanticProcessor(
+        include_sensitive_data=False, metrics_enabled=False
+    )
+    agent_id = "agent-span"
+    processor._agent_content[agent_id] = {
+        "input_messages": [],
+        "output_messages": [],
+        "system_instructions": [],
+    }
+
+    placeholder_payload = ContentPayload(
+        input_messages=[_placeholder_message()]
+    )
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
+        placeholder_payload,
+    )
+
+    aggregated = processor._agent_content[agent_id]["input_messages"]
+    assert aggregated == [_placeholder_message()]
+
+
+def test_agent_content_aggregation_appends_new_messages_once():
+    processor = GenAISemanticProcessor(metrics_enabled=False)
+    agent_id = "agent-span"
+    processor._agent_content[agent_id] = {
+        "input_messages": [],
+        "output_messages": [],
+        "system_instructions": [],
+    }
+
+    initial_payload = ContentPayload(
+        input_messages=[
+            {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
+        ]
+    )
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
+        initial_payload,
+    )
+
+    extended_messages = [
+        {"role": "user", "parts": [{"type": "text", "content": "hello"}]},
+        {
+            "role": "assistant",
+            "parts": [{"type": "text", "content": "hi there"}],
+        },
+    ]
+    extended_payload = ContentPayload(input_messages=extended_messages)
+    processor._update_agent_aggregate(
+        SimpleNamespace(span_id="child-2", parent_id=agent_id, span_data=None),
+        extended_payload,
+    )
+
+    aggregated = processor._agent_content[agent_id]["input_messages"]
+    assert aggregated == extended_messages
+    assert extended_payload.input_messages == extended_messages
 
 
 def test_agent_span_collects_child_messages():

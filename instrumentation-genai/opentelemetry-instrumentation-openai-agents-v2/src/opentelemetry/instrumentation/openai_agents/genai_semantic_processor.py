@@ -687,9 +687,12 @@ class GenAISemanticProcessor(TracingProcessor):
                 )
                 parts.append(p)
 
-            normalized.append(
-                {"role": role, "parts": parts or self._redacted_text_parts()}
-            )
+            if parts:
+                normalized.append({"role": role, "parts": parts})
+            elif not self.include_sensitive_data:
+                normalized.append(
+                    {"role": role, "parts": self._redacted_text_parts()}
+                )
 
         return normalized
 
@@ -946,11 +949,17 @@ class GenAISemanticProcessor(TracingProcessor):
             },
         )
         if payload.input_messages:
-            entry["input_messages"].extend(payload.input_messages)
+            entry["input_messages"] = self._merge_content_sequence(
+                entry["input_messages"], payload.input_messages
+            )
         if payload.output_messages:
-            entry["output_messages"].extend(payload.output_messages)
+            entry["output_messages"] = self._merge_content_sequence(
+                entry["output_messages"], payload.output_messages
+            )
         if payload.system_instructions:
-            entry["system_instructions"].extend(payload.system_instructions)
+            entry["system_instructions"] = self._merge_content_sequence(
+                entry["system_instructions"], payload.system_instructions
+            )
 
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
@@ -1511,6 +1520,85 @@ class GenAISemanticProcessor(TracingProcessor):
             GEN_AI_OUTPUT_TYPE,
             normalize_output_type(self._infer_output_type(span_data)),
         )
+
+    def _merge_content_sequence(
+        self,
+        existing: list[Any],
+        incoming: Sequence[Any],
+    ) -> list[Any]:
+        """Merge normalized message/content lists without duplicating snapshots."""
+        if not incoming:
+            return existing
+
+        incoming_list = [self._clone_message(item) for item in incoming]
+
+        if self.include_sensitive_data:
+            filtered = [
+                msg
+                for msg in incoming_list
+                if not self._is_placeholder_message(msg)
+            ]
+            if filtered:
+                incoming_list = filtered
+
+        if not existing:
+            return incoming_list
+
+        result = [self._clone_message(item) for item in existing]
+
+        for idx, new_msg in enumerate(incoming_list):
+            if idx < len(result):
+                if (
+                    self.include_sensitive_data
+                    and self._is_placeholder_message(new_msg)
+                    and not self._is_placeholder_message(result[idx])
+                ):
+                    continue
+                if result[idx] != new_msg:
+                    result[idx] = self._clone_message(new_msg)
+            else:
+                if (
+                    self.include_sensitive_data
+                    and self._is_placeholder_message(new_msg)
+                ):
+                    if (
+                        any(
+                            not self._is_placeholder_message(existing_msg)
+                            for existing_msg in result
+                        )
+                        or new_msg in result
+                    ):
+                        continue
+                result.append(self._clone_message(new_msg))
+
+        return result
+
+    def _clone_message(self, message: Any) -> Any:
+        if isinstance(message, dict):
+            return {
+                key: self._clone_message(value)
+                if isinstance(value, (dict, list))
+                else value
+                for key, value in message.items()
+            }
+        if isinstance(message, list):
+            return [self._clone_message(item) for item in message]
+        return message
+
+    def _is_placeholder_message(self, message: Any) -> bool:
+        if not isinstance(message, dict):
+            return False
+        parts = message.get("parts")
+        if not isinstance(parts, list) or not parts:
+            return False
+        for part in parts:
+            if (
+                not isinstance(part, dict)
+                or part.get("type") != "text"
+                or part.get("content") != "readacted"
+            ):
+                return False
+        return True
 
     def _get_attributes_from_agent_span_data(
         self,
