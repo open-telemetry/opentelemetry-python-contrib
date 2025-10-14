@@ -41,7 +41,7 @@ def test_generate_content_with_files(
                     Part.from_text("Say this is a test"),
                     Part.from_uri(
                         mime_type="image/jpeg",
-                        uri="gs://a-test-testing-testboy/app/2021/12/10/download.jpeg",
+                        uri="https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
                     ),
                     Part.from_image(
                         Image.from_bytes(
@@ -66,7 +66,7 @@ def test_generate_content_with_files(
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","uri":"gs://a-test-testing-testboy/app/2021/12/10/download.jpeg","type":"file_data"},{"data":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","mime_type":"image/jpeg","type":"blob"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"file_data"},{"data":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","mime_type":"image/jpeg","type":"blob"}]}]',
         "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
     }
 
@@ -89,7 +89,7 @@ def test_generate_content_with_files(
                     {"content": "Say this is a test", "type": "text"},
                     {
                         "mime_type": "image/jpeg",
-                        "uri": "gs://a-test-testing-testboy/app/2021/12/10/download.jpeg",
+                        "uri": "https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
                         "type": "file_data",
                     },
                     {
