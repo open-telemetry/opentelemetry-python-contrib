@@ -326,6 +326,27 @@ def test_attribute_builders(processor_setup):
     assert agent_attrs[sp.GEN_AI_REQUEST_MODEL] == "model-x"
     assert agent_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT
 
+    # Fallback to aggregated model when span data lacks it
+    agent_span_no_model = AgentSpanData(
+        name="helper-2",
+        output_type="json",
+        description="desc",
+        agent_id="agent-456",
+        operation="invoke_agent",
+    )
+    agent_content = {
+        "input_messages": [],
+        "output_messages": [],
+        "system_instructions": [],
+        "request_model": "gpt-fallback",
+    }
+    agent_attrs_fallback = _collect(
+        processor._get_attributes_from_agent_span_data(
+            agent_span_no_model, agent_content
+        )
+    )
+    assert agent_attrs_fallback[sp.GEN_AI_REQUEST_MODEL] == "gpt-fallback"
+
     function_span = FunctionSpanData(name="lookup_weather")
     function_span.tool_type = "extension"
     function_span.call_id = "call-42"

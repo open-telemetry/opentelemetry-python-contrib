@@ -1099,12 +1099,6 @@ class GenAISemanticProcessor(TracingProcessor):
         self, span: Span[Any], payload: ContentPayload
     ) -> None:
         """Accumulate child span content for parent agent span."""
-        if not (
-            payload.input_messages
-            or payload.output_messages
-            or payload.system_instructions
-        ):
-            return
         agent_id = self._find_agent_parent_span_id(span.parent_id)
         if not agent_id:
             return
@@ -1114,6 +1108,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 "input_messages": [],
                 "output_messages": [],
                 "system_instructions": [],
+                "request_model": None,
             },
         )
         if payload.input_messages:
@@ -1128,6 +1123,14 @@ class GenAISemanticProcessor(TracingProcessor):
             entry["system_instructions"] = self._merge_content_sequence(
                 entry["system_instructions"], payload.system_instructions
             )
+
+        if not entry.get("request_model"):
+            model = getattr(span.span_data, "model", None)
+            if not model:
+                response_obj = getattr(span.span_data, "response", None)
+                model = getattr(response_obj, "model", None)
+            if model:
+                entry["request_model"] = model
 
     def _infer_output_type(self, span_data: Any) -> str:
         """Infer gen_ai.output.type for multiple span kinds."""
@@ -1311,6 +1314,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 "input_messages": [],
                 "output_messages": [],
                 "system_instructions": [],
+                "request_model": None,
             }
 
         parent_span = (
@@ -1801,6 +1805,8 @@ class GenAISemanticProcessor(TracingProcessor):
             yield GEN_AI_AGENT_DESCRIPTION, description
 
         model = getattr(span_data, "model", None)
+        if not model and agent_content:
+            model = agent_content.get("request_model")
         if model:
             yield GEN_AI_REQUEST_MODEL, model
 
