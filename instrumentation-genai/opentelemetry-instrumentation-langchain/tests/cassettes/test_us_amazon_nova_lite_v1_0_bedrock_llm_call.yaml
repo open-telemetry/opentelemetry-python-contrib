@@ -1,0 +1,90 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "What is the capital of France?"
+              }
+            ]
+          }
+        ],
+        "system": [
+          {
+            "text": "You are a helpful assistant!"
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 100,
+          "temperature": 0.1
+        }
+      }
+    headers:
+      Content-Length:
+      - '202'
+      Content-Type:
+      - !!binary |
+        YXBwbGljYXRpb24vanNvbg==
+      User-Agent:
+      - !!binary |
+        Qm90bzMvMS40MC4yNCBtZC9Cb3RvY29yZSMxLjQwLjI0IHVhLzIuMSBvcy9tYWNvcyMyNC42LjAg
+        bWQvYXJjaCNhcm02NCBsYW5nL3B5dGhvbiMzLjEzLjUgbWQvcHlpbXBsI0NQeXRob24gbS9iLFos
+        RCBjZmcvcmV0cnktbW9kZSNsZWdhY3kgQm90b2NvcmUvMS40MC4yNCB4LWNsaWVudC1mcmFtZXdv
+        cms6bGFuZ2NoYWluLWF3cw==
+      X-Amz-Date:
+      - !!binary |
+        MjAyNTA5MDRUMjAwMDU4Wg==
+      amz-sdk-invocation-id:
+      - !!binary |
+        MGQ5MTVjMDUtNzM3YS00OTQwLWIzM2ItMzYwMGIzZGIzYzMy
+      amz-sdk-request:
+      - !!binary |
+        YXR0ZW1wdD0x
+      authorization:
+      - Bearer test_openai_api_key
+    method: POST
+    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-west-2%3A906383545488%3Ainference-profile%2Fus.amazon.nova-lite-v1%3A0/converse
+  response:
+    body:
+      string: |-
+        {
+          "metrics": {
+            "latencyMs": 416
+          },
+          "output": {
+            "message": {
+              "content": [
+                {
+                  "text": "The capital of France is Paris. It is not only the capital but also the largest city in the country. Paris is known for its rich history, culture, and landmarks such as the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral."
+                }
+              ],
+              "role": "assistant"
+            }
+          },
+          "stopReason": "end_turn",
+          "usage": {
+            "inputTokens": 13,
+            "outputTokens": 50,
+            "totalTokens": 63
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '412'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 04 Sep 2025 20:00:58 GMT
+      Set-Cookie: test_set_cookie
+      openai-organization: test_openai_org_id
+      x-amzn-RequestId:
+      - 9fd6d377-fc60-4b28-ab3b-a5c723b218c2
+    status:
+      code: 200
+      message: OK
+version: 1

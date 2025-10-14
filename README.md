@@ -33,7 +33,7 @@
   <strong>
     <a href="CONTRIBUTING.md">Contributing<a/>
     &nbsp;&nbsp;&bull;&nbsp;&nbsp;
-    <a href="https://opentelemetry-python-contrib.readthedocs.io/en/stable/#examples">Examples<a/>
+    <a href="https://opentelemetry-python-contrib.readthedocs.io/en/latest/#instrumentations">Instrumentations<a/>
   </strong>
 </p>
 
@@ -101,7 +101,7 @@ To release a package as `1.0` stable, the package:
 
 ## Semantic Convention status of instrumentations
 
-In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the semantic convention migration plan for several instrumentations. Currently this plan is only being adopted for [HTTP-related instrumentations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md), but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `experimental`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
+In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the semantic convention migration plan for several instrumentations. Currently this plan is only being adopted for [HTTP-related instrumentations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md), but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `development`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
 
 ## Contributing
 
@@ -111,9 +111,18 @@ We meet weekly on Thursday at 9AM PT. The meeting is subject to change depending
 
 Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit). For edit access, get in touch on [GitHub Discussions](https://github.com/open-telemetry/opentelemetry-python/discussions).
 
-Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telemetry/teams/python-approvers)):
+### Maintainers
 
-- [Emídio Neto](https://github.com/emdneto), Zenvia
+- [Aaron Abbott](https://github.com/aabmass), Google
+- [Leighton Chen](https://github.com/lzchen), Microsoft
+- [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
+
+For more information about the maintainer role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#maintainer).
+
+### Approvers
+
+- [Dylan Russell](https://github.com/dylanrussell), Google
+- [Emídio Neto](https://github.com/emdneto), PicPay
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Owais Lone](https://github.com/owais), Splunk
 - [Pablo Collins](https://github.com/pmcollins), Splunk
@@ -121,34 +130,30 @@ Approvers ([@open-telemetry/python-approvers](https://github.com/orgs/open-telem
 - [Srikanth Chekuri](https://github.com/srikanthccv), signoz.io
 - [Tammy Baylis](https://github.com/tammy-baylis-swi), SolarWinds
 
-Emeritus Approvers:
+For more information about the approver role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#approver).
 
-- [Ashutosh Goel](https://github.com/ashu658), Cisco
-- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
-- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Oxeye
-- [Nikolay Sokolik](https://github.com/nikosokolik), Oxeye
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), AWS
+### Emeritus Maintainers
 
-*Find more about the approver role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
+- [Alex Boten](https://github.com/codeboten)
+- [Diego Hurtado](https://github.com/ocelotl)
+- [Owais Lone](https://github.com/owais)
+- [Shalev Roda](https://github.com/shalevr)
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi)
 
-Maintainers ([@open-telemetry/python-maintainers](https://github.com/orgs/open-telemetry/teams/python-maintainers)):
+For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 
-- [Aaron Abbott](https://github.com/aabmass), Google
-- [Leighton Chen](https://github.com/lzchen), Microsoft
-- [Riccardo Magliocchetti](https://github.com/xrmx), Elastic
-- [Shalev Roda](https://github.com/shalevr), Cisco
+### Emeritus Approvers
 
-Emeritus Maintainers:
+- [Ashutosh Goel](https://github.com/ashu658)
+- [Héctor Hernández](https://github.com/hectorhdzg)
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN)
+- [Nikolay Sokolik](https://github.com/nikosokolik)
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay)
 
-- [Alex Boten](https://github.com/codeboten), Lightstep
-- [Diego Hurtado](https://github.com/ocelotl), Lightstep
-- [Owais Lone](https://github.com/owais), Splunk
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Google
+For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 
-*Find more about the maintainer role in [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
-
-### Thanks to all the people who already contributed
+### Thanks to all of our contributors!
 
 <a href="https://github.com/open-telemetry/opentelemetry-python-contrib/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-python-contrib" />
+  <img alt="Repo contributors" src="https://contrib.rocks/image?repo=open-telemetry/opentelemetry-python-contrib" />
 </a>

@@ -1,34 +1,42 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}],
-      "inferenceConfig": {"maxTokens": 10, "temperature": 0.8, "topP": 1, "stopSequences":
-      ["|"]}}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "inferenceConfig": {
+          "maxTokens": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
     headers:
       Content-Length:
       - '170'
       Content-Type:
-      - !!binary |
-        YXBwbGljYXRpb24vanNvbg==
+      - application/json
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjNUMDk1MTU2Wg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051233Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLTA0YmY4MjVjLTAxMTY5NjdhYWM1NmIxM2RlMDI1N2QwMjtQYXJlbnQ9MDdkM2U3N2Rl
-        OGFjMzJhNDtTYW1wbGVkPTE=
+      - Root=1-6c333b46-841c20f5fad291f66e0ff261;Parent=da80a23d1ac23800;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        ZGQ1MTZiNTEtOGU1Yi00NGYyLTk5MzMtZjAwYzBiOGFkYWYw
+      - cb361c76-ead1-4ad2-a866-eb674ceb560a
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
@@ -36,33 +44,33 @@ interactions:
   response:
     body:
       string: !!binary |
-        AAAAlAAAAFLEwW5hCzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
+        AAAAkAAAAFIxQcihCzpldmVudC10eXBlBwAMbWVzc2FnZVN0YXJ0DTpjb250ZW50LXR5cGUHABBh
         cHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsicCI6ImFiY2RlZmdoaWprbG1u
-        b3BxcnN0dXZ3Iiwicm9sZSI6ImFzc2lzdGFudCJ9P+wfRAAAAMQAAABXjLhVJQs6ZXZlbnQtdHlw
-        ZQcAEWNvbnRlbnRCbG9ja0RlbHRhDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTpt
-        ZXNzYWdlLXR5cGUHAAVldmVudHsiY29udGVudEJsb2NrSW5kZXgiOjAsImRlbHRhIjp7InRleHQi
-        OiJIaSEgSG93IGNhbiBJIGhlbHAgeW91In0sInAiOiJhYmNkZWZnaGlqa2xtbm9wcXJzdHUifeBJ
-        9mIAAACJAAAAVlvc+UsLOmV2ZW50LXR5cGUHABBjb250ZW50QmxvY2tTdG9wDTpjb250ZW50LXR5
-        cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsiY29udGVudEJsb2Nr
-        SW5kZXgiOjAsInAiOiJhYmNkZSJ95xzwrwAAAKcAAABRu0n9jQs6ZXZlbnQtdHlwZQcAC21lc3Nh
-        Z2VTdG9wDTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVl
-        dmVudHsicCI6ImFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSiIsInN0b3BSZWFz
-        b24iOiJtYXhfdG9rZW5zIn1LR3pNAAAAygAAAE5X40OECzpldmVudC10eXBlBwAIbWV0YWRhdGEN
-        OmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJt
-        ZXRyaWNzIjp7ImxhdGVuY3lNcyI6NjA4fSwicCI6ImFiY2RlZmdoaWprIiwidXNhZ2UiOnsiaW5w
-        dXRUb2tlbnMiOjgsIm91dHB1dFRva2VucyI6MTAsInRvdGFsVG9rZW5zIjoxOH19iiQr+w==
+        b3BxcnMiLCJyb2xlIjoiYXNzaXN0YW50In0RduqwAAAA2wAAAFduCFV2CzpldmVudC10eXBlBwAR
+        Y29udGVudEJsb2NrRGVsdGENOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0aW9uL2pzb24NOm1lc3Nh
+        Z2UtdHlwZQcABWV2ZW50eyJjb250ZW50QmxvY2tJbmRleCI6MCwiZGVsdGEiOnsidGV4dCI6Ikkg
+        YW0gaGVyZSBhbmQgcmVhZHkgdG8gYXNzaXN0In0sInAiOiJhYmNkZWZnaGlqa2xtbm9wcXJzdHV2
+        d3h5ekFCQ0RFRkdISUpLIn0uPEHpAAAAkAAAAFY2LAy4CzpldmVudC10eXBlBwAQY29udGVudEJs
+        b2NrU3RvcA06Y29udGVudC10eXBlBwAQYXBwbGljYXRpb24vanNvbg06bWVzc2FnZS10eXBlBwAF
+        ZXZlbnR7ImNvbnRlbnRCbG9ja0luZGV4IjowLCJwIjoiYWJjZGVmZ2hpamtsIn3C2aZeAAAAjgAA
+        AFF3mLD4CzpldmVudC10eXBlBwALbWVzc2FnZVN0b3ANOmNvbnRlbnQtdHlwZQcAEGFwcGxpY2F0
+        aW9uL2pzb24NOm1lc3NhZ2UtdHlwZQcABWV2ZW50eyJwIjoiYWJjZGVmZ2hpamsiLCJzdG9wUmVh
+        c29uIjoibWF4X3Rva2VucyJ9cjPl1AAAAMwAAABO2KO2JAs6ZXZlbnQtdHlwZQcACG1ldGFkYXRh
+        DTpjb250ZW50LXR5cGUHABBhcHBsaWNhdGlvbi9qc29uDTptZXNzYWdlLXR5cGUHAAVldmVudHsi
+        bWV0cmljcyI6eyJsYXRlbmN5TXMiOjYwNX0sInAiOiJhYmNkZWZnaGlqa2xtIiwidXNhZ2UiOnsi
+        aW5wdXRUb2tlbnMiOjgsIm91dHB1dFRva2VucyI6MTAsInRvdGFsVG9rZW5zIjoxOH19/X5xsw==
     headers:
       Connection:
       - keep-alive
       Content-Type:
       - application/vnd.amazon.eventstream
       Date:
-      - Thu, 23 Jan 2025 09:51:56 GMT
+      - Thu, 06 Feb 2025 05:12:34 GMT
       Set-Cookie: test_set_cookie
       Transfer-Encoding:
       - chunked
       x-amzn-RequestId:
-      - 2b74a5d3-615a-4f81-b00f-f0b10a618e23
+      - 77f2fab1-08a9-4235-a402-e0e5f3a5e117
     status:
       code: 200
       message: OK

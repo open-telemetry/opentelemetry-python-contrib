@@ -1,53 +1,56 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test"}]}]}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ]
+      }
     headers:
       Content-Length:
       - '77'
       Content-Type:
-      - !!binary |
-        YXBwbGljYXRpb24vanNvbg==
+      - application/json
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjJUMTYwODQxWg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051232Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLTY4MzBlNjVhLTY4Y2JlMzA5ZTI2ZDA1ZjA4ZDZkY2M1YjtQYXJlbnQ9NjdlMDRlNjRj
-        NGZhOTI3MDtTYW1wbGVkPTE=
+      - Root=1-d44c213c-792360fb9074bfd2f5334bad;Parent=973420d2413e6885;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        N2VhMWVmYzktMzlkYS00NDU1LWJiYTctMDNmYTM1ZWUyODU2
+      - 0e8c8731-2812-4dbf-add2-b75b6ad599df
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/does-not-exist/converse
   response:
     body:
-      string: '{"message":"The provided model identifier is invalid."}'
+      string: |-
+        {
+          "message": "The provided model identifier is invalid."
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '55'
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 Jan 2025 16:08:41 GMT
+      - Thu, 06 Feb 2025 05:12:33 GMT
       Set-Cookie: test_set_cookie
       x-amzn-ErrorType:
       - ValidationException:http://internal.amazon.com/coral/com.amazon.bedrock/
       x-amzn-RequestId:
-      - 9ecb3c28-f72f-4350-8746-97c02140ced1
+      - 7fdbc480-6d28-4d1c-abbc-bd7f17c7dfec
     status:
       code: 400
       message: Bad Request

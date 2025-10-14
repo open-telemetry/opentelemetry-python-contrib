@@ -24,9 +24,6 @@ from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    event_attributes as EventAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -659,6 +656,48 @@ def test_chat_completion_multiple_tools_streaming_no_content(
     )
 
 
+@pytest.mark.vcr()
+def test_chat_completion_with_content_span_unsampled(
+    span_exporter,
+    log_exporter,
+    openai_client,
+    instrument_with_content_unsampled,
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = openai_client.chat.completions.create(
+        messages=messages_value, model=llm_model_value, stream=False
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 0
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_message = {"content": messages_value[0]["content"]}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, None)
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "role": "assistant",
+            "content": response.choices[0].message.content,
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, None)
+
+    assert logs[0].log_record.trace_id is not None
+    assert logs[0].log_record.span_id is not None
+    assert logs[0].log_record.trace_flags == 0
+
+    assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
+    assert logs[0].log_record.span_id == logs[1].log_record.span_id
+    assert logs[0].log_record.trace_flags == logs[1].log_record.trace_flags
+
+
 def chat_completion_multiple_tools_streaming(
     span_exporter, log_exporter, openai_client, expect_content
 ):
@@ -770,7 +809,7 @@ def chat_completion_multiple_tools_streaming(
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    assert log.log_record.event_name == event_name
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.OPENAI.value
@@ -878,9 +917,12 @@ def assert_all_attributes(
 
 
 def assert_log_parent(log, span):
-    assert log.log_record.trace_id == span.get_span_context().trace_id
-    assert log.log_record.span_id == span.get_span_context().span_id
-    assert log.log_record.trace_flags == span.get_span_context().trace_flags
+    if span:
+        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.span_id == span.get_span_context().span_id
+        assert (
+            log.log_record.trace_flags == span.get_span_context().trace_flags
+        )
 
 
 def get_current_weather_tool_definition():

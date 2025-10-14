@@ -22,13 +22,41 @@ instrumentation via the following code:
 
 .. _sqlalchemy: https://pypi.org/project/sqlalchemy/
 
+Usage
+-----
+.. code:: python
+
+    from sqlalchemy import create_engine
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    import sqlalchemy
+
+    engine = create_engine("sqlite:///:memory:")
+    SQLAlchemyInstrumentor().instrument(
+        engine=engine,
+    )
+
+.. code:: python
+
+    # of the async variant of SQLAlchemy
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+    import sqlalchemy
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    SQLAlchemyInstrumentor().instrument(
+        engine=engine.sync_engine
+    )
+
+Configuration
+-------------
+
 SQLCOMMENTER
 ****************************************
 You can optionally configure SQLAlchemy instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
-
-Usage
------
 
 .. code:: python
 
@@ -87,33 +115,6 @@ For example,
     the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
 
 Warning: capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
-
-
-Usage
------
-.. code:: python
-
-    from sqlalchemy import create_engine
-
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-    import sqlalchemy
-
-    engine = create_engine("sqlite:///:memory:")
-    SQLAlchemyInstrumentor().instrument(
-        engine=engine,
-    )
-
-    # of the async variant of SQLAlchemy
-
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-    import sqlalchemy
-
-    engine = create_async_engine("sqlite:///:memory:")
-    SQLAlchemyInstrumentor().instrument(
-        engine=engine.sync_engine
-    )
 
 API
 ---

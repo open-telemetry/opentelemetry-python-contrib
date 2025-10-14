@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "AWS SDK extension for OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,7 +18,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -26,7 +25,11 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-sdk ~= 1.12",
+  "opentelemetry-api ~= 1.23",
+  "opentelemetry-sdk ~= 1.23",
+  "opentelemetry-instrumentation ~= 0.44b0",
+  "opentelemetry-semantic-conventions ~= 0.44b0",
+  "requests ~= 2.28",
 ]
 
 [project.entry-points.opentelemetry_id_generator]
@@ -38,6 +41,10 @@ aws_ecs = "opentelemetry.sdk.extension.aws.resource.ecs:AwsEcsResourceDetector"
 aws_eks = "opentelemetry.sdk.extension.aws.resource.eks:AwsEksResourceDetector"
 aws_elastic_beanstalk = "opentelemetry.sdk.extension.aws.resource.beanstalk:AwsBeanstalkResourceDetector"
 aws_lambda = "opentelemetry.sdk.extension.aws.resource._lambda:AwsLambdaResourceDetector"
+
+# TODO: Uncomment this when Sampler implementation is complete
+# [project.entry-points.opentelemetry_sampler]
+# aws_xray_remote_sampler = "opentelemetry.sdk.extension.aws.trace.sampler:AwsXRayRemoteSampler"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/sdk-extension/opentelemetry-sdk-extension-aws"

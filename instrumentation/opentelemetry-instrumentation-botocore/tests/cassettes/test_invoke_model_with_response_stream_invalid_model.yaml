@@ -5,46 +5,38 @@ interactions:
       Content-Length:
       - '0'
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjRUMTM0NDM5Wg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051245Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLTFlMjljM2Y1LTU2MzZhOWI4MmViYTYxOTFiOTcwOTI2YTtQYXJlbnQ9NzA1NzBlZjUy
-        YzJkZjliYjtTYW1wbGVkPTE=
+      - Root=1-aeb6fdcb-0e88bedd693e4370e96e981f;Parent=2d8d8f593ea037bf;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        ZDg2MjFlMzAtNTk3Yi00ZWM3LWJlNGEtMThkMDQwZTRhMzcw
+      - 4fe9ff37-80a1-4ceb-9387-a3908aac18f7
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/does-not-exist/invoke-with-response-stream
   response:
     body:
-      string: '{"message":"The provided model identifier is invalid."}'
+      string: |-
+        {
+          "message": "The provided model identifier is invalid."
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '55'
       Content-Type:
       - application/json
       Date:
-      - Fri, 24 Jan 2025 13:44:40 GMT
+      - Thu, 06 Feb 2025 05:12:46 GMT
       Set-Cookie: test_set_cookie
       x-amzn-ErrorType:
       - ValidationException:http://internal.amazon.com/coral/com.amazon.bedrock/
       x-amzn-RequestId:
-      - 6460a108-875d-4e26-bcdf-f03c4c815f74
+      - c35768fc-ba55-40d6-8705-9168e0479c7c
     status:
       code: 400
       message: Bad Request

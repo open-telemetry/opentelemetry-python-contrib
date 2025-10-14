@@ -1,56 +1,64 @@
 interactions:
 - request:
-    body: '{"inputText": "Say this is a test", "textGenerationConfig": {"maxTokenCount":
-      10, "temperature": 0.8, "topP": 1, "stopSequences": ["|"]}}'
+    body: |-
+      {
+        "inputText": "Say this is a test",
+        "textGenerationConfig": {
+          "maxTokenCount": 10,
+          "temperature": 0.8,
+          "topP": 1,
+          "stopSequences": [
+            "|"
+          ]
+        }
+      }
     headers:
       Content-Length:
       - '137'
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjJUMTUyNDA1Wg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051237Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLWZmMzM4ODA0LWMwMzYyNzgzNjczNjAzMWI0ZTZlZTIwNTtQYXJlbnQ9MmJjZmVlZGE5
-        NWVjZWUyYztTYW1wbGVkPTE=
+      - Root=1-9ddb1876-6e0f1537999198b967402e22;Parent=3d32c631b5f37173;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        YmZjOGJiMjEtY2Q2MS00MDNmLWE2NzEtZmQ4YmMzNzBkOTJl
+      - 4d399cfc-3ccc-4dcb-ba35-83177f50398c
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-text-lite-v1/invoke
   response:
     body:
-      string: '{"inputTextTokenCount":5,"results":[{"tokenCount":9,"outputText":"
-        comment\nHello! How are you?","completionReason":"FINISH"}]}'
+      string: |-
+        {
+          "inputTextTokenCount": 5,
+          "results": [
+            {
+              "tokenCount": 10,
+              "outputText": " comment\nHello! I am writing this as a",
+              "completionReason": "LENGTH"
+            }
+          ]
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '127'
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 Jan 2025 15:24:06 GMT
+      - Thu, 06 Feb 2025 05:12:38 GMT
       Set-Cookie: test_set_cookie
       X-Amzn-Bedrock-Input-Token-Count:
       - '5'
       X-Amzn-Bedrock-Invocation-Latency:
-      - '1104'
+      - '647'
       X-Amzn-Bedrock-Output-Token-Count:
-      - '9'
+      - '10'
       x-amzn-RequestId:
-      - ef788ecb-b5ed-404e-ace7-de59741cded5
+      - 03388437-97c4-442b-bb12-a0eb58397f03
     status:
       code: 200
       message: OK

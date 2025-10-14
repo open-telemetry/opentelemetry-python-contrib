@@ -24,58 +24,6 @@ supports Flask-specific features such as:
 * The ``http.route`` Span attribute is set so that one can see which URL rule
   matched a request.
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.flask import FlaskInstrumentor
-
-    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
-
-For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
-invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
-``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
-some configurable tags like:
-
-.. code::
-
-    select * from auth_users /*metrics=value*/;"
-
-Inorder for the commenter to append flask related tags to sql queries, the commenter needs
-to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration
-inside ``commenter_options={}`` dict.
-
-For example, enabling this flag will add flask and it's version which
-is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    framework = True
-
-For example, enabling this flag will add route uri ``/*route='/home'*/``
-to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    route = True
-
-For example, enabling this flag will add controller name ``/*controller='home_view'*/``
-to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    controller = True
-
 Usage
 -----
 
@@ -132,6 +80,12 @@ right after a span is created for a request and right before the span is finishe
 For example,
 
 .. code-block:: python
+
+    from opentelemetry.trace import Span
+    from wsgiref.types import WSGIEnvironment
+    from typing import List
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
@@ -235,6 +189,55 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+SQLCOMMENTER
+*****************************************
+You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
+the query with contextual information.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
+    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
+
+For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
+invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
+``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
+some configurable tags like:
+
+.. code::
+
+    select * from auth_users /*metrics=value*/;"
+
+Inorder for the commenter to append flask related tags to sql queries, the commenter needs
+to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
+
+SQLCommenter Configurations
+***************************
+We can configure the tags to be appended to the sqlquery log by adding configuration
+inside ``commenter_options={}`` dict.
+
+For example, enabling this flag will add flask and it's version which
+is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    framework = True
+
+For example, enabling this flag will add route uri ``/*route='/home'*/``
+to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    route = True
+
+For example, enabling this flag will add controller name ``/*controller='home_view'*/``
+to the SQL query as a comment (default is True):
+
+.. code:: python
+
+    controller = True
+
 API
 ---
 """
@@ -251,6 +254,7 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -266,12 +270,14 @@ from opentelemetry.instrumentation.propagators import (
 )
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -397,9 +403,7 @@ def _rewrapped_app(
 
             if request_route:
                 # http.target to be included in old semantic conventions
-                duration_attrs_old[SpanAttributes.HTTP_TARGET] = str(
-                    request_route
-                )
+                duration_attrs_old[HTTP_TARGET] = str(request_route)
 
             duration_histogram_old.record(
                 max(round(duration_s * 1000), 0), duration_attrs_old
@@ -442,7 +446,7 @@ def _wrapped_before_request(
         if flask.request.url_rule:
             # For 404 that result from no route found, etc, we
             # don't have a url_rule.
-            attributes[SpanAttributes.HTTP_ROUTE] = flask.request.url_rule.rule
+            attributes[HTTP_ROUTE] = flask.request.url_rule.rule
         span, token = _start_internal_or_server_span(
             tracer=tracer,
             span_name=span_name,
@@ -577,6 +581,7 @@ class _InstrumentedFlask(flask.Flask):
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP server requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         active_requests_counter = meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
@@ -710,6 +715,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                     name=HTTP_SERVER_REQUEST_DURATION,
                     unit="s",
                     description="Duration of HTTP server requests.",
+                    explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
             active_requests_counter = meter.create_up_down_counter(
                 name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,

@@ -47,22 +47,31 @@ The hooks can be configured as follows:
 
 .. code:: python
 
+    from typing import Any
+
+    from urllib3.connectionpool import HTTPConnectionPool
+    from urllib3.response import HTTPResponse
+
+    from opentelemetry.instrumentation.urllib3 import RequestInfo, URLLib3Instrumentor
+    from opentelemetry.trace import Span
+
     def request_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
+        pool: HTTPConnectionPool,
         request_info: RequestInfo,
     ) -> Any:
-        ...
+        pass
 
     def response_hook(
         span: Span,
-        pool: urllib3.connectionpool.HTTPConnectionPool,
-        response: urllib3.response.HTTPResponse,
+        pool: HTTPConnectionPool,
+        response: HTTPResponse,
     ) -> Any:
-        ...
+        pass
 
     URLLib3Instrumentor().instrument(
-        request_hook=request_hook, response_hook=response_hook
+        request_hook=request_hook,
+        response_hook=response_hook,
     )
 
 Exclude lists
@@ -94,6 +103,7 @@ import urllib3.connectionpool
 import wrapt
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
     _filter_semconv_duration_attrs,
@@ -258,6 +268,7 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 name=HTTP_CLIENT_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
             # http.client.request.body.size histogram
             request_size_histogram_new = create_http_client_request_body_size(
@@ -334,9 +345,12 @@ def _instrument(
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
-        with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span, set_ip_on_next_http_connection(span):
+        with (
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
+            set_ip_on_next_http_connection(span),
+        ):
             if callable(request_hook):
                 request_hook(
                     span,

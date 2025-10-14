@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import types
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -50,9 +51,14 @@ class MockAsyncCursor:
         pass
 
     # pylint: disable=unused-argument, no-self-use
-    async def execute(self, query, params=None, throw_exception=False):
+    async def execute(
+        self, query, params=None, throw_exception=False, delay=0.0
+    ):
         if throw_exception:
             raise psycopg.Error("Test Exception")
+
+        if delay:
+            await asyncio.sleep(delay)
 
     # pylint: disable=unused-argument, no-self-use
     async def executemany(self, query, params=None, throw_exception=False):
@@ -257,6 +263,24 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(spans_list[5].name, "query")
         self.assertEqual(spans_list[6].name, "postgresql")
         self.assertEqual(spans_list[7].name, "--")
+
+    def test_span_params_attribute(self):
+        PsycopgInstrumentor().instrument(capture_parameters=True)
+        cnx = psycopg.connect(database="test")
+        query = "SELECT * FROM mytable WHERE myparam1 = %s AND myparam2 = %s"
+        params = ("test", 42)
+
+        cursor = cnx.cursor()
+
+        cursor.execute(query, params)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        assert spans_list[0].attributes is not None
+        self.assertEqual(spans_list[0].attributes["db.statement"], query)
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], str(params)
+        )
 
     # pylint: disable=unused-argument
     def test_not_recording(self):
@@ -473,6 +497,23 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(spans_list[4].name, "query")
         self.assertEqual(spans_list[5].name, "query")
 
+    async def test_span_params_attribute(self):
+        PsycopgInstrumentor().instrument(capture_parameters=True)
+        cnx = await psycopg.AsyncConnection.connect("test")
+        query = "SELECT * FROM mytable WHERE myparam1 = %s AND myparam2 = %s"
+        params = ("test", 42)
+        async with cnx.cursor() as cursor:
+            await cursor.execute(query, params)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        assert spans_list[0].attributes is not None
+        self.assertEqual(spans_list[0].attributes["db.statement"], query)
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], str(params)
+        )
+
     # pylint: disable=unused-argument
     async def test_not_recording_async(self):
         mock_tracer = mock.Mock()
@@ -490,5 +531,29 @@ class TestPostgresqlIntegrationAsync(
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_tracing_is_async(self):
+        PsycopgInstrumentor().instrument()
+
+        # before this async fix cursor.execute would take 14000 ns, delaying for
+        # 100,000ns
+        delay = 0.0001
+
+        async def test_async_connection():
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test", delay=delay)
+
+        await test_async_connection()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # duration is nanoseconds
+        duration = span.end_time - span.start_time
+        self.assertGreater(duration, delay * 1e9)
 
         PsycopgInstrumentor().uninstrument()

@@ -1,0 +1,110 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "My name is OpenTelemetry"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Hello OpenTelemetry!"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Address me by name and say this is a test"
+              }
+            ]
+          }
+        ],
+        "systemInstruction": {
+          "role": "user",
+          "parts": [
+            {
+              "text": "You are a clever language model"
+            }
+          ]
+        }
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '548'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "OpenTelemetry, this is a test."
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -8.984109878540039
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 25,
+            "candidatesTokenCount": 8,
+            "totalTokenCount": 439,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 25
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 8
+              }
+            ],
+            "thoughtsTokenCount": 406
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:12.290295Z",
+          "responseId": "UJCkaPfbEdDxgLUPhardyQg"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '757'
+    status:
+      code: 200
+      message: OK
+version: 1

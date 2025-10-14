@@ -19,23 +19,31 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
 
 ## Index
 
-* [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
-* [Development](#development)
-  * [Troubleshooting](#troubleshooting)
-  * [Benchmarks](#benchmarks)
-* [Pull requests](#pull-requests)
-  * [How to Send Pull Requests](#how-to-send-pull-requests)
-  * [How to Receive Comments](#how-to-receive-comments)
-  * [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
-  * [How to Get PRs Merged](#how-to-get-prs-merged)
-* [Design Choices](#design-choices)
-  * [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
-* [Running Tests Locally](#running-tests-locally)
-  * [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
-* [Style Guide](#style-guide)
-* [Guideline for instrumentations](#guideline-for-instrumentations)
-* [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
-* [Expectations from contributors](#expectations-from-contributors)
+- [Contributing to opentelemetry-python-contrib](#contributing-to-opentelemetry-python-contrib)
+  - [Index](#index)
+  - [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
+  - [Development](#development)
+    - [Virtual Environment](#virtual-environment)
+    - [Troubleshooting](#troubleshooting)
+    - [Benchmarks](#benchmarks)
+  - [Pull Requests](#pull-requests)
+    - [How to Send Pull Requests](#how-to-send-pull-requests)
+    - [How to Receive Comments](#how-to-receive-comments)
+    - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
+    - [How to Get PRs Merged](#how-to-get-prs-merged)
+  - [Design Choices](#design-choices)
+    - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
+  - [Running Tests Locally](#running-tests-locally)
+    - [Testing against a different Core repo branch/commit](#testing-against-a-different-core-repo-branchcommit)
+  - [Style Guide](#style-guide)
+  - [Guideline for instrumentations](#guideline-for-instrumentations)
+    - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
+  - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
+    - [Get Involved](#get-involved)
+  - [Expectations from contributors](#expectations-from-contributors)
+  - [Updating supported Python versions](#updating-supported-python-versions)
+    - [Bumping the Python baseline](#bumping-the-python-baseline)
+    - [Adding support for a new Python release](#adding-support-for-a-new-python-release)
 
 ## Find a Buddy and get Started Quickly
 
@@ -76,8 +84,9 @@ You can run `tox` with the following arguments:
 * `tox -e lint-some-package` to run lint checks on `some-package`
 * `tox -e generate-workflows` to run creation of new CI workflows if tox environments have been updated
 * `tox -e ruff` to run ruff linter and formatter checks against the entire codebase
+* `tox -e precommit` to run all `pre-commit` actions
 
-`ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
+`ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` and `rstcheck` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
 
 ```console
 pip install pre-commit -c dev-requirements.txt
@@ -92,6 +101,20 @@ pre-commit install
 See
 [`tox.ini`](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/tox.ini)
 for more detail on available tox commands.
+
+### Virtual Environment
+
+You can also create a single virtual environment to make it easier to run local tests.
+
+For that, you'll need to install [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+
+After installing `uv`, you can run the following command:
+
+```sh
+uv sync
+```
+
+This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
 
 ### Troubleshooting
 
@@ -184,14 +207,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 
 ### How to Get PRs Reviewed
 
-The maintainers and approvers of this repo are not experts in every instrumentation there is here.
-In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+The maintainers and approvers of this repository are not experts in every instrumentation there is here.
+In fact, each one of us knows enough about them to only review a few. Unfortunately, it can be hard
 to find enough experts in every instrumentation to quickly review every instrumentation PR. The
 instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
 or directories that they own. The owners listed there will be notified when PRs that modify their
 files are opened.
 
 If you are not getting reviews, please contact the respective owners directly.
+
+> [!TIP]
+> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate if you have expertise to review a PR.
 
 ### How to Get PRs Merged
 
@@ -303,9 +329,24 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 ### Update supported instrumentation package versions
 
 - Navigate to the **instrumentation package directory:**
-  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
-  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+  - Update **`pyproject.toml`** file by modifying `instruments` or `instruments-any` entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` or `_instruments_any` variable in instrumentation **`package.py`** file with the new version constraint
 - At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected. For example, the following entry requires both `util` and `common` plus either `foo` or `bar` to be present for the instrumentation to occur:
+```
+[project.optional-dependencies]
+instruments = [
+  "util ~= 1.0"
+  "common ~= 2.0"
+]
+instruments-any = [
+  "foo ~= 3.0"
+  "bar ~= 4.0"
+]
+```
+
+<!-- See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details on instruments-any -->
 
 If you're adding support for a new version of the instrumentation package, follow these additional steps:
 

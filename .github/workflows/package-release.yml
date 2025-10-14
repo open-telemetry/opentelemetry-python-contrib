@@ -9,10 +9,19 @@ on:
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
+        - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-google-genai
+        - opentelemetry-util-genai
         description: 'Package to be released'
         required: true
+permissions:
+  contents: read
+run-name: "[Package][${{ inputs.package }}] Release"
 jobs:
   release:
+    permissions:
+      contents: write # required for creating releases
+      pull-requests: write # required for creating pull requests
     runs-on: ubuntu-latest
     steps:
       - run: |
@@ -75,7 +84,7 @@ jobs:
         # next few steps publish to pypi
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       - name: Build wheels
         run: ./scripts/build_a_package.sh
@@ -133,14 +142,20 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request against main
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Copy changelog updates from $GITHUB_REF_NAME"
           body="Copy changelog updates from \`$GITHUB_REF_NAME\`."
-          branch="opentelemetrybot/changelog-${GITHUB_REF_NAME//\//-}"
+          branch="otelbot/changelog-${GITHUB_REF_NAME//\//-}"
 
           if [[ -z $PRIOR_VERSION_WHEN_PATCH ]]; then
             if git diff --quiet; then

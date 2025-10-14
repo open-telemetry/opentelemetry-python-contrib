@@ -31,11 +31,11 @@ Usage
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
-
 
 .. code:: python
 
@@ -53,18 +53,19 @@ Usage
         }
     )
     cursor = instrumented_cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     instrumented_cnx.commit()
     cursor.close()
     instrumented_cnx.close()
+
+Configuration
+-------------
 
 SQLCOMMENTER
 *****************************************
 You can optionally configure PyMySQL instrumentation to enable sqlcommenter which enriches
 the query with contextual information.
-
-Usage
------
 
 .. code:: python
 
@@ -75,11 +76,11 @@ Usage
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
-
 
 For example,
 ::
@@ -140,7 +141,6 @@ If sqlcommenter is enabled, you can optionally configure PyMySQL instrumentation
         enable_commenter=True,
         enable_attribute_commenter=True,
     )
-
 
 For example,
 ::

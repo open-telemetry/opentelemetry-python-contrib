@@ -24,7 +24,11 @@ from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
@@ -127,15 +131,11 @@ async def test_status_code_instrumentation(
 
     [span] = memory_exporter.get_finished_spans()
 
-    assert expected_method.value == span.attributes[SpanAttributes.HTTP_METHOD]
-    assert (
-        expected_status_code
-        == span.attributes[SpanAttributes.HTTP_STATUS_CODE]
-    )
+    assert expected_method.value == span.attributes[HTTP_METHOD]
+    assert expected_status_code == span.attributes[HTTP_STATUS_CODE]
 
     assert (
-        f"http://{server.host}:{server.port}{url}"
-        == span.attributes[SpanAttributes.HTTP_URL]
+        f"http://{server.host}:{server.port}{url}" == span.attributes[HTTP_URL]
     )
 
 
@@ -152,3 +152,46 @@ async def test_suppress_instrumentation(
     await client.get("/test-path")
 
     assert len(memory_exporter.get_finished_spans()) == 0
+
+
+@pytest.mark.asyncio
+async def test_remove_sensitive_params(tracer, aiohttp_server):
+    """Test that sensitive information in URLs is properly redacted."""
+    _, memory_exporter = tracer
+
+    # Set up instrumentation
+    AioHttpServerInstrumentor().instrument()
+
+    # Create app with test route
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    # Start the server
+    server = await aiohttp_server(app)
+
+    # Make request with sensitive data in URL
+    url = f"http://username:password@{server.host}:{server.port}/status/200?Signature=secret"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    # Verify redaction in span attributes
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[HTTP_METHOD] == "GET"
+    assert span.attributes[HTTP_STATUS_CODE] == 200
+    assert (
+        span.attributes[HTTP_URL]
+        == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
+    )
+
+    # Clean up
+    AioHttpServerInstrumentor().uninstrument()
+    memory_exporter.clear()

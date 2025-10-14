@@ -1,57 +1,81 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": [{"text": "Say this is a test",
-      "type": "text"}]}], "anthropic_version": "bedrock-2023-05-31", "max_tokens":
-      10, "temperature": 0.8, "top_p": 1, "stop_sequences": ["|"]}'
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 10,
+        "temperature": 0.8,
+        "top_p": 1,
+        "stop_sequences": [
+          "|"
+        ]
+      }
     headers:
       Content-Length:
       - '211'
       User-Agent:
-      - !!binary |
-        Qm90bzMvMS4zNS41NiBtZC9Cb3RvY29yZSMxLjM1LjU2IHVhLzIuMCBvcy9saW51eCM2LjEuMC0x
-        MDM0LW9lbSBtZC9hcmNoI3g4Nl82NCBsYW5nL3B5dGhvbiMzLjEwLjEyIG1kL3B5aW1wbCNDUHl0
-        aG9uIGNmZy9yZXRyeS1tb2RlI2xlZ2FjeSBCb3RvY29yZS8xLjM1LjU2
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/macos#24.0.0 md/arch#arm64 lang/python#3.13.1
+        md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
       X-Amz-Date:
-      - !!binary |
-        MjAyNTAxMjJUMTUyNDA2Wg==
-      X-Amz-Security-Token:
-      - test_aws_security_token
+      - 20250206T051238Z
       X-Amzn-Trace-Id:
-      - !!binary |
-        Um9vdD0xLWQ2MDZiNDAzLWFhYzE1Y2I3ODBiOTkwMmIxNGU1NWM4ZjtQYXJlbnQ9YjJmMzRlMThk
-        ZWE4NjdkMztTYW1wbGVkPTE=
+      - Root=1-6b2173ac-0edeb464a48f377fe871f4d6;Parent=709b0744fe7b43be;Sampled=1
       amz-sdk-invocation-id:
-      - !!binary |
-        YTlhN2I5YzEtNmEyNy00MDFjLTljMWUtM2EyN2YxZGZhMjQ4
+      - f2b1380f-2da0-439d-99f6-11ddb3d74c22
       amz-sdk-request:
-      - !!binary |
-        YXR0ZW1wdD0x
+      - attempt=1
       authorization:
       - Bearer test_aws_authorization
     method: POST
     uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/invoke
   response:
     body:
-      string: '{"id":"msg_bdrk_01FJozYaVhprPHUzRZ2uVcMg","type":"message","role":"assistant","model":"claude-2.0","content":[{"type":"text","text":"OK,
-        I heard you say \"Say this is"}],"stop_reason":"max_tokens","stop_sequence":null,"usage":{"input_tokens":14,"output_tokens":10}}'
+      string: |-
+        {
+          "id": "msg_bdrk_01NCxHHwwdtMc7wioSxo2wBC",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-2.0",
+          "content": [
+            {
+              "type": "text",
+              "text": "Okay, I said \"This is a test\""
+            }
+          ],
+          "stop_reason": "max_tokens",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 14,
+            "output_tokens": 10
+          }
+        }
     headers:
       Connection:
       - keep-alive
-      Content-Length:
-      - '265'
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 Jan 2025 15:24:07 GMT
+      - Thu, 06 Feb 2025 05:12:40 GMT
       Set-Cookie: test_set_cookie
       X-Amzn-Bedrock-Input-Token-Count:
       - '14'
       X-Amzn-Bedrock-Invocation-Latency:
-      - '595'
+      - '1131'
       X-Amzn-Bedrock-Output-Token-Count:
       - '10'
       x-amzn-RequestId:
-      - 5057dca6-bd9d-4e1e-9093-2bbbac1a19b4
+      - 173e5b06-61f1-4368-9926-0a3369f721eb
     status:
       code: 200
       message: OK
