@@ -1426,6 +1426,25 @@ class GenAISemanticProcessor(TracingProcessor):
                 otel_span.set_attribute(key, value)
                 attributes[key] = value
 
+            if _is_instance_of(
+                span.span_data, (GenerationSpanData, ResponseSpanData)
+            ):
+                operation_name = attributes.get(GEN_AI_OPERATION_NAME)
+                model_for_name = attributes.get(GEN_AI_REQUEST_MODEL) or (
+                    attributes.get(GEN_AI_RESPONSE_MODEL)
+                )
+                if operation_name and model_for_name:
+                    agent_name_for_name = attributes.get(GEN_AI_AGENT_NAME)
+                    tool_name_for_name = attributes.get(GEN_AI_TOOL_NAME)
+                    new_name = get_span_name(
+                        operation_name,
+                        model_for_name,
+                        agent_name_for_name,
+                        tool_name_for_name,
+                    )
+                    if new_name != otel_span.name:
+                        otel_span.update_name(new_name)
+
             # Emit span events for captured content when configured
             self._emit_content_events(span, otel_span, payload, agent_content)
 

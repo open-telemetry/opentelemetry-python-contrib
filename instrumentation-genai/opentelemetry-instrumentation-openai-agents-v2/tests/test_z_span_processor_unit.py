@@ -499,3 +499,47 @@ def test_span_lifecycle_and_shutdown(processor_setup):
         statuses["linger"].status_code is StatusCode.ERROR
         and statuses["linger"].description == "Application shutdown"
     )
+
+
+def test_chat_span_renamed_with_model(processor_setup):
+    processor, exporter = processor_setup
+
+    trace = FakeTrace(name="workflow", trace_id="trace-rename")
+    processor.on_trace_start(trace)
+
+    agent = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="agent-span",
+        span_data=AgentSpanData(
+            operation="invoke_agent",
+            name="Agent",
+        ),
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:02Z",
+    )
+    processor.on_span_start(agent)
+
+    generation_data = GenerationSpanData(
+        input=[{"role": "user", "content": "question"}],
+        output=[{"finish_reason": "stop"}],
+        usage={"prompt_tokens": 1, "completion_tokens": 1},
+    )
+    generation_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="child-span",
+        parent_id=agent.span_id,
+        span_data=generation_data,
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(generation_span)
+
+    # Model becomes available before span end (e.g., once response arrives)
+    generation_data.model = "gpt-4o"
+
+    processor.on_span_end(generation_span)
+    processor.on_span_end(agent)
+    processor.on_trace_end(trace)
+
+    span_names = {span.name for span in exporter.get_finished_spans()}
+    assert "chat gpt-4o" in span_names
