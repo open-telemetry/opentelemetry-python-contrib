@@ -2,7 +2,8 @@ import functools
 import json
 import logging
 import textwrap
-from typing import Any, Callable
+from typing import Any, Callable, Union
+from urllib.parse import urlparse
 
 from arango.api import ApiGroup
 from arango.request import Request
@@ -10,19 +11,25 @@ from arango.response import Response
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.arangodb import arangodb_attributes
 from opentelemetry.instrumentation.arangodb.package import _instruments
 from opentelemetry.instrumentation.arangodb.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.attributes import db_attributes, error_attributes
-from opentelemetry.trace import SpanKind
+from opentelemetry.semconv.attributes import (
+    db_attributes,
+    error_attributes,
+    server_attributes,
+)
+from opentelemetry.trace import Span, SpanKind
 from opentelemetry.trace.status import StatusCode
 
 logger = logging.getLogger(__name__)
 
 
 class ArangoDBInstrumentor(BaseInstrumentor):
-    """An instrumentor for arangodb module
+    """An instrumentor for arangodb module.
+
     See `BaseInstrumentor`
     """
 
@@ -65,7 +72,7 @@ class ArangoDBInstrumentor(BaseInstrumentor):
         )
 
         with tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             # We install a custom response handler to get access to the raw response,
             # before the arango client attempts to convert it to one of many different
@@ -74,9 +81,9 @@ class ArangoDBInstrumentor(BaseInstrumentor):
 
             def custom_response_handler(response: Response):
                 span.set_attributes(self._get_response_attributes(response))
-                return original_response_handler(response)
+                self._add_span_events(span, response)
 
-            span.set_attributes(span_attributes)
+                return original_response_handler(response)
 
             try:
                 result = wrapped(request, custom_response_handler)
@@ -96,8 +103,8 @@ class ArangoDBInstrumentor(BaseInstrumentor):
         attributes = {}
 
         query: str = ""
-        bind_vars: dict[str, Any] | None = None
-        options: Any | None = None
+        bind_vars: Union[dict[str, Any], None] = None
+        options: Union[Any, None] = None
 
         span_name = f"ArangoDB: {request.method.upper()} {request.endpoint}"
 
@@ -113,8 +120,12 @@ class ArangoDBInstrumentor(BaseInstrumentor):
         else:
             query = str(request.data)
 
-        attributes = {
+        endpoint = urlparse(instance.conn._hosts[0])
+
+        attributes: dict[str, Any] = {
             db_attributes.DB_SYSTEM_NAME: "arangodb",
+            server_attributes.SERVER_ADDRESS: endpoint.hostname,
+            server_attributes.SERVER_PORT: endpoint.port,
             db_attributes.DB_NAMESPACE: instance.db_name,
             db_attributes.DB_OPERATION_NAME: request.endpoint,
             db_attributes.DB_QUERY_TEXT: textwrap.dedent(query.strip("\n")),
@@ -124,7 +135,35 @@ class ArangoDBInstrumentor(BaseInstrumentor):
             for key, value in bind_vars.items():
                 attributes[f"db.query.parameter.{key}"] = json.dumps(value)
 
-        attributes["db.query.options"] = json.dumps(options)
+        if options and isinstance(options, dict):
+            if "allowDirtyReads" in options:
+                attributes[arangodb_attributes.ALLOW_DIRTY_READS] = (
+                    options.get("allowDirtyReads")
+                )
+            if "allowRetry" in options:
+                attributes[arangodb_attributes.ALLOW_RETRY] = options.get(
+                    "allowRetry"
+                )
+            if "cache" in options:
+                attributes[arangodb_attributes.CACHE] = options.get("cache")
+            if "failOnWarning" in options:
+                attributes[arangodb_attributes.FAIL_ON_WARNING] = options.get(
+                    "failOnWarning"
+                )
+            if "fullCount" in options:
+                attributes[arangodb_attributes.FULL_COUNT] = options.get(
+                    "fullCount"
+                )
+            if "maxRuntime" in options:
+                attributes[arangodb_attributes.MAX_RUNTIME] = options.get(
+                    "maxRuntime"
+                )
+            if "stream" in options:
+                attributes[arangodb_attributes.STREAM] = options.get("stream")
+            if "usePlanCache" in options:
+                attributes[arangodb_attributes.USE_PLAN_CACHE] = options.get(
+                    "usePlanCache"
+                )
 
         return span_name, attributes
 
@@ -133,17 +172,27 @@ class ArangoDBInstrumentor(BaseInstrumentor):
             db_attributes.DB_RESPONSE_STATUS_CODE: response.status_code
         }
 
-        attributes["db.execution.cached"] = response.body.get("cached", False)
-
-        if (count := response.body.get("count")) is not None:
-            attributes["db.execution.count"] = count
-
-        if extra := response.body.get("extra"):
-            stats = extra.get("stats")
-            for key, value in stats.items():
-                attributes["db.execution.stats." + key] = value
-
-            warnings = extra.get("warnings")
-            attributes["db.execution.warnings"] = json.dumps(warnings)
+        if "cached" in response.body:
+            attributes["arangodb.response.cached"] = response.body.get(
+                "cached"
+            )
+        if "count" in response.body:
+            attributes["arangodb.response.count"] = response.body.get("count")
+        if "hasMore" in response.body:
+            attributes["arangodb.response.hasMore"] = response.body.get(
+                "hasMore"
+            )
 
         return attributes
+
+    def _add_span_events(self, span: Span, response: Response):
+        if extra := response.body.get("extra"):
+            if warnings := extra.get("warnings"):
+                for warning in warnings:
+                    span.add_event(
+                        "ArangoDB Warning",
+                        {
+                            "code": warning.get("code"),
+                            "message": warning.get("message"),
+                        },
+                    )
