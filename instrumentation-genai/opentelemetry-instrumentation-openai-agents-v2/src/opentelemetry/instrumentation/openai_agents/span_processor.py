@@ -542,7 +542,10 @@ class GenAISemanticProcessor(TracingProcessor):
         self, span: Span[Any], attributes: dict[str, AttributeValue]
     ) -> None:
         """Record metrics for the span."""
-        if not self._metrics_enabled or not self._duration_histogram:
+        if not self._metrics_enabled or (
+            self._duration_histogram is None
+            and self._token_usage_histogram is None
+        ):
             return
 
         try:
@@ -580,7 +583,7 @@ class GenAISemanticProcessor(TracingProcessor):
             }
 
             # Record duration
-            if duration is not None:
+            if duration is not None and self._duration_histogram is not None:
                 self._duration_histogram.record(duration, metric_attrs)
 
             # Record token usage
