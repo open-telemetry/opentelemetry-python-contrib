@@ -57,6 +57,18 @@ from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+
+try:
+    from opentelemetry.semconv._incubating.attributes import (
+        server_attributes as ServerAttributes,
+    )
+except ImportError:  # pragma: no cover - fallback for older semconv versions
+
+    class ServerAttributes:
+        SERVER_ADDRESS = "server.address"
+        SERVER_PORT = "server.port"
+
+
 from opentelemetry.trace import Span as OtelSpan
 from opentelemetry.trace import (
     SpanKind,
@@ -353,9 +365,9 @@ def _infer_server_attributes(base_url: Optional[str]) -> dict[str, Any]:
     try:
         parsed = urlparse(base_url)
         if parsed.hostname:
-            out["server.address"] = parsed.hostname
+            out[ServerAttributes.SERVER_ADDRESS] = parsed.hostname
         if parsed.port:
-            out["server.port"] = parsed.port
+            out[ServerAttributes.SERVER_PORT] = parsed.port
     except Exception:
         return out
     return out
@@ -483,9 +495,13 @@ class GenAISemanticProcessor(TracingProcessor):
         ) and effective_base_url:
             server_attrs = _infer_server_attributes(effective_base_url)
             if not self.server_address:
-                self.server_address = server_attrs.get("server.address")
+                self.server_address = server_attrs.get(
+                    ServerAttributes.SERVER_ADDRESS
+                )
             if not self.server_port:
-                self.server_port = server_attrs.get("server.port")
+                self.server_port = server_attrs.get(
+                    ServerAttributes.SERVER_PORT
+                )
 
         # Content capture configuration
         self._capture_messages = (
@@ -513,9 +529,9 @@ class GenAISemanticProcessor(TracingProcessor):
         """Get server attributes from configured values."""
         attrs = {}
         if self.server_address:
-            attrs["server.address"] = self.server_address
+            attrs[ServerAttributes.SERVER_ADDRESS] = self.server_address
         if self.server_port:
-            attrs["server.port"] = self.server_port
+            attrs[ServerAttributes.SERVER_PORT] = self.server_port
         return attrs
 
     def _init_metrics(self):
@@ -561,14 +577,18 @@ class GenAISemanticProcessor(TracingProcessor):
 
             # Build metric attributes
             metric_attrs = {
-                "gen_ai.provider.name": attributes.get(GEN_AI_PROVIDER_NAME),
-                "gen_ai.operation.name": attributes.get(GEN_AI_OPERATION_NAME),
-                "gen_ai.request.model": (
+                GEN_AI_PROVIDER_NAME: attributes.get(GEN_AI_PROVIDER_NAME),
+                GEN_AI_OPERATION_NAME: attributes.get(GEN_AI_OPERATION_NAME),
+                GEN_AI_REQUEST_MODEL: (
                     attributes.get(GEN_AI_REQUEST_MODEL)
                     or attributes.get(GEN_AI_RESPONSE_MODEL)
                 ),
-                "server.address": attributes.get("server.address"),
-                "server.port": attributes.get("server.port"),
+                ServerAttributes.SERVER_ADDRESS: attributes.get(
+                    ServerAttributes.SERVER_ADDRESS
+                ),
+                ServerAttributes.SERVER_PORT: attributes.get(
+                    ServerAttributes.SERVER_PORT
+                ),
             }
 
             # Add error type if present
@@ -591,7 +611,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 input_tokens = attributes.get(GEN_AI_USAGE_INPUT_TOKENS)
                 if isinstance(input_tokens, (int, float)):
                     token_attrs = dict(metric_attrs)
-                    token_attrs["gen_ai.token.type"] = "input"
+                    token_attrs[GEN_AI_TOKEN_TYPE] = "input"
                     self._token_usage_histogram.record(
                         input_tokens, token_attrs
                     )
@@ -599,7 +619,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 output_tokens = attributes.get(GEN_AI_USAGE_OUTPUT_TOKENS)
                 if isinstance(output_tokens, (int, float)):
                     token_attrs = dict(metric_attrs)
-                    token_attrs["gen_ai.token.type"] = "output"
+                    token_attrs[GEN_AI_TOKEN_TYPE] = "output"
                     self._token_usage_histogram.record(
                         output_tokens, token_attrs
                     )
