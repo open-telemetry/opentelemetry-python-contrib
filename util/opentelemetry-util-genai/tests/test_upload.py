@@ -399,7 +399,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             expected_file_name,
         )
         # Content should not have been overwritten.
-        self.assert_fsspec_equal(expected_file_name, b"asg")
+        self.assert_fsspec_equal(expected_file_name, "asg")
 
     def test_upload_completions(self):
         tracer = self.tracer_provider.get_tracer(__name__)
