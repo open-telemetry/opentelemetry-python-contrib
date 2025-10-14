@@ -15,7 +15,6 @@ References:
 from __future__ import annotations
 
 import importlib
-import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,13 +22,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Sequence
 from urllib.parse import urlparse
 
-try:  # pragma: no cover - optional dependency
-    from opentelemetry.util.genai.utils import gen_ai_json_dumps
-except Exception:  # pragma: no cover - fallback when util not available
-
-    def gen_ai_json_dumps(value: Any) -> str:
-        return json.dumps(value, ensure_ascii=False, default=str)
-
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 try:
     from agents.tracing import Span, Trace, TracingProcessor

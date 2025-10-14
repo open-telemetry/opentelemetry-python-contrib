@@ -114,10 +114,8 @@ def test_time_helpers():
         def __str__(self) -> str:
             return "fallback"
 
-    assert sp.safe_json_dumps({"foo": "bar"}) == json.dumps(
-        {"foo": "bar"}, ensure_ascii=False, default=str
-    )
-    assert json.loads(sp.safe_json_dumps(Fallback())) == "fallback"
+    assert sp.safe_json_dumps({"foo": "bar"}) == '{"foo":"bar"}'
+    assert sp.safe_json_dumps(Fallback()) == "fallback"
 
 
 def test_infer_server_attributes_variants(monkeypatch):
