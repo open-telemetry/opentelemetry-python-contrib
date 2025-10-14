@@ -174,7 +174,7 @@ class TestUploadCompletionHook(TestCase):
         )
         # Wait a bit for file upload to finish..
         time.sleep(0.5)
-        assert record.attributes is not None
+        self.assertIsNotNone(record.attributes)
         self.assertTrue(
             self.hook._file_exists(
                 record.attributes["gen_ai.system_instructions_ref"]
@@ -213,7 +213,7 @@ class TestUploadCompletionHook(TestCase):
             1,
             "should have uploaded 1 file",
         )
-        assert record.attributes is not None
+        self.assertIsNotNone(record.attributes)
         for ref_key in [
             "gen_ai.input.messages_ref",
             "gen_ai.output.messages_ref",
@@ -379,7 +379,7 @@ class TestUploadCompletionHookIntegration(TestBase):
         with fsspec.open(expected_file_name, "wb") as file:
             file.write(b"asg")
         # FIle should exist.
-        assert self.hook._file_exists(expected_file_name) is True
+        self.assertTrue(self.hook._file_exists(expected_file_name))
         system_instructions = [
             types.Text(content="You are a helpful assistant."),
             types.Text(content="You will do your best."),
@@ -392,7 +392,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             log_record=record,
         )
         self.hook.shutdown()
-        assert record.attributes is not None
+        self.assertIsNotNone(record.attributes)
 
         self.assertEqual(
             record.attributes["gen_ai.system_instructions_ref"],
