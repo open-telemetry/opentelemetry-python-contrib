@@ -357,7 +357,7 @@ def _infer_server_attributes(base_url: Optional[str]) -> dict[str, Any]:
         if parsed.port:
             out["server.port"] = parsed.port
     except Exception:
-        return {}
+        return out
     return out
 
 
