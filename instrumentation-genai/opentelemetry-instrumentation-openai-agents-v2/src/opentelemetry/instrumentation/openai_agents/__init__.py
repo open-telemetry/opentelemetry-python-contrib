@@ -14,18 +14,16 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
-from .constants import (
+from .package import _instruments
+from .span_processor import (
+    ContentCaptureMode,
     GenAIEvaluationAttributes,
     GenAIOperationName,
     GenAIOutputType,
     GenAIProvider,
+    GenAISemanticProcessor,
     GenAIToolType,
 )
-from .genai_semantic_processor import (
-    ContentCaptureMode,
-    GenAISemanticProcessor,
-)
-from .package import _instruments
 
 __all__ = [
     "OpenAIAgentsInstrumentor",

@@ -27,7 +27,7 @@ from agents.tracing import (  # noqa: E402
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
 )
-from opentelemetry.instrumentation.openai_agents.genai_semantic_processor import (  # noqa: E402
+from opentelemetry.instrumentation.openai_agents.span_processor import (  # noqa: E402
     ContentPayload,
     GenAISemanticProcessor,
 )
