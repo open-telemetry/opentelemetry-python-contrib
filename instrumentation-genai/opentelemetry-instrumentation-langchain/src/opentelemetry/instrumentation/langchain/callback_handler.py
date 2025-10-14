@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+
 # Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,21 +17,46 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from importlib import import_module
 from types import SimpleNamespace
-from typing import Any, Mapping, Protocol, Sequence, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypedDict, cast
 from urllib.parse import urlparse
 from uuid import UUID
 
 from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
 from opentelemetry.trace import Span, Tracer
 
-try:
-    from langchain_core.callbacks import (
-        BaseCallbackHandler,  # type: ignore[import]
-    )
-except ImportError:  # pragma: no cover - optional dependency
-    BaseCallbackHandler = object  # type: ignore[assignment]
+
+class _BaseCallbackHandlerProtocol(Protocol):
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+    inheritable_handlers: Sequence[Any]
+
+    def add_handler(self, handler: Any, inherit: bool = False) -> None: ...
+
+
+class _BaseCallbackHandlerStub:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        return
+
+    inheritable_handlers: Sequence[Any] = ()
+
+    def add_handler(self, handler: Any, inherit: bool = False) -> None:
+        raise RuntimeError(
+            "LangChain is required for the LangChain instrumentation."
+        )
+
+
+if TYPE_CHECKING:
+    BaseCallbackHandler = _BaseCallbackHandlerProtocol
+else:
+    try:
+        from langchain_core.callbacks import (
+            BaseCallbackHandler,  # type: ignore[import]
+        )
+    except ImportError:  # pragma: no cover - optional dependency
+        BaseCallbackHandler = _BaseCallbackHandlerStub
 
 
 class _SerializedMessage(TypedDict, total=False):
@@ -123,7 +150,7 @@ OPENAI_RESPONSE_SYSTEM_FINGERPRINT = cast(
 )
 
 
-class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
+class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
@@ -156,7 +183,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         tracer: Tracer,
         capture_messages: bool,
     ) -> None:
-        super().__init__()  # type: ignore
+        base_init: Any = getattr(super(), "__init__", None)
+        if callable(base_init):
+            base_init()
 
         self.span_manager = _SpanManager(
             tracer=tracer,
@@ -230,17 +259,31 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
         return provider_key
 
-    def _extract_params(
-        self, kwargs: Mapping[str, Any]
-    ) -> Mapping[str, Any] | None:
+    def _extract_params(self, kwargs: Mapping[str, Any]) -> dict[str, Any]:
         invocation_params = kwargs.get("invocation_params")
         if isinstance(invocation_params, Mapping):
-            params = invocation_params.get("params") or invocation_params
-            if isinstance(params, Mapping):
-                return params
-            return None
+            invocation_mapping = cast(Mapping[str, Any], invocation_params)
+            params_raw = cast(
+                Mapping[Any, Any] | None, invocation_mapping.get("params")
+            )
+            if isinstance(params_raw, Mapping):
+                params_mapping = params_raw
+                extracted: dict[str, Any] = {}
+                for key, value in params_mapping.items():
+                    key_str = key if isinstance(key, str) else str(key)
+                    extracted[key_str] = value
+                return extracted
+            invocation_mapping = cast(Mapping[Any, Any], invocation_params)
+            extracted: dict[str, Any] = {}
+            for key, value in invocation_mapping.items():
+                key_str = key if isinstance(key, str) else str(key)
+                extracted[key_str] = value
+            return extracted
 
-        return kwargs if kwargs else None
+        extracted: dict[str, Any] = {}
+        for key, value in kwargs.items():
+            extracted[key] = value
+        return extracted
 
     def _extract_request_model(
         self,
@@ -273,7 +316,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def _apply_request_attributes(
         self,
         span: Span,
-        params: Mapping[str, Any] | None,
+        params: dict[str, Any] | None,
         metadata: Mapping[str, Any] | None,
     ) -> None:
         if params:
@@ -373,10 +416,17 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
     def _extract_output_type(self, params: Mapping[str, Any]) -> str | None:
         response_format = params.get("response_format")
         output_type: str | None = None
-        if isinstance(response_format, dict):
-            output_type = response_format.get("type")
+        if isinstance(response_format, Mapping):
+            response_mapping = cast(Mapping[Any, Any], response_format)
+            candidate: Any = response_mapping.get("type")
+            if isinstance(candidate, str):
+                output_type = candidate
+            elif candidate is not None:
+                output_type = str(candidate)
         elif isinstance(response_format, str):
             output_type = response_format
+        elif response_format is not None:
+            output_type = str(response_format)
 
         if not output_type:
             return None
@@ -420,7 +470,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         return serialized
 
     def _serialize_message(self, message: _MessageLike) -> _SerializedMessage:
-        payload: _SerializedMessage = {
+        payload: dict[str, Any] = {
             "type": getattr(message, "type", message.__class__.__name__),
             "content": getattr(message, "content", None),
         }
@@ -434,9 +484,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             "name",
         ):
             value = getattr(message, attr, None)
-            if value:
+            if value is not None:
                 payload[attr] = value
-        return payload
+        return cast(_SerializedMessage, payload)
 
     def _serialize_to_json(self, payload: Any) -> str:
         return json.dumps(payload, default=self._json_default)
@@ -446,9 +496,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         if isinstance(value, (str, int, float, bool)) or value is None:
             return value
         if isinstance(value, dict):
-            return value
+            return cast(dict[str, Any], value)
         if isinstance(value, (list, tuple)):
-            return list(value)
+            seq_value = cast(Sequence[Any], value)
+            return [
+                OpenTelemetryLangChainCallbackHandler._json_default(item)
+                for item in seq_value
+            ]
         return getattr(value, "__dict__", str(value))
 
     def on_llm_end(

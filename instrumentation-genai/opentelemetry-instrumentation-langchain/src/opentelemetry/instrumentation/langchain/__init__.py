@@ -32,6 +32,8 @@ Usage
     result = llm.invoke(messages)
     LangChainInstrumentor().uninstrument()
 
+# pyright: reportMissingImports=false
+
 API
 ---
 """
@@ -39,43 +41,62 @@ API
 import os
 from importlib import import_module
 from types import SimpleNamespace
-from typing import Any, Callable, Collection, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    Protocol,
+    Sequence,
+    cast,
+)
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from wrapt import wrap_function_wrapper  # type: ignore
 
+if TYPE_CHECKING:
+
+    class BaseCallbackHandler(Protocol):
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+        inheritable_handlers: Sequence[Any]
+
+        def add_handler(self, handler: Any, inherit: bool = False) -> None: ...
+
+else:
+    try:
+        from langchain_core.callbacks import (
+            BaseCallbackHandler,  # type: ignore[import]
+        )
+    except ImportError:  # pragma: no cover - optional dependency
+
+        class BaseCallbackHandler:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                return
+
+            inheritable_handlers: Sequence[Any] = ()
+
+            def add_handler(self, handler: Any, inherit: bool = False) -> None:
+                raise RuntimeError(
+                    "LangChain is required for the LangChain instrumentation."
+                )
+
+
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
 from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.version import __version__
+
+try:
+    from opentelemetry.instrumentation.utils import unwrap
+except ImportError:  # pragma: no cover - optional dependency
+
+    def unwrap(obj: object, attr: str) -> None:
+        return None
+
+
 from opentelemetry.trace import get_tracer
-
-_instrumentor_module = SimpleNamespace(BaseInstrumentor=object)
-try:
-    _instrumentor_module = import_module(
-        "opentelemetry.instrumentation.instrumentor"
-    )
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    pass
-
-BaseInstrumentor = cast(
-    type,
-    getattr(_instrumentor_module, "BaseInstrumentor", object),
-)
-
-_utils_module = SimpleNamespace(
-    unwrap=lambda *_args, **_kwargs: None,
-)
-try:
-    _utils_module = import_module("opentelemetry.instrumentation.utils")
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    pass
-
-unwrap = cast(
-    Callable[..., None],
-    getattr(_utils_module, "unwrap", lambda *_args, **_kwargs: None),
-)
 
 _schemas_module = SimpleNamespace()
 try:
@@ -95,9 +116,7 @@ class LangChainInstrumentor(BaseInstrumentor):
     to capture LLM telemetry.
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self) -> None:
         super().__init__()
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -161,14 +180,14 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: BaseCallbackHandler,  # type: ignore
+        instance: BaseCallbackHandler,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):
         wrapped(*args, **kwargs)
         # Ensure our OTel callback is present if not already.
-        for handler in instance.inheritable_handlers:  # type: ignore
+        for handler in instance.inheritable_handlers:
             if isinstance(handler, type(self._otel_handler)):
                 break
         else:
-            instance.add_handler(self._otel_handler, inherit=True)  # type: ignore
+            instance.add_handler(self._otel_handler, inherit=True)
