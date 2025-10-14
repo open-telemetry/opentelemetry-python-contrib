@@ -14,7 +14,6 @@
 
 
 # pylint: disable=import-outside-toplevel,no-name-in-module
-import hashlib
 import importlib
 import logging
 import sys
@@ -129,7 +128,6 @@ class TestUploadCompletionHook(TestCase):
         )
 
     def tearDown(self) -> None:
-        self.mock_fs.reset_mock()
         self.hook.shutdown()
         self._fsspec_patcher.stop()
 
@@ -164,47 +162,6 @@ class TestUploadCompletionHook(TestCase):
             self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
-        )
-
-    def test_system_insruction_is_hashed_to_avoid_reupload(self):
-        system_instructions = [
-            types.Text(content="You are a helpful assistant."),
-            types.Text(content="You will do your best."),
-        ]
-        expected_hash = hashlib.sha256(
-            "\n".join(text.content for text in system_instructions).encode(
-                "utf-8"
-            ),
-            usedforsecurity=False,
-        ).hexdigest()
-        record = LogRecord()
-        self.hook.on_completion(
-            inputs=[],
-            outputs=[],
-            system_instruction=system_instructions,
-            log_record=record,
-        )
-        # Wait a bit for file upload to finish..
-        time.sleep(0.5)
-        self.mock_fs.exists.return_value = True
-        self.hook.on_completion(
-            inputs=[],
-            outputs=[],
-            system_instruction=system_instructions,
-            log_record=record,
-        )
-        # all items should be consumed
-        self.hook.shutdown()
-
-        self.assertEqual(
-            self.mock_fs.open.call_count,
-            1,
-            "should have uploaded 1 file",
-        )
-        assert record.attributes is not None
-        self.assertEqual(
-            record.attributes["gen_ai.system_instructions_ref"].split("/")[-1],
-            f"{expected_hash}_system_instruction.json",
         )
 
     def test_lru_cache_works(self):
@@ -410,6 +367,39 @@ class TestUploadCompletionHookIntegration(TestBase):
     def assert_fsspec_equal(self, path: str, value: str) -> None:
         with fsspec.open(path, "r") as file:
             self.assertEqual(file.read(), value)
+
+    def test_system_insruction_is_hashed_to_avoid_reupload(self):
+        expected_hash = (
+            "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
+        )
+        # Create the file before upload..
+        expected_file_name = (
+            f"memory://{expected_hash}_system_instruction.json"
+        )
+        with fsspec.open(expected_file_name, "wb") as f:
+            f.write(b"asg")
+        # FIle should exist.
+        assert self.hook._file_exists(expected_file_name) is True
+        system_instructions = [
+            types.Text(content="You are a helpful assistant."),
+            types.Text(content="You will do your best."),
+        ]
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        self.hook.shutdown()
+        assert record.attributes is not None
+
+        self.assertEqual(
+            record.attributes["gen_ai.system_instructions_ref"],
+            expected_file_name,
+        )
+        # Content should not have been overwritten.
+        self.assert_fsspec_equal(expected_file_name, b"asg")
 
     def test_upload_completions(self):
         tracer = self.tracer_provider.get_tracer(__name__)

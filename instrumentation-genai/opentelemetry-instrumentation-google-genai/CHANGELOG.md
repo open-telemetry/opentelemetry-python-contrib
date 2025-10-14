@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-  - Migrate off the deprecated events API to use the logs API
-  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
-
 ## Version 0.3b0 (2025-07-08)
 
 - Add automatic instrumentation to tool call functions ([#3446](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3446))
