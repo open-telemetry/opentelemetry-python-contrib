@@ -376,8 +376,8 @@ class TestUploadCompletionHookIntegration(TestBase):
         expected_file_name = (
             f"memory://{expected_hash}_system_instruction.json"
         )
-        with fsspec.open(expected_file_name, "wb") as f:
-            f.write(b"asg")
+        with fsspec.open(expected_file_name, "wb") as file:
+            file.write(b"asg")
         # FIle should exist.
         assert self.hook._file_exists(expected_file_name) is True
         system_instructions = [
