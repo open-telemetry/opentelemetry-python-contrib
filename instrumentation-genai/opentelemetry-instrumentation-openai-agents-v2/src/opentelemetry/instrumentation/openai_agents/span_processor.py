@@ -384,6 +384,13 @@ def _get_span_status(span: Span[Any]) -> Status:
     return Status(StatusCode.OK)
 
 
+_SPAN_NAME_BASE_OVERRIDES: dict[str, str] = {
+    GenAIOperationName.SPEECH: "speech",
+    GenAIOperationName.GUARDRAIL: "guardrail",
+    GenAIOperationName.HANDOFF: "handoff",
+}
+
+
 def get_span_name(
     operation_name: str,
     model: Optional[str] = None,
@@ -391,27 +398,30 @@ def get_span_name(
     tool_name: Optional[str] = None,
 ) -> str:
     """Generate spec-compliant span name based on operation type."""
-    if operation_name == GenAIOperationName.CHAT:
-        return f"chat {model}" if model else "chat"
-    elif operation_name == GenAIOperationName.TEXT_COMPLETION:
-        return f"text_completion {model}" if model else "text_completion"
-    elif operation_name == GenAIOperationName.EMBEDDINGS:
-        return f"embeddings {model}" if model else "embeddings"
-    elif operation_name == GenAIOperationName.CREATE_AGENT:
-        return f"create_agent {agent_name}" if agent_name else "create_agent"
-    elif operation_name == GenAIOperationName.INVOKE_AGENT:
-        return f"invoke_agent {agent_name}" if agent_name else "invoke_agent"
-    elif operation_name == GenAIOperationName.EXECUTE_TOOL:
-        return f"execute_tool {tool_name}" if tool_name else "execute_tool"
-    elif operation_name == GenAIOperationName.TRANSCRIPTION:
-        return f"transcription {model}" if model else "transcription"
-    elif operation_name == GenAIOperationName.SPEECH:
-        return f"speech {model}" if model else "speech"
-    elif operation_name == GenAIOperationName.GUARDRAIL:
-        return "guardrail"
-    elif operation_name == GenAIOperationName.HANDOFF:
-        return f"handoff {agent_name}" if agent_name else "handoff"
-    return operation_name
+    base_name = _SPAN_NAME_BASE_OVERRIDES.get(operation_name, operation_name)
+
+    if operation_name in {
+        GenAIOperationName.CHAT,
+        GenAIOperationName.TEXT_COMPLETION,
+        GenAIOperationName.EMBEDDINGS,
+        GenAIOperationName.TRANSCRIPTION,
+        GenAIOperationName.SPEECH,
+    }:
+        return f"{base_name} {model}" if model else base_name
+
+    if operation_name == GenAIOperationName.CREATE_AGENT:
+        return f"{base_name} {agent_name}" if agent_name else base_name
+
+    if operation_name == GenAIOperationName.INVOKE_AGENT:
+        return f"{base_name} {agent_name}" if agent_name else base_name
+
+    if operation_name == GenAIOperationName.EXECUTE_TOOL:
+        return f"{base_name} {tool_name}" if tool_name else base_name
+
+    if operation_name == GenAIOperationName.HANDOFF:
+        return f"{base_name} {agent_name}" if agent_name else base_name
+
+    return base_name
 
 
 class GenAISemanticProcessor(TracingProcessor):
