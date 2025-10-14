@@ -57,18 +57,9 @@ from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-
-try:
-    from opentelemetry.semconv._incubating.attributes import (
-        server_attributes as ServerAttributes,
-    )
-except ImportError:  # pragma: no cover - fallback for older semconv versions
-
-    class ServerAttributes:
-        SERVER_ADDRESS = "server.address"
-        SERVER_PORT = "server.port"
-
-
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
+)
 from opentelemetry.trace import Span as OtelSpan
 from opentelemetry.trace import (
     SpanKind,
