@@ -88,6 +88,7 @@ def run_with_test_server(
     return loop.run_until_complete(do_request())
 
 
+# pylint: disable=too-many-public-methods
 class TestAioHttpIntegration(TestBase):
     _test_status_codes = (
         (HTTPStatus.OK, StatusCode.UNSET),
@@ -812,7 +813,7 @@ class TestAioHttpIntegration(TestBase):
             assert "traceparent" not in request.headers
             return aiohttp.web.Response(status=HTTPStatus.OK)
 
-        host, port = self._http_request(
+        self._http_request(
             trace_config=aiohttp_client.create_trace_config(),
             request_handler=request_handler,
             url="/some/path?query=param&other=param2",
@@ -1143,7 +1144,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().instrument()
 
         url = "/test-path?query=params"
-        host, port = run_with_test_server(
+        run_with_test_server(
             self.get_default_request(url), url, self.default_handler
         )
         self._assert_spans(0)
