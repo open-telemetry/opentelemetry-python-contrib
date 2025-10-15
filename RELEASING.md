@@ -22,6 +22,7 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
