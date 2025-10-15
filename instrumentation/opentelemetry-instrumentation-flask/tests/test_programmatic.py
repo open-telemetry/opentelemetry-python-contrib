@@ -770,7 +770,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_flask_metrics_new_semconv_excluded_urls(self):
+    def test_flask_metrics_excluded_urls_new_semconv(self):
         start = default_timer()
         self.client.get("/env_excluded_arg/123")
         self.client.get("/env_excluded_noarg")
