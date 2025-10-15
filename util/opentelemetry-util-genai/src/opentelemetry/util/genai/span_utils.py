@@ -94,6 +94,7 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
         span, invocation.input_messages, invocation.output_messages
     )
     _apply_request_attributes(span, invocation)
+    _apply_response_attributes(span, invocation)
     span.set_attributes(invocation.attributes)
 
 

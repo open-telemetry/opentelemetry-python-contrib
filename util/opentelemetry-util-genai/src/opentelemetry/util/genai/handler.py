@@ -77,8 +77,6 @@ from opentelemetry.trace import (
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_finish_attributes,
-    _apply_request_attributes,
-    _apply_response_attributes,
 )
 from opentelemetry.util.genai.types import Error, LLMInvocation
 from opentelemetry.util.genai.version import __version__
@@ -134,8 +132,7 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        _apply_request_attributes(invocation.span, invocation)
-        _apply_response_attributes(invocation.span, invocation)
+        _apply_finish_attributes(invocation.span, invocation)
         _apply_error_attributes(invocation.span, error)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
