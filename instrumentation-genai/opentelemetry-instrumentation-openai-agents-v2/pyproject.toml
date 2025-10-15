@@ -5,14 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "opentelemetry-instrumentation-openai-agents-v2"
 dynamic = ["version"]
-description = "OpenTelemetry OpenAI Agents instrumentation (barebones)"
+description = "OpenTelemetry Official OpenAI Agents instrumentation"
+readme = "README.rst"
 license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
@@ -24,9 +25,9 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api >= 1.37",
-  "opentelemetry-instrumentation >= 0.58b0",
-  "opentelemetry-semantic-conventions >= 0.58b0",
+  "opentelemetry-api ~= 1.37",
+  "opentelemetry-instrumentation >=0.58b0, <2",
+  "opentelemetry-semantic-conventions >=0.58b0, <2",
   "opentelemetry-util-genai"
 ]
 
@@ -48,6 +49,7 @@ path = "src/opentelemetry/instrumentation/openai_agents/version.py"
 [tool.hatch.build.targets.sdist]
 include = [
   "/src",
+  "/tests",
 ]
 
 [tool.hatch.build.targets.wheel]
