@@ -11,6 +11,7 @@ PROJECT_ROOT = REPO_ROOT.parent
 for path in (
     PROJECT_ROOT / "opentelemetry-instrumentation" / "src",
     GENAI_ROOT / "src",
+    PROJECT_ROOT / "util" / "opentelemetry-util-genai" / "src",
     REPO_ROOT / "openai_agents_lib",
     REPO_ROOT / "openai_lib",
     TESTS_ROOT / "stubs",
