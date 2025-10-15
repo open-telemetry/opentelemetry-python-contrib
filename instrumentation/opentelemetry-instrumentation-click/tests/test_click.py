@@ -13,16 +13,11 @@
 # limitations under the License.
 
 import os
+import sys
 from unittest import mock
 
 import click
-import pytest
 from click.testing import CliRunner
-
-try:
-    from flask import cli as flask_cli
-except ImportError:
-    flask_cli = None
 
 from opentelemetry.instrumentation.click import ClickInstrumentor
 from opentelemetry.test.test_base import TestBase
@@ -168,24 +163,35 @@ class ClickTestCase(TestBase):
             },
         )
 
-    def test_uvicorn_cli_command_ignored(self):
-        @click.command("uvicorn")
-        def command_uvicorn():
+    @mock.patch("sys.argv", ["command.py"])
+    def test_disabled_when_asgi_instrumentation_loaded(self):
+        @click.command()
+        def command():
             pass
 
         runner = CliRunner()
-        result = runner.invoke(command_uvicorn)
+        with mock.patch.dict(
+            sys.modules,
+            {**sys.modules, "opentelemetry.instrumentation.asgi": mock.Mock()},
+        ):
+            result = runner.invoke(command)
         self.assertEqual(result.exit_code, 0)
 
         self.assertFalse(self.memory_exporter.get_finished_spans())
 
-    @pytest.mark.skipif(flask_cli is None, reason="requires flask")
-    def test_flask_run_command_ignored(self):
+    @mock.patch("sys.argv", ["command.py"])
+    def test_disabled_when_wsgi_instrumentation_loaded(self):
+        @click.command()
+        def command():
+            pass
+
         runner = CliRunner()
-        result = runner.invoke(
-            flask_cli.run_command, obj=flask_cli.ScriptInfo()
-        )
-        self.assertEqual(result.exit_code, 2)
+        with mock.patch.dict(
+            sys.modules,
+            {**sys.modules, "opentelemetry.instrumentation.wsgi": mock.Mock()},
+        ):
+            result = runner.invoke(command)
+        self.assertEqual(result.exit_code, 0)
 
         self.assertFalse(self.memory_exporter.get_finished_spans())
 
