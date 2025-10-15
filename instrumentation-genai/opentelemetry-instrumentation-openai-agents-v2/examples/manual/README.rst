@@ -22,7 +22,7 @@ Setup
        python3 -m venv .venv
        source .venv/bin/activate
        pip install "python-dotenv[cli]"
-       pip install -r requirements.txt
+       uv pip install -r requirements.txt --prerelease=allow
 
 Run
 ---
@@ -33,6 +33,8 @@ are applied:
 ::
 
     dotenv run -- python main.py
+
+Ensure ``OPENAI_API_KEY`` is present in your environment (or ``.env`` file); the OpenAI client raises ``OpenAIError`` if the key is missing.
 
 The script automatically loads environment variables from ``.env`` so running
 ``python main.py`` directly also works if the shell already has the required
