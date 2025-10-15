@@ -80,5 +80,5 @@ def test_responses_create_no_content(
     # No content should be captured in logs when capture_content is False
     logs = log_exporter.get_finished_logs()
     for log in logs:
-        if log.body and isinstance(log.body, dict):
-            assert "content" not in log.body or not log.body.get("content")
+        if log.log_record.body and isinstance(log.log_record.body, dict):
+            assert "content" not in log.log_record.body or not log.log_record.body.get("content")
