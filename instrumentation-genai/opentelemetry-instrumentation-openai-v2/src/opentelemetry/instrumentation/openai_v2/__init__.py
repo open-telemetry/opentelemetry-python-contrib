@@ -50,6 +50,7 @@ API
 
 from typing import Collection
 
+from packaging import version as package_version
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._logs import get_logger
@@ -68,6 +69,18 @@ from .patch import (
     chat_completions_create,
     responses_create,
 )
+
+
+def _is_responses_api_supported():
+    """Check if the installed OpenAI version supports the responses API."""
+    try:
+        import openai  # pylint: disable=import-outside-toplevel
+
+        return package_version.parse(openai.__version__) >= package_version.parse(
+            "2.3.0"
+        )
+    except Exception:  # pylint: disable=broad-except
+        return False
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -119,26 +132,31 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
-        wrap_function_wrapper(
-            module="openai.resources.responses.responses",
-            name="Responses.create",
-            wrapper=responses_create(
-                tracer, logger, instruments, is_content_enabled()
-            ),
-        )
+        # Only instrument responses API if supported (OpenAI >= 2.3.0)
+        if _is_responses_api_supported():
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.create",
+                wrapper=responses_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
 
-        wrap_function_wrapper(
-            module="openai.resources.responses.responses",
-            name="AsyncResponses.create",
-            wrapper=async_responses_create(
-                tracer, logger, instruments, is_content_enabled()
-            ),
-        )
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="AsyncResponses.create",
+                wrapper=async_responses_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
 
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
-        unwrap(openai.resources.responses.responses.Responses, "create")
-        unwrap(openai.resources.responses.responses.AsyncResponses, "create")
+        
+        # Only uninstrument responses API if supported (OpenAI >= 2.3.0)
+        if _is_responses_api_supported():
+            unwrap(openai.resources.responses.responses.Responses, "create")
+            unwrap(openai.resources.responses.responses.AsyncResponses, "create")

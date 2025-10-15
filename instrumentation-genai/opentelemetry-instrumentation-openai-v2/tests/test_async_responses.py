@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import openai
 import pytest
+from packaging import version as package_version
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+
+# Skip all tests in this file if OpenAI version doesn't support responses API
+pytestmark = pytest.mark.skipif(
+    package_version.parse(openai.__version__) < package_version.parse("2.3.0"),
+    reason="Responses API requires OpenAI >= 2.3.0",
 )
 
 
