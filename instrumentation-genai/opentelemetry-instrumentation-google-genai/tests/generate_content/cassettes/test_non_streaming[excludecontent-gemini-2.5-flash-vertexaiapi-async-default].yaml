@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In tangled webs where microservices gleam,\nAnd cloud-born systems whisper through a dream,\nA silent plea arises, soft and low:\n\"What truly happens? Where does the data flow?\"\n\nFrom this complex symphony, a standard came,\nTo cast a light upon the hidden game.\nNot tied to one, but open, brave, and free,\n**OpenTelemetry**, for all to see.\n\nIt offers sight, where once was hazy guess,\nThree vital pillars, banishing distress:\n**First, Traces** weave a path, a golden thread,\nFrom first request, through every server led.\nEach tiny hop, a span, a measured beat,\nRevealing journeys, bittersweet and fleet.\n\nThen **Metrics** rise, like numbers in the air,\nA pulse, a count, a burden systems bear.\nCPU hum, or memory's slow creep,\nThe silent sentinels, while data sleeps.\nGauges, counters, histograms defined,\nThe system's health, precisely, you will find.\n\nAnd **Logs**, the whispers from the code's deep heart,\nEach message thrown, a critical new start.\nErrors caught, or triumphs understood,\nThe story told, for bad, or for the good.\nContext rich, linked to the trace it keeps,\nWhere hidden truths, the developer sweeps.\n\nThese three unite, no longer kept apart,\nA common tongue, a truly open art.\nWith SDKs, your code can now converse,\nAnd send its data, 'cross the universe.\nTo any backend, or analytics tool,\nBreaking the vendor's tightly guarded rule.\n\nSo when the bug lurks deep, or users fret,\nOr performance lags, a problem to be met,\n**OpenTelemetry** sheds its guiding light,\nTransforming darkness into knowing sight.\nA tapestry of data, richly spun,\nThe battle for observability won."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -1.836124080242497
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 404,
+            "totalTokenCount": 1958,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 404
+              }
+            ],
+            "thoughtsTokenCount": 1546
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-10T15:56:32.819932Z",
+          "responseId": "sCzpaNyFMuLlnvgP3MqN0AQ"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Fri, 10 Oct 2025 15:56:44 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
