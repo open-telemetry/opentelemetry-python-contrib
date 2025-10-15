@@ -71,5 +71,4 @@ class InstrumentationTest:
             route_name="custom_response_headers",
         )
 
-        # pylint: disable=attribute-defined-outside-init
         self.client = Client(config.make_wsgi_app(), TestResponse)

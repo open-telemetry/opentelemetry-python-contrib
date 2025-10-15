@@ -471,7 +471,6 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 span.update_name(f"{operation_name} {request_model}")
 
         # this is used to calculate the operation duration metric, duration may be skewed by request_hook
-        # pylint: disable=attribute-defined-outside-init
         self._operation_start = default_timer()
 
     # pylint: disable=no-self-use,too-many-locals

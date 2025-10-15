@@ -135,8 +135,6 @@ class BotocoreInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        # pylint: disable=attribute-defined-outside-init
-
         # tracers are lazy initialized per-extension in _get_tracer
         self._tracers = {}
         # loggers are lazy initialized per-extension in _get_logger

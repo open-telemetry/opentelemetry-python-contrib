@@ -118,5 +118,4 @@ class InstrumentationTest:
             self._repeat_custom_response_headers
         )
 
-        # pylint: disable=attribute-defined-outside-init
         self.client = Client(self.app, Response)

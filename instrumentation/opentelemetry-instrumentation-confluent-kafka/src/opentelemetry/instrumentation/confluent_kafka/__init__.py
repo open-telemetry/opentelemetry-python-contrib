@@ -228,7 +228,6 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def instrument_producer(
         producer: Producer, tracer_provider=None
