@@ -162,6 +162,17 @@ class _DjangoMiddleware:
             response = self.get_response(request)
             return self.process_response(request, response)
         finally:
+            # record any exceptions raised while processing the request
+            exception = request.META.pop(self._environ_exception_key, None)
+
+            if exception:
+                activation.__exit__(
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
+                )
+            else:
+                activation.__exit__(None, None, None)
 
             if request.META.get(self._environ_token, None) is not None:
                 detach(request.META.get(self._environ_token))
@@ -178,6 +189,15 @@ class _DjangoMiddleware:
                 # Raising an exception here would leak the request span since process_response
                 # would not be called. Log the exception instead.
                 _logger.exception("Exception raised by request_hook")
+
+    def _run_response_hook(self, span, request, response):
+        if _DjangoMiddleware._otel_response_hook:
+            try:
+                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                    span, request, response
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                _logger.exception("Exception raised by response_hook")
 
     @staticmethod
     def _get_span_name(request):
@@ -398,25 +418,8 @@ class _DjangoMiddleware:
         if propagator:
             propagator.inject(response)
 
-        # record any exceptions raised while processing the request
-        exception = request.META.pop(self._environ_exception_key, None)
+        self._run_response_hook(span, request, response)
 
-        if _DjangoMiddleware._otel_response_hook:
-            try:
-                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
-                    span, request, response
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                _logger.exception("Exception raised by response_hook")
-
-        if exception:
-            activation.__exit__(
-                type(exception),
-                exception,
-                getattr(exception, "__traceback__", None),
-            )
-        else:
-            activation.__exit__(None, None, None)
 
         if request_start_time is not None:
             duration_s = default_timer() - request_start_time
