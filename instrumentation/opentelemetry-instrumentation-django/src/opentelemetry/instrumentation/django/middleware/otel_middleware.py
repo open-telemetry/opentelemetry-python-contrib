@@ -147,9 +147,15 @@ class _DjangoMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        excluded_url = self._excluded_urls.url_disabled(request.build_absolute_uri("?"))
+        is_asgi_request = _is_asgi_request(request)
+        if excluded_url or is_asgi_request and not _is_asgi_supported:
+            return self.get_response(request)
+
         self.process_request(request)
         response = self.get_response(request)
         return self.process_response(request, response)
+
     @staticmethod
     def _get_span_name(request):
         method = sanitize_method(request.method.strip())
@@ -179,12 +185,7 @@ class _DjangoMiddleware:
         # Read more about request.META here:
         # https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.META
 
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
-            return
-
         is_asgi_request = _is_asgi_request(request)
-        if not _is_asgi_supported and is_asgi_request:
-            return
 
         # pylint:disable=W0212
         request._otel_start_time = time()
@@ -325,12 +326,7 @@ class _DjangoMiddleware:
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def process_response(self, request, response):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
-            return response
-
         is_asgi_request = _is_asgi_request(request)
-        if not _is_asgi_supported and is_asgi_request:
-            return response
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
