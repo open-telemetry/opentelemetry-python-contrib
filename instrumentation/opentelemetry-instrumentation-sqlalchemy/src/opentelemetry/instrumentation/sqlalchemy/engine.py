@@ -239,9 +239,11 @@ class EngineTracer:
             # For some very special cases it might not record the correct statement if the SQL
             # dialect is too weird but in any case it shouldn't break anything.
             # Strip leading comments so we get the operation name.
-            parts.append(
-                self._leading_comment_remover.sub("", statement).split()[0]
-            )
+            split_query = self._leading_comment_remover.sub(
+                "", statement
+            ).split()
+            if split_query:
+                parts.append(split_query[0])
         if db_name:
             parts.append(db_name)
         if not parts:
