@@ -1518,7 +1518,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 if isinstance(first_input, dict) and "role" in first_input:
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
-        elif _is_instance_of(span_data, AgentSpanData):
+        if _is_instance_of(span_data, AgentSpanData):
             # Could be create_agent or invoke_agent based on context
             operation = getattr(span_data, "operation", None)
             normalized = (
@@ -1531,17 +1531,17 @@ class GenAISemanticProcessor(TracingProcessor):
             if normalized in {"invoke", "invoke_agent"}:
                 return GenAIOperationName.INVOKE_AGENT
             return GenAIOperationName.INVOKE_AGENT
-        elif _is_instance_of(span_data, FunctionSpanData):
+        if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
-        elif _is_instance_of(span_data, ResponseSpanData):
+        if _is_instance_of(span_data, ResponseSpanData):
             return GenAIOperationName.CHAT  # Response typically from chat
-        elif _is_instance_of(span_data, TranscriptionSpanData):
+        if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOperationName.TRANSCRIPTION
-        elif _is_instance_of(span_data, SpeechSpanData):
+        if _is_instance_of(span_data, SpeechSpanData):
             return GenAIOperationName.SPEECH
-        elif _is_instance_of(span_data, GuardrailSpanData):
+        if _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOperationName.GUARDRAIL
-        elif _is_instance_of(span_data, HandoffSpanData):
+        if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
         return "unknown"
 
