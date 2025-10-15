@@ -18,6 +18,7 @@ import importlib
 import logging
 import sys
 import threading
+import time
 from contextlib import contextmanager
 from typing import Any
 from unittest import TestCase
@@ -120,10 +121,10 @@ class TestUploadCompletionHook(TestCase):
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
+        self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
-            base_path=BASE_PATH,
-            max_size=MAXSIZE,
+            base_path=BASE_PATH, max_size=MAXSIZE, lru_cache_max_size=5
         )
 
     def tearDown(self) -> None:
@@ -155,11 +156,45 @@ class TestUploadCompletionHook(TestCase):
         )
         # all items should be consumed
         self.hook.shutdown()
-
+        # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
+        time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
+        )
+
+    def test_lru_cache_works(self):
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        self.assertIsNotNone(record.attributes)
+        self.assertTrue(
+            self.hook._file_exists(
+                record.attributes["gen_ai.system_instructions_ref"]
+            )
+        )
+        # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
+        for iteration in range(5):
+            self.assertTrue(
+                record.attributes["gen_ai.system_instructions_ref"]
+                in self.hook.lru_dict
+            )
+            self.hook.on_completion(
+                inputs=[],
+                outputs=[],
+                system_instruction=[types.Text(content=str(iteration))],
+            )
+        self.hook.shutdown()
+        self.assertFalse(
+            record.attributes["gen_ai.system_instructions_ref"]
+            in self.hook.lru_dict
         )
 
     def test_upload_when_inputs_outputs_empty(self):
@@ -178,7 +213,7 @@ class TestUploadCompletionHook(TestCase):
             1,
             "should have uploaded 1 file",
         )
-        assert record.attributes is not None
+        self.assertIsNotNone(record.attributes)
         for ref_key in [
             "gen_ai.input.messages_ref",
             "gen_ai.output.messages_ref",
@@ -332,6 +367,39 @@ class TestUploadCompletionHookIntegration(TestBase):
     def assert_fsspec_equal(self, path: str, value: str) -> None:
         with fsspec.open(path, "r") as file:
             self.assertEqual(file.read(), value)
+
+    def test_system_insruction_is_hashed_to_avoid_reupload(self):
+        expected_hash = (
+            "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
+        )
+        # Create the file before upload..
+        expected_file_name = (
+            f"memory://{expected_hash}_system_instruction.json"
+        )
+        with fsspec.open(expected_file_name, "wb") as file:
+            file.write(b"asg")
+        # FIle should exist.
+        self.assertTrue(self.hook._file_exists(expected_file_name))
+        system_instructions = [
+            types.Text(content="You are a helpful assistant."),
+            types.Text(content="You will do your best."),
+        ]
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        self.hook.shutdown()
+        self.assertIsNotNone(record.attributes)
+
+        self.assertEqual(
+            record.attributes["gen_ai.system_instructions_ref"],
+            expected_file_name,
+        )
+        # Content should not have been overwritten.
+        self.assert_fsspec_equal(expected_file_name, "asg")
 
     def test_upload_completions(self):
         tracer = self.tracer_provider.get_tracer(__name__)
