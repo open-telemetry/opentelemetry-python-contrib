@@ -152,9 +152,14 @@ class _DjangoMiddleware:
         if excluded_url or is_asgi_request and not _is_asgi_supported:
             return self.get_response(request)
 
-        self.process_request(request)
-        response = self.get_response(request)
-        return self.process_response(request, response)
+        try:
+            self.process_request(request)
+            response = self.get_response(request)
+            return self.process_response(request, response)
+        finally:
+            if request.META.get(self._environ_token, None) is not None:
+                detach(request.META.get(self._environ_token))
+                request.META.pop(self._environ_token)
 
     @staticmethod
     def _get_span_name(request):
@@ -428,9 +433,6 @@ class _DjangoMiddleware:
                     max(duration_s, 0), duration_attrs_new
                 )
         self._active_request_counter.add(-1, active_requests_count_attrs)
-        if request.META.get(self._environ_token, None) is not None:
-            detach(request.META.get(self._environ_token))
-            request.META.pop(self._environ_token)
 
         return response
 
