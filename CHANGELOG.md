@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
   ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
+- `opentelemetry-instrumentation-fastapi`: Fix handling of APIRoute subclasses
+  ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
 
 ### Added
 
