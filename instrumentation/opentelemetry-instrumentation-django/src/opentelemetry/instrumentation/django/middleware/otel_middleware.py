@@ -152,14 +152,32 @@ class _DjangoMiddleware:
         if excluded_url or is_asgi_request and not _is_asgi_supported:
             return self.get_response(request)
 
+        # the request creates an activation and potentially a token
+        # to clean up
+        self.process_request(request)
+        activation = request.META[self._environ_activation_key]
         try:
-            self.process_request(request)
+            activation.__enter__()
+            self._run_request_hook(request)
             response = self.get_response(request)
             return self.process_response(request, response)
         finally:
+
             if request.META.get(self._environ_token, None) is not None:
                 detach(request.META.get(self._environ_token))
                 request.META.pop(self._environ_token)
+
+    def _run_request_hook(self, request):
+        span = request.META[self._environ_span_key]
+        if _DjangoMiddleware._otel_request_hook:
+            try:
+                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                    span, request
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Raising an exception here would leak the request span since process_response
+                # would not be called. Log the exception instead.
+                _logger.exception("Exception raised by request_hook")
 
     @staticmethod
     def _get_span_name(request):
@@ -274,23 +292,12 @@ class _DjangoMiddleware:
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
         if token:
             request.META[self._environ_token] = token
-
-        if _DjangoMiddleware._otel_request_hook:
-            try:
-                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                    span, request
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Raising an exception here would leak the request span since process_response
-                # would not be called. Log the exception instead.
-                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
