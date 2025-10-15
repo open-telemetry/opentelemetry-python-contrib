@@ -135,7 +135,11 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import redact_url, sanitize_method
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    redact_url,
+    sanitize_method,
+)
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
@@ -271,6 +275,8 @@ def create_trace_config(
 
     metric_attributes = {}
 
+    excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
+
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         elapsed_time = max(default_timer() - trace_config_ctx.start_time, 0)
         if trace_config_ctx.token:
@@ -304,7 +310,10 @@ def create_trace_config(
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
-        if not is_instrumentation_enabled():
+        if (
+            not is_instrumentation_enabled()
+            or trace_config_ctx.excluded_urls.url_disabled(str(params.url))
+        ):
             trace_config_ctx.span = None
             return
 
@@ -426,6 +435,7 @@ def create_trace_config(
             start_time=start_time,
             duration_histogram_old=duration_histogram_old,
             duration_histogram_new=duration_histogram_new,
+            excluded_urls=excluded_urls,
             **kwargs,
         )
 
