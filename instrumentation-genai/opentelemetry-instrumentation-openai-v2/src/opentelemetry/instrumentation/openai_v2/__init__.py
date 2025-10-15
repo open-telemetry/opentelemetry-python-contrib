@@ -29,11 +29,19 @@ Usage
     OpenAIInstrumentor().instrument()
 
     client = OpenAI()
+    
+    # Chat completions API
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "user", "content": "Write a short poem on open telemetry."},
         ],
+    )
+    
+    # Responses API
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input="Write a short poem on open telemetry.",
     )
 
 API
