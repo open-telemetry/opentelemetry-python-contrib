@@ -77,7 +77,7 @@ def _is_responses_api_supported():
         import openai  # pylint: disable=import-outside-toplevel
 
         return package_version.parse(openai.__version__) >= package_version.parse(
-            "2.3.0"
+            "1.66.0"
         )
     except Exception:  # pylint: disable=broad-except
         return False
@@ -132,7 +132,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
-        # Only instrument responses API if supported (OpenAI >= 2.3.0)
+        # Only instrument responses API if supported (OpenAI >= 1.66.0)
         if _is_responses_api_supported():
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
@@ -156,7 +156,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         
-        # Only uninstrument responses API if supported (OpenAI >= 2.3.0)
+        # Only uninstrument responses API if supported (OpenAI >= 1.66.0)
         if _is_responses_api_supported():
             unwrap(openai.resources.responses.responses.Responses, "create")
             unwrap(openai.resources.responses.responses.AsyncResponses, "create")

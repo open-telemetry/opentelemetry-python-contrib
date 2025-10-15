@@ -22,8 +22,8 @@ from opentelemetry.semconv._incubating.attributes import (
 
 # Skip all tests in this file if OpenAI version doesn't support responses API
 pytestmark = pytest.mark.skipif(
-    package_version.parse(openai.__version__) < package_version.parse("2.3.0"),
-    reason="Responses API requires OpenAI >= 2.3.0",
+    package_version.parse(openai.__version__) < package_version.parse("1.66.0"),
+    reason="Responses API requires OpenAI >= 1.66.0",
 )
 
 
