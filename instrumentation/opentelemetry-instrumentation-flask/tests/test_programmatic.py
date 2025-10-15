@@ -740,7 +740,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         start = default_timer()
         self.client.get("/env_excluded_arg/123")
         self.client.get("/env_excluded_noarg")
-        self.client.get("/hello/756")
+        self.client.get("/env_excluded_arg/789")
         duration = max(round((default_timer() - start) * 1000), 0)
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
@@ -756,7 +756,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
                         if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
+                            self.assertEqual(point.count, 0)
                             self.assertAlmostEqual(
                                 duration, point.sum, delta=10
                             )
@@ -768,7 +768,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 attr,
                                 _recommended_metrics_attrs_old[metric.name],
                             )
-        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+        self.assertTrue(number_data_point_seen)
+        self.assertFalse(histogram_data_point_seen)
 
     def test_flask_metrics_excluded_urls_new_semconv(self):
         start = default_timer()
