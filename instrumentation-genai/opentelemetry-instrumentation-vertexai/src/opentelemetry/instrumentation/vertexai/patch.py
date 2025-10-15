@@ -172,6 +172,9 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
                 | None,
             ) -> None:
+                event = LogRecord(
+                    event_name="gen_ai.client.inference.operation.details",
+                )
                 attributes = (
                     get_server_attributes(instance.api_endpoint)  # type: ignore[reportUnknownMemberType]
                     | request_attributes
@@ -203,6 +206,13 @@ class MethodWrappers:
                         )
                         for candidate in response.candidates
                     ]
+                self.completion_hook.on_completion(
+                    inputs=inputs,
+                    outputs=outputs,
+                    system_instruction=system_instructions,
+                    span=span,
+                    log_record=event,
+                )
                 content_attributes = {
                     k: [asdict(x) for x in v]
                     for k, v in [
@@ -227,9 +237,6 @@ class MethodWrappers:
                                 for k, v in content_attributes.items()
                             }
                         )
-                event = LogRecord(
-                    event_name="gen_ai.client.inference.operation.details",
-                )
                 event.attributes = attributes
                 if capture_content in (
                     ContentCapturingMode.SPAN_AND_EVENT,
@@ -237,13 +244,6 @@ class MethodWrappers:
                 ):
                     event.attributes |= content_attributes
                 self.logger.emit(event)
-                self.completion_hook.on_completion(
-                    inputs=inputs,
-                    outputs=outputs,
-                    system_instruction=system_instructions,
-                    span=span,
-                    log_record=event,
-                )
 
             yield handle_response
 

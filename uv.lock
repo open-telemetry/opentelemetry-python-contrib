@@ -47,7 +47,7 @@ members = [
     "opentelemetry-instrumentation-logging",
     "opentelemetry-instrumentation-mysql",
     "opentelemetry-instrumentation-mysqlclient",
-    "opentelemetry-instrumentation-openai-agents",
+    "opentelemetry-instrumentation-openai-agents-v2",
     "opentelemetry-instrumentation-openai-v2",
     "opentelemetry-instrumentation-pika",
     "opentelemetry-instrumentation-psycopg",
@@ -1466,7 +1466,7 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "1.16.1"
+version = "1.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1474,12 +1474,13 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "requests" },
+    { name = "tenacity" },
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ca/1f/1a52736e87b4a22afef615de45e2f509fbfb55c09798620b0c3f394076ef/google_genai-1.16.1.tar.gz", hash = "sha256:4b4ed4ed781a9d61e5ce0fef1486dd3a5d7ff0a73bd76b9633d21e687ab998df", size = 194270 }
+sdist = { url = "https://files.pythonhosted.org/packages/18/03/84d04ce446d885eb978abb4b7c785f54a39435f02b182f457a996f5c9eb4/google_genai-1.42.0.tar.gz", hash = "sha256:0cef624c725a358f182e6988632371205bed9be1b1dbcf4296dbbd4eb4a9fb5d", size = 235620 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/31/30caa8d4ae987e47c5250fb6680588733863fd5b39cacb03ba1977c29bde/google_genai-1.16.1-py3-none-any.whl", hash = "sha256:6ae5d24282244f577ca4f0d95c09f75ab29e556602c9d3531b70161e34cd2a39", size = 196327 },
+    { url = "https://files.pythonhosted.org/packages/f2/0a/8519cb752c10254899608de5c8cf5ff5ae05260a4ad5db0087fa466ddf46/google_genai-1.42.0-py3-none-any.whl", hash = "sha256:1e45c3ecc630a358c153a08b10d5b03d7c70cf3342fd116ac8a6cc4262cd81e8", size = 236204 },
 ]
 
 [[package]]
@@ -3144,6 +3145,7 @@ dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
 ]
 
 [package.optional-dependencies]
@@ -3153,10 +3155,11 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "google-genai", marker = "extra == 'instruments'", specifier = ">=1.0.0" },
+    { name = "google-genai", marker = "extra == 'instruments'", specifier = ">=1.32.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
 ]
 provides-extras = ["instruments"]
 
@@ -3345,12 +3348,13 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-openai-agents"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-openai-agents" }
+name = "opentelemetry-instrumentation-openai-agents-v2"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
 ]
 
 [package.optional-dependencies]
@@ -3364,6 +3368,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
 ]
 provides-extras = ["instruments"]
 
