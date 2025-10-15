@@ -626,7 +626,7 @@ class _InstrumentedFlask(flask.Flask):
 
 
 class FlaskInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for flask.Flask
 
     See `BaseInstrumentor`
