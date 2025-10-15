@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## Version 0.2b0 (2025-10-14)
+## Version 0.2b0 (2025-10-15)
 
 - Add jsonlines support to fsspec uploader
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3791](#3791))
