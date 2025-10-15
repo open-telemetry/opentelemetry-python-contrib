@@ -25,9 +25,9 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.37",
-  "opentelemetry-instrumentation >=0.58b0, <2",
-  "opentelemetry-semantic-conventions >=0.58b0, <2",
+  "opentelemetry-api >= 1.37",
+  "opentelemetry-instrumentation >= 0.58b0",
+  "opentelemetry-semantic-conventions >= 0.58b0",
   "opentelemetry-util-genai"
 ]
 
@@ -49,7 +49,6 @@ path = "src/opentelemetry/instrumentation/openai_agents/version.py"
 [tool.hatch.build.targets.sdist]
 include = [
   "/src",
-  "/tests",
 ]
 
 [tool.hatch.build.targets.wheel]
