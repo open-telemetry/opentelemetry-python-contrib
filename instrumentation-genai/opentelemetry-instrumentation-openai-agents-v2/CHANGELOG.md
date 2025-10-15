@@ -12,3 +12,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3805](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3805))
 - Implement OpenAI Agents span processing aligned with GenAI semantic conventions.
   ([#3817](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3817))
+- Input and output according to GenAI spec.
+  ([#3824](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3824))
