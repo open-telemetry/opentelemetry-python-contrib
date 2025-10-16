@@ -4,4 +4,4 @@ opentelemetry-sdk>=1.31.0
 opentelemetry-exporter-otlp-proto-grpc>=1.31.0
 
 # Uncomment after lanchain instrumetation is released
-# opentelemetry-instrumentation-langchain~=2.0b0.dev
+# opentelemetry-instrumentation-langchain-v2~=2.0b0.dev
