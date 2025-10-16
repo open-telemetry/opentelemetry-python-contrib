@@ -11,10 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.38.0/0.59b0 (2025-10-16)
+
 ### Fixed
 
 - `opentelemetry-instrumentation-asyncclick`: fix issue where servers using asyncclick would not get a separate span per-request
 - `opentelemetry-instrumentation-click`: fix issue where starting uvicorn via `python -m` would cause the click instrumentation to give all requests the same trace id
+- `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
+  ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
