@@ -45,7 +45,7 @@ components:
     - DylanRussell
     - keith-decker
 
-  instrumentation-genai/opentelemetry-instrumentation-langchain:
+  instrumentation-genai/opentelemetry-instrumentation-langchain-v2:
     - zhirafovod
     - wrisa
 
