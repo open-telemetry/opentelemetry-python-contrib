@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Fixed
-
+- `opentelemetry-instrumentation-django`: fix trace failures when HTTP requests get cancelled in ASGI workers ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3848)
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-fastapi`: Fix handling of APIRoute subclasses
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
 
+### Breaking changes
+- `opentelemetry-instrumentation-django`: remove support for Django < 2.0 ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3848)
 ### Added
 
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute

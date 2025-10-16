@@ -270,19 +270,8 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
-DJANGO_2_0 = django_version >= (2, 0)
-
 _excluded_urls_from_env = get_excluded_urls("DJANGO")
 _logger = getLogger(__name__)
-
-
-def _get_django_middleware_setting() -> str:
-    # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
-    # alternative to MIDDLEWARE. This is the case when `settings.MIDDLEWARE` has
-    # its default value (`None`).
-    if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", None) is None:
-        return "MIDDLEWARE_CLASSES"
-    return "MIDDLEWARE"
 
 
 def _get_django_otel_middleware_position(
@@ -387,24 +376,23 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/topics/http/middleware/#activating-middleware
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
-        _middleware_setting = _get_django_middleware_setting()
         settings_middleware = []
         try:
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(settings, "MIDDLEWARE", [])
         except ImproperlyConfigured as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(settings, "MIDDLEWARE", [])
         except ModuleNotFoundError as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(settings, "MIDDLEWARE", [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -426,11 +414,10 @@ class DjangoInstrumentor(BaseInstrumentor):
             middleware_position, self._opentelemetry_middleware
         )
 
-        setattr(settings, _middleware_setting, settings_middleware)
+        setattr(settings, "MIDDLEWARE", settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        _middleware_setting = _get_django_middleware_setting()
-        settings_middleware = getattr(settings, _middleware_setting, None)
+        settings_middleware = getattr(settings, "MIDDLEWARE", None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
@@ -443,4 +430,4 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)
-        setattr(settings, _middleware_setting, settings_middleware)
+        setattr(settings, "MIDDLEWARE", settings_middleware)
