@@ -350,7 +350,7 @@ def _rewrapped_app(
         active_requests_counter.add(1, active_requests_count_attrs)
         request_route = None
 
-        should_trace = False
+        should_trace = True
 
         def _start_response(status, response_headers, *args, **kwargs):
             nonlocal should_trace
