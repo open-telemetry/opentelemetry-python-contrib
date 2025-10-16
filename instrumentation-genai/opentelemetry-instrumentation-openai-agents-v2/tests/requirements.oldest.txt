@@ -29,6 +29,7 @@ opentelemetry-exporter-otlp-proto-http~=1.30
 opentelemetry-api==1.37  # when updating, also update in pyproject.toml
 opentelemetry-sdk==1.37  # when updating, also update in pyproject.toml
 opentelemetry-semantic-conventions==0.58b0  # when updating, also update in pyproject.toml
-grpcio>=1.60.0
+grpcio>=1.60.0; implementation_name != "pypy"
+grpcio==1.51.1; implementation_name == "pypy"
 
 -e instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2
