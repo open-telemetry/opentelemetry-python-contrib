@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from typing import Any
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -157,6 +158,36 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
                 "error.type": "ValueError",
             },
         )
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_disabled_when_asgi_instrumentation_loaded(self):
+        @asyncclick.command()
+        async def command():
+            pass
+
+        with mock.patch.dict(
+            sys.modules,
+            {**sys.modules, "opentelemetry.instrumentation.asgi": mock.Mock()},
+        ):
+            result = run_asyncclick_command_test(command)
+        self.assertEqual(result.exit_code, 0)
+
+        self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    @mock.patch("sys.argv", ["command.py"])
+    def test_disabled_when_wsgi_instrumentation_loaded(self):
+        @asyncclick.command()
+        async def command():
+            pass
+
+        with mock.patch.dict(
+            sys.modules,
+            {**sys.modules, "opentelemetry.instrumentation.wsgi": mock.Mock()},
+        ):
+            result = run_asyncclick_command_test(command)
+        self.assertEqual(result.exit_code, 0)
+
+        self.assertFalse(self.memory_exporter.get_finished_spans())
 
     def test_uninstrument(self):
         AsyncClickInstrumentor().uninstrument()

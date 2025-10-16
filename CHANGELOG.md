@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-asyncclick`: fix issue where servers using asyncclick would not get a separate span per-request
 - `opentelemetry-instrumentation-click`: fix issue where starting uvicorn via `python -m` would cause the click instrumentation to give all requests the same trace id
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
