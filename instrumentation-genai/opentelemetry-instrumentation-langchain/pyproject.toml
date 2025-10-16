@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-langchain"
+name = "opentelemetry-instrumentation-langchain-v2"
 dynamic = ["version"]
 description = "OpenTelemetry Official Langchain instrumentation"
 readme = "README.rst"
@@ -53,4 +53,3 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
-
