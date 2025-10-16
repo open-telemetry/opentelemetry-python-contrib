@@ -140,7 +140,7 @@ class LangChainInstrumentor(BaseInstrumentor):
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             tracer=tracer,
             capture_messages=capture_messages,
-        )
+        )  # pyright: ignore[reportAbstractUsage]
 
         wrap_function_wrapper(
             module="langchain_core.callbacks",
