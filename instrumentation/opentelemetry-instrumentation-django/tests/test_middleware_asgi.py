@@ -24,6 +24,7 @@ from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test import SimpleTestCase
 from django.test.utils import setup_test_environment, teardown_test_environment
+from django.urls import re_path
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
@@ -85,13 +86,7 @@ from .views import (
     async_with_custom_header,
 )
 
-DJANGO_2_0 = VERSION >= (2, 0)
 DJANGO_3_1 = VERSION >= (3, 1)
-
-if DJANGO_2_0:
-    from django.urls import re_path
-else:
-    from django.conf.urls import url as re_path
 
 urlpatterns = [
     re_path(r"^traced/", async_traced),

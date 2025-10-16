@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
   ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
 
+### Breaking changes
+- `opentelemetry-instrumentation-django`: remove support for Django < 2.0 ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3848)
 ### Added
 
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
