@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.1b0 (2025-10-16)
+
 - Update instrumentation to use the latest semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
 Now only a single event and span (`gen_ai.client.inference.operation.details`) are used to capture prompt and response content. These changes are opt-in,
 users will need to set the environment variable OTEL_SEMCONV_STABILITY_OPT_IN to `gen_ai_latest_experimental` to see them ([#3799](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3799)) and ([#3709](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3709)). Update instrumentation to call upload hook.
