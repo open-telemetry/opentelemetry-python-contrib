@@ -3265,7 +3265,7 @@ provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-langchain-v2"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain" }
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain-v2" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
