@@ -1,3 +1,5 @@
+# pylint: disable=wrong-import-position,wrong-import-order,import-error,no-name-in-module,unexpected-keyword-arg,no-value-for-parameter,redefined-outer-name
+
 from __future__ import annotations
 
 import json
@@ -220,7 +222,7 @@ def test_normalize_messages_skips_empty_when_sensitive_enabled():
     normalized = processor._normalize_messages_to_role_parts(
         [{"role": "user", "content": None}]
     )
-    assert normalized == []
+    assert not normalized
 
 
 def test_normalize_messages_emits_placeholder_when_sensitive_disabled():
