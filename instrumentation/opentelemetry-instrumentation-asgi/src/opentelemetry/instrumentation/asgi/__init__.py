@@ -258,6 +258,9 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_active_requests,
     create_http_server_request_body_size,
@@ -276,6 +279,7 @@ from opentelemetry.util.http import (
     ExcludeList,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -397,7 +401,13 @@ def collect_request_attributes(
             )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
+        user_agent_value = http_user_agent[0]
+        _set_http_user_agent(result, user_agent_value, sem_conv_opt_in_mode)
+
+        # Check for synthetic user agent type
+        synthetic_type = detect_synthetic_user_agent(user_agent_value)
+        if synthetic_type:
+            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
     if "client" in scope and scope["client"] is not None:
         _set_http_peer_ip_server(

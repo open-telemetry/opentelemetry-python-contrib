@@ -42,6 +42,9 @@ from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
@@ -880,6 +883,145 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             outputs,
             modifiers=[update_expected_user_agent],
             old_sem_conv=True,
+            new_sem_conv=True,
+        )
+
+    async def test_user_agent_synthetic_bot_detection(self):
+        """Test that bot user agents are detected as synthetic with type 'bot'"""
+        test_cases = [
+            b"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            b"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            b"googlebot/1.0",
+            b"bingbot/1.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_bot(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "bot",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_bot]
+                )
+
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
+
+    async def test_user_agent_synthetic_test_detection(self):
+        """Test that test user agents are detected as synthetic with type 'test'"""
+        test_cases = [
+            b"alwayson/1.0",
+            b"AlwaysOn/2.0",
+            b"test-alwayson-client",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_test(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "test",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_test]
+                )
+
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
+
+    async def test_user_agent_non_synthetic(self):
+        """Test that normal user agents are not marked as synthetic"""
+        test_cases = [
+            b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            b"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+            b"PostmanRuntime/7.28.4",
+            b"curl/7.68.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_non_synthetic(
+                    expected, ua: bytes = user_agent
+                ):
+                    # Should only have the user agent, not synthetic type
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_non_synthetic]
+                )
+
+                # Clear spans after each test case to prevent accumulation
+                self.memory_exporter.clear()
+
+    async def test_user_agent_synthetic_new_semconv(self):
+        """Test synthetic user agent detection with new semantic conventions"""
+        user_agent = b"Mozilla/5.0 (compatible; Googlebot/2.1)"
+
+        def update_expected_synthetic_new_semconv(expected):
+            expected[3]["attributes"].update(
+                {
+                    USER_AGENT_ORIGINAL: user_agent.decode("utf8"),
+                    USER_AGENT_SYNTHETIC_TYPE: "bot",
+                }
+            )
+            return expected
+
+        self.scope["headers"] = []
+        self.scope["headers"].append([b"user-agent", user_agent])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_synthetic_new_semconv],
+            old_sem_conv=False,
             new_sem_conv=True,
         )
 

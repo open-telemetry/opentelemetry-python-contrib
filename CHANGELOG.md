@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-requests` Detect synthetic sources on requests.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
