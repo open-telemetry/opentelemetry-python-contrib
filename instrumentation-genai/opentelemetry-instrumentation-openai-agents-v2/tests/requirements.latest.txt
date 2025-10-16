@@ -46,6 +46,7 @@ pytest==7.4.4
 pytest-asyncio==0.21.0
 wrapt==1.16.0
 # test with the latest version of opentelemetry-api, sdk, and semantic conventions
+grpcio>=1.60.0
 
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2
