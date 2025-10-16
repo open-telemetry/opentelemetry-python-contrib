@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## Version 2.1b0 (2025-10-16)
 
 - Update instrumentation to use the latest semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
 Now only a single event and span (`gen_ai.client.inference.operation.details`) are used to capture prompt and response content. These changes are opt-in,
