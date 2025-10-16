@@ -77,12 +77,12 @@ class _OpInvoke(_LambdaOperation):
         )
         attributes[SpanAttributes.FAAS_INVOKED_REGION] = call_context.region
 
-    @staticmethod
-    def _parse_function_name(call_context: _AwsSdkCallContext):
+    @classmethod
+    def _parse_function_name(cls, call_context: _AwsSdkCallContext):
         function_name_or_arn = call_context.params.get("FunctionName")
         if function_name_or_arn is None:
             return None
-        matches = _OpInvoke.ARN_LAMBDA_PATTERN.match(function_name_or_arn)
+        matches = cls.ARN_LAMBDA_PATTERN.match(function_name_or_arn)
         if matches:
             function_name = matches.group(1)
             return function_name if function_name else function_name_or_arn
