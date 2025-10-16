@@ -91,4 +91,4 @@ zipp==3.20.2
 
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
--e util/opentelemetry-util-genai
+-e util/opentelemetry-util-genai[upload]
