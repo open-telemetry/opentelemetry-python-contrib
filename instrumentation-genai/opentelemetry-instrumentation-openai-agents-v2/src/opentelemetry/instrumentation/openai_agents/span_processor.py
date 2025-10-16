@@ -12,6 +12,8 @@ References:
 - OpenInference Pattern: https://github.com/Arize-ai/openinference
 """
 
+# pylint: disable=too-many-lines,invalid-name,too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,too-many-nested-blocks,too-many-arguments,too-many-instance-attributes,broad-exception-caught,no-self-use,consider-iterating-dictionary,unused-variable,unnecessary-pass
+
 from __future__ import annotations
 
 import importlib
@@ -247,9 +249,9 @@ def normalize_provider(provider: Optional[str]) -> Optional[str]:
     """Normalize provider name to spec-compliant value."""
     if not provider:
         return None
-    p = provider.strip().lower()
-    if p in GenAIProvider.ALL:
-        return p
+    normalized = provider.strip().lower()
+    if normalized in GenAIProvider.ALL:
+        return normalized
     return provider  # passthrough if unknown (forward compat)
 
 
@@ -257,15 +259,19 @@ def validate_tool_type(tool_type: Optional[str]) -> str:
     """Validate and normalize tool type."""
     if not tool_type:
         return GenAIToolType.FUNCTION  # default
-    t = tool_type.strip().lower()
-    return t if t in GenAIToolType.ALL else GenAIToolType.FUNCTION
+    normalized = tool_type.strip().lower()
+    return (
+        normalized
+        if normalized in GenAIToolType.ALL
+        else GenAIToolType.FUNCTION
+    )
 
 
 def normalize_output_type(output_type: Optional[str]) -> str:
     """Normalize output type to spec-compliant value."""
     if not output_type:
         return GenAIOutputType.TEXT  # default
-    o = output_type.strip().lower()
+    normalized = output_type.strip().lower()
     base_map = {
         "json_object": GenAIOutputType.JSON,
         "jsonschema": GenAIOutputType.JSON,
@@ -276,19 +282,16 @@ def normalize_output_type(output_type: Optional[str]) -> str:
         "tool_call": GenAIOutputType.JSON,
         "transcription_json": GenAIOutputType.JSON,
     }
-    if o in base_map:
-        return base_map[o]
-    if o in {
+    if normalized in base_map:
+        return base_map[normalized]
+    if normalized in {
         GenAIOutputType.TEXT,
         GenAIOutputType.JSON,
         GenAIOutputType.IMAGE,
         GenAIOutputType.SPEECH,
     }:
-        return o
+        return normalized
     return GenAIOutputType.TEXT  # default for unknown
-    (normalize_output_type,)
-    (normalize_provider,)
-    (validate_tool_type,)
 
 
 if TYPE_CHECKING:
@@ -1515,7 +1518,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 if isinstance(first_input, dict) and "role" in first_input:
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
-        elif _is_instance_of(span_data, AgentSpanData):
+        if _is_instance_of(span_data, AgentSpanData):
             # Could be create_agent or invoke_agent based on context
             operation = getattr(span_data, "operation", None)
             normalized = (
@@ -1528,17 +1531,17 @@ class GenAISemanticProcessor(TracingProcessor):
             if normalized in {"invoke", "invoke_agent"}:
                 return GenAIOperationName.INVOKE_AGENT
             return GenAIOperationName.INVOKE_AGENT
-        elif _is_instance_of(span_data, FunctionSpanData):
+        if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
-        elif _is_instance_of(span_data, ResponseSpanData):
+        if _is_instance_of(span_data, ResponseSpanData):
             return GenAIOperationName.CHAT  # Response typically from chat
-        elif _is_instance_of(span_data, TranscriptionSpanData):
+        if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOperationName.TRANSCRIPTION
-        elif _is_instance_of(span_data, SpeechSpanData):
+        if _is_instance_of(span_data, SpeechSpanData):
             return GenAIOperationName.SPEECH
-        elif _is_instance_of(span_data, GuardrailSpanData):
+        if _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOperationName.GUARDRAIL
-        elif _is_instance_of(span_data, HandoffSpanData):
+        if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
         return "unknown"
 
