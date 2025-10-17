@@ -111,9 +111,17 @@ class LLMInvocation:
     provider: Optional[str] = None
     response_model_name: Optional[str] = None
     response_id: Optional[str] = None
+    response_finish_reasons: Optional[List[str]] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
     attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    max_tokens: Optional[int] = None
+    stop_sequences: Optional[List[str]] = None
+    seed: Optional[int] = None
 
 
 @dataclass
