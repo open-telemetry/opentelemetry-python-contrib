@@ -29,7 +29,7 @@ from opentelemetry.test.test_base import TestBase
 class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
-        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+        self.caplog = caplog
 
     def tearDown(self):
         super().tearDown()

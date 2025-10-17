@@ -459,7 +459,6 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 )
             )
             return
-        # pylint: disable=attribute-defined-outside-init
         (
             self._wrapped_module_name,
             self._wrapped_function_name,

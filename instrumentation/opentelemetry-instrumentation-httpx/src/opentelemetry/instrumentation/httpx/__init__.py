@@ -861,7 +861,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
 
 class HTTPXClientInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for httpx Client and AsyncClient
 
     See `BaseInstrumentor`
