@@ -39,7 +39,7 @@ Configuration
 
 The following environment variables are supported as configuration options:
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
+- OTEL_PYTHON_TORNADO_EXCLUDED_URLS (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations)
 
 A comma separated list of paths that should not be automatically traced. For example, if this is set to
 
