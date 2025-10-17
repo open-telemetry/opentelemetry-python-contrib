@@ -22,7 +22,7 @@ Setup
        python3 -m venv .venv
        source .venv/bin/activate
        pip install "python-dotenv[cli]"
-       pip install -r requirements.txt
+       uv pip install -r requirements.txt --prerelease=allow
 
 Run
 ---
@@ -33,6 +33,8 @@ instrumentation is activated automatically:
 ::
 
     dotenv run -- opentelemetry-instrument python main.py
+
+Ensure ``OPENAI_API_KEY`` is set in your shell or `.env`; the OpenAI client raises ``OpenAIError`` if the key is missing.
 
 Because ``main.py`` invokes ``load_dotenv``, running ``python main.py`` directly
 also works when the required environment variables are already exported.

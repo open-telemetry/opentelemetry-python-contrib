@@ -1,3 +1,5 @@
+# pylint: disable=wrong-import-position,wrong-import-order,import-error
+
 from __future__ import annotations
 
 import sys
@@ -42,3 +44,26 @@ def test_double_instrument_is_noop():
 def test_instrumentation_dependencies_exposed():
     instrumentor = OpenAIAgentsInstrumentor()
     assert instrumentor.instrumentation_dependencies() == _instruments
+
+
+def test_default_agent_configuration():
+    set_trace_processors([])
+    provider = TracerProvider()
+    instrumentor = OpenAIAgentsInstrumentor()
+
+    try:
+        instrumentor.instrument(tracer_provider=provider)
+        processor = instrumentor._processor
+        assert processor is not None
+        assert getattr(processor, "_agent_name_default") == "OpenAI Agent"
+        assert getattr(processor, "_agent_id_default") == "agent"
+        assert (
+            getattr(processor, "_agent_description_default")
+            == "OpenAI Agents instrumentation"
+        )
+        assert processor.base_url == "https://api.openai.com"
+        assert processor.server_address == "api.openai.com"
+        assert processor.server_port == 443
+    finally:
+        instrumentor.uninstrument()
+        set_trace_processors([])
