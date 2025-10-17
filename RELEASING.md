@@ -26,6 +26,7 @@
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
+> - opentelemetry-instrumentation-mcp
 > - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
 >
