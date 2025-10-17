@@ -43,7 +43,7 @@ members = [
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-jinja2",
     "opentelemetry-instrumentation-kafka-python",
-    "opentelemetry-instrumentation-langchain",
+    "opentelemetry-instrumentation-langchain-v2",
     "opentelemetry-instrumentation-logging",
     "opentelemetry-instrumentation-mysql",
     "opentelemetry-instrumentation-mysqlclient",
@@ -3264,8 +3264,8 @@ requires-dist = [
 provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
-name = "opentelemetry-instrumentation-langchain"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain" }
+name = "opentelemetry-instrumentation-langchain-v2"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain-v2" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },

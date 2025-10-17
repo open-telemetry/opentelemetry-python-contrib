@@ -74,12 +74,18 @@ class _SpanManager:
         self,
         run_id: UUID,
         parent_run_id: Optional[UUID],
-        request_model: str,
+        request_model: Optional[str],
     ) -> Span:
+        operation_name = GenAI.GenAiOperationNameValues.CHAT.value
+        span_name = (
+            f"{operation_name} {request_model}"
+            if request_model
+            else operation_name
+        )
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            span_name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
+            span_name=span_name,
             kind=SpanKind.CLIENT,
         )
         span.set_attribute(
