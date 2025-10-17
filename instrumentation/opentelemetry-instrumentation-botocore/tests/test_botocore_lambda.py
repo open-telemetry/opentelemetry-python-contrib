@@ -16,7 +16,6 @@ import io
 import json
 import sys
 import zipfile
-from typing import Final
 from unittest import mock
 
 import botocore.session
@@ -35,9 +34,6 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import Span
-
-AWS_LAMBDA_FUNCTION_ARN: Final = "aws.lambda.function.arn"
-AWS_LAMBDA_FUNCTION_NAME: Final = "aws.lambda.function.name"
 
 
 def get_as_zip_file(file_name, content):
@@ -220,14 +216,7 @@ class TestLambdaExtension(TestBase):
         self.assertEqual(
             "GetFunction", span.attributes[SpanAttributes.RPC_METHOD]
         )
-        self.assertEqual(
-            "lambda-function-name-foo",
-            span.attributes[AWS_LAMBDA_FUNCTION_NAME],
-        )
 
-        function_arn = span.attributes.get(AWS_LAMBDA_FUNCTION_ARN)
-        self.assertIsNotNone(function_arn)
-        self.assertIn("lambda-function-name-foo", function_arn)
         self.assertIsNone(span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID))
 
     @mock_aws
@@ -252,9 +241,6 @@ class TestLambdaExtension(TestBase):
         self.assertEqual(
             "CreateEventSourceMapping",
             span.attributes[SpanAttributes.RPC_METHOD],
-        )
-        self.assertEqual(
-            "MyLambdaFnFoo", span.attributes[AWS_LAMBDA_FUNCTION_NAME]
         )
 
         uuid = span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID)
@@ -293,5 +279,3 @@ class TestLambdaExtension(TestBase):
         uuid = span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID)
         self.assertIsNotNone(uuid)
         self.assertEqual(expected_uuid, uuid)
-        self.assertIsNone(span.attributes.get(AWS_LAMBDA_FUNCTION_ARN))
-        self.assertIsNone(span.attributes.get(AWS_LAMBDA_FUNCTION_NAME))

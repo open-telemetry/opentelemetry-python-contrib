@@ -16,7 +16,7 @@ import abc
 import inspect
 import json
 import re
-from typing import Dict, Final
+from typing import Dict
 
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
@@ -31,11 +31,6 @@ from opentelemetry.semconv._incubating.attributes.aws_attributes import (
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.span import Span
-
-# Work is underway to add these two keys to the SemConv AWS registry, in line with other AWS resources.
-# https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/aws.md#amazon-lambda-attributes
-AWS_LAMBDA_FUNCTION_ARN: Final = "aws.lambda.function.arn"
-AWS_LAMBDA_FUNCTION_NAME: Final = "aws.lambda.function.name"
 
 
 class _LambdaOperation(abc.ABC):
@@ -128,9 +123,6 @@ class _LambdaExtension(_AwsSdkExtension):
         self._op = _OPERATION_MAPPING.get(call_context.operation)
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        function_name = _OpInvoke._parse_function_name(self._call_context)
-        if function_name:
-            attributes[AWS_LAMBDA_FUNCTION_NAME] = function_name
         resource_mapping_id = self._call_context.params.get("UUID")
         if resource_mapping_id:
             attributes[AWS_LAMBDA_RESOURCE_MAPPING_ID] = resource_mapping_id
@@ -159,8 +151,3 @@ class _LambdaExtension(_AwsSdkExtension):
             span.set_attribute(
                 AWS_LAMBDA_RESOURCE_MAPPING_ID, resource_mapping_id
             )
-
-        lambda_configuration = result.get("Configuration", {})
-        function_arn = lambda_configuration.get("FunctionArn")
-        if function_arn:
-            span.set_attribute(AWS_LAMBDA_FUNCTION_ARN, function_arn)
