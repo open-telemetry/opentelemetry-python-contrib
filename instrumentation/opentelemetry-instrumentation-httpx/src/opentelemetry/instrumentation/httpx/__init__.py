@@ -207,7 +207,7 @@ from __future__ import annotations
 
 import logging
 import typing
-from asyncio import iscoroutinefunction
+from inspect import iscoroutinefunction
 from functools import partial
 from timeit import default_timer
 from types import TracebackType

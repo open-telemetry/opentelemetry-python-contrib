@@ -16,6 +16,7 @@
 
 import abc
 import asyncio
+import inspect
 import typing
 from unittest import mock
 
@@ -1046,7 +1047,7 @@ class BaseTestCases:
         def test_response_hook(self):
             response_hook_key = (
                 "async_response_hook"
-                if asyncio.iscoroutinefunction(self.response_hook)
+                if inspect.iscoroutinefunction(self.response_hook)
                 else "response_hook"
             )
             response_hook_kwargs = {response_hook_key: self.response_hook}
@@ -1093,7 +1094,7 @@ class BaseTestCases:
         def test_request_hook(self):
             request_hook_key = (
                 "async_request_hook"
-                if asyncio.iscoroutinefunction(self.request_hook)
+                if inspect.iscoroutinefunction(self.request_hook)
                 else "request_hook"
             )
             request_hook_kwargs = {request_hook_key: self.request_hook}
