@@ -1,0 +1,116 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse
+  response:
+    body:
+      string: "data: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"In tangled webs of cloud and code,\\nWhere microservices softly\
+        \ strode,\\nA whispered secret, hard to find,\\nThe journey of a user's mind.\\\
+        nA black box hummed, a mystery deep,\\nWhile crucial insights lay asleep.\\\
+        n\\nBut then a vision, clear and bright,\\nE\"}]}}],\"usageMetadata\": {\"\
+        trafficType\": \"ON_DEMAND\"},\"modelVersion\": \"gemini-2.5-flash\",\"createTime\"\
+        : \"2025-10-10T15:57:26.830111Z\",\"responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \"merged to chase away the night.\\n**OpenTelemetry**, a guiding\
+        \ star,\\nTo show us where our problems are.\\nA standard banner, raised with\
+        \ pride,\\nWhere all observability can ride.\\n\\nThrough **Traces**, golden\
+        \ threads unfurl,\\nConnecting paths across the world.\\nFrom start to end,\
+        \ a user'\"}]}}],\"usageMetadata\": {\"trafficType\": \"ON_DEMAND\"},\"modelVersion\"\
+        : \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:26.830111Z\",\"\
+        responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"}\r\n\r\ndata: {\"candidates\": [{\"\
+        content\": {\"role\": \"model\",\"parts\": [{\"text\": \"s plea,\\nA chain\
+        \ of **Spans**, for all to see.\\nContext propagated, strong and true,\\nRevealing\
+        \ what each service _do_.\\n\\nAnd **Metrics**, count and watch and chart,\\\
+        nThe system's pulse, its beating heart.\\nLatency's grace, or error's bite,\\\
+        nThrough\"}]}}],\"usageMetadata\": {\"trafficType\": \"ON_DEMAND\"},\"modelVersion\"\
+        : \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:26.830111Z\",\"\
+        responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"}\r\n\r\ndata: {\"candidates\": [{\"\
+        content\": {\"role\": \"model\",\"parts\": [{\"text\": \" gauges, sums, and\
+        \ counters bright.\\nThe CPU's hum, the memory's strain,\\nMade visible, again,\
+        \ again.\\n\\nWith **Logs**, the whispered tales are told,\\nEach event, a\
+        \ story to unfold.\\nStructured lines, with context deep,\\nThe secrets that\
+        \ the services keep.\\nCor\"}]}}],\"usageMetadata\": {\"trafficType\": \"\
+        ON_DEMAND\"},\"modelVersion\": \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:26.830111Z\"\
+        ,\"responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"}\r\n\r\ndata: {\"candidates\"\
+        : [{\"content\": {\"role\": \"model\",\"parts\": [{\"text\": \"related, timestamped,\
+        \ and clear,\\nDispelling doubt, and calming fear.\\n\\nNo vendor lock, no\
+        \ walled-off maze,\\nJust open standards, through the haze.\\nA common language,\
+        \ strong and free,\\nFor all your signals, *three-in-three*.\\nFrom instrumenting,\
+        \ to\"}]}}],\"usageMetadata\": {\"trafficType\": \"ON_DEMAND\"},\"modelVersion\"\
+        : \"gemini-2.5-flash\",\"createTime\": \"2025-10-10T15:57:26.830111Z\",\"\
+        responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"}\r\n\r\ndata: {\"candidates\": [{\"\
+        content\": {\"role\": \"model\",\"parts\": [{\"text\": \" collect and send,\\\
+        nA journey without a bitter end.\\n\\nIt gathers data, rich and wide,\\nFrom\
+        \ every corner, deep inside.\\nThen sends it forth, for you to glean,\\nThe\
+        \ health and state of each machine.\\nTo troubleshoot fast, with knowing eyes,\\\
+        nAnd make your complex system rise.\\n\\nSo\"}]}}],\"usageMetadata\": {\"\
+        trafficType\": \"ON_DEMAND\"},\"modelVersion\": \"gemini-2.5-flash\",\"createTime\"\
+        : \"2025-10-10T15:57:26.830111Z\",\"responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"\
+        }\r\n\r\ndata: {\"candidates\": [{\"content\": {\"role\": \"model\",\"parts\"\
+        : [{\"text\": \" hail to OTel, the guiding hand,\\nThat brings observability\
+        \ to command.\\nA unified vision, strong and true,\\nFor clarity, for me,\
+        \ for you!\"}]},\"finishReason\": \"STOP\"}],\"usageMetadata\": {\"promptTokenCount\"\
+        : 8,\"candidatesTokenCount\": 437,\"totalTokenCount\": 2472,\"trafficType\"\
+        : \"ON_DEMAND\",\"promptTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\"\
+        : 8}],\"candidatesTokensDetails\": [{\"modality\": \"TEXT\",\"tokenCount\"\
+        : 437}],\"thoughtsTokenCount\": 2027},\"modelVersion\": \"gemini-2.5-flash\"\
+        ,\"createTime\": \"2025-10-10T15:57:26.830111Z\",\"responseId\": \"5izpaJ_VMqednvgP2KWkqQ8\"\
+        }\r\n\r\n"
+    headers:
+      Content-Disposition:
+      - attachment
+      Content-Type:
+      - text/event-stream
+      Date:
+      - Fri, 10 Oct 2025 15:57:39 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

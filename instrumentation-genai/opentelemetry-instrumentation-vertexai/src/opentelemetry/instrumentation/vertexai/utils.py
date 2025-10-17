@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from os import environ
@@ -308,6 +309,23 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
+@dataclass
+class BlobPart:
+    data: bytes
+    mime_type: str
+    type: Literal["blob"] = "blob"
+
+
+@dataclass
+class FileDataPart:
+    mime_type: str
+    uri: str
+    type: Literal["file_data"] = "file_data"
+
+    class Config:
+        extra = "allow"
+
+
 def convert_content_to_message_parts(
     content: content.Content | content_v1beta1.Content,
 ) -> list[MessagePart]:
@@ -334,12 +352,20 @@ def convert_content_to_message_parts(
             )
         elif "text" in part:
             parts.append(Text(content=part.text))
-        else:
-            dict_part = type(part).to_dict(  # type: ignore[reportUnknownMemberType]
-                part, always_print_fields_with_no_presence=False
+        elif "inline_data" in part:
+            part = part.inline_data
+            parts.append(
+                BlobPart(mime_type=part.mime_type or "", data=part.data or b"")
             )
-            dict_part["type"] = type(part)
-            parts.append(dict_part)
+        elif "file_data" in part:
+            part = part.file_data
+            parts.append(
+                FileDataPart(
+                    mime_type=part.mime_type or "", uri=part.file_uri or ""
+                )
+            )
+        else:
+            logging.warning("Unknown part dropped from telemetry %s", part)
     return parts
 
 

@@ -191,7 +191,7 @@ from weakref import WeakSet as _WeakSet
 import fastapi
 from starlette.applications import Starlette
 from starlette.middleware.errors import ServerErrorMiddleware
-from starlette.routing import Match
+from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from opentelemetry.instrumentation._semconv import (
@@ -474,7 +474,11 @@ def _get_route_details(scope):
     route = None
 
     for starlette_route in app.routes:
-        match, _ = starlette_route.matches(scope)
+        match, _ = (
+            Route.matches(starlette_route, scope)
+            if isinstance(starlette_route, Route)
+            else starlette_route.matches(scope)
+        )
         if match == Match.FULL:
             try:
                 route = starlette_route.path

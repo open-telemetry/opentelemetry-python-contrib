@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In systems vast, where services reside,\nA hidden flow, where secrets often hide.\nWhen errors bloom or latency takes hold,\nWe seek the story, yet untold.\n\nThen from the void, a beacon bright appears,\nDispelling shadows, calming all our fears.\n'Tis OpenTelemetry, a guiding hand,\nTo understand the workings of our land.\n\nA standard born, for code to freely speak,\nThe truths our tangled systems always seek.\nWith instrumentation, libraries we weave,\nA common language, all can now believe.\n\nEach call, each task, a journey, swift or slow,\nA **Trace** it paints, to show us where to go.\nWith nested **Spans**, a parent-child embrace,\nWe see the steps, the timing, and the space.\nFrom front-end click to database's deep hum,\nThe full request path, clearly overcome.\n\nThen **Metrics** rise, in streams precise and true,\nCPU, memory, requests old and new.\nCounters climb, and gauges ebb and flow,\nThe system's pulse, a steady, measured glow.\nNo guesswork now, but data, firm and clear,\nPerformance trends, throughout the day and year.\n\nAnd **Logs**, once scattered, now aligned with care,\nContext linking, everywhere, everywhere.\nA unique ID, through layers it will thread,\nConnecting output, words that once were dead.\nFrom single events, a narrative we glean,\nThe bigger picture, beautifully seen.\n\nNo vendor lock, no proprietary chain,\nJust open standards, easing every pain.\nThe Collector waits, a gatherer so grand,\nTo process data, from every digital hand.\nThen send it forth, to chosen backend store,\nFor insights deep, forevermore.\n\nFrom microservices to serverless flight,\nIt brings the dark domains into the light.\nA tapestry woven, of signals three,\nFor clarity and deep observability.\nSo hail to OTel, the unifying way,\nThat turns confusion into clear display."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -1.8014850572405456
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 433,
+            "totalTokenCount": 1918,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 433
+              }
+            ],
+            "thoughtsTokenCount": 1477
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-10T15:55:50.511529Z",
+          "responseId": "hizpaKmcH9qs698P85HHgAU"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Fri, 10 Oct 2025 15:56:02 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
