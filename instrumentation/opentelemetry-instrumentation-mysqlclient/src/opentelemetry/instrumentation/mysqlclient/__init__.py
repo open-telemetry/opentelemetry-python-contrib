@@ -129,7 +129,7 @@ setting.
 
 Warning:
     Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
-    
+
 API
 ---
 """
