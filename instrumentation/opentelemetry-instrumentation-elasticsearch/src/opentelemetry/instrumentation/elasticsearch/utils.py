@@ -25,40 +25,22 @@ sanitized_keys = (
 sanitized_value = "?"
 
 
-# pylint: disable=C0103
-def _flatten_dict(d, parent_key=""):
-    items = []
-    for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
-        # recursive call _flatten_dict for a non-empty dict value
-        if isinstance(v, dict) and v:
-            items.extend(_flatten_dict(v, new_key).items())
+
+def sanitize_dict(d):
+    sanitized_copy = {}
+    for key, value in d.items():
+        if isinstance(value, dict):
+            sanitized_copy[key] = sanitize_dict(value)
+        elif key in sanitized_keys:
+            sanitized_copy[key] = sanitized_value
         else:
-            items.append((new_key, v))
-    return dict(items)
-
-
-def _unflatten_dict(d):
-    res = {}
-    for k, v in d.items():
-        keys = k.split(".")
-        d = res
-        for key in keys[:-1]:
-            if key not in d:
-                d[key] = {}
-            d = d[key]
-        d[keys[-1]] = v
-    return res
+            sanitized_copy[key] = value
+    return sanitized_copy
 
 
 def sanitize_body(body) -> str:
     if isinstance(body, str):
         body = json.loads(body)
 
-    flatten_body = _flatten_dict(body)
-
-    for key in flatten_body:
-        if key.endswith(sanitized_keys):
-            flatten_body[key] = sanitized_value
-
-    return str(_unflatten_dict(flatten_body))
+    sanitized_body = sanitize_dict(body)
+    return str(sanitized_body)

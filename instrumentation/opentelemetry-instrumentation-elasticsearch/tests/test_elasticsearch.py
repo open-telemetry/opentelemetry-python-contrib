@@ -582,6 +582,10 @@ class TestElasticsearchIntegration(TestBase):
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
         )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.highlight_query),
+            str(sanitization_queries.highlight_query_sanitized),
+        )
 
     def test_bulk(self, request_mock):
         request_mock.return_value = helpers.mock_response("{}")
