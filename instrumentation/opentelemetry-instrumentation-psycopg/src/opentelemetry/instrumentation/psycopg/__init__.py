@@ -154,6 +154,7 @@ from opentelemetry.trace import TracerProvider
 
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
+_OTEL_SERVER_CURSOR_FACTORY_KEY = "_otel_orig_server_cursor_factory"
 
 ConnectionT = TypeVar(
     "ConnectionT", psycopg.Connection, psycopg.AsyncConnection
@@ -265,7 +266,15 @@ class PsycopgInstrumentor(BaseInstrumentor):
             setattr(
                 connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
             )
+            setattr(
+                connection,
+                _OTEL_SERVER_CURSOR_FACTORY_KEY,
+                connection.server_cursor_factory,
+            )
             connection.cursor_factory = _new_cursor_factory(
+                tracer_provider=tracer_provider
+            )
+            connection.server_cursor_factory = _new_cursor_factory(
                 tracer_provider=tracer_provider
             )
             connection._is_instrumented_by_opentelemetry = True
@@ -280,6 +289,9 @@ class PsycopgInstrumentor(BaseInstrumentor):
     def uninstrument_connection(connection: ConnectionT) -> ConnectionT:
         connection.cursor_factory = getattr(
             connection, _OTEL_CURSOR_FACTORY_KEY, None
+        )
+        connection.server_cursor_factory = getattr(
+            connection, _OTEL_SERVER_CURSOR_FACTORY_KEY, None
         )
 
         return connection
@@ -301,6 +313,12 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
         kwargs["cursor_factory"] = _new_cursor_factory(**new_factory_kwargs)
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
+
+        connection.server_cursor_factory = _new_cursor_factory(
+            db_api=self,
+            base_factory=getattr(connection, "server_cursor_factory", None),
+        )
+
         return connection
 
 
@@ -321,6 +339,11 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
         )
         connection = await connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
+
+        connection.server_cursor_factory = _new_cursor_async_factory(
+            db_api=self,
+            base_factory=getattr(connection, "server_cursor_factory", None),
+        )
         return connection
 
 
