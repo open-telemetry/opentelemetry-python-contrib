@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: improve readthedocs for sqlcommenter configuration.
+  ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
+
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
