@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: improve readthedocs for sqlcommenter configuration.
+  ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
+
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
