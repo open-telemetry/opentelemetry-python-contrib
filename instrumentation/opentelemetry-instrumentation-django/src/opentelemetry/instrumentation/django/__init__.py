@@ -170,10 +170,18 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Django instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``Users().objects.all()`` will result in
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
 
@@ -181,53 +189,42 @@ the query with contextual information.
 
     DjangoInstrumentor().instrument(is_sql_commentor_enabled=True)
 
+Warning:
+    Duplicate sqlcomments may be appended to the sqlquery log if DjangoInstrumentor
+    sqlcommenter is enabled in addition to sqlcommenter for an active instrumention
+    of a database driver or object relation mapper (ORM) in the same database client
+    stack. For example, if psycopg2 driver is used and Psycopg2Instrumentor has
+    sqlcommenter enabled, then both DjangoInstrumentor and Psycopg2Instrumentor will
+    append comments to the query statement.
 
-For example,
-::
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+variables in Django ``settings.py``. When sqlcommenter is enabled, all
+available KVs/tags are calculated by default, i.e. ``True`` for each. The
+``settings.py`` values support *opting out* of specific KVs.
 
-   Invoking Users().objects.all() will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
+Available settings.py commenter options
+#######################################
 
+We can configure the tags to be appended to the sqlquery log by adding below variables to
+``settings.py``, e.g. ``SQLCOMMENTER_WITH_FRAMEWORK = False``
 
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding below variables to the settings.py
-
-SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
-
-For example,
-::
-Enabling this flag will add django framework and it's version which is /*framework='django%3A2.2.3*/
-
-SQLCOMMENTER_WITH_CONTROLLER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add controller name that handles the request /*controller='index'*/
-
-SQLCOMMENTER_WITH_ROUTE = True(Default) or False
-
-For example,
-::
-Enabling this flag will add url path that handles the request /*route='polls/'*/
-
-SQLCOMMENTER_WITH_APP_NAME = True(Default) or False
-
-For example,
-::
-Enabling this flag will add app name that handles the request /*app_name='polls'*/
-
-SQLCOMMENTER_WITH_OPENTELEMETRY = True(Default) or False
-
-For example,
-::
-Enabling this flag will add opentelemetry traceparent /*traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'*/
-
-SQLCOMMENTER_WITH_DB_DRIVER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add name of the db driver /*db_driver='django.db.backends.postgresql'*/
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``settings.py`` variable            | Description                                               | Example                                                                   |
++=====================================+===========================================================+===========================================================================+
+| ``SQLCOMMENTER_WITH_FRAMEWORK``     | Django framework name with version (URL encoded).         | ``framework='django%%%%3A4.2.0'``                                         |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_CONTROLLER``    | Django controller/view name that handles the request.     | ``controller='index'``                                                    |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_ROUTE``         | URL path pattern that handles the request.                | ``route='polls/'``                                                        |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_APP_NAME``      | Django app name that handles the request.                 | ``app_name='polls'``                                                      |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_OPENTELEMETRY`` | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'`` |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.                      | ``db_driver='django.db.backends.postgresql'``                             |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
 API
 ---
