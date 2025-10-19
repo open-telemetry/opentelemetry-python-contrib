@@ -20,9 +20,13 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
 
-from opentelemetry.semconv._incubating.attributes import (
-    messaging_attributes as SpanAttributes,
+from opentelemetry.instrumentation._semconv import (
+    _report_new,
+    _report_old,
+    _StabilityMode,
 )
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span
 
 if TYPE_CHECKING:
@@ -58,7 +62,11 @@ CELERY_CONTEXT_ATTRIBUTES = (
 
 
 # pylint:disable=too-many-branches
-def set_attributes_from_context(span, context):
+def set_attributes_from_context(
+    span,
+    context,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+):
     """Helper to extract meta values from a Celery Context"""
     if not span.is_recording():
         return
@@ -82,7 +90,7 @@ def set_attributes_from_context(span, context):
             continue
 
         attribute_name = None
-
+        new_attribute_name = None
         # Celery 4.0 uses `origin` instead of `hostname`; this change preserves
         # the same name for the tag despite Celery version
         if key == "origin":
@@ -93,20 +101,39 @@ def set_attributes_from_context(span, context):
             routing_key = value.get("routing_key")
 
             if routing_key is not None:
-                span.set_attribute(
-                    SpanAttributes.MESSAGING_DESTINATION_NAME, routing_key
-                )
+                if _report_new(sem_conv_opt_in_mode):
+                    span.set_attribute(
+                        messaging_attributes.MESSAGING_DESTINATION_NAME,
+                        routing_key,
+                    )
+                if _report_old(sem_conv_opt_in_mode):
+                    span.set_attribute(
+                        SpanAttributes.MESSAGING_DESTINATION, routing_key
+                    )
 
             value = str(value)
 
         elif key == "id":
-            attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
+            if _report_new(sem_conv_opt_in_mode):
+                new_attribute_name = messaging_attributes.MESSAGING_MESSAGE_ID
+            if _report_old(sem_conv_opt_in_mode):
+                attribute_name = SpanAttributes.MESSAGING_MESSAGE_ID
 
         elif key == "correlation_id":
-            attribute_name = SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
+            if _report_new(sem_conv_opt_in_mode):
+                new_attribute_name = (
+                    messaging_attributes.MESSAGING_MESSAGE_CONVERSATION_ID
+                )
+            if _report_old(sem_conv_opt_in_mode):
+                attribute_name = SpanAttributes.MESSAGING_CONVERSATION_ID
 
         elif key == "routing_key":
-            attribute_name = SpanAttributes.MESSAGING_DESTINATION_NAME
+            if _report_new(sem_conv_opt_in_mode):
+                new_attribute_name = (
+                    messaging_attributes.MESSAGING_DESTINATION_NAME
+                )
+            if _report_old(sem_conv_opt_in_mode):
+                attribute_name = SpanAttributes.MESSAGING_DESTINATION
 
         # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
         elif key == "declare":
@@ -119,10 +146,13 @@ def set_attributes_from_context(span, context):
                     break
 
         # set attribute name if not set specially for a key
-        if attribute_name is None:
+        if attribute_name is None and not new_attribute_name:
             attribute_name = f"celery.{key}"
 
-        span.set_attribute(attribute_name, value)
+        if attribute_name:
+            span.set_attribute(attribute_name, value)
+        if new_attribute_name:
+            span.set_attribute(new_attribute_name, value)
 
 
 def attach_context(

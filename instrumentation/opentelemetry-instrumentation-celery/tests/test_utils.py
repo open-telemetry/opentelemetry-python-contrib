@@ -20,9 +20,7 @@ from celery import Celery
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.sdk import trace
-from opentelemetry.semconv._incubating.attributes import (
-    messaging_attributes as SpanAttributes,
-)
+from opentelemetry.semconv.trace import SpanAttributes
 
 
 class TestUtils(unittest.TestCase):
@@ -53,13 +51,11 @@ class TestUtils(unittest.TestCase):
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(
-                SpanAttributes.MESSAGING_MESSAGE_CONVERSATION_ID
-            ),
+            span.attributes.get(SpanAttributes.MESSAGING_CONVERSATION_ID),
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION_NAME),
+            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION),
             "celery",
         )
 

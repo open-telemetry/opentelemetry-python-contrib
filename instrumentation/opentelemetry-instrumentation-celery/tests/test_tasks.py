@@ -20,12 +20,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import baggage, context
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes import (
-    exception_attributes as ExceptionAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    messaging_attributes as SpanAttributes,
-)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
@@ -70,7 +65,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "run",
                 "celery.state": "SUCCESS",
-                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
             },
         )
@@ -88,7 +83,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "apply_async",
                 "celery.task_name": "tests.celery_test_tasks.task_add",
-                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
             },
         )
 
@@ -121,7 +116,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "run",
                 "celery.state": "FAILURE",
-                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
             },
         )
@@ -131,17 +126,15 @@ class TestCeleryInstrumentation(TestBase):
         self.assertEqual(1, len(consumer.events))
         event = consumer.events[0]
 
-        self.assertIn(
-            ExceptionAttributes.EXCEPTION_STACKTRACE, event.attributes
-        )
+        self.assertIn(SpanAttributes.EXCEPTION_STACKTRACE, event.attributes)
 
         # TODO: use plain assertEqual after 1.25 is released (https://github.com/open-telemetry/opentelemetry-python/pull/3837)
         self.assertIn(
-            "CustomError", event.attributes[ExceptionAttributes.EXCEPTION_TYPE]
+            "CustomError", event.attributes[SpanAttributes.EXCEPTION_TYPE]
         )
 
         self.assertEqual(
-            event.attributes[ExceptionAttributes.EXCEPTION_MESSAGE],
+            event.attributes[SpanAttributes.EXCEPTION_MESSAGE],
             "The task failed!",
         )
 
@@ -154,7 +147,7 @@ class TestCeleryInstrumentation(TestBase):
             {
                 "celery.action": "apply_async",
                 "celery.task_name": "tests.celery_test_tasks.task_raises",
-                SpanAttributes.MESSAGING_DESTINATION_NAME: "celery",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
             },
         )
 

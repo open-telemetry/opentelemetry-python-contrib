@@ -218,8 +218,12 @@ class CeleryInstrumentor(BaseInstrumentor):
         # request context tags
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_RUN)
-            utils.set_attributes_from_context(span, kwargs)
-            utils.set_attributes_from_context(span, task.request)
+            utils.set_attributes_from_context(
+                span, kwargs, self._sem_conv_opt_in_mode
+            )
+            utils.set_attributes_from_context(
+                span, task.request, self._sem_conv_opt_in_mode
+            )
             span.set_attribute(_TASK_NAME_KEY, task.name)
 
         activation.__exit__(None, None, None)
@@ -263,7 +267,9 @@ class CeleryInstrumentor(BaseInstrumentor):
                     SpanAttributes.MESSAGING_MESSAGE_ID, task_id
                 )
             span.set_attribute(_TASK_NAME_KEY, task_name)
-            utils.set_attributes_from_context(span, kwargs)
+            utils.set_attributes_from_context(
+                span, kwargs, self._sem_conv_opt_in_mode
+            )
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
