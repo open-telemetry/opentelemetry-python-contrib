@@ -134,7 +134,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.MESSAGING,
+            _OpenTelemetryStabilitySignalType.MESSAGING
         )
 
         # pylint: disable=attribute-defined-outside-init
