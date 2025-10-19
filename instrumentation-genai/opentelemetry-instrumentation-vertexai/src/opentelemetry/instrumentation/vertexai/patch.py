@@ -28,7 +28,7 @@ from typing import (
     overload,
 )
 
-from opentelemetry._events import Event, EventLogger
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
@@ -116,7 +116,7 @@ class MethodWrappers:
     def __init__(
         self,
         tracer: Tracer,
-        event_logger: EventLogger,
+        logger: Logger,
         capture_content: ContentCapturingMode,
         sem_conv_opt_in_mode: Literal[
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
@@ -128,7 +128,7 @@ class MethodWrappers:
     def __init__(
         self,
         tracer: Tracer,
-        event_logger: EventLogger,
+        logger: Logger,
         capture_content: bool,
         sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT],
         completion_hook: CompletionHook,
@@ -137,7 +137,7 @@ class MethodWrappers:
     def __init__(
         self,
         tracer: Tracer,
-        event_logger: EventLogger,
+        logger: Logger,
         capture_content: Union[bool, ContentCapturingMode],
         sem_conv_opt_in_mode: Union[
             Literal[_StabilityMode.DEFAULT],
@@ -146,7 +146,7 @@ class MethodWrappers:
         completion_hook: CompletionHook,
     ) -> None:
         self.tracer = tracer
-        self.event_logger = event_logger
+        self.logger = logger
         self.capture_content = capture_content
         self.sem_conv_opt_in_mode = sem_conv_opt_in_mode
         self.completion_hook = completion_hook
@@ -172,6 +172,9 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
                 | None,
             ) -> None:
+                event = LogRecord(
+                    event_name="gen_ai.client.inference.operation.details",
+                )
                 attributes = (
                     get_server_attributes(instance.api_endpoint)  # type: ignore[reportUnknownMemberType]
                     | request_attributes
@@ -203,6 +206,13 @@ class MethodWrappers:
                         )
                         for candidate in response.candidates
                     ]
+                self.completion_hook.on_completion(
+                    inputs=inputs,
+                    outputs=outputs,
+                    system_instruction=system_instructions,
+                    span=span,
+                    log_record=event,
+                )
                 content_attributes = {
                     k: [asdict(x) for x in v]
                     for k, v in [
@@ -227,23 +237,13 @@ class MethodWrappers:
                                 for k, v in content_attributes.items()
                             }
                         )
-                event = Event(
-                    name="gen_ai.client.inference.operation.details",
-                )
                 event.attributes = attributes
                 if capture_content in (
                     ContentCapturingMode.SPAN_AND_EVENT,
                     ContentCapturingMode.EVENT_ONLY,
                 ):
                     event.attributes |= content_attributes
-                self.event_logger.emit(event)
-                self.completion_hook.on_completion(
-                    inputs=inputs,
-                    outputs=outputs,
-                    system_instruction=system_instructions,
-                    span=span,
-                    log_record=event,
-                )
+                self.logger.emit(event)
 
             yield handle_response
 
@@ -273,7 +273,7 @@ class MethodWrappers:
             for event in request_to_events(
                 params=params, capture_content=capture_content
             ):
-                self.event_logger.emit(event)
+                self.logger.emit(event)
 
             # TODO: set error.type attribute
             # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md
@@ -294,7 +294,7 @@ class MethodWrappers:
                 for event in response_to_events(
                     response=response, capture_content=capture_content
                 ):
-                    self.event_logger.emit(event)
+                    self.logger.emit(event)
 
             yield handle_response
 

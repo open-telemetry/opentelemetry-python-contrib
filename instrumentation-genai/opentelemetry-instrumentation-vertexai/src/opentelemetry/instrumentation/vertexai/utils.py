@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from os import environ
@@ -33,7 +34,7 @@ from urllib.parse import urlparse
 
 from google.protobuf import json_format
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
@@ -256,7 +257,7 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
 
 def request_to_events(
     *, params: GenerateContentParams, capture_content: bool
-) -> Iterable[Event]:
+) -> Iterable[LogRecord]:
     # System message
     if params.system_instruction:
         request_content = _parts_to_any_value(
@@ -308,6 +309,23 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
+@dataclass
+class BlobPart:
+    data: bytes
+    mime_type: str
+    type: Literal["blob"] = "blob"
+
+
+@dataclass
+class FileDataPart:
+    mime_type: str
+    uri: str
+    type: Literal["file_data"] = "file_data"
+
+    class Config:
+        extra = "allow"
+
+
 def convert_content_to_message_parts(
     content: content.Content | content_v1beta1.Content,
 ) -> list[MessagePart]:
@@ -334,12 +352,20 @@ def convert_content_to_message_parts(
             )
         elif "text" in part:
             parts.append(Text(content=part.text))
-        else:
-            dict_part = type(part).to_dict(  # type: ignore[reportUnknownMemberType]
-                part, always_print_fields_with_no_presence=False
+        elif "inline_data" in part:
+            part = part.inline_data
+            parts.append(
+                BlobPart(mime_type=part.mime_type or "", data=part.data or b"")
             )
-            dict_part["type"] = type(part)
-            parts.append(dict_part)
+        elif "file_data" in part:
+            part = part.file_data
+            parts.append(
+                FileDataPart(
+                    mime_type=part.mime_type or "", uri=part.file_uri or ""
+                )
+            )
+        else:
+            logging.warning("Unknown part dropped from telemetry %s", part)
     return parts
 
 
@@ -348,7 +374,7 @@ def response_to_events(
     response: prediction_service.GenerateContentResponse
     | prediction_service_v1beta1.GenerateContentResponse,
     capture_content: bool,
-) -> Iterable[Event]:
+) -> Iterable[LogRecord]:
     for candidate in response.candidates:
         tool_calls = _extract_tool_calls(
             candidate=candidate, capture_content=capture_content

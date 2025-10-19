@@ -13,8 +13,21 @@
 # limitations under the License.
 
 import json
-import os
 import unittest
+from unittest.mock import patch
+
+from google.genai.types import GenerateContentConfig
+
+from opentelemetry._events import Event
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes,
+)
+from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
 
@@ -111,10 +124,11 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 123)
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 456)
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_records_system_prompt_as_log(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         config = {"system_instruction": "foo"}
         self.configure_valid_response()
         self.generate_content(
@@ -125,10 +139,11 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "foo")
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"},
+    )
     def test_does_not_record_system_prompt_as_log_if_disabled_by_env(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "false"
-        )
         config = {"system_instruction": "foo"}
         self.configure_valid_response()
         self.generate_content(
@@ -139,20 +154,22 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_does_not_record_system_prompt_as_log_if_no_system_prompt_present(
         self,
     ):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         self.configure_valid_response()
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_does_not_have_event_named("gen_ai.system.message")
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_records_user_prompt_as_log(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         self.configure_valid_response()
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.user.message")
@@ -160,10 +177,11 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "Some input")
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"},
+    )
     def test_does_not_record_user_prompt_as_log_if_disabled_by_env(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "false"
-        )
         self.configure_valid_response()
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.user.message")
@@ -171,10 +189,11 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
     def test_records_response_as_log(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
         self.configure_valid_response(text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.choice")
@@ -184,16 +203,192 @@ class NonStreamingTestCase(TestCase):
             "Some response content", json.dumps(event_record.body["content"])
         )
 
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"},
+    )
     def test_does_not_record_response_as_log_if_disabled_by_env(self):
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "false"
-        )
         self.configure_valid_response(text="Some response content")
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_event_named("gen_ai.choice")
         event_record = self.otel.get_event_named("gen_ai.choice")
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
+
+    def test_new_semconv_record_completion_as_log(self):
+        for mode in ContentCapturingMode:
+            patched_environ = patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                },
+            )
+            patched_otel_mapping = patch.dict(
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
+            )
+            content = "Some input"
+            output = "Some response content"
+            sys_instr = "System instruction"
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
+                self.setUp()
+                with patched_environ, patched_otel_mapping:
+                    self.configure_valid_response(text=output)
+                    self.generate_content(
+                        model="gemini-2.0-flash",
+                        contents=content,
+                        config=GenerateContentConfig(
+                            system_instruction=sys_instr
+                        ),
+                    )
+                    self.otel.assert_has_event_named(
+                        "gen_ai.client.inference.operation.details"
+                    )
+                    event = self.otel.get_event_named(
+                        "gen_ai.client.inference.operation.details"
+                    )
+                    if mode in [
+                        ContentCapturingMode.NO_CONTENT,
+                        ContentCapturingMode.SPAN_ONLY,
+                    ]:
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
+                            event.attributes,
+                        )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES,
+                            event.attributes,
+                        )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
+                            event.attributes,
+                        )
+                    else:
+                        attrs = {
+                            gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
+                                {
+                                    "role": "user",
+                                    "parts": (
+                                        {"content": content, "type": "text"},
+                                    ),
+                                },
+                            ),
+                            gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES: (
+                                {
+                                    "role": "assistant",
+                                    "parts": (
+                                        {"content": output, "type": "text"},
+                                    ),
+                                    "finish_reason": "",
+                                },
+                            ),
+                            gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS: (
+                                {"content": sys_instr, "type": "text"},
+                            ),
+                        }
+                        expected_event = Event(
+                            "gen_ai.client.inference.operation.details",
+                            attributes=attrs,
+                        )
+                        self.assertEqual(
+                            event.attributes[
+                                gen_ai_attributes.GEN_AI_INPUT_MESSAGES
+                            ],
+                            expected_event.attributes[
+                                gen_ai_attributes.GEN_AI_INPUT_MESSAGES
+                            ],
+                        )
+                        self.assertEqual(
+                            event.attributes[
+                                gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
+                            ],
+                            expected_event.attributes[
+                                gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
+                            ],
+                        )
+                        self.assertEqual(
+                            event.attributes[
+                                gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
+                            ],
+                            expected_event.attributes[
+                                gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
+                            ],
+                        )
+                self.tearDown()
+
+    def test_new_semconv_record_completion_in_span(self):
+        for mode in ContentCapturingMode:
+            patched_environ = patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                },
+            )
+            patched_otel_mapping = patch.dict(
+                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
+            )
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
+                self.setUp()
+                with patched_environ, patched_otel_mapping:
+                    self.configure_valid_response(text="Some response content")
+                    self.generate_content(
+                        model="gemini-2.0-flash",
+                        contents="Some input",
+                        config=GenerateContentConfig(
+                            system_instruction="System instruction"
+                        ),
+                    )
+                    span = self.otel.get_span_named(
+                        "generate_content gemini-2.0-flash"
+                    )
+                    if mode in [
+                        ContentCapturingMode.SPAN_ONLY,
+                        ContentCapturingMode.SPAN_AND_EVENT,
+                    ]:
+                        self.assertEqual(
+                            span.attributes[
+                                gen_ai_attributes.GEN_AI_INPUT_MESSAGES
+                            ],
+                            '[{"role":"user","parts":[{"content":"Some input","type":"text"}]}]',
+                        )
+                        self.assertEqual(
+                            span.attributes[
+                                gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
+                            ],
+                            '[{"role":"assistant","parts":[{"content":"Some response content","type":"text"}],"finish_reason":""}]',
+                        )
+                        self.assertEqual(
+                            span.attributes[
+                                gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
+                            ],
+                            '[{"content":"System instruction","type":"text"}]',
+                        )
+                    else:
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
+                            span.attributes,
+                        )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES,
+                            span.attributes,
+                        )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
+                            span.attributes,
+                        )
+
+                self.tearDown()
 
     def test_records_metrics_data(self):
         self.configure_valid_response()

@@ -42,10 +42,8 @@ def test_function_call_choice(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     user_log, choice_log = [log_data.log_record for log_data in logs]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
         "content": [
             {"text": "Get weather details in New Delhi and San Francisco?"}
@@ -53,10 +51,8 @@ def test_function_call_choice(
         "role": "user",
     }
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
@@ -110,18 +106,14 @@ def test_function_call_choice_no_content(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
     user_log, choice_log = [log_data.log_record for log_data in logs]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
         "role": "user",
     }
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
@@ -171,10 +163,8 @@ def test_tool_events(
     user_log, assistant_log, tool_log1, tool_log2, choice_log = [
         log_data.log_record for log_data in logs
     ]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
         "content": [
             {"text": "Get weather details in New Delhi and San Francisco?"}
@@ -182,10 +172,8 @@ def test_tool_events(
         "role": "user",
     }
 
-    assert assistant_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.assistant.message",
-    }
+    assert assistant_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert assistant_log.event_name == "gen_ai.assistant.message"
     assert assistant_log.body == {
         "role": "model",
         "content": [
@@ -204,10 +192,8 @@ def test_tool_events(
         ],
     }
 
-    assert tool_log1.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
-    }
+    assert tool_log1.attributes == {"gen_ai.system": "vertex_ai"}
+    assert tool_log1.event_name == "gen_ai.tool.message"
 
     assert tool_log1.body == {
         "role": "user",
@@ -215,20 +201,16 @@ def test_tool_events(
         "content": {"content": '{"temperature": 35, "unit": "C"}'},
     }
 
-    assert tool_log2.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
-    }
+    assert tool_log2.attributes == {"gen_ai.system": "vertex_ai"}
+    assert tool_log2.event_name == "gen_ai.tool.message"
     assert tool_log2.body == {
         "role": "user",
         "id": "get_current_weather_1",
         "content": {"content": '{"temperature": 25, "unit": "C"}'},
     }
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,
@@ -273,40 +255,34 @@ def test_tool_events_no_content(
     user_log, assistant_log, tool_log1, tool_log2, choice_log = [
         log_data.log_record for log_data in logs
     ]
-    assert user_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.user.message",
-    }
+    assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {"role": "user"}
 
-    assert assistant_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.assistant.message",
-    }
+    assert assistant_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert assistant_log.event_name == "gen_ai.assistant.message"
     assert assistant_log.body == {"role": "model"}
 
     assert tool_log1.attributes == {
         "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
     }
+    assert tool_log1.event_name == "gen_ai.tool.message"
     assert tool_log1.body == {
         "role": "user",
         "id": "get_current_weather_0",
     }
+    assert tool_log1.event_name == "gen_ai.tool.message"
 
-    assert tool_log2.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.tool.message",
-    }
+    assert tool_log2.attributes == {"gen_ai.system": "vertex_ai"}
+
     assert tool_log2.body == {
         "role": "user",
         "id": "get_current_weather_1",
     }
+    assert tool_log2.event_name == "gen_ai.tool.message"
 
-    assert choice_log.attributes == {
-        "gen_ai.system": "vertex_ai",
-        "event.name": "gen_ai.choice",
-    }
+    assert choice_log.attributes == {"gen_ai.system": "vertex_ai"}
+    assert choice_log.event_name == "gen_ai.choice"
     assert choice_log.body == {
         "finish_reason": "stop",
         "index": 0,

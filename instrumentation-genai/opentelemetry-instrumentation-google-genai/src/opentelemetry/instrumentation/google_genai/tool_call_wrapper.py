@@ -24,9 +24,15 @@ from google.genai.types import (
 )
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.semconv._incubating.attributes import (
     code_attributes,
 )
+from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .flags import is_content_recording_enabled
 from .otel_wrapper import OTelWrapper
@@ -76,6 +82,21 @@ def _to_otel_attribute(python_value):
     return json.dumps(otel_value)
 
 
+def _is_capture_content_enabled() -> bool:
+    mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.GEN_AI
+    )
+    if mode == _StabilityMode.DEFAULT:
+        return bool(is_content_recording_enabled(mode))
+    if mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
+        capturing_mode = is_content_recording_enabled(mode)
+        return capturing_mode in [
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]
+    raise RuntimeError(f"{mode} mode not supported")
+
+
 def _create_function_span_name(wrapped_function):
     """Constructs the span name for a given local function tool call."""
     function_name = wrapped_function.__name__
@@ -115,7 +136,7 @@ def _record_function_call_arguments(
     otel_wrapper, wrapped_function, function_args, function_kwargs
 ):
     """Records the details about a function invocation as span attributes."""
-    include_values = is_content_recording_enabled()
+    include_values = _is_capture_content_enabled()
     span = trace.get_current_span()
     signature = inspect.signature(wrapped_function)
     params = list(signature.parameters.values())
@@ -130,7 +151,7 @@ def _record_function_call_arguments(
 
 def _record_function_call_result(otel_wrapper, wrapped_function, result):
     """Records the details about a function result as span attributes."""
-    include_values = is_content_recording_enabled()
+    include_values = _is_capture_content_enabled()
     span = trace.get_current_span()
     span.set_attribute("code.function.return.type", type(result).__name__)
     if include_values:
