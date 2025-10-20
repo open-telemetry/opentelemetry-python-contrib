@@ -21,12 +21,10 @@ from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAI,
-)
-from opentelemetry.trace import Tracer
+from opentelemetry.instrumentation.langchain.invocation_manager import _InvocationManager
 
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.types import LLMInvocation, Text, InputMessage, OutputMessage, Error
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
     """
@@ -35,13 +33,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def __init__(
         self,
-        tracer: Tracer,
+        telemetry_handler: TelemetryHandler
     ) -> None:
         super().__init__()  # type: ignore
-
-        self.span_manager = _SpanManager(
-            tracer=tracer,
-        )
+        self._telemetry_handler = telemetry_handler
+        self._invocation_manager = _InvocationManager()
 
     def on_chat_model_start(
         self,
@@ -82,59 +78,68 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         if request_model == "unknown":
             return
 
-        span = self.span_manager.create_chat_span(
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            request_model=request_model,
-        )
-
-        if params is not None:
-            top_p = params.get("top_p")
-            if top_p is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
-            frequency_penalty = params.get("frequency_penalty")
-            if frequency_penalty is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
-                )
-            presence_penalty = params.get("presence_penalty")
-            if presence_penalty is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
-                )
-            stop_sequences = params.get("stop")
-            if stop_sequences is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
-                )
-            seed = params.get("seed")
-            if seed is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
-            # ChatOpenAI
-            temperature = params.get("temperature")
-            if temperature is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
-                )
-            # ChatOpenAI
-            max_tokens = params.get("max_completion_tokens")
-            if max_tokens is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
-
+        # TODO: uncomment and modify following after PR #3862 is merged
+        # if params is not None:
+        #     top_p = params.get("top_p")
+        #     if top_p is not None:
+        #         span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+        #     frequency_penalty = params.get("frequency_penalty")
+        #     if frequency_penalty is not None:
+        #         span.set_attribute(
+        #             GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+        #         )
+        #     presence_penalty = params.get("presence_penalty")
+        #     if presence_penalty is not None:
+        #         span.set_attribute(
+        #             GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+        #         )
+        #     stop_sequences = params.get("stop")
+        #     if stop_sequences is not None:
+        #         span.set_attribute(
+        #             GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+        #         )
+        #     seed = params.get("seed")
+        #     if seed is not None:
+        #         span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+        #     # ChatOpenAI
+        #     temperature = params.get("temperature")
+        #     if temperature is not None:
+        #         span.set_attribute(
+        #             GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+        #         )
+        #     # ChatOpenAI
+        #     max_tokens = params.get("max_completion_tokens")
+        #     if max_tokens is not None:
+        #         span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+        #
+        provider = "unknown"
         if metadata is not None:
             provider = metadata.get("ls_provider")
-            if provider is not None:
-                span.set_attribute("gen_ai.provider.name", provider)
-            # ChatBedrock
-            temperature = metadata.get("ls_temperature")
-            if temperature is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
-                )
-            # ChatBedrock
-            max_tokens = metadata.get("ls_max_tokens")
-            if max_tokens is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+
+        # TODO: uncomment and modify following after PR #3862 is merged
+
+        #     # ChatBedrock
+        #     temperature = metadata.get("ls_temperature")
+        #     if temperature is not None:
+        #         span.set_attribute(
+        #             GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+        #         )
+        #     # ChatBedrock
+        #     max_tokens = metadata.get("ls_max_tokens")
+        #     if max_tokens is not None:
+        #         span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+
+        input_messages: list[InputMessage] = []
+        for sub_messages in messages:
+            for message in sub_messages:
+                content = get_property_value(message, "content")
+                role = get_property_value(message, "type")
+                parts = [Text(content=content, type="text")]
+                input_messages.append(InputMessage(parts=parts, role=role))
+
+        llm_invocation = LLMInvocation(request_model=request_model, input_messages=input_messages, provider=provider)
+        llm_invocation = self._telemetry_handler.start_llm(invocation=llm_invocation)
+        self._invocation_manager.add_invocation_state(run_id=run_id, parent_run_id=parent_run_id, invocation=llm_invocation)
 
     def on_llm_end(
         self,
@@ -144,15 +149,18 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         parent_run_id: UUID | None,
         **kwargs: Any,
     ) -> None:
-        span = self.span_manager.get_span(run_id)
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
 
-        if span is None:
-            # If the span does not exist, we cannot set attributes or end it
+        if invocation is None or not isinstance(invocation, LLMInvocation):
+            # If the invocation does not exist, we cannot set attributes or end it
             return
 
-        finish_reasons: list[str] = []
+        llm_invocation: LLMInvocation = invocation
+
+        output_messages: list[OutputMessage] = []
         for generation in getattr(response, "generations", []):  # type: ignore
             for chat_generation in generation:
+                # Get finish reason
                 generation_info = getattr(
                     chat_generation, "generation_info", None
                 )
@@ -160,9 +168,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     finish_reason = generation_info.get(
                         "finish_reason", "unknown"
                     )
-                    if finish_reason is not None:
-                        finish_reasons.append(str(finish_reason))
+
                 if chat_generation.message:
+                    # Get finish reason if generation_info is None above
                     if (
                         generation_info is None
                         and chat_generation.message.response_metadata
@@ -172,29 +180,30 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                                 "stopReason", "unknown"
                             )
                         )
-                        if finish_reason is not None:
-                            finish_reasons.append(str(finish_reason))
+
+                    # Get message content
+                    parts = [Text(content=get_property_value(chat_generation.message, "content"), type="text")]
+                    role = get_property_value(chat_generation.message, "type")
+                    output_message = OutputMessage(role=role, parts=parts, finish_reason=finish_reason)
+                    output_messages.append(output_message)
+
+                    # Get token usage if available
                     if chat_generation.message.usage_metadata:
                         input_tokens = (
                             chat_generation.message.usage_metadata.get(
                                 "input_tokens", 0
                             )
                         )
+                        llm_invocation.input_tokens = input_tokens
+
                         output_tokens = (
                             chat_generation.message.usage_metadata.get(
                                 "output_tokens", 0
                             )
                         )
-                        span.set_attribute(
-                            GenAI.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
-                        )
-                        span.set_attribute(
-                            GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
-                        )
+                        llm_invocation.output_tokens = output_tokens
 
-        span.set_attribute(
-            GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
-        )
+        llm_invocation.output_messages = output_messages
 
         llm_output = getattr(response, "llm_output", None)  # type: ignore
         if llm_output is not None:
@@ -202,16 +211,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 "model"
             )
             if response_model is not None:
-                span.set_attribute(
-                    GenAI.GEN_AI_RESPONSE_MODEL, str(response_model)
-                )
+                llm_invocation.response_model_name = str(response_model)
 
             response_id = llm_output.get("id")
             if response_id is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, str(response_id))
+                llm_invocation.response_id = str(response_id)
 
-        # End the LLM span
-        self.span_manager.end_span(run_id)
+        invocation = self._telemetry_handler.stop_llm(invocation=invocation)
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_llm_error(
         self,
@@ -221,4 +229,22 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         parent_run_id: UUID | None,
         **kwargs: Any,
     ) -> None:
-        self.span_manager.handle_error(error, run_id)
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+
+        if invocation is None or not isinstance(invocation, LLMInvocation):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        invocation: LLMInvocation = invocation
+
+        error = Error(message=str(error), type=type(error))
+        invocation = self._telemetry_handler.fail_llm(invocation=invocation, error=error)
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
+
+
+def get_property_value(obj, property_name):
+    if isinstance(obj, dict):
+        return obj.get(property_name, None)
+
+    return getattr(obj, property_name, None)

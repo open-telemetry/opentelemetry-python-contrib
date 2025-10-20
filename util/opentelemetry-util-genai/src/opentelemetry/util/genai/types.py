@@ -90,18 +90,22 @@ def _new_output_messages() -> List[OutputMessage]:
 def _new_str_any_dict() -> Dict[str, Any]:
     return {}
 
+@dataclass
+class GenAIInvocation:
+    context_token: Optional[ContextToken] = None
+    span: Optional[Span] = None
+    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
+
 
 @dataclass
-class LLMInvocation:
+class LLMInvocation(GenAIInvocation):
     """
     Represents a single LLM call invocation. When creating an LLMInvocation object,
     only update the data attributes. The span and context_token attributes are
     set by the TelemetryHandler.
     """
 
-    request_model: str
-    context_token: Optional[ContextToken] = None
-    span: Optional[Span] = None
+    request_model: str = ""
     input_messages: List[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -113,8 +117,6 @@ class LLMInvocation:
     response_id: Optional[str] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-
 
 @dataclass
 class Error:
