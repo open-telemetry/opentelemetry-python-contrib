@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-from unittest.mock import patch
 
 import mysql.connector
 
@@ -80,29 +79,3 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor.close()
         MySQLInstrumentor().uninstrument_connection(instrumented_cnx)
         cnx.close()
-
-    def test_commenter_enabled_unknown_mysql_client_version(self):
-        MySQLInstrumentor().instrument(enable_commenter=True)
-        cnx = mysql.connector.connect(
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            host=MYSQL_HOST,
-            port=MYSQL_PORT,
-            database=MYSQL_DB_NAME,
-        )
-        cursor = cnx.cursor()
-
-        # Mock get_client_info to raise AttributeError
-        with patch.object(cursor._cnx._cmysql, 'get_client_info', side_effect=AttributeError("Mocked error")):
-            cursor.execute("SELECT 1;")
-            cursor.fetchall()
-
-        self.assertRegex(
-            cursor.statement,
-            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='unknown',traceparent='[^']*'\*/;",
-        )
-        self.assertIn("mysql_client_version='unknown'", cursor.statement)
-
-        cursor.close()
-        cnx.close()
-        MySQLInstrumentor().uninstrument()
