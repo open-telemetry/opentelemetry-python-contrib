@@ -27,6 +27,10 @@ from uuid import UUID
 from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
 from opentelemetry.trace import Span, Tracer
 
+_TOOL_CALL_ARGUMENTS_ATTR = "gen_ai.tool.call.arguments"
+_TOOL_CALL_RESULT_ATTR = "gen_ai.tool.call.result"
+_TOOL_DEFINITIONS_ATTR = "gen_ai.tool.definitions"
+
 
 class _BaseCallbackHandlerProtocol(Protocol):
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
@@ -187,10 +191,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if callable(base_init):
             base_init()
 
-        self.span_manager = _SpanManager(
+        self.span_manager: _SpanManager = _SpanManager(
             tracer=tracer,
         )
         self._capture_messages = capture_messages
+        self._metadata_provider_mapping = self._METADATA_PROVIDER_MAPPING
 
     def on_chat_model_start(
         self,
@@ -230,6 +235,22 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             )
 
         self._apply_request_attributes(span, params, metadata)
+
+        if self._capture_messages:
+            tool_definitions = self._extract_tool_definitions(
+                params=params,
+                metadata=metadata,
+                serialized=serialized,
+                extras=kwargs_dict,
+            )
+            if tool_definitions is not None:
+                serialized_definitions = self._serialize_tool_payload(
+                    tool_definitions
+                )
+                if serialized_definitions is not None:
+                    span.set_attribute(
+                        _TOOL_DEFINITIONS_ATTR, serialized_definitions
+                    )
 
         if self._capture_messages and messages:
             serialized_messages = self._serialize_input_messages(messages)
@@ -625,3 +646,196 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         self.span_manager.handle_error(error, run_id)
+
+    def on_tool_start(
+        self,
+        serialized: Mapping[str, Any] | None,
+        input_str: str,
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None,
+        metadata: Mapping[str, Any] | None = None,
+        inputs: Mapping[str, Any] | None = None,
+        tags: Sequence[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        tool_name = self._resolve_tool_name(serialized, metadata, inputs)
+
+        span = cast(
+            Span,
+            self.span_manager.create_tool_span(  # type: ignore[attr-defined]
+                run_id=run_id,
+                parent_run_id=parent_run_id,
+                tool_name=tool_name,
+            ),
+        )
+
+        provider_name = self._resolve_provider(None, metadata)
+        if provider_name:
+            span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider_name)
+
+        tool_call_id = self._resolve_tool_call_id(metadata, inputs)
+        if tool_call_id:
+            span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, tool_call_id)
+
+        tool_type = self._resolve_tool_type(serialized, metadata)
+        if tool_type:
+            span.set_attribute(GenAI.GEN_AI_TOOL_TYPE, tool_type)
+
+        if self._capture_messages:
+            arguments_payload = self._serialize_tool_payload(
+                inputs if inputs is not None else input_str
+            )
+            if arguments_payload is not None:
+                span.set_attribute(
+                    _TOOL_CALL_ARGUMENTS_ATTR, arguments_payload
+                )
+
+    def on_tool_end(
+        self,
+        output: Any,
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None,
+        **kwargs: Any,
+    ) -> None:
+        span = self.span_manager.get_span(run_id)
+        if span is not None and self._capture_messages:
+            result_payload = self._serialize_tool_payload(output)
+            if result_payload is not None:
+                span.set_attribute(_TOOL_CALL_RESULT_ATTR, result_payload)
+        self.span_manager.end_span(run_id)
+
+    def on_tool_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None,
+        **kwargs: Any,
+    ) -> None:
+        self.span_manager.handle_error(error, run_id)
+
+    def _resolve_tool_name(
+        self,
+        serialized: Mapping[str, Any] | None,
+        metadata: Mapping[str, Any] | None,
+        inputs: Mapping[str, Any] | None,
+    ) -> str | None:
+        candidates: list[Any] = []
+        if serialized:
+            candidates.extend(
+                [
+                    serialized.get("name"),
+                    serialized.get("id"),
+                    cast(Mapping[str, Any], serialized.get("kwargs", {})).get(
+                        "name"
+                    )
+                    if isinstance(serialized.get("kwargs"), Mapping)
+                    else None,
+                ]
+            )
+        if inputs:
+            candidates.extend([inputs.get("tool"), inputs.get("name")])
+        if metadata:
+            candidates.extend(
+                [
+                    metadata.get("tool_name"),
+                    metadata.get("agent_name"),
+                ]
+            )
+        for candidate in candidates:
+            if isinstance(candidate, str) and candidate:
+                return candidate
+        return None
+
+    def _resolve_tool_call_id(
+        self,
+        metadata: Mapping[str, Any] | None,
+        inputs: Mapping[str, Any] | None,
+    ) -> str | None:
+        def _extract(source: Mapping[str, Any]) -> str | None:
+            for key in ("tool_call_id", "id", "call_id"):
+                value = cast(Any, source.get(key))
+                if value is None:
+                    continue
+                if isinstance(value, Mapping):
+                    nested_mapping = cast(Mapping[str, Any], value)
+                    nested_id = nested_mapping.get("id")
+                    if nested_id:
+                        return str(nested_id)
+                    continue
+                return str(value)
+            tool_call = cast(Any, source.get("tool_call"))
+            if isinstance(tool_call, Mapping):
+                nested_mapping = cast(Mapping[str, Any], tool_call)
+                nested = nested_mapping.get("id")
+                if nested:
+                    return str(nested)
+            return None
+
+        for container in (metadata, inputs):
+            if isinstance(container, Mapping):
+                extracted = _extract(container)
+                if extracted:
+                    return extracted
+        return None
+
+    def _resolve_tool_type(
+        self,
+        serialized: Mapping[str, Any] | None,
+        metadata: Mapping[str, Any] | None,
+    ) -> str | None:
+        candidates: list[Any] = []
+        if serialized:
+            candidates.extend(
+                [
+                    serialized.get("type"),
+                    cast(Mapping[str, Any], serialized.get("kwargs", {})).get(
+                        "type"
+                    )
+                    if isinstance(serialized.get("kwargs"), Mapping)
+                    else None,
+                ]
+            )
+        if metadata:
+            candidates.append(metadata.get("tool_type"))
+        for candidate in candidates:
+            if isinstance(candidate, str) and candidate:
+                return candidate
+        return None
+
+    def _serialize_tool_payload(self, payload: Any) -> str | None:
+        if payload is None:
+            return None
+        if isinstance(payload, str):
+            return payload
+        try:
+            return json.dumps(payload, default=self._json_default)
+        except (TypeError, ValueError):
+            return str(payload)
+        except Exception:
+            return None
+
+    def _extract_tool_definitions(
+        self,
+        *,
+        params: Mapping[str, Any] | None,
+        metadata: Mapping[str, Any] | None,
+        serialized: Mapping[str, Any] | None,
+        extras: Mapping[str, Any] | None,
+    ) -> Any:
+        for source in (params, metadata, extras):
+            if isinstance(source, Mapping):
+                mapping_source: Mapping[str, Any] = source
+                candidate = cast(Any, mapping_source.get("tools"))
+                if candidate is not None:
+                    return candidate
+        if isinstance(serialized, Mapping):
+            kwargs_mapping = serialized.get("kwargs")
+            if isinstance(kwargs_mapping, Mapping):
+                kwargs_typed = cast(Mapping[str, Any], kwargs_mapping)
+                candidate = cast(Any, kwargs_typed.get("tools"))
+                if candidate is not None:
+                    return candidate
+        return None
