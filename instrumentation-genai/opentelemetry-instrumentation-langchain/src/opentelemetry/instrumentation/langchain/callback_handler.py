@@ -207,7 +207,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     ]
                     role = get_property_value(chat_generation.message, "type")  # type: ignore[reportUnknownVariableType]
                     output_message = OutputMessage(
-                        role=role, # type: ignore[reportArgumentType]
+                        role=role,  # type: ignore[reportArgumentType]
                         parts=parts,
                         finish_reason=finish_reason,  # type: ignore[reportPossiblyUnboundVariable, reportArgumentType]
                     )
