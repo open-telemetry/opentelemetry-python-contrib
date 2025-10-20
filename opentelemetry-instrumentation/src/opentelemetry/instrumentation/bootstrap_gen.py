@@ -17,10 +17,6 @@
 
 libraries = [
     {
-        "library": "langchain >= 0.3.21",
-        "instrumentation": "opentelemetry-instrumentation-langchain-v2==2.0b0.dev",
-    },
-    {
         "library": "openai >= 1.26.0",
         "instrumentation": "opentelemetry-instrumentation-openai-v2",
     },
