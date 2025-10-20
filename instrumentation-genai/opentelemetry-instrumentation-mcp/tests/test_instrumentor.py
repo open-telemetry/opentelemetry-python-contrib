@@ -68,7 +68,7 @@ class TestMcpInstrumentorInstrument(unittest.TestCase):
         self.instrumentor = McpInstrumentor()
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.register_post_import_hook"
+        "opentelemetry.instrumentation.mcp.instrumentor.register_post_import_hook"
     )
     def test_instrument_registers_hooks(self, mock_register: MagicMock):
         """Test that _instrument registers all required hooks."""
@@ -76,7 +76,7 @@ class TestMcpInstrumentorInstrument(unittest.TestCase):
         self.assertEqual(mock_register.call_count, 4)
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.register_post_import_hook"
+        "opentelemetry.instrumentation.mcp.instrumentor.register_post_import_hook"
     )
     def test_instrument_registers_session_hooks(
         self, mock_register: MagicMock
@@ -92,7 +92,7 @@ class TestMcpInstrumentorInstrument(unittest.TestCase):
         self.assertEqual(len(session_calls), 2)
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.register_post_import_hook"
+        "opentelemetry.instrumentation.mcp.instrumentor.register_post_import_hook"
     )
     def test_instrument_registers_server_hooks(self, mock_register: MagicMock):
         """Test that _instrument registers server hooks."""
@@ -112,13 +112,13 @@ class TestMcpInstrumentorUninstrument(unittest.TestCase):
     def setUp(self):
         self.instrumentor = McpInstrumentor()
 
-    @patch("opentelemetry.instrumentation.mcp.instrumentation.unwrap")
+    @patch("opentelemetry.instrumentation.mcp.instrumentor.unwrap")
     def test_uninstrument_unwraps_all(self, mock_unwrap: MagicMock):
         """Test that _uninstrument unwraps all hooks."""
         self.instrumentor._uninstrument()
         self.assertEqual(mock_unwrap.call_count, 4)
 
-    @patch("opentelemetry.instrumentation.mcp.instrumentation.unwrap")
+    @patch("opentelemetry.instrumentation.mcp.instrumentor.unwrap")
     def test_uninstrument_unwraps_send_request(self, mock_unwrap: MagicMock):
         """Test that _uninstrument unwraps send_request."""
         self.instrumentor._uninstrument()
@@ -126,7 +126,7 @@ class TestMcpInstrumentorUninstrument(unittest.TestCase):
             "mcp.shared.session", "BaseSession.send_request"
         )
 
-    @patch("opentelemetry.instrumentation.mcp.instrumentation.unwrap")
+    @patch("opentelemetry.instrumentation.mcp.instrumentor.unwrap")
     def test_uninstrument_unwraps_send_notification(
         self, mock_unwrap: MagicMock
     ):
@@ -136,7 +136,7 @@ class TestMcpInstrumentorUninstrument(unittest.TestCase):
             "mcp.shared.session", "BaseSession.send_notification"
         )
 
-    @patch("opentelemetry.instrumentation.mcp.instrumentation.unwrap")
+    @patch("opentelemetry.instrumentation.mcp.instrumentor.unwrap")
     def test_uninstrument_unwraps_handle_request(self, mock_unwrap: MagicMock):
         """Test that _uninstrument unwraps handle_request."""
         self.instrumentor._uninstrument()
@@ -144,7 +144,7 @@ class TestMcpInstrumentorUninstrument(unittest.TestCase):
             "mcp.server.lowlevel.server", "Server._handle_request"
         )
 
-    @patch("opentelemetry.instrumentation.mcp.instrumentation.unwrap")
+    @patch("opentelemetry.instrumentation.mcp.instrumentor.unwrap")
     def test_uninstrument_unwraps_handle_notification(
         self, mock_unwrap: MagicMock
     ):

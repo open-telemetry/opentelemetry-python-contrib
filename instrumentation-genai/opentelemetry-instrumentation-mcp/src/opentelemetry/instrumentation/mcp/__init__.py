@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .instrumentation import McpInstrumentor
+from .instrumentor import McpInstrumentor
 from .version import __version__
 
 __all__ = ["McpInstrumentor", "__version__"]

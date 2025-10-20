@@ -126,7 +126,7 @@ class TestWrapSessionSend(unittest.TestCase):
         self.assertEqual(result, {"result": "success"})
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_client_request(
         self, mock_generate_attrs: MagicMock
@@ -159,7 +159,7 @@ class TestWrapSessionSend(unittest.TestCase):
             self.assertEqual(call_kwargs["kind"], SpanKind.CLIENT)
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_client_notification(
         self, mock_generate_attrs: MagicMock
@@ -190,7 +190,7 @@ class TestWrapSessionSend(unittest.TestCase):
             self.assertEqual(call_kwargs["kind"], SpanKind.CLIENT)
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_server_request(
         self, mock_generate_attrs: MagicMock
@@ -221,7 +221,7 @@ class TestWrapSessionSend(unittest.TestCase):
             self.assertEqual(call_kwargs["kind"], SpanKind.SERVER)
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_injects_trace_context(
         self, mock_generate_attrs: MagicMock
@@ -254,7 +254,7 @@ class TestWrapSessionSend(unittest.TestCase):
             )
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_success_status(
         self, mock_generate_attrs: MagicMock
@@ -285,7 +285,7 @@ class TestWrapSessionSend(unittest.TestCase):
             mock_span.set_status.assert_called_once()
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_error_status(
         self, mock_generate_attrs: MagicMock
@@ -317,7 +317,7 @@ class TestWrapSessionSend(unittest.TestCase):
             mock_span.record_exception.assert_called_once()
 
     @patch(
-        "opentelemetry.instrumentation.mcp.instrumentation.McpInstrumentor._generate_mcp_message_attrs"
+        "opentelemetry.instrumentation.mcp.instrumentor.McpInstrumentor._generate_mcp_message_attrs"
     )
     def test_wrap_session_send_preserves_existing_params(
         self, mock_generate_attrs: MagicMock
