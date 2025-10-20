@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-langchain-v2"
+name = "opentelemetry-instrumentation-langchain"
 dynamic = ["version"]
 description = "OpenTelemetry Official Langchain instrumentation"
 readme = "README.rst"
@@ -39,7 +39,7 @@ instruments = [
 langchain = "opentelemetry.instrumentation.langchain:LangChainInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-langchain-v2"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-langchain"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
