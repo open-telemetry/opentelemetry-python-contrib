@@ -22,6 +22,7 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
@@ -36,6 +37,7 @@ to pick a specific package to release. It follows the same versioning strategy a
 Long-term package release branch follows `package-release/{package-name}/v{major}.{minor}.x` (or `package-release/{package-name}/v{major}.{minor}bx`) naming pattern.
 
 The workflow will create two pull requests, one against the `main` and one against the `package-release/` branch; both should be merged in order to proceed with the release.
+To keep the process lightweight, it's OK to approve the PRs you generate and merge without additional reviews.
 
 ## Preparing a new patch release
 
@@ -87,11 +89,13 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
+> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general patch release.
 
