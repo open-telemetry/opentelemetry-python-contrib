@@ -46,7 +46,6 @@ from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
 from opentelemetry.instrumentation.langchain.package import _instruments
-from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import get_telemetry_handler
 
@@ -72,7 +71,9 @@ class LangChainInstrumentor(BaseInstrumentor):
         """
         tracer_provider = kwargs.get("tracer_provider")
 
-        telemetry_handler = get_telemetry_handler(tracer_provider=tracer_provider)
+        telemetry_handler = get_telemetry_handler(
+            tracer_provider=tracer_provider
+        )
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             telemetry_handler=telemetry_handler
         )

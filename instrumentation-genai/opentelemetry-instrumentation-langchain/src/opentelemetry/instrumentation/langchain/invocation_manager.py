@@ -48,7 +48,6 @@ class _InvocationManager:
         invocation_state = _InvocationState(invocation=invocation)
         self._invocations[run_id] = invocation_state
 
-
     def get_invocation(self, run_id: UUID) -> Optional[GenAIInvocation]:
         invocation_state = self._invocations.get(run_id)
         return invocation_state.invocation if invocation_state else None

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add parent class genAI invocation
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3889](#3889))
+
 ## Version 0.2b0 (2025-10-14)
 
 - Add jsonlines support to fsspec uploader

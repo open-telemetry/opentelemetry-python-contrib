@@ -21,20 +21,25 @@ from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.outputs import LLMResult  # type: ignore
 
-from opentelemetry.instrumentation.langchain.invocation_manager import _InvocationManager
-
+from opentelemetry.instrumentation.langchain.invocation_manager import (
+    _InvocationManager,
+)
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import LLMInvocation, Text, InputMessage, OutputMessage, Error
+from opentelemetry.util.genai.types import (
+    Error,
+    InputMessage,
+    LLMInvocation,
+    OutputMessage,
+    Text,
+)
+
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
 
-    def __init__(
-        self,
-        telemetry_handler: TelemetryHandler
-    ) -> None:
+    def __init__(self, telemetry_handler: TelemetryHandler) -> None:
         super().__init__()  # type: ignore
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
@@ -137,9 +142,19 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                 parts = [Text(content=content, type="text")]
                 input_messages.append(InputMessage(parts=parts, role=role))
 
-        llm_invocation = LLMInvocation(request_model=request_model, input_messages=input_messages, provider=provider)
-        llm_invocation = self._telemetry_handler.start_llm(invocation=llm_invocation)
-        self._invocation_manager.add_invocation_state(run_id=run_id, parent_run_id=parent_run_id, invocation=llm_invocation)
+        llm_invocation = LLMInvocation(
+            request_model=request_model,
+            input_messages=input_messages,
+            provider=provider,
+        )
+        llm_invocation = self._telemetry_handler.start_llm(
+            invocation=llm_invocation
+        )
+        self._invocation_manager.add_invocation_state(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            invocation=llm_invocation,
+        )
 
     def on_llm_end(
         self,
@@ -182,9 +197,18 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                         )
 
                     # Get message content
-                    parts = [Text(content=get_property_value(chat_generation.message, "content"), type="text")]
+                    parts = [
+                        Text(
+                            content=get_property_value(
+                                chat_generation.message, "content"
+                            ),
+                            type="text",
+                        )
+                    ]
                     role = get_property_value(chat_generation.message, "type")
-                    output_message = OutputMessage(role=role, parts=parts, finish_reason=finish_reason)
+                    output_message = OutputMessage(
+                        role=role, parts=parts, finish_reason=finish_reason
+                    )
                     output_messages.append(output_message)
 
                     # Get token usage if available
@@ -238,7 +262,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         invocation: LLMInvocation = invocation
 
         error = Error(message=str(error), type=type(error))
-        invocation = self._telemetry_handler.fail_llm(invocation=invocation, error=error)
+        invocation = self._telemetry_handler.fail_llm(
+            invocation=invocation, error=error
+        )
         if not invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 

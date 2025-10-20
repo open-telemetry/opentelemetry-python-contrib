@@ -90,6 +90,7 @@ def _new_output_messages() -> List[OutputMessage]:
 def _new_str_any_dict() -> Dict[str, Any]:
     return {}
 
+
 @dataclass
 class GenAIInvocation:
     context_token: Optional[ContextToken] = None
@@ -117,6 +118,7 @@ class LLMInvocation(GenAIInvocation):
     response_id: Optional[str] = None
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
+
 
 @dataclass
 class Error:
