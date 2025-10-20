@@ -25,29 +25,55 @@ MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 MYSQL_DB_NAME = os.getenv("MYSQL_DB_NAME", "opentelemetry-tests")
 
+
 class TestFunctionalMySqlCommenter(TestBase):
-    def setUp(self):
-        super().setUp()
-        self._tracer = self.tracer_provider.get_tracer(__name__)
+    def test_commenter_enabled_direct_reference(self):
         MySQLInstrumentor().instrument(enable_commenter=True)
-        self._connection = mysql.connector.connect(
+        cnx = mysql.connector.connect(
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,
             host=MYSQL_HOST,
             port=MYSQL_PORT,
             database=MYSQL_DB_NAME,
         )
-        self._cursor = self._connection.cursor()
+        cursor = cnx.cursor()
 
-    def tearDown(self):
-        self._cursor.close()
-        self._connection.close()
-        MySQLInstrumentor().uninstrument()
-        super().tearDown()
-
-    def test_commenter_enabled(self):
-        self._cursor.execute("SELECT  1;")
+        cursor.execute("SELECT 1;")
         self.assertRegex(
-            self._cursor._query.query.decode("ascii"),
-            r"SELECT  1 /\*db_driver='mysql.connector(.*)',dbapi_level='\d.\d',dbapi_threadsafety=\d,driver_paramstyle=(.*),mysql_client_version=\d*,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+            cursor.statement,
+            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
         )
+        self.assertRegex(
+            cursor.statement, r"mysql_client_version='(?!unknown)[^']+"
+        )
+
+        cursor.close()
+        cnx.close()
+        MySQLInstrumentor().uninstrument()
+
+    def test_commenter_enabled_connection_proxy(self):
+        cnx = mysql.connector.connect(
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            database=MYSQL_DB_NAME,
+        )
+        instrumented_cnx = MySQLInstrumentor().instrument_connection(
+            connection=cnx,
+            enable_commenter=True,
+        )
+        cursor = instrumented_cnx.cursor()
+
+        cursor.execute("SELECT 1;")
+        self.assertRegex(
+            cursor.statement,
+            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
+        )
+        self.assertRegex(
+            cursor.statement, r"mysql_client_version='(?!unknown)[^']+"
+        )
+
+        cursor.close()
+        MySQLInstrumentor().uninstrument_connection(instrumented_cnx)
+        cnx.close()
