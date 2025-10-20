@@ -61,7 +61,7 @@ class McpInstrumentor(BaseInstrumentor):
             tracer_provider: Optional tracer provider to use
             propagators: Optional propagators for context injection/extraction
         """
-        _LOG.info("Initializing MCP instrumentor xyxyxy")
+        _LOG.info("Initializing MCP instrumentor.")
         super().__init__()
         self.propagators = kwargs.get("propagators") or get_global_textmap()
         self.tracer = trace.get_tracer(
@@ -164,9 +164,15 @@ class McpInstrumentor(BaseInstrumentor):
             span_kind = SpanKind.CLIENT if is_client else SpanKind.SERVER
 
             # Serialize message for modification
-            message_json = message.model_dump(
-                by_alias=True, mode="json", exclude_none=True
-            )
+            try:
+                message_json = message.model_dump(
+                    by_alias=True, mode="json", exclude_none=True
+                )
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                _LOG.warning(
+                    "Failed to serialize message for tracing: %s", exc
+                )
+                return await wrapped(*args, **kwargs)
 
             # Ensure _meta field exists for trace context
             message_json.setdefault("params", {}).setdefault("_meta", {})
