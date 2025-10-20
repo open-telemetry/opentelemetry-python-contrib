@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from unittest.mock import patch
 
 import mysql.connector
 
@@ -91,30 +92,16 @@ class TestFunctionalMySqlCommenter(TestBase):
         )
         cursor = cnx.cursor()
 
-        # Temporarily remove _cmysql
-        original_cmysql = None
-        try:
-            if hasattr(cursor._cnx, "_cmysql"):
-                original_cmysql = cursor._cnx._cmysql
-                delattr(cursor._cnx, "_cmysql")
-        except AttributeError:
-            pass
-
-        cursor.execute("SELECT 1;")
-        cursor.fetchall()
+        # Mock get_client_info to raise AttributeError
+        with patch.object(cursor._cnx._cmysql, 'get_client_info', side_effect=AttributeError("Mocked error")):
+            cursor.execute("SELECT 1;")
+            cursor.fetchall()
 
         self.assertRegex(
             cursor.statement,
             r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='unknown',traceparent='[^']*'\*/;",
         )
         self.assertIn("mysql_client_version='unknown'", cursor.statement)
-
-        # Restore _cmysql
-        if original_cmysql is not None:
-            try:
-                cursor._cnx._cmysql = original_cmysql
-            except AttributeError:
-                pass
 
         cursor.close()
         cnx.close()
