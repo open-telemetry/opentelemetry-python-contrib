@@ -39,6 +39,7 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor = cnx.cursor()
 
         cursor.execute("SELECT 1;")
+        cursor.fetchall()
         self.assertRegex(
             cursor.statement,
             r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
@@ -66,6 +67,7 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor = instrumented_cnx.cursor()
 
         cursor.execute("SELECT 1;")
+        cursor.fetchall()
         self.assertRegex(
             cursor.statement,
             r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
