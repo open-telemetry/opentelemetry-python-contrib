@@ -64,16 +64,19 @@ from contextlib import contextmanager
 from typing import Iterator, Optional
 
 from opentelemetry import context as otel_context
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
+    Span,
     SpanKind,
     TracerProvider,
     get_tracer,
     set_span_in_context,
 )
+from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_finish_attributes,
@@ -88,13 +91,41 @@ class TelemetryHandler:
     them as spans, metrics, and events.
     """
 
-    def __init__(self, tracer_provider: TracerProvider | None = None):
+    def __init__(
+        self,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+    ):
         self._tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
             schema_url=Schemas.V1_36_0.value,
         )
+        self._metrics_recorder: Optional[InvocationMetricsRecorder] = None
+        try:
+            meter = get_meter(__name__, meter_provider=meter_provider)
+            self._metrics_recorder = InvocationMetricsRecorder(meter)
+        except Exception:  # pragma: no cover - defensive fallback  # pylint: disable=broad-exception-caught
+            self._metrics_recorder = None
+
+    def _record_llm_metrics(
+        self,
+        invocation: LLMInvocation,
+        span: Optional[Span],
+        *,
+        error_type: Optional[str] = None,
+    ) -> None:
+        if self._metrics_recorder is None or span is None:
+            return
+        try:
+            self._metrics_recorder.record(
+                span,
+                invocation,
+                error_type=error_type,
+            )
+        except Exception:  # pragma: no cover - defensive fallback  # pylint: disable=broad-exception-caught
+            pass
 
     def start_llm(
         self,
@@ -118,10 +149,12 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        _apply_finish_attributes(invocation.span, invocation)
+        span = invocation.span
+        _apply_finish_attributes(span, invocation)
+        self._record_llm_metrics(invocation, span)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        invocation.span.end()
+        span.end()
         return invocation
 
     def fail_llm(  # pylint: disable=no-self-use
@@ -132,10 +165,13 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        _apply_error_attributes(invocation.span, error)
+        span = invocation.span
+        _apply_error_attributes(span, error)
+        error_type = getattr(error.type, "__qualname__", None)
+        self._record_llm_metrics(invocation, span, error_type=error_type)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        invocation.span.end()
+        span.end()
         return invocation
 
     @contextmanager
@@ -165,6 +201,7 @@ class TelemetryHandler:
 
 def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
@@ -173,6 +210,9 @@ def get_telemetry_handler(
         get_telemetry_handler, "_default_handler", None
     )
     if handler is None:
-        handler = TelemetryHandler(tracer_provider=tracer_provider)
+        handler = TelemetryHandler(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+        )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler
