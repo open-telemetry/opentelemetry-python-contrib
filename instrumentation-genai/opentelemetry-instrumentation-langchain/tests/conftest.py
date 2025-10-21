@@ -19,10 +19,10 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 
-@pytest.fixture(scope="function", name="chat_openai_gpt_3_5_turbo_model")
-def fixture_chat_openai_gpt_3_5_turbo_model():
+@pytest.fixture(scope="function", name="chat_openai_gpt_4_1_model")
+def fixture_chat_openai_gpt_4_1_model():
     llm = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model="gpt-4.1",
         temperature=0.1,
         max_tokens=100,
         top_p=0.9,

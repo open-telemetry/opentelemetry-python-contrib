@@ -184,7 +184,7 @@ class PlannerState(TypedDict):
 
 
 def _model_name() -> str:
-    return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    return os.getenv("OPENAI_MODEL", "gpt-4.1")
 
 
 def _create_llm(

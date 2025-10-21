@@ -21,17 +21,17 @@ from opentelemetry.semconv._incubating.attributes.openai_attributes import (
 )
 
 
-# span_exporter, start_instrumentation, chat_openai_gpt_3_5_turbo_model are coming from fixtures defined in conftest.py
+# span_exporter, start_instrumentation, chat_openai_gpt_4_1_model are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
-def test_chat_openai_gpt_3_5_turbo_model_llm_call(
-    span_exporter, start_instrumentation, chat_openai_gpt_3_5_turbo_model
+def test_chat_openai_gpt_4_1_model_llm_call(
+    span_exporter, start_instrumentation, chat_openai_gpt_4_1_model
 ):
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
+    response = chat_openai_gpt_4_1_model.invoke(messages)
     assert response.content == "The capital of France is Paris."
 
     # verify spans
@@ -87,15 +87,12 @@ def test_gemini(span_exporter, start_instrumentation, gemini):
 def assert_openai_completion_attributes(
     span: ReadableSpan, response: Optional
 ):
-    assert span.name == "chat gpt-3.5-turbo"
+    assert span.name == "chat gpt-4.1"
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]
-        == "gpt-3.5-turbo"
-    )
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-4.1"
     assert (
         span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL]
-        == "gpt-3.5-turbo-0125"
+        == "gpt-4.1-2025-04-14"
     )
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
