@@ -40,7 +40,17 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
-from langgraph.prebuilt import create_react_agent
+
+try:  # LangChain >= 1.0.0
+    from langchain.agents import (
+        create_agent as _create_react_agent,  # type: ignore[attr-defined]
+    )
+except (
+    ImportError
+):  # pragma: no cover - compatibility with older LangGraph releases
+    from langgraph.prebuilt import (
+        create_react_agent as _create_react_agent,  # type: ignore[assignment]
+    )
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
@@ -262,7 +272,7 @@ def flight_specialist_node(state: PlannerState) -> PlannerState:
     llm = _create_llm(
         "flight_specialist", temperature=0.4, session_id=state["session_id"]
     )
-    agent = create_react_agent(llm, tools=[mock_search_flights])
+    agent = _create_react_agent(llm, tools=[mock_search_flights])
     task = (
         f"Find an appealing flight from {state['origin']} to {state['destination']} "
         f"departing {state['departure']} for {state['travellers']} travellers."
@@ -287,7 +297,7 @@ def hotel_specialist_node(state: PlannerState) -> PlannerState:
     llm = _create_llm(
         "hotel_specialist", temperature=0.5, session_id=state["session_id"]
     )
-    agent = create_react_agent(llm, tools=[mock_search_hotels])
+    agent = _create_react_agent(llm, tools=[mock_search_hotels])
     task = (
         f"Recommend a boutique hotel in {state['destination']} between {state['departure']} "
         f"and {state['return_date']} for {state['travellers']} travellers."
@@ -312,7 +322,7 @@ def activity_specialist_node(state: PlannerState) -> PlannerState:
     llm = _create_llm(
         "activity_specialist", temperature=0.6, session_id=state["session_id"]
     )
-    agent = create_react_agent(llm, tools=[mock_search_activities])
+    agent = _create_react_agent(llm, tools=[mock_search_activities])
     task = f"Curate signature activities for travellers spending a week in {state['destination']}."
     result = agent.invoke({"messages": [HumanMessage(content=task)]})
     final_message = result["messages"][-1]

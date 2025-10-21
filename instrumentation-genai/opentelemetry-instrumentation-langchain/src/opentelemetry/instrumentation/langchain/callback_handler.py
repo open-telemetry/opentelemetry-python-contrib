@@ -154,30 +154,131 @@ OPENAI_RESPONSE_SYSTEM_FINGERPRINT = cast(
 )
 
 
+def _enum_member_value(enum_name: str, member_name: str, default: str) -> str:
+    """Return the value for a GenAI enum member, falling back to the provided default."""
+    enum_cls = getattr(GenAI, enum_name, None)
+    member = (
+        getattr(enum_cls, member_name, None) if enum_cls is not None else None
+    )
+    value = getattr(member, "value", None)
+    if isinstance(value, str):
+        return value
+    if isinstance(member, str):
+        return member
+    return default
+
+
+def _gen_ai_attr(name: str, default: str) -> Any:
+    """Fetch a GenAI semantic attribute constant, defaulting to the provided string."""
+    return getattr(GenAI, name, default)
+
+
+_PROVIDER_OPENAI = _enum_member_value(
+    "GenAiProviderNameValues", "OPENAI", "openai"
+)
+_PROVIDER_AZURE_OPENAI = _enum_member_value(
+    "GenAiProviderNameValues", "AZURE_AI_OPENAI", "azure_ai_openai"
+)
+_PROVIDER_AZURE_INFERENCE = _enum_member_value(
+    "GenAiProviderNameValues", "AZURE_AI_INFERENCE", "azure_ai_inference"
+)
+_PROVIDER_AWS_BEDROCK = _enum_member_value(
+    "GenAiProviderNameValues", "AWS_BEDROCK", "aws_bedrock"
+)
+
+GEN_AI_PROVIDER_NAME_ATTR = _gen_ai_attr(
+    "GEN_AI_PROVIDER_NAME", "gen_ai.provider.name"
+)
+GEN_AI_INPUT_MESSAGES_ATTR = _gen_ai_attr(
+    "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages"
+)
+GEN_AI_OUTPUT_MESSAGES_ATTR = _gen_ai_attr(
+    "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
+)
+GEN_AI_OUTPUT_TYPE_ATTR = _gen_ai_attr(
+    "GEN_AI_OUTPUT_TYPE", "gen_ai.output.type"
+)
+GEN_AI_REQUEST_CHOICE_COUNT_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_CHOICE_COUNT", "gen_ai.request.choice.count"
+)
+GEN_AI_REQUEST_FREQUENCY_PENALTY_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_FREQUENCY_PENALTY", "gen_ai.request.frequency_penalty"
+)
+GEN_AI_REQUEST_MAX_TOKENS_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_MAX_TOKENS", "gen_ai.request.max_tokens"
+)
+GEN_AI_REQUEST_PRESENCE_PENALTY_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_PRESENCE_PENALTY", "gen_ai.request.presence_penalty"
+)
+GEN_AI_REQUEST_SEED_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_SEED", "gen_ai.request.seed"
+)
+GEN_AI_REQUEST_STOP_SEQUENCES_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_STOP_SEQUENCES", "gen_ai.request.stop_sequences"
+)
+GEN_AI_REQUEST_TEMPERATURE_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_TEMPERATURE", "gen_ai.request.temperature"
+)
+GEN_AI_REQUEST_TOP_K_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_TOP_K", "gen_ai.request.top_k"
+)
+GEN_AI_REQUEST_TOP_P_ATTR = _gen_ai_attr(
+    "GEN_AI_REQUEST_TOP_P", "gen_ai.request.top_p"
+)
+GEN_AI_RESPONSE_FINISH_REASONS_ATTR = _gen_ai_attr(
+    "GEN_AI_RESPONSE_FINISH_REASONS", "gen_ai.response.finish_reasons"
+)
+GEN_AI_RESPONSE_ID_ATTR = _gen_ai_attr(
+    "GEN_AI_RESPONSE_ID", "gen_ai.response.id"
+)
+GEN_AI_RESPONSE_MODEL_ATTR = _gen_ai_attr(
+    "GEN_AI_RESPONSE_MODEL", "gen_ai.response.model"
+)
+GEN_AI_TOOL_CALL_ID_ATTR = _gen_ai_attr(
+    "GEN_AI_TOOL_CALL_ID", "gen_ai.tool.call.id"
+)
+GEN_AI_TOOL_TYPE_ATTR = _gen_ai_attr("GEN_AI_TOOL_TYPE", "gen_ai.tool.type")
+GEN_AI_USAGE_INPUT_TOKENS_ATTR = _gen_ai_attr(
+    "GEN_AI_USAGE_INPUT_TOKENS", "gen_ai.usage.input_tokens"
+)
+GEN_AI_USAGE_OUTPUT_TOKENS_ATTR = _gen_ai_attr(
+    "GEN_AI_USAGE_OUTPUT_TOKENS", "gen_ai.usage.output_tokens"
+)
+
+_OUTPUT_TYPE_JSON = _enum_member_value("GenAiOutputTypeValues", "JSON", "json")
+_OUTPUT_TYPE_TEXT = _enum_member_value("GenAiOutputTypeValues", "TEXT", "text")
+_OUTPUT_TYPE_IMAGE = _enum_member_value(
+    "GenAiOutputTypeValues", "IMAGE", "image"
+)
+_OUTPUT_TYPE_SPEECH = _enum_member_value(
+    "GenAiOutputTypeValues", "SPEECH", "speech"
+)
+
+
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
 
     _CHAT_MODEL_PROVIDER_MAPPING: dict[str, str] = {
-        "ChatOpenAI": GenAI.GenAiProviderNameValues.OPENAI.value,
-        "AzureChatOpenAI": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "AzureOpenAI": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "ChatBedrock": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
-        "BedrockChat": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+        "ChatOpenAI": _PROVIDER_OPENAI,
+        "AzureChatOpenAI": _PROVIDER_AZURE_OPENAI,
+        "AzureOpenAI": _PROVIDER_AZURE_OPENAI,
+        "ChatBedrock": _PROVIDER_AWS_BEDROCK,
+        "BedrockChat": _PROVIDER_AWS_BEDROCK,
     }
 
     _METADATA_PROVIDER_MAPPING: dict[str, str] = {
-        "openai": GenAI.GenAiProviderNameValues.OPENAI.value,
-        "azure": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "azure_openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "azure-ai-openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "azure_ai_openai": GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-        "azure_ai_inference": GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
-        "azure-inference": GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
-        "amazon": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
-        "bedrock": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
-        "aws": GenAI.GenAiProviderNameValues.AWS_BEDROCK.value,
+        "openai": _PROVIDER_OPENAI,
+        "azure": _PROVIDER_AZURE_OPENAI,
+        "azure_openai": _PROVIDER_AZURE_OPENAI,
+        "azure-ai-openai": _PROVIDER_AZURE_OPENAI,
+        "azure_ai_openai": _PROVIDER_AZURE_OPENAI,
+        "azure_ai_inference": _PROVIDER_AZURE_INFERENCE,
+        "azure-inference": _PROVIDER_AZURE_INFERENCE,
+        "amazon": _PROVIDER_AWS_BEDROCK,
+        "bedrock": _PROVIDER_AWS_BEDROCK,
+        "aws": _PROVIDER_AWS_BEDROCK,
     }
 
     _SERVER_URL_KEYS = ("base_url", "azure_endpoint", "endpoint")
@@ -224,10 +325,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             request_model=request_model,
         )
 
-        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider_name)
+        span.set_attribute(GEN_AI_PROVIDER_NAME_ATTR, provider_name)
         if provider_name in (
-            GenAI.GenAiProviderNameValues.AZURE_AI_OPENAI.value,
-            GenAI.GenAiProviderNameValues.AZURE_AI_INFERENCE.value,
+            _PROVIDER_AZURE_OPENAI,
+            _PROVIDER_AZURE_INFERENCE,
         ):
             span.set_attribute(
                 AZURE_RESOURCE_PROVIDER_NAMESPACE,
@@ -255,7 +356,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if self._capture_messages and messages:
             serialized_messages = self._serialize_input_messages(messages)
             span.set_attribute(
-                GenAI.GEN_AI_INPUT_MESSAGES,
+                GEN_AI_INPUT_MESSAGES_ATTR,
                 self._serialize_to_json(serialized_messages),
             )
 
@@ -343,39 +444,39 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if params:
             top_p = params.get("top_p")
             if top_p is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
+                span.set_attribute(GEN_AI_REQUEST_TOP_P_ATTR, top_p)
             frequency_penalty = params.get("frequency_penalty")
             if frequency_penalty is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
+                    GEN_AI_REQUEST_FREQUENCY_PENALTY_ATTR, frequency_penalty
                 )
             presence_penalty = params.get("presence_penalty")
             if presence_penalty is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
+                    GEN_AI_REQUEST_PRESENCE_PENALTY_ATTR, presence_penalty
                 )
             stop_sequences = params.get("stop")
             if stop_sequences is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
+                    GEN_AI_REQUEST_STOP_SEQUENCES_ATTR, stop_sequences
                 )
             seed = params.get("seed")
             if seed is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
+                span.set_attribute(GEN_AI_REQUEST_SEED_ATTR, seed)
             temperature = params.get("temperature")
             if temperature is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    GEN_AI_REQUEST_TEMPERATURE_ATTR, temperature
                 )
             max_tokens = params.get("max_completion_tokens") or params.get(
                 "max_tokens"
             )
             if max_tokens is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                span.set_attribute(GEN_AI_REQUEST_MAX_TOKENS_ATTR, max_tokens)
 
             top_k = params.get("top_k")
             if top_k is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_K, top_k)
+                span.set_attribute(GEN_AI_REQUEST_TOP_K_ATTR, top_k)
 
             choice_count = params.get("n") or params.get("choice_count")
             if choice_count is not None:
@@ -385,12 +486,12 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     choice_value = choice_count
                 if choice_value != 1:
                     span.set_attribute(
-                        GenAI.GEN_AI_REQUEST_CHOICE_COUNT, choice_value
+                        GEN_AI_REQUEST_CHOICE_COUNT_ATTR, choice_value
                     )
 
             output_type = self._extract_output_type(params)
             if output_type is not None:
-                span.set_attribute(GenAI.GEN_AI_OUTPUT_TYPE, output_type)
+                span.set_attribute(GEN_AI_OUTPUT_TYPE_ATTR, output_type)
 
             service_tier = params.get("service_tier")
             if service_tier is not None:
@@ -402,11 +503,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             temperature = metadata.get("ls_temperature")
             if temperature is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
+                    GEN_AI_REQUEST_TEMPERATURE_ATTR, temperature
                 )
             max_tokens = metadata.get("ls_max_tokens")
             if max_tokens is not None:
-                span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+                span.set_attribute(GEN_AI_REQUEST_MAX_TOKENS_ATTR, max_tokens)
 
     def _maybe_set_server_attributes(
         self, span: Span, params: Mapping[str, Any]
@@ -454,12 +555,12 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         lowered = output_type.lower()
         mapping = {
-            "json_object": GenAI.GenAiOutputTypeValues.JSON.value,
-            "json_schema": GenAI.GenAiOutputTypeValues.JSON.value,
-            "json": GenAI.GenAiOutputTypeValues.JSON.value,
-            "text": GenAI.GenAiOutputTypeValues.TEXT.value,
-            "image": GenAI.GenAiOutputTypeValues.IMAGE.value,
-            "speech": GenAI.GenAiOutputTypeValues.SPEECH.value,
+            "json_object": _OUTPUT_TYPE_JSON,
+            "json_schema": _OUTPUT_TYPE_JSON,
+            "json": _OUTPUT_TYPE_JSON,
+            "text": _OUTPUT_TYPE_TEXT,
+            "image": _OUTPUT_TYPE_IMAGE,
+            "speech": _OUTPUT_TYPE_SPEECH,
         }
 
         return mapping.get(lowered)
@@ -590,15 +691,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                             "output_tokens", 0
                         )
                         span.set_attribute(
-                            GenAI.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+                            GEN_AI_USAGE_INPUT_TOKENS_ATTR, input_tokens
                         )
                         span.set_attribute(
-                            GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+                            GEN_AI_USAGE_OUTPUT_TOKENS_ATTR, output_tokens
                         )
 
-        span.set_attribute(
-            GenAI.GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
-        )
+        span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS_ATTR, finish_reasons)
 
         llm_output = cast(
             Mapping[str, Any] | None, getattr(response, "llm_output", None)
@@ -609,12 +708,12 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             )
             if response_model is not None:
                 span.set_attribute(
-                    GenAI.GEN_AI_RESPONSE_MODEL, str(response_model)
+                    GEN_AI_RESPONSE_MODEL_ATTR, str(response_model)
                 )
 
             response_id = llm_output.get("id")
             if response_id is not None:
-                span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, str(response_id))
+                span.set_attribute(GEN_AI_RESPONSE_ID_ATTR, str(response_id))
 
             service_tier = llm_output.get("service_tier")
             if service_tier is not None:
@@ -630,7 +729,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             serialized_outputs = self._serialize_output_messages(response)
             if serialized_outputs:
                 span.set_attribute(
-                    GenAI.GEN_AI_OUTPUT_MESSAGES,
+                    GEN_AI_OUTPUT_MESSAGES_ATTR,
                     self._serialize_to_json(serialized_outputs),
                 )
 
@@ -672,15 +771,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         provider_name = self._resolve_provider(None, metadata)
         if provider_name:
-            span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, provider_name)
+            span.set_attribute(GEN_AI_PROVIDER_NAME_ATTR, provider_name)
 
         tool_call_id = self._resolve_tool_call_id(metadata, inputs)
         if tool_call_id:
-            span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, tool_call_id)
+            span.set_attribute(GEN_AI_TOOL_CALL_ID_ATTR, tool_call_id)
 
         tool_type = self._resolve_tool_type(serialized, metadata)
         if tool_type:
-            span.set_attribute(GenAI.GEN_AI_TOOL_TYPE, tool_type)
+            span.set_attribute(GEN_AI_TOOL_TYPE_ATTR, tool_type)
 
         if self._capture_messages:
             arguments_payload = self._serialize_tool_payload(
