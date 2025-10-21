@@ -34,20 +34,17 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12"
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "opentelemetry-api ~=1.37",
   "opentelemetry-instrumentation >=0.58b0, <2",
   "opentelemetry-semantic-conventions >=0.58b0, <2",
-  # TODO https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3786: restrict
-  # version after the first release
-  "opentelemetry-util-genai",]
+  "opentelemetry-util-genai >= 0.2b0, <0.3b0",
+]
 
 [project.optional-dependencies]
-instruments = [
-    "google-genai >= 1.32.0"
-]
+instruments = ["google-genai >= 1.32.0"]
 
 [project.entry-points.opentelemetry_instrumentor]
 google-genai = "opentelemetry.instrumentation.google_genai:GoogleGenAiSdkInstrumentor"
@@ -60,21 +57,14 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/instrumentation/google_genai/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-]
+include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
 
 [tool.pyright]
-include = [
-  "src",
-]
-exclude = [
-  "**/__pycache__",
-]
+include = ["src"]
+exclude = ["**/__pycache__"]
 stubPath = "types"
 reportMissingImports = "error"
 reportMissingTypeStubs = false
