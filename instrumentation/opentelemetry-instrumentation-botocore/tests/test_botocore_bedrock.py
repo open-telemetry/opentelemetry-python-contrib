@@ -25,6 +25,10 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+
+from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    InvokeModelWithResponseStreamWrapper,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -2987,10 +2991,6 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
     input_value, expected_output
 ):
     """Test that _process_anthropic_claude_chunk handles various tool_use input formats."""
-    from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
-        InvokeModelWithResponseStreamWrapper,
-    )
-
     def stream_done_callback(response, ended):
         pass
 
