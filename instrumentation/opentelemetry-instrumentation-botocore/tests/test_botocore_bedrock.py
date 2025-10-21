@@ -25,7 +25,6 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
-
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     InvokeModelWithResponseStreamWrapper,
 )
