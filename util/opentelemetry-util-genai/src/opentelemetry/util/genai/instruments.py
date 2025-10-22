@@ -40,7 +40,7 @@ class Instruments:
     def __init__(self, meter: Meter):
         self.operation_duration_histogram: Histogram = meter.create_histogram(
             name=gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION,
-            description="Duration of GenAI client operations",
+            description="Duration of GenAI client operation",
             unit="s",
             explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
         )
