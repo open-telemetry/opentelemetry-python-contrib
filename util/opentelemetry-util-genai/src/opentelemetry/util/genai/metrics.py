@@ -12,6 +12,7 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import Span, set_span_in_context
+from opentelemetry.util.genai.instruments import Instruments
 from opentelemetry.util.genai.types import LLMInvocation
 from opentelemetry.util.types import AttributeValue
 
@@ -53,7 +54,7 @@ class _MetricPayload:
     tokens: Sequence[_TokenRecord]
 
 
-def _build_llm_payload(invocation: LLMInvocation) -> _MetricPayload:
+def _build_llm_metric_payload(invocation: LLMInvocation) -> _MetricPayload:
     attributes: Dict[str, AttributeValue] = {
         GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.CHAT.value
     }
@@ -87,7 +88,7 @@ def _build_llm_payload(invocation: LLMInvocation) -> _MetricPayload:
 
 def _extract_metric_payload(invocation: object) -> Optional[_MetricPayload]:
     if isinstance(invocation, LLMInvocation):
-        return _build_llm_payload(invocation)
+        return _build_llm_metric_payload(invocation)
     return None
 
 
@@ -95,16 +96,11 @@ class InvocationMetricsRecorder:
     """Records duration and token usage histograms for GenAI invocations."""
 
     def __init__(self, meter: Meter):
-        self._duration_histogram: Histogram = meter.create_histogram(
-            name="gen_ai.client.operation.duration",
-            unit="s",
-            description="Duration of GenAI client operations",
+        instruments = Instruments(meter)
+        self._duration_histogram: Histogram = (
+            instruments.operation_duration_histogram
         )
-        self._token_histogram: Histogram = meter.create_histogram(
-            name="gen_ai.client.token.usage",
-            unit="{token}",
-            description="Number of input and output tokens used by GenAI clients",
-        )
+        self._token_histogram: Histogram = instruments.token_usage_histogram
 
     def record(
         self,
