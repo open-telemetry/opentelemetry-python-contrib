@@ -28,6 +28,7 @@ from typing import Any
 from botocore.eventstream import EventStream
 from botocore.response import StreamingBody
 
+from opentelemetry.context import get_current
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
@@ -67,6 +68,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_OPERATION_DURATION,
     GEN_AI_CLIENT_TOKEN_USAGE,
 )
+from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -457,9 +459,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         messages = self._get_request_messages()
         for message in messages:
-            event_logger = instrumentor_context.event_logger
+            logger = instrumentor_context.logger
             for event in message_to_event(message, capture_content):
-                event_logger.emit(event)
+                logger.emit(event)
 
         if span.is_recording():
             operation_name = span.attributes.get(GEN_AI_OPERATION_NAME, "")
@@ -501,18 +503,12 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         # In case of an early stream closure, the result may not contain outputs
         if self._stream_has_output_content(result):
-            event_logger = instrumentor_context.event_logger
+            logger = instrumentor_context.logger
             choice = _Choice.from_converse(result, capture_content)
             # this path is used by streaming apis, in that case we are already out of the span
             # context so need to add the span context manually
-            span_ctx = span.get_span_context()
-            event_logger.emit(
-                choice.to_choice_event(
-                    trace_id=span_ctx.trace_id,
-                    span_id=span_ctx.span_id,
-                    trace_flags=span_ctx.trace_flags,
-                )
-            )
+            context = set_span_in_context(span, get_current())
+            logger.emit(choice.to_choice_event(context=context))
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
@@ -729,11 +725,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     [result["completionReason"]],
                 )
 
-            event_logger = instrumentor_context.event_logger
+            logger = instrumentor_context.logger
             choice = _Choice.from_invoke_amazon_titan(
                 response_body, capture_content
             )
-            event_logger.emit(choice.to_choice_event())
+            logger.emit(choice.to_choice_event())
 
             metrics = instrumentor_context.metrics
             metrics_attributes = self._extract_metrics_attributes()
@@ -791,9 +787,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
 
         # In case of an early stream closure, the result may not contain outputs
         if self._stream_has_output_content(response_body):
-            event_logger = instrumentor_context.event_logger
+            logger = instrumentor_context.logger
             choice = _Choice.from_converse(response_body, capture_content)
-            event_logger.emit(choice.to_choice_event())
+            logger.emit(choice.to_choice_event())
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
@@ -848,11 +844,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
             )
 
-        event_logger = instrumentor_context.event_logger
+        logger = instrumentor_context.logger
         choice = _Choice.from_invoke_anthropic_claude(
             response_body, capture_content
         )
-        event_logger.emit(choice.to_choice_event())
+        logger.emit(choice.to_choice_event())
 
         metrics = instrumentor_context.metrics
         metrics_attributes = self._extract_metrics_attributes()
@@ -903,11 +899,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 [response_body["finish_reason"]],
             )
 
-        event_logger = instrumentor_context.event_logger
+        logger = instrumentor_context.logger
         choice = _Choice.from_invoke_cohere_command_r(
             response_body, capture_content
         )
-        event_logger.emit(choice.to_choice_event())
+        logger.emit(choice.to_choice_event())
 
     def _handle_cohere_command_response(
         self,
@@ -929,11 +925,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     [generations["finish_reason"]],
                 )
 
-        event_logger = instrumentor_context.event_logger
+        logger = instrumentor_context.logger
         choice = _Choice.from_invoke_cohere_command(
             response_body, capture_content
         )
-        event_logger.emit(choice.to_choice_event())
+        logger.emit(choice.to_choice_event())
 
     def _handle_meta_llama_response(
         self,
@@ -956,9 +952,9 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                 GEN_AI_RESPONSE_FINISH_REASONS, [response_body["stop_reason"]]
             )
 
-        event_logger = instrumentor_context.event_logger
+        logger = instrumentor_context.logger
         choice = _Choice.from_invoke_meta_llama(response_body, capture_content)
-        event_logger.emit(choice.to_choice_event())
+        logger.emit(choice.to_choice_event())
 
     def _handle_mistral_ai_response(
         self,
@@ -979,11 +975,11 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     GEN_AI_RESPONSE_FINISH_REASONS, [outputs["stop_reason"]]
                 )
 
-        event_logger = instrumentor_context.event_logger
+        logger = instrumentor_context.logger
         choice = _Choice.from_invoke_mistral_mistral(
             response_body, capture_content
         )
-        event_logger.emit(choice.to_choice_event())
+        logger.emit(choice.to_choice_event())
 
     def on_error(
         self,
