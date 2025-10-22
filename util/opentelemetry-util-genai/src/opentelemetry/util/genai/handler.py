@@ -100,7 +100,7 @@ class TelemetryHandler:
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_36_0.value,
+            schema_url=Schemas.V1_37_0.value,
         )
         self._metrics_recorder: Optional[InvocationMetricsRecorder] = None
         try:
