@@ -23,7 +23,7 @@ from threading import Lock
 from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 
 
-class _RateLimiter:
+class _RateLimiter:  # pyright: ignore[reportUnusedClass]
     def __init__(self, max_balance_in_seconds: int, quota: int, clock: _Clock):
         # max_balance_in_seconds is usually 1
         # pylint: disable=invalid-name

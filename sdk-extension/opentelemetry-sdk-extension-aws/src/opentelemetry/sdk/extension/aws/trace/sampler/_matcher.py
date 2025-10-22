@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import re
 
-from opentelemetry.semconv.resource import CloudPlatformValues
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CloudPlatformValues,
+)
 from opentelemetry.util.types import Attributes, AttributeValue
 
 cloud_platform_mapping = {

@@ -151,13 +151,7 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         self.__rule_polling_jitter = random.uniform(0.0, 5.0)
         self.__target_polling_jitter = random.uniform(0.0, 0.1)
 
-        if resource is not None:
-            self.__resource = resource
-        else:
-            _logger.warning(
-                "OTel Resource provided is `None`. Defaulting to empty resource"
-            )
-            self.__resource = Resource.get_empty()
+        self.__resource = resource
 
         self.__rule_cache_lock = Lock()
         self.__rule_cache = _RuleCache(

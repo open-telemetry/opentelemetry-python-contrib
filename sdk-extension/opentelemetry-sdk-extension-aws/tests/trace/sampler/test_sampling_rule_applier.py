@@ -258,8 +258,6 @@ class TestSamplingRuleApplier(TestCase):
         self.assertTrue(rule_applier.matches(resource, None))
         self.assertTrue(rule_applier.matches(Resource.get_empty(), attributes))
         self.assertTrue(rule_applier.matches(Resource.get_empty(), None))
-        self.assertTrue(rule_applier.matches(None, attributes))
-        self.assertTrue(rule_applier.matches(None, None))
 
     def test_applier_does_not_match_without_http_target(self):
         sampling_rule = _SamplingRule(

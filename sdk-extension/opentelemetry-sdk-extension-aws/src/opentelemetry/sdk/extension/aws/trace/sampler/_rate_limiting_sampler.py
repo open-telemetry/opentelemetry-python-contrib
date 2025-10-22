@@ -32,7 +32,7 @@ from opentelemetry.trace.span import TraceState
 from opentelemetry.util.types import Attributes
 
 
-class _RateLimitingSampler(Sampler):
+class _RateLimitingSampler(Sampler):  # pyright: ignore[reportUnusedClass]
     def __init__(self, quota: int, clock: _Clock):
         self.__quota = quota
         self.__reservoir = _RateLimiter(1, quota, clock)

@@ -37,7 +37,7 @@ from opentelemetry.trace.span import TraceState
 from opentelemetry.util.types import Attributes
 
 
-class _FallbackSampler(Sampler):
+class _FallbackSampler(Sampler):  # pyright: ignore[reportUnusedClass]
     def __init__(self, clock: _Clock):
         self.__rate_limiting_sampler = _RateLimitingSampler(1, clock)
         self.__fixed_rate_sampler = TraceIdRatioBased(0.05)

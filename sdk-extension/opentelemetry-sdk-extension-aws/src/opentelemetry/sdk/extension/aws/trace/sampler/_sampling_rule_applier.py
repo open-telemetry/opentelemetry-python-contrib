@@ -48,11 +48,27 @@ from opentelemetry.sdk.trace.sampling import (
     SamplingResult,
     TraceIdRatioBased,
 )
-from opentelemetry.semconv.resource import (
-    CloudPlatformValues,
-    ResourceAttributes,
+from opentelemetry.semconv._incubating.attributes.aws_attributes import (
+    AWS_ECS_CONTAINER_ARN,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_PLATFORM,
+    CLOUD_RESOURCE_ID,
+    CloudPlatformValues,
+)
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+)
+from opentelemetry.semconv._incubating.attributes.service_attributes import (
+    SERVICE_NAME,
+)
+from opentelemetry.semconv._incubating.attributes.url_attributes import (
+    URL_FULL,
+    URL_PATH,
+)
 from opentelemetry.trace import Link, SpanKind
 from opentelemetry.trace.span import TraceState
 from opentelemetry.util.types import Attributes, AttributeValue
@@ -199,27 +215,24 @@ class _SamplingRuleApplier:
             # If `URL_PATH/URL_FULL/HTTP_REQUEST_METHOD/SERVER_ADDRESS` are not populated
             # also check `HTTP_TARGET/HTTP_URL/HTTP_METHOD/HTTP_HOST` respectively as backup
             url_path = attributes.get(
-                SpanAttributes.URL_PATH,
-                attributes.get(SpanAttributes.HTTP_TARGET, None),
+                URL_PATH,
+                attributes.get("http.target", None),
             )
             url_full = attributes.get(
-                SpanAttributes.URL_FULL,
-                attributes.get(SpanAttributes.HTTP_URL, None),
+                URL_FULL,
+                attributes.get("http.url", None),
             )
             http_request_method = attributes.get(
-                SpanAttributes.HTTP_REQUEST_METHOD,
-                attributes.get(SpanAttributes.HTTP_METHOD, None),
+                HTTP_REQUEST_METHOD,
+                attributes.get("http.method", None),
             )
             server_address = attributes.get(
-                SpanAttributes.SERVER_ADDRESS,
-                attributes.get(SpanAttributes.HTTP_HOST, None),
+                SERVER_ADDRESS,
+                attributes.get("http.host", None),
             )
 
         # Resource shouldn't be none as it should default to empty resource
-        if resource is not None:
-            service_name = resource.attributes.get(
-                ResourceAttributes.SERVICE_NAME, ""
-            )
+        service_name = resource.attributes.get(SERVICE_NAME, "")
 
         # target may be in url
         if url_path is None and isinstance(url_full, str):
@@ -263,12 +276,7 @@ class _SamplingRuleApplier:
 
     # pylint: disable=no-self-use
     def __get_service_type(self, resource: Resource) -> str:
-        if resource is None:
-            return ""
-
-        cloud_platform = resource.attributes.get(
-            ResourceAttributes.CLOUD_PLATFORM, None
-        )
+        cloud_platform = resource.attributes.get(CLOUD_PLATFORM, None)
         if not isinstance(cloud_platform, str):
             return ""
 
@@ -277,15 +285,11 @@ class _SamplingRuleApplier:
     def __get_arn(
         self, resource: Resource, attributes: Attributes
     ) -> AttributeValue:
-        if resource is not None:
-            arn = resource.attributes.get(
-                ResourceAttributes.AWS_ECS_CONTAINER_ARN, None
-            )
-            if arn is not None:
-                return arn
+        arn = resource.attributes.get(AWS_ECS_CONTAINER_ARN, None)
+        if arn is not None:
+            return arn
         if (
-            resource is not None
-            and resource.attributes.get(ResourceAttributes.CLOUD_PLATFORM)
+            resource.attributes.get(CLOUD_PLATFORM)
             == CloudPlatformValues.AWS_LAMBDA.value
         ):
             return self.__get_lambda_arn(resource, attributes)
@@ -295,8 +299,8 @@ class _SamplingRuleApplier:
         self, resource: Resource, attributes: Attributes
     ) -> AttributeValue:
         arn = resource.attributes.get(
-            ResourceAttributes.CLOUD_RESOURCE_ID,
-            resource.attributes.get(ResourceAttributes.FAAS_ID, None),
+            CLOUD_RESOURCE_ID,
+            resource.attributes.get("faas.id", None),
         )
         if arn is not None:
             return arn
@@ -304,11 +308,11 @@ class _SamplingRuleApplier:
         if attributes is None:
             return ""
 
-        # Note from `SpanAttributes.CLOUD_RESOURCE_ID`:
+        # Note from `CLOUD_RESOURCE_ID`:
         # "On some cloud providers, it may not be possible to determine the full ID at startup,
         # so it may be necessary to set cloud.resource_id as a span attribute instead."
         arn = attributes.get(
-            SpanAttributes.CLOUD_RESOURCE_ID, attributes.get("faas.id", None)
+            CLOUD_RESOURCE_ID, attributes.get("faas.id", None)
         )
         if arn is not None:
             return arn

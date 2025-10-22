@@ -50,7 +50,7 @@ CACHE_TTL_SECONDS = 3600
 DEFAULT_TARGET_POLLING_INTERVAL_SECONDS = 10
 
 
-class _RuleCache:
+class _RuleCache:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         resource: Resource,
