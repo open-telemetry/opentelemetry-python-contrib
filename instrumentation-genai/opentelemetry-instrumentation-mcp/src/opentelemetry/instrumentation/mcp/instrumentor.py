@@ -42,14 +42,9 @@ class McpInstrumentor(BaseInstrumentor):
     See: https://modelcontextprotocol.io/overview
     """
 
-    # Span naming constants
     _CLIENT_SPAN_NAME = "mcp.client"
     _SERVER_SPAN_NAME = "mcp.server"
-
-    # HTTP header for session tracking
     _SESSION_ID_HEADER = "mcp-session-id"
-
-    # Instrumentation targets
     _SESSION_MODULE = "mcp.shared.session"
     _SERVER_MODULE = "mcp.server.lowlevel.server"
 
@@ -193,7 +188,13 @@ class McpInstrumentor(BaseInstrumentor):
                 )
 
                 # Reconstruct message with injected context
-                modified_message = message.model_validate(message_json)
+                try:
+                    modified_message = message.model_validate(message_json)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    _LOG.warning(
+                        "Failed to reconstruct message for tracing: %s", exc
+                    )
+                    return await wrapped(*args, **kwargs)
                 new_args = (modified_message,) + args[1:]
 
                 try:
