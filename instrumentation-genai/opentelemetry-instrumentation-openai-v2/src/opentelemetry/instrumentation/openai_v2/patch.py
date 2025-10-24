@@ -38,6 +38,7 @@ from .utils import (
     message_to_event,
     set_span_attribute,
     get_property_value,
+    set_server_address_and_port,
 )
 
 
@@ -52,7 +53,9 @@ def chat_completions_create(
     def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown")
+        span_name = f"{operation_name} {model_name}"
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -108,7 +111,9 @@ def async_chat_completions_create(
     async def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown")
+        span_name = f"{operation_name} {model_name}"
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -163,10 +168,13 @@ def _record_metrics(
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        ],
     }
+
+    # Only add request model if it exists in span_attributes
+    if GenAIAttributes.GEN_AI_REQUEST_MODEL in span_attributes:
+        common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = span_attributes[
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        ]
 
     if error_type:
         common_attributes["error.type"] = error_type
@@ -386,24 +394,8 @@ class StreamWrapper:
                         tool_calls.append(tool_call_dict)
                     message["tool_calls"] = tool_calls
 
-                body = {
-                    "index": idx,
-                    "finish_reason": choice.finish_reason or "error",
-                    "message": message,
-                }
-
-                event_attributes = {
-                    GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-                }
-                context = set_span_in_context(self.span, get_current())
-                self.logger.emit(
-                    LogRecord(
-                        event_name="gen_ai.choice",
-                        attributes=event_attributes,
-                        body=body,
-                        context=context,
-                    )
-                )
+                event_attributes = _response_message_to_event_attributes(message, self.capture_content)
+                self.span.add_event(name="gen_ai.assistant.message", attributes=event_attributes)
 
             self.span.end()
             self._span_started = False
@@ -490,6 +482,29 @@ class StreamWrapper:
             self.service_tier = chunk.service_tier
 
     def build_streaming_response(self, chunk):
+        # Handle Responses API ResponseTextDeltaEvent chunks
+        if hasattr(chunk, "delta") and isinstance(chunk.delta, str) and chunk.delta:
+            # Responses API streams have delta events where delta is the text content directly
+            # Ensure we have at least one choice buffer for index 0
+            if len(self.choice_buffers) == 0:
+                self.choice_buffers.append(ChoiceBuffer(0))
+            
+            # Append the delta text to the first (and only) choice buffer
+            self.choice_buffers[0].append_text_content(chunk.delta)
+            return
+
+        # Handle Responses API streaming format (chunk.output) - fallback for other chunk types
+        if hasattr(chunk, "output") and chunk.output is not None:
+            # Responses API streams have direct output, not choices array
+            # Ensure we have at least one choice buffer for index 0
+            if len(self.choice_buffers) == 0:
+                self.choice_buffers.append(ChoiceBuffer(0))
+            
+            # Append the output text to the first (and only) choice buffer
+            self.choice_buffers[0].append_text_content(chunk.output)
+            return
+
+        # Handle Chat Completions API streaming format (chunk.choices)
         if getattr(chunk, "choices", None) is None:
             return
 
@@ -542,22 +557,58 @@ def responses_create(
     def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        
+        # Extract agent name for span naming if model is not available
+        assistant_name = None
+        extra_body = kwargs.get("extra_body")
+        if extra_body and isinstance(extra_body, dict):
+            agent_info = extra_body.get("agent")
+            if agent_info and isinstance(agent_info, dict):
+                assistant_name = agent_info.get("name")
+        
+        # Build span name: prefer model, then assistant name, then just operation
+        if model_name:
+            span_name = f"{operation_name} {model_name}"
+        elif assistant_name:
+            span_name = f"{operation_name} {assistant_name}"
+        else:
+            span_name = operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            # Log input if applicable
+            # Add conversation ID as span attribute if provided
+            conversation_id = kwargs.get("conversation")
+            if conversation_id:
+                set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
+
+            # Add agent name from extra_body if provided
+            extra_body = kwargs.get("extra_body")
+            if extra_body and isinstance(extra_body, dict):
+                agent_info = extra_body.get("agent")
+                if agent_info and isinstance(agent_info, dict):
+                    agent_name = agent_info.get("name")
+                    if agent_name:
+                        set_span_attribute(span, "gen_ai.assistant.name", agent_name)
+
+            # Add input message as event if applicable
             input_data = kwargs.get("input")
-            if input_data and capture_content:
+            if input_data:
                 if isinstance(input_data, str):
-                    # Simple string input
-                    logger.emit(message_to_event({"role": "user", "content": input_data}, capture_content))
+                    # Simple string input - add as user message event
+                    message_dict = {"role": "user", "content": input_data}
+                    event_attributes = _response_message_to_event_attributes(message_dict, capture_content)
+                    span.add_event(name="gen_ai.user.message", attributes=event_attributes)
                 elif isinstance(input_data, dict):
-                    # Dictionary input
-                    logger.emit(message_to_event(input_data, capture_content))
+                    # Dictionary input - add as event based on role
+                    role = input_data.get("role", "user")
+                    event_name = f"gen_ai.{role}.message" if role in ["user", "assistant"] else "gen_ai.message"
+                    event_attributes = _response_message_to_event_attributes(input_data, capture_content)
+                    span.add_event(name=event_name, attributes=event_attributes)
 
             start = default_timer()
             result = None
@@ -570,23 +621,26 @@ def responses_create(
                 if span.is_recording():
                     _set_responses_attributes(span, result, logger, capture_content)
                 
-                # Log output messages
+                # Add output messages as events
                 if hasattr(result, "output") and result.output:
                     for output_item in result.output:
                         if hasattr(output_item, "type") and output_item.type == "message":
                             # Convert output message to event format
                             message_dict = {"role": "assistant"}
-                            if capture_content and hasattr(output_item, "content"):
+                            if hasattr(output_item, "content"):
                                 content_items = output_item.content
                                 if content_items:
-                                    # Extract text content
+                                    # Extract text content - check for input_text, output_text, and text types
                                     text_parts = []
                                     for content_item in content_items:
-                                        if hasattr(content_item, "type") and content_item.type == "text":
-                                            text_parts.append(content_item.text)
+                                        if hasattr(content_item, "text"):
+                                            if hasattr(content_item, "type") and content_item.type in ["input_text", "output_text", "text"]:
+                                                text_parts.append(content_item.text)
                                     if text_parts:
                                         message_dict["content"] = " ".join(text_parts)
-                            logger.emit(message_to_event(message_dict, capture_content))
+                            # Add assistant message as event
+                            event_attributes = _response_message_to_event_attributes(message_dict, capture_content)
+                            span.add_event(name="gen_ai.assistant.message", attributes=event_attributes)
 
                 span.end()
                 return result
@@ -619,22 +673,58 @@ def async_responses_create(
     async def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        
+        # Extract agent name for span naming if model is not available
+        assistant_name = None
+        extra_body = kwargs.get("extra_body")
+        if extra_body and isinstance(extra_body, dict):
+            agent_info = extra_body.get("agent")
+            if agent_info and isinstance(agent_info, dict):
+                assistant_name = agent_info.get("name")
+        
+        # Build span name: prefer model, then assistant name, then just operation
+        if model_name:
+            span_name = f"{operation_name} {model_name}"
+        elif assistant_name:
+            span_name = f"{operation_name} {assistant_name}"
+        else:
+            span_name = operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
-            # Log input if applicable
+            # Add conversation ID as span attribute if provided
+            conversation_id = kwargs.get("conversation")
+            if conversation_id:
+                set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
+
+            # Add agent name from extra_body if provided
+            extra_body = kwargs.get("extra_body")
+            if extra_body and isinstance(extra_body, dict):
+                agent_info = extra_body.get("agent")
+                if agent_info and isinstance(agent_info, dict):
+                    agent_name = agent_info.get("name")
+                    if agent_name:
+                        set_span_attribute(span, "gen_ai.assistant.name", agent_name)
+
+            # Add input message as event if applicable
             input_data = kwargs.get("input")
-            if input_data and capture_content:
+            if input_data:
                 if isinstance(input_data, str):
-                    # Simple string input
-                    logger.emit(message_to_event({"role": "user", "content": input_data}, capture_content))
+                    # Simple string input - add as user message event
+                    message_dict = {"role": "user", "content": input_data}
+                    event_attributes = _response_message_to_event_attributes(message_dict, capture_content)
+                    span.add_event(name="gen_ai.user.message", attributes=event_attributes)
                 elif isinstance(input_data, dict):
-                    # Dictionary input
-                    logger.emit(message_to_event(input_data, capture_content))
+                    # Dictionary input - add as event based on role
+                    role = input_data.get("role", "user")
+                    event_name = f"gen_ai.{role}.message" if role in ["user", "assistant"] else "gen_ai.message"
+                    event_attributes = _response_message_to_event_attributes(input_data, capture_content)
+                    span.add_event(name=event_name, attributes=event_attributes)
 
             start = default_timer()
             result = None
@@ -647,23 +737,26 @@ def async_responses_create(
                 if span.is_recording():
                     _set_responses_attributes(span, result, logger, capture_content)
                 
-                # Log output messages
+                # Add output messages as events
                 if hasattr(result, "output") and result.output:
                     for output_item in result.output:
                         if hasattr(output_item, "type") and output_item.type == "message":
                             # Convert output message to event format
                             message_dict = {"role": "assistant"}
-                            if capture_content and hasattr(output_item, "content"):
+                            if hasattr(output_item, "content"):
                                 content_items = output_item.content
                                 if content_items:
-                                    # Extract text content
+                                    # Extract text content - check for input_text, output_text, and text types
                                     text_parts = []
                                     for content_item in content_items:
-                                        if hasattr(content_item, "type") and content_item.type == "text":
-                                            text_parts.append(content_item.text)
+                                        if hasattr(content_item, "text"):
+                                            if hasattr(content_item, "type") and content_item.type in ["input_text", "output_text", "text"]:
+                                                text_parts.append(content_item.text)
                                     if text_parts:
                                         message_dict["content"] = " ".join(text_parts)
-                            logger.emit(message_to_event(message_dict, capture_content))
+                            # Add assistant message as event
+                            event_attributes = _response_message_to_event_attributes(message_dict, capture_content)
+                            span.add_event(name="gen_ai.assistant.message", attributes=event_attributes)
 
                 span.end()
                 return result
@@ -748,10 +841,13 @@ def _record_responses_metrics(
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: span_attributes[
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        ],
     }
+
+    # Only add request model if it exists in span_attributes
+    if GenAIAttributes.GEN_AI_REQUEST_MODEL in span_attributes:
+        common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = span_attributes[
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        ]
 
     if error_type:
         common_attributes["error.type"] = error_type
@@ -806,3 +902,474 @@ def _record_responses_metrics(
                     output_tokens,
                     attributes=completion_attributes,
                 )
+
+
+def conversations_create(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `Conversations` class to trace it."""
+
+    def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = _get_conversation_request_attributes(kwargs, instance)
+
+        span_name = "create_conversation"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            start_time = default_timer()
+            error_type = None
+            try:
+                result = wrapped(*args, **kwargs)
+                _set_conversation_attributes(span, result)
+                return result
+            except Exception as e:
+                error_type = type(e).__qualname__
+                handle_span_exception(span, e)
+                raise
+            finally:
+                if error_type is None:
+                    span.end()
+                duration = default_timer() - start_time
+                _record_conversation_metrics(
+                    instruments, duration, result if error_type is None else None, span_attributes, error_type
+                )
+
+    return traced_method
+
+
+def async_conversations_create(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `create` method of the `AsyncConversations` class to trace it."""
+
+    async def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = _get_conversation_request_attributes(kwargs, instance)
+
+        span_name = "create_conversation"
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            start_time = default_timer()
+            error_type = None
+            try:
+                result = await wrapped(*args, **kwargs)
+                _set_conversation_attributes(span, result)
+                return result
+            except Exception as e:
+                error_type = type(e).__qualname__
+                handle_span_exception(span, e)
+                raise
+            finally:
+                if error_type is None:
+                    span.end()
+                duration = default_timer() - start_time
+                _record_conversation_metrics(
+                    instruments, duration, result if error_type is None else None, span_attributes, error_type
+                )
+
+    return traced_method
+
+
+def _get_conversation_request_attributes(kwargs, client_instance):
+    """Get span attributes for conversation create requests."""
+    attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: "create_conversation",
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+
+    set_server_address_and_port(client_instance, attributes)
+    
+    # filter out None values
+    return {k: v for k, v in attributes.items() if v is not None}
+
+
+def _set_conversation_attributes(span, result):
+    """Set span attributes for conversation create response."""
+    conversation_id = get_property_value(result, "id")
+    if conversation_id:
+        set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
+
+
+def _record_conversation_metrics(
+    instruments: Instruments,
+    duration: float,
+    result,
+    span_attributes: dict,
+    error_type: Optional[str],
+):
+    """Record metrics for conversation create API."""
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: "create_conversation",
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+
+    if error_type:
+        common_attributes["error.type"] = error_type
+
+    if ServerAttributes.SERVER_ADDRESS in span_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = span_attributes[
+            ServerAttributes.SERVER_ADDRESS
+        ]
+
+    if ServerAttributes.SERVER_PORT in span_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = span_attributes[
+            ServerAttributes.SERVER_PORT
+        ]
+
+    instruments.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+
+def conversation_items_list(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `list` method of the `Items` class to trace it."""
+
+    def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = _get_conversation_items_request_attributes(kwargs, instance)
+
+        span_name = "list_conversation_items"
+        span = tracer.start_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+        )
+        
+        start_time = default_timer()
+        error_type = None
+        try:
+            result = wrapped(*args, **kwargs)
+            _set_conversation_items_attributes(span, result, args, kwargs)
+            
+            # Wrap the result to trace individual items as they are iterated
+            return ConversationItemsWrapper(
+                result, span, logger, capture_content, tracer, start_time, instruments, span_attributes
+            )
+        except Exception as e:
+            error_type = type(e).__qualname__
+            handle_span_exception(span, e)
+            span.end()
+            duration = default_timer() - start_time
+            _record_conversation_items_metrics(
+                instruments, duration, None, span_attributes, error_type
+            )
+            raise
+
+    return traced_method
+
+
+def async_conversation_items_list(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `list` method of the `AsyncItems` class to trace it."""
+
+    async def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = _get_conversation_items_request_attributes(kwargs, instance)
+
+        span_name = "list_conversation_items"
+        span = tracer.start_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+        )
+        
+        start_time = default_timer()
+        error_type = None
+        try:
+            result = await wrapped(*args, **kwargs)
+            _set_conversation_items_attributes(span, result, args, kwargs)
+            
+            # Wrap the result to trace individual items as they are iterated
+            return AsyncConversationItemsWrapper(
+                result, span, logger, capture_content, tracer, start_time, instruments, span_attributes
+            )
+        except Exception as e:
+            error_type = type(e).__qualname__
+            handle_span_exception(span, e)
+            span.end()
+            duration = default_timer() - start_time
+            _record_conversation_items_metrics(
+                instruments, duration, None, span_attributes, error_type
+            )
+            raise
+
+    return traced_method
+
+
+def _get_conversation_items_request_attributes(kwargs, client_instance):
+    """Get span attributes for conversation items list requests."""
+    attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: "list_conversation_items", 
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+
+    set_server_address_and_port(client_instance, attributes)
+    
+    # filter out None values
+    return {k: v for k, v in attributes.items() if v is not None}
+
+
+def _set_conversation_items_attributes(span, result, args, kwargs):
+    """Set span attributes for conversation items list response."""
+    # Add conversation_id from arguments 
+    if len(args) > 0:
+        conversation_id = args[0]
+        if conversation_id:
+            set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
+    
+    # Add pagination info if available
+    if hasattr(result, "object") and result.object == "list":
+        set_span_attribute(span, "gen_ai.response.object", result.object)
+    
+    if hasattr(result, "has_more"):
+        set_span_attribute(span, "gen_ai.response.has_more", result.has_more)
+
+
+def _record_conversation_items_metrics(
+    instruments: Instruments,
+    duration: float,
+    result,
+    span_attributes: dict,
+    error_type: Optional[str],
+):
+    """Record metrics for conversation items list API."""
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: "list_conversation_items",
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+
+    if error_type:
+        common_attributes["error.type"] = error_type
+
+    if ServerAttributes.SERVER_ADDRESS in span_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = span_attributes[
+            ServerAttributes.SERVER_ADDRESS
+        ]
+
+    if ServerAttributes.SERVER_PORT in span_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = span_attributes[
+            ServerAttributes.SERVER_PORT
+        ]
+
+    instruments.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+
+def _conversation_item_to_event_attributes(item, capture_content: bool):
+    """Convert a conversation item to event attributes for logging."""
+    event_attributes = {
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+    }
+
+    # Add item ID
+    if hasattr(item, "id") and item.id:
+        event_attributes["gen_ai.conversation.item.id"] = item.id
+
+    # Add item type  
+    if hasattr(item, "type") and item.type:
+        event_attributes["gen_ai.conversation.item.type"] = item.type
+
+    # Add item role
+    if hasattr(item, "role") and item.role:
+        event_attributes["gen_ai.conversation.item.role"] = item.role
+
+    # Add content if capture is enabled
+    if capture_content and hasattr(item, "content") and item.content:
+        content_list = []
+        for content_item in item.content:
+            if hasattr(content_item, "type") and content_item.type == "input_text":
+                if hasattr(content_item, "text"):
+                    content_list.append(content_item.text)
+            elif hasattr(content_item, "type") and content_item.type == "output_text":
+                if hasattr(content_item, "text"):
+                    content_list.append(content_item.text)
+            elif hasattr(content_item, "type") and content_item.type == "text":
+                if hasattr(content_item, "text"):
+                    content_list.append(content_item.text)
+        if content_list:
+            # Store content as JSON string similar to Azure AI Agents pattern
+            import json
+            content_json = json.dumps({"content": " ".join(content_list), "role": getattr(item, "role", "unknown")})
+            event_attributes["gen_ai.event.content"] = content_json
+
+    return event_attributes
+
+
+def _response_message_to_event_attributes(message_dict: dict, capture_content: bool):
+    """Convert a response message to event attributes for logging."""
+    event_attributes = {
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+    }
+
+    # Add role 
+    if "role" in message_dict:
+        event_attributes["gen_ai.message.role"] = message_dict["role"]
+
+    # Add content if capture is enabled and available
+    if capture_content and "content" in message_dict:
+        import json
+        content_json = json.dumps({
+            "content": message_dict["content"], 
+            "role": message_dict.get("role", "unknown")
+        })
+        event_attributes["gen_ai.event.content"] = content_json
+
+    return event_attributes
+
+
+class ConversationItemsWrapper:
+    """Wrapper for sync conversation items pagination that traces individual items."""
+    
+    def __init__(self, items_page, span, logger, capture_content, tracer, start_time, instruments, span_attributes):
+        self.items_page = items_page
+        self.span = span
+        self.logger = logger 
+        self.capture_content = capture_content
+        self.tracer = tracer
+        self.start_time = start_time
+        self.instruments = instruments
+        self.span_attributes = span_attributes
+        self._iter = None
+        self._span_ended = False
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the wrapped items_page."""
+        return getattr(self.items_page, name)
+
+    def _end_span_if_needed(self):
+        """End the span if it hasn't been ended yet."""
+        if not self._span_ended:
+            self.span.end()
+            duration = default_timer() - self.start_time
+            _record_conversation_items_metrics(
+                self.instruments, duration, self.items_page, self.span_attributes, None
+            )
+            self._span_ended = True
+
+    def __iter__(self):
+        def _item_generator():
+            try:
+                for item in self.items_page:
+                    # Add the item as an event within the main span
+                    event_attributes = _conversation_item_to_event_attributes(item, self.capture_content)
+                    
+                    # Determine event name based on role (similar to Azure AI Agents pattern)
+                    role = getattr(item, "role", "unknown")
+                    if role == "assistant":
+                        event_name = "gen_ai.assistant.message"
+                    elif role == "user":
+                        event_name = "gen_ai.user.message"
+                    else:
+                        event_name = "gen_ai.conversation.item"
+                    
+                    # Add event directly to the span
+                    self.span.add_event(
+                        name=event_name,
+                        attributes=event_attributes
+                    )
+                    
+                    yield item
+            finally:
+                # End the span when iteration is complete
+                self._end_span_if_needed()
+                    
+        if self._iter is None:
+            self._iter = _item_generator()
+        return self._iter
+
+    def __del__(self):
+        """Ensure span is ended if the wrapper is garbage collected."""
+        try:
+            self._end_span_if_needed()
+        except:
+            pass  # Ignore any errors during cleanup
+
+
+class AsyncConversationItemsWrapper:
+    """Wrapper for async conversation items pagination that traces individual items."""
+    
+    def __init__(self, items_page, span, logger, capture_content, tracer, start_time, instruments, span_attributes):
+        self.items_page = items_page
+        self.span = span
+        self.logger = logger
+        self.capture_content = capture_content
+        self.tracer = tracer
+        self.start_time = start_time
+        self.instruments = instruments
+        self.span_attributes = span_attributes
+        self._iter = None
+        self._span_ended = False
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the wrapped items_page."""
+        return getattr(self.items_page, name)
+
+    def _end_span_if_needed(self):
+        """End the span if it hasn't been ended yet."""
+        if not self._span_ended:
+            self.span.end()
+            duration = default_timer() - self.start_time
+            _record_conversation_items_metrics(
+                self.instruments, duration, self.items_page, self.span_attributes, None
+            )
+            self._span_ended = True
+
+    def __aiter__(self):
+        async def _async_item_generator():
+            try:
+                async for item in self.items_page:
+                    # Add the item as an event within the main span
+                    event_attributes = _conversation_item_to_event_attributes(item, self.capture_content)
+                    
+                    # Determine event name based on role (similar to Azure AI Agents pattern)
+                    role = getattr(item, "role", "unknown")
+                    if role == "assistant":
+                        event_name = "gen_ai.assistant.message"
+                    elif role == "user":
+                        event_name = "gen_ai.user.message"
+                    else:
+                        event_name = "gen_ai.conversation.item"
+                    
+                    # Add event directly to the span
+                    self.span.add_event(
+                        name=event_name,
+                        attributes=event_attributes
+                    )
+                        
+                    yield item
+            finally:
+                # End the span when iteration is complete
+                self._end_span_if_needed()
+                    
+        if self._iter is None:
+            self._iter = _async_item_generator()
+        return self._iter
+
+    def __del__(self):
+        """Ensure span is ended if the wrapper is garbage collected."""
+        try:
+            self._end_span_if_needed()
+        except:
+            pass  # Ignore any errors during cleanup

@@ -66,8 +66,12 @@ from .instruments import Instruments
 from .patch import (
     async_chat_completions_create,
     async_responses_create,
+    async_conversations_create,
+    async_conversation_items_list,
     chat_completions_create,
     responses_create,
+    conversations_create,
+    conversation_items_list,
 )
 
 
@@ -150,6 +154,38 @@ class OpenAIInstrumentor(BaseInstrumentor):
                 ),
             )
 
+            wrap_function_wrapper(
+                module="openai.resources.conversations.conversations",
+                name="Conversations.create",
+                wrapper=conversations_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.conversations",
+                name="AsyncConversations.create",
+                wrapper=async_conversations_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.items",
+                name="Items.list",
+                wrapper=conversation_items_list(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.items",
+                name="AsyncItems.list",
+                wrapper=async_conversation_items_list(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel
 
@@ -160,3 +196,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         if _is_responses_api_supported():
             unwrap(openai.resources.responses.responses.Responses, "create")
             unwrap(openai.resources.responses.responses.AsyncResponses, "create")
+            unwrap(openai.resources.conversations.conversations.Conversations, "create")
+            unwrap(openai.resources.conversations.conversations.AsyncConversations, "create")
+            unwrap(openai.resources.conversations.items.Items, "list")
+            unwrap(openai.resources.conversations.items.AsyncItems, "list")
