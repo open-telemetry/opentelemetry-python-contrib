@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import types
 import logging
+import types
 from logging import getLogger
 from time import time
 from timeit import default_timer
@@ -138,8 +138,10 @@ class RequestFilter(logging.Filter):
         record.request = str(request)
         return True
 
-_wsgi_logger = logging.getLogger("django.request")
-_wsgi_logger.addFilter(RequestFilter())
+
+_wsgi_request_logger = logging.getLogger("django.request")
+_wsgi_request_logger.addFilter(RequestFilter())
+
 
 def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
@@ -174,14 +176,6 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
-    
-    @staticmethod
-    def format_request_objects_in_headers(attributes):
-        for _, value_list in attributes.items():
-            for index, value in enumerate(value_list):
-                if isinstance(value, HttpRequest):
-                    value_list[index] = str(value)
-        return attributes
 
     @staticmethod
     def _get_span_name(request):
@@ -293,10 +287,6 @@ class _DjangoMiddleware(MiddlewareMixin):
                 if span.is_recording() and span.kind == SpanKind.SERVER:
                     custom_attributes = (
                         wsgi_collect_custom_request_headers_attributes(carrier)
-                    )
-                    # Process custom attributes to handle WSGIRequest objects
-                    custom_attributes = self.format_request_objects_in_headers(
-                        custom_attributes
                     )
 
                     if len(custom_attributes) > 0:
