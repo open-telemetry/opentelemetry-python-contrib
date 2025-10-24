@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import types
+import logging
 from logging import getLogger
 from time import time
 from timeit import default_timer
@@ -131,6 +132,15 @@ except ImportError:
 _logger = getLogger(__name__)
 
 
+class RequestFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        request = getattr(record, "request", None)
+        record.request = str(request)
+        return True
+
+_wsgi_logger = logging.getLogger("django.request")
+_wsgi_logger.addFilter(RequestFilter())
+
 def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
@@ -164,7 +174,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
-
+    
     @staticmethod
     def _get_span_name(request):
         method = sanitize_method(request.method.strip())
