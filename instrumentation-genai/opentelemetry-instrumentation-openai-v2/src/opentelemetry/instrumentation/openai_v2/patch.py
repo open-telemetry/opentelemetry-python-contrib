@@ -12,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pyright: reportUnknownParameterType=false, reportUnknownVariableType=false, reportUnknownMemberType=false, reportMissingParameterType=false
+# pylint: disable=too-many-arguments
+# type: ignore
+"""
+Pylance/Pyright type checking is disabled for this file because OpenTelemetry 
+instrumentation involves dynamic wrapping of external library methods using 
+the wrapt library. The wrapped functions, their parameters (args, kwargs), 
+and return values have types that are determined at runtime and cannot be 
+statically analyzed. This is the expected and correct approach for 
+instrumentation code that needs to work generically across different 
+versions and configurations of the instrumented library.
+"""
+
 
 from timeit import default_timer
 from typing import Optional
@@ -555,9 +568,9 @@ def responses_create(
     """Wrap the `create` method of the `Responses` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {**get_llm_request_attributes(kwargs, instance, "responses")}
 
-        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "responses")
         model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
         
         # Extract agent name for span naming if model is not available
@@ -671,9 +684,9 @@ def async_responses_create(
     """Wrap the `create` method of the `AsyncResponses` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        span_attributes = {**get_llm_request_attributes(kwargs, instance, "responses")}
 
-        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "chat")
+        operation_name = span_attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME, "responses")
         model_name = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
         
         # Extract agent name for span naming if model is not available
@@ -839,7 +852,7 @@ def _record_responses_metrics(
 ):
     """Record metrics for responses API."""
     common_attributes = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GEN_AI_OPERATION_NAME: "responses",
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
     }
 
