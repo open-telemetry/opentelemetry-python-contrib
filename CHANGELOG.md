@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-aws-lambda`: Fix ImportError with slash-delimited handler paths
+  ([#1465](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1465))
+
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
