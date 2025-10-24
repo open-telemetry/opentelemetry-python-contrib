@@ -15,12 +15,13 @@
 # pylint: disable=E0611
 # pylint: disable=too-many-lines
 
+import logging
 from sys import modules
 from timeit import default_timer
+from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
-from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpRequest, HttpResponse
 from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
@@ -35,6 +36,9 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
+)
+from opentelemetry.instrumentation.django.middleware.otel_middleware import (
+    RequestFilter,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -99,6 +103,53 @@ urlpatterns = [
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
+
+
+# pylint: disable=too-many-public-methods
+class TestRequestFilter(TestCase):
+    def test_converts_http_request_to_string(self):
+        class DummyRequest:
+            def __str__(self):
+                return "<DummyRequest method=GET path=/example/>"
+
+        request = DummyRequest()
+
+        record = logging.LogRecord(
+            name="django.request",
+            level=logging.ERROR,
+            pathname=__file__,
+            lineno=0,
+            msg="test message",
+            args=(),
+            exc_info=None,
+        )
+        record.request = request
+
+        expected_repr = str(request)
+
+        request_filter = RequestFilter()
+        result = request_filter.filter(record)
+
+        self.assertTrue(result)
+        self.assertEqual(record.request, expected_repr)
+        self.assertIsInstance(record.request, str)
+
+    def test_handles_missing_request_attribute(self):
+        record = logging.LogRecord(
+            name="django.request",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=0,
+            msg="no request",
+            args=(),
+            exc_info=None,
+        )
+
+        request_filter = RequestFilter()
+        result = request_filter.filter(record)
+
+        self.assertTrue(result)
+        self.assertEqual(record.request, "None")
 
 
 # pylint: disable=too-many-public-methods
@@ -1019,102 +1070,6 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
     def tearDownClass(cls):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
-
-    def test_wsgi_request_in_header_is_properly_formatted(self):
-        mock_wsgi_request = Mock(spec=WSGIRequest)
-        mock_wsgi_request.method = "GET"
-        mock_wsgi_request.path = "/test/path"
-        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
-
-        input_attributes = {
-            "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
-        }
-        expected_attributes = {
-            "http.request.header.test_wsgirequest_header": [
-                str(mock_wsgi_request)
-            ]
-        }
-
-        formatted_attributes = (
-            _DjangoMiddleware.format_request_objects_in_headers(
-                input_attributes
-            )
-        )
-
-        self.assertEqual(formatted_attributes, expected_attributes)
-
-    def test_wsgi_request_handles_extraction_error(self):
-        mock_wsgi_request = Mock(spec=WSGIRequest)
-        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
-
-        type(mock_wsgi_request).method = property(
-            lambda self: (_ for _ in ()).throw(ValueError("Test error"))
-        )
-
-        input_attributes = {
-            "http.request.header.test_wsgirequest_header": [mock_wsgi_request]
-        }
-        expected_attributes = {
-            "http.request.header.test_wsgirequest_header": [
-                str(mock_wsgi_request)
-            ]
-        }
-
-        formatted_attributes = (
-            _DjangoMiddleware.format_request_objects_in_headers(
-                input_attributes
-            )
-        )
-
-        self.assertEqual(formatted_attributes, expected_attributes)
-
-    def test_handles_http_request_as_well(self):
-        mock_http_request = Mock(spec=HttpRequest)
-        mock_http_request.method = "POST"
-        mock_http_request.path = "/api/data"
-        mock_http_request.__class__.__name__ = "HttpRequest"
-
-        input_attributes = {
-            "http.request.header.test_httprequest_header": [mock_http_request]
-        }
-        expected_attributes = {
-            "http.request.header.test_httprequest_header": [
-                str(mock_http_request)
-            ]
-        }
-
-        formatted_attributes = (
-            _DjangoMiddleware.format_request_objects_in_headers(
-                input_attributes
-            )
-        )
-
-        self.assertEqual(formatted_attributes, expected_attributes)
-
-    def test_regular_header_values_are_preserved(self):
-        mock_wsgi_request = Mock(spec=WSGIRequest)
-        mock_wsgi_request.method = "GET"
-        mock_wsgi_request.path = "/test/path"
-        mock_wsgi_request.__class__.__name__ = "WSGIRequest"
-
-        input_attributes = {
-            "http.request.header.test_wsgirequest_header": [mock_wsgi_request],
-            "http.request.header.test_regular_header": ["regular-value"],
-        }
-        expected_attributes = {
-            "http.request.header.test_wsgirequest_header": [
-                str(mock_wsgi_request)
-            ],
-            "http.request.header.test_regular_header": ["regular-value"],
-        }
-
-        formatted_attributes = (
-            _DjangoMiddleware.format_request_objects_in_headers(
-                input_attributes
-            )
-        )
-
-        self.assertEqual(formatted_attributes, expected_attributes)
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
