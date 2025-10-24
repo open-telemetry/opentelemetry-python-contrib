@@ -45,10 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
-  ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
 - `opentelemetry-instrumentation-django`: Fixes invalid type at WSGI request headers and attributes collection.
   ([#3731](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3731))
+- `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
+  ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
   ([#3624](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
 - `opentelemetry-instrumentation-dbapi`: fix crash retrieving libpq version when enabling commenter with psycopg
