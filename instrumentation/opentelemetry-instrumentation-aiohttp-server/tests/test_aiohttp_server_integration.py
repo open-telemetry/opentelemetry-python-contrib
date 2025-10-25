@@ -29,6 +29,7 @@ from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_METHOD,
     HTTP_STATUS_CODE,
+    HTTP_TARGET,
     HTTP_URL,
 )
 from opentelemetry.test.globals_test import (
@@ -106,7 +107,15 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     AioHttpServerInstrumentor().instrument()
 
     app = aiohttp.web.Application()
-    app.add_routes([aiohttp.web.get("/test-path", default_handler)])
+    app.add_routes(
+        [
+            aiohttp.web.get("/test-path", default_handler),
+            aiohttp.web.get("/test-path/{url_param}", default_handler),
+            aiohttp.web.get(
+                "/object/{object_id}/action/{another_param}", default_handler
+            ),
+        ]
+    )
     if suppress:
         with suppress_http_instrumentation():
             server = await aiohttp_server(app)
@@ -168,6 +177,53 @@ async def test_status_code_instrumentation(
     assert (
         f"http://{server.host}:{server.port}{url}" == span.attributes[HTTP_URL]
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url, example_paths",
+    [
+        (
+            "/test-path/{url_param}",
+            (
+                "/test-path/foo",
+                "/test-path/bar",
+            ),
+        ),
+        (
+            "/object/{object_id}/action/{another_param}",
+            (
+                "/object/1/action/bar",
+                "/object/234/action/baz",
+            ),
+        ),
+    ],
+)
+async def test_url_params_instrumentation(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+    url,
+    example_paths,
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+    for path in example_paths:
+        await client.get(path)
+
+    assert len(memory_exporter.get_finished_spans()) == 2
+
+    for request_path, span in zip(
+        example_paths, memory_exporter.get_finished_spans()
+    ):
+        assert url == span.name
+        assert request_path == span.attributes[HTTP_TARGET]
+        full_url = f"http://{server.host}:{server.port}{request_path}"
+        assert full_url == span.attributes[HTTP_URL]
 
 
 @pytest.mark.asyncio
