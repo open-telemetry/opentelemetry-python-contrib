@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
+
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
