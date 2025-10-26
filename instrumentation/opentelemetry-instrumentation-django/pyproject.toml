@@ -26,15 +26,15 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.59b0.dev",
-  "opentelemetry-instrumentation-wsgi == 0.59b0.dev",
-  "opentelemetry-semantic-conventions == 0.59b0.dev",
-  "opentelemetry-util-http == 0.59b0.dev",
+  "opentelemetry-instrumentation == 0.60b0.dev",
+  "opentelemetry-instrumentation-wsgi == 0.60b0.dev",
+  "opentelemetry-semantic-conventions == 0.60b0.dev",
+  "opentelemetry-util-http == 0.60b0.dev",
 ]
 
 [project.optional-dependencies]
 asgi = [
-  "opentelemetry-instrumentation-asgi == 0.59b0.dev",
+  "opentelemetry-instrumentation-asgi == 0.60b0.dev",
 ]
 instruments = [
   "django >= 2.0",
