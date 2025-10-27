@@ -43,7 +43,7 @@ async def test_async_responses_create_with_content(
     assert len(spans) == 1
     
     span = spans[0]
-    assert span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "chat"
+    assert span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "responses"
     assert span.attributes[GenAIAttributes.GEN_AI_SYSTEM] == "openai"
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == llm_model_value
     assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] == response.model
@@ -54,9 +54,13 @@ async def test_async_responses_create_with_content(
         assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
         assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
 
-    logs = log_exporter.get_finished_logs()
-    # At least input message should be logged
-    assert len(logs) >= 1
+    events = span.events
+    # At least input message event should be present
+    assert len(events) >= 1
+    
+    # Check for user input event
+    user_events = [event for event in events if event.name == "gen_ai.user.message"]
+    assert len(user_events) >= 1
 
 
 @pytest.mark.vcr()
@@ -75,12 +79,12 @@ async def test_async_responses_create_no_content(
     assert len(spans) == 1
     
     span = spans[0]
-    assert span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "chat"
+    assert span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "responses"
     assert span.attributes[GenAIAttributes.GEN_AI_SYSTEM] == "openai"
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == llm_model_value
 
-    # No content should be captured in logs when capture_content is False
-    logs = log_exporter.get_finished_logs()
-    for log in logs:
-        if log.log_record.body and isinstance(log.log_record.body, dict):
-            assert "content" not in log.log_record.body or not log.log_record.body.get("content")
+    # Check span events - no content should be captured when capture_content is False
+    events = span.events
+    for event in events:
+        if hasattr(event, 'attributes') and event.attributes:
+            assert "gen_ai.event.content" not in event.attributes or not event.attributes.get("gen_ai.event.content")
