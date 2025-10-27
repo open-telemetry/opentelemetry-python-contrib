@@ -1144,11 +1144,15 @@ def _get_conversation_items_request_attributes(kwargs, client_instance):
 
 def _set_conversation_items_attributes(span, result, args, kwargs):
     """Set span attributes for conversation items list response."""
-    # Add conversation_id from arguments 
+    # Add conversation_id from arguments (check both positional and keyword args)
+    conversation_id = None
     if len(args) > 0:
         conversation_id = args[0]
-        if conversation_id:
-            set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
+    elif "conversation_id" in kwargs:
+        conversation_id = kwargs["conversation_id"]
+    
+    if conversation_id:
+        set_span_attribute(span, "gen_ai.conversation.id", conversation_id)
     
     # Add pagination info if available
     if hasattr(result, "object") and result.object == "list":
