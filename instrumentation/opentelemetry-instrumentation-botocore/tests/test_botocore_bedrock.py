@@ -2990,6 +2990,7 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
     input_value, expected_output
 ):
     """Test that _process_anthropic_claude_chunk handles various tool_use input formats."""
+
     def stream_done_callback(response, ended):
         pass
 
