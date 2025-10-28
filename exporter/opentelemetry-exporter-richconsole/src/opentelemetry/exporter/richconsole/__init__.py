@@ -173,14 +173,15 @@ class RichConsoleSpanExporter(SpanExporter):
         trees = {}
         parents = {}
         spans = list(spans)
+        span_ids = {s.context.span_id for s in spans}
         while spans:
             for span in spans:
-                if not span.parent:
+                if not span.parent or span.parent.span_id not in span_ids:
                     trace_id = opentelemetry.trace.format_trace_id(
                         span.context.trace_id
                     )
-                    trees[trace_id] = Tree(label=f"Trace {trace_id}")
-                    child = trees[trace_id].add(
+                    tree = trees.setdefault(trace_id, Tree(label=f"Trace {trace_id}"))
+                    child = tree.add(
                         label=Text.from_markup(
                             f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                         )
