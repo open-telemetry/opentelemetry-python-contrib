@@ -1,3 +1,5 @@
+# pylint: disable=wrong-import-position,wrong-import-order,import-error
+
 from __future__ import annotations
 
 import sys

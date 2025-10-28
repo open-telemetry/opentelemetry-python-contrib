@@ -1,5 +1,7 @@
 """OpenAI Agents instrumentation for OpenTelemetry."""
 
+# pylint: disable=too-many-locals
+
 from __future__ import annotations
 
 import importlib
