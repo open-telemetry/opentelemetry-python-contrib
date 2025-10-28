@@ -36,6 +36,7 @@ API
 ---
 """
 
+import os
 from typing import Any, Callable, Collection
 
 from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
@@ -72,6 +73,7 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_messages = self._resolve_capture_messages(kwargs)
         tracer = get_tracer(
             __name__,
             __version__,
@@ -81,6 +83,9 @@ class LangChainInstrumentor(BaseInstrumentor):
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             tracer=tracer,
+            capture_messages=capture_messages,
+            provider_name=kwargs.get("provider_name"),
+            agent_id=kwargs.get("agent_id"),
         )
 
         wrap_function_wrapper(
@@ -94,6 +99,18 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
+
+    def _resolve_capture_messages(self, kwargs: dict[str, Any]) -> bool:
+        if "capture_messages" in kwargs:
+            return bool(kwargs["capture_messages"])
+
+        env_value = os.getenv(
+            "OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGES"
+        )
+        if env_value is not None:
+            return env_value.lower() in ("1", "true", "yes", "on")
+
+        return True
 
 
 class _BaseCallbackManagerInitWrapper:
