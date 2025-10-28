@@ -189,13 +189,16 @@ def _flatten_compound_value(
             flatten_functions=flatten_functions,
         )
     if hasattr(value, "model_dump"):
-        return _flatten_dict(
-            value.model_dump(),
-            key_prefix=key,
-            exclude_keys=exclude_keys,
-            rename_keys=rename_keys,
-            flatten_functions=flatten_functions,
-        )
+        try:
+            return _flatten_dict(
+                value.model_dump(),
+                key_prefix=key,
+                exclude_keys=exclude_keys,
+                rename_keys=rename_keys,
+                flatten_functions=flatten_functions,
+            )
+        except TypeError:
+            return {key: str(value)}
     return _flatten_compound_value_using_json(
         key,
         value,

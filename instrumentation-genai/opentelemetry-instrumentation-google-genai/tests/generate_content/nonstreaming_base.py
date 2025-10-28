@@ -17,6 +17,7 @@ import unittest
 from unittest.mock import patch
 
 from google.genai.types import GenerateContentConfig
+from pydantic import BaseModel, Field
 
 from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
@@ -30,6 +31,10 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
+
+
+class ExampleResponseSchema(BaseModel):
+    name: str = Field(description="A Destination's Name")
 
 
 class NonStreamingTestCase(TestCase):
@@ -215,6 +220,12 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
 
+    @patch.dict(
+        "os.environ",
+        {
+            "OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "gcp.gen_ai.operation.config.response_schema"
+        },
+    )
     def test_new_semconv_record_completion_as_log(self):
         for mode in ContentCapturingMode:
             patched_environ = patch.dict(
@@ -243,7 +254,8 @@ class NonStreamingTestCase(TestCase):
                         model="gemini-2.0-flash",
                         contents=content,
                         config=GenerateContentConfig(
-                            system_instruction=sys_instr
+                            system_instruction=sys_instr,
+                            response_schema=ExampleResponseSchema,
                         ),
                     )
                     self.otel.assert_has_event_named(
@@ -251,6 +263,12 @@ class NonStreamingTestCase(TestCase):
                     )
                     event = self.otel.get_event_named(
                         "gen_ai.client.inference.operation.details"
+                    )
+                    assert (
+                        event.attributes[
+                            "gcp.gen_ai.operation.config.response_schema"
+                        ]
+                        == "<class 'tests.generate_content.nonstreaming_base.ExampleResponseSchema'>"
                     )
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,
@@ -346,7 +364,8 @@ class NonStreamingTestCase(TestCase):
                         model="gemini-2.0-flash",
                         contents="Some input",
                         config=GenerateContentConfig(
-                            system_instruction="System instruction"
+                            system_instruction="System instruction",
+                            response_schema=ExampleResponseSchema,
                         ),
                     )
                     span = self.otel.get_span_named(
