@@ -127,6 +127,7 @@ class TestPymongo(TestBase):
             failed_hook=self.failed_callback,
         )
         command_tracer.started(event=mock_event)
+        mock_event.mark_as_failed()
         command_tracer.failed(event=mock_event)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -137,7 +138,7 @@ class TestPymongo(TestBase):
             span.status.status_code,
             trace_api.StatusCode.ERROR,
         )
-        self.assertEqual(span.status.description, "failure")
+        self.assertEqual(span.status.description, "operation failed")
         self.assertIsNotNone(span.end_time)
         self.start_callback.assert_called_once()
         self.failed_callback.assert_called_once()
@@ -149,6 +150,7 @@ class TestPymongo(TestBase):
         command_tracer.started(event=first_mock_event)
         command_tracer.started(event=second_mock_event)
         command_tracer.succeeded(event=first_mock_event)
+        second_mock_event.mark_as_failed()
         command_tracer.failed(event=second_mock_event)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -291,6 +293,17 @@ class MockEvent:
         self.command_name = self.command.get("command_name")
         self.connection_id = connection_id
         self.request_id = request_id
+
+    def mark_as_failed(self):
+        # CommandFailedEvent.failure is type _DocumentOut, which pymongo defines as:
+        # ```
+        # _DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
+        # ```
+        # we go with the former, but both provide a `.get(key, default)` method.
+        #
+        self.failure = {
+            "errmsg": "operation failed"
+        }
 
     def __getattr__(self, item):
         return item
