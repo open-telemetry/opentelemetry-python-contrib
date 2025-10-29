@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added 
+
+- `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
+  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
