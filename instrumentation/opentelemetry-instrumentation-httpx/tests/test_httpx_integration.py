@@ -739,15 +739,22 @@ class BaseTestCases:
             self.assert_span()
 
         def test_ignores_excluded_urls(self):
-            with mock.patch.dict(
-                "os.environ", {"OTEL_PYTHON_HTTPX_EXCLUDED_URLS": self.URL}
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
             ):
-                client = self.create_client()
-                HTTPXClientInstrumentor().instrument_client(client=client)
-                self.perform_request(self.URL, client=client)
-            self.assert_span(num_spans=0)
-            self.assert_metrics(num_metrics=0)
-            HTTPXClientInstrumentor().uninstrument_client(client)
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
 
     class BaseManualTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
@@ -984,15 +991,24 @@ class BaseTestCases:
             self.assertEqual(spans[1].attributes[HTTP_URL], https_url)
 
         def test_ignores_excluded_urls(self):
-            with mock.patch.dict(
-                "os.environ", {"OTEL_PYTHON_HTTPX_EXCLUDED_URLS": self.URL}
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
             ):
-                client = self.create_client()
-                HTTPXClientInstrumentor().instrument_client(client=client)
-                self.perform_request(self.URL, client=client)
-            self.assert_span(num_spans=0)
-            self.assert_metrics(num_metrics=0)
-            HTTPXClientInstrumentor().uninstrument_client(client=client)
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(
+                        client=client
+                    )
 
     @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
@@ -1354,15 +1370,22 @@ class BaseTestCases:
             self.assert_span()
 
         def test_ignores_excluded_urls(self):
-            # need to instrument again for the environment variable
-            HTTPXClientInstrumentor().uninstrument_client(self.client)
-            with mock.patch.dict(
-                "os.environ", {"OTEL_PYTHON_HTTPX_EXCLUDED_URLS": self.URL}
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
             ):
-                HTTPXClientInstrumentor().instrument_client(client=self.client)
-                self.perform_request(self.URL, client=self.client)
-            self.assert_span(num_spans=0)
-            self.assert_metrics(num_metrics=0)
+                with self.subTest(env_var=env_var):
+                    client = self.create_client()
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
 
 
 class TestSyncIntegration(BaseTestCases.BaseManualTest):
