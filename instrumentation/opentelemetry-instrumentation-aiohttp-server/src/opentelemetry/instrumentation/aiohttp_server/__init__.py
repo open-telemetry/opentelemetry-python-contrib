@@ -315,6 +315,10 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        # update the excluded urls value at instrument time so we can test it
+        global _excluded_urls
+        _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+
         self._original_app = web.Application
         setattr(web, "Application", _InstrumentedApplication)
 

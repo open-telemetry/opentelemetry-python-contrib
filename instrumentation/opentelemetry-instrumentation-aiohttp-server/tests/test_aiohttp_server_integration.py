@@ -195,3 +195,36 @@ async def test_remove_sensitive_params(tracer, aiohttp_server):
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
     memory_exporter.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "env_var",
+    ["OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS", "OTEL_PYTHON_EXCLUDED_URLS"],
+)
+async def test_excluded_urls(tracer, aiohttp_server, monkeypatch, env_var):
+    """Test that excluded env vars are taken into account."""
+    _, memory_exporter = tracer
+
+    monkeypatch.setenv(env_var, "/status/200")
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/status/200"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
