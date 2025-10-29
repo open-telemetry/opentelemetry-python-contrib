@@ -34,6 +34,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
@@ -209,7 +210,7 @@ class TestTelemetryHandler(unittest.TestCase):
                 "temperature": 0.5,
                 "top_p": 0.9,
                 "stop_sequences": ["stop"],
-                "response_finish_reasons": ["stop"],
+                "finish_reasons": ["stop"],
                 "response_model_name": "test-response-model",
                 "response_id": "response-id",
                 "input_tokens": 321,
@@ -229,8 +230,8 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             span_attrs,
             {
-                "gen_ai.operation.name": "chat",
-                "gen_ai.provider.name": "test-provider",
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
                 GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
                 GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
@@ -294,7 +295,7 @@ class TestTelemetryHandler(unittest.TestCase):
         invocation = LLMInvocation(
             request_model="model-without-output",
             provider="test-provider",
-            response_finish_reasons=["length"],
+            finish_reasons=["length"],
             response_model_name="alt-model",
             response_id="resp-001",
             input_tokens=12,
@@ -317,6 +318,27 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 12,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 34,
             },
+        )
+
+    def test_llm_span_uses_expected_schema_url(self):
+        invocation = LLMInvocation(
+            request_model="schema-model",
+            provider="schema-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        instrumentation = getattr(span, "instrumentation_scope", None)
+        if instrumentation is None:
+            instrumentation = getattr(span, "instrumentation_info", None)
+
+        assert instrumentation is not None
+        assert (
+            getattr(instrumentation, "schema_url", None)
+            == Schemas.V1_37_0.value
         )
 
     @patch_env_vars(
@@ -379,7 +401,7 @@ class TestTelemetryHandler(unittest.TestCase):
                 for attr, value in {
                     "max_tokens": 128,
                     "seed": 123,
-                    "response_finish_reasons": ["error"],
+                    "finish_reasons": ["error"],
                     "response_model_name": "error-model",
                     "response_id": "error-response",
                     "input_tokens": 11,

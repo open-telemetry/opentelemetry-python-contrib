@@ -137,8 +137,8 @@ def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
     attributes: Dict[str, Any] = {}
 
     finish_reasons: Optional[List[str]]
-    if invocation.response_finish_reasons is not None:
-        finish_reasons = invocation.response_finish_reasons
+    if invocation.finish_reasons is not None:
+        finish_reasons = invocation.finish_reasons
     elif invocation.output_messages:
         finish_reasons = [
             message.finish_reason for message in invocation.output_messages
