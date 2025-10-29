@@ -97,6 +97,41 @@ class NonStreamingTestCase(TestCase):
             span.attributes["gen_ai.operation.name"], "generate_content"
         )
 
+    def test_span_and_event_still_written_when_response_is_exception(self):
+        self.configure_exception(ValueError("Uh oh!"))
+        patched_environ = patch.dict(
+            "os.environ",
+            {
+                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "SPAN_AND_EVENT",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+            },
+        )
+        with patched_environ:
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            try:
+                self.generate_content(
+                    model="gemini-2.0-flash", contents="Does this work?"
+                )
+            except ValueError:
+                self.otel.assert_has_span_named(
+                    "generate_content gemini-2.0-flash"
+                )
+                span = self.otel.get_span_named(
+                    "generate_content gemini-2.0-flash"
+                )
+                self.otel.assert_has_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                event = self.otel.get_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                assert (
+                    span.attributes["error.type"]
+                    == event.attributes["error.type"]
+                    == "ValueError"
+                )
+
     def test_generated_span_has_correct_function_name(self):
         self.configure_valid_response(text="Yep, it works!")
         self.generate_content(

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fixes bugs
+
 ## Version 0.4b0 (2025-10-16)
 
 - Implement the new semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
