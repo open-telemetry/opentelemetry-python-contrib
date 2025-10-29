@@ -278,6 +278,7 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
+from opentelemetry.trace.propagation import _SPAN_KEY
 from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -418,9 +419,20 @@ def _rewrapped_app(
                 if request_route:
                     duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-                duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
-                )
+                # Get the span from wrapped_app_environ and re-create context manually
+                # to pass to histogram for exemplars generation
+                span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+                if span:
+                    exemplar_context = context.set_value(_SPAN_KEY, span)
+                    duration_histogram_new.record(
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=exemplar_context,
+                    )
+                else:
+                    duration_histogram_new.record(
+                        max(duration_s, 0), duration_attrs_new
+                    )
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
 
