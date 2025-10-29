@@ -825,8 +825,8 @@ class TestAioHttpIntegration(TestBase):
                         status_code=HTTPStatus.OK,
                     )
 
-        self._assert_spans([], 0)
-        self._assert_metrics(0)
+                    self._assert_spans([], 0)
+                    self._assert_metrics(0)
 
 
 class TestAioHttpClientInstrumentor(TestBase):
