@@ -805,20 +805,25 @@ class TestAioHttpIntegration(TestBase):
         )
         self.memory_exporter.clear()
 
-    @mock.patch.dict(
-        os.environ, {"OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS": "/some/path"}
-    )
     def test_ignores_excluded_urls(self):
         async def request_handler(request):
             assert "traceparent" not in request.headers
             return aiohttp.web.Response(status=HTTPStatus.OK)
 
-        self._http_request(
-            trace_config=aiohttp_client.create_trace_config(),
-            request_handler=request_handler,
-            url="/some/path?query=param&other=param2",
-            status_code=HTTPStatus.OK,
-        )
+        for env_var in (
+            "OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS",
+            "OTEL_PYTHON_EXCLUDED_URLS",
+        ):
+            with self.subTest(env_var=env_var):
+                with mock.patch.dict(
+                    os.environ, {env_var: "/some/path"}, clear=True
+                ):
+                    self._http_request(
+                        trace_config=aiohttp_client.create_trace_config(),
+                        request_handler=request_handler,
+                        url="/some/path?query=param&other=param2",
+                        status_code=HTTPStatus.OK,
+                    )
 
         self._assert_spans([], 0)
         self._assert_metrics(0)
