@@ -448,7 +448,6 @@ class _GenerateContentInstrumentationHelper:
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
         if not is_experimental_mode:
-            print("not experimental mode?")
             return
         system_instructions = []
         if system_content := _config_to_system_instruction(config):
@@ -485,7 +484,6 @@ class _GenerateContentInstrumentationHelper:
                 **(event.attributes or {}),
                 **completion_details_attributes,
             }
-        print("writing completion event..")
         self._otel_wrapper.log_completion_details(event=event)
 
         if self._content_recording_enabled in [
@@ -706,7 +704,6 @@ def _create_instrumented_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
-        print("in instrumented code..")
         candidates = []
         helper = _GenerateContentInstrumentationHelper(
             self,
@@ -719,7 +716,6 @@ def _create_instrumented_generate_content(
             helper.sem_conv_opt_in_mode
             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
-        print(f"opt in mode: {helper.sem_conv_opt_in_mode}")
         request_attributes = create_request_attributes(
             config,
             is_experimental_mode,
@@ -735,7 +731,6 @@ def _create_instrumented_generate_content(
                     gen_ai_attributes.GEN_AI_SYSTEM, helper._genai_system
                 )
             try:
-                print("trying to get resp..")
                 response = wrapped_func(
                     self,
                     model=model,
@@ -743,7 +738,6 @@ def _create_instrumented_generate_content(
                     config=helper.wrapped_config(config),
                     **kwargs,
                 )
-                print("resp over..")
                 if is_experimental_mode:
                     helper._update_response(response)
                     if response.candidates:
@@ -753,11 +747,9 @@ def _create_instrumented_generate_content(
                     helper.process_response(response)
                 return response
             except Exception as error:
-                print("EXCEPTION RIASED.. PROCESSING ERROR>>>")
                 helper.process_error(error)
                 raise
             finally:
-                print("in the finnally block..")
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
