@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
+- `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-aiohttp-server`: Fix readme links and text
+  ([#3902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3902))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
