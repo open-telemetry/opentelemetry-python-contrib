@@ -320,6 +320,46 @@ class TestTelemetryHandler(unittest.TestCase):
             },
         )
 
+    def test_llm_span_finish_reasons_deduplicated_from_invocation(self):
+        invocation = LLMInvocation(
+            request_model="model-dedup",
+            provider="test-provider",
+            finish_reasons=["stop", "length", "stop"],
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        attrs = _get_span_attributes(span)
+        self.assertEqual(
+            attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS],
+            ("length", "stop"),
+        )
+
+    def test_llm_span_finish_reasons_deduplicated_from_output_messages(self):
+        invocation = LLMInvocation(
+            request_model="model-output-dedup",
+            provider="test-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        invocation.output_messages = [
+            _create_output_message("response-1", finish_reason="stop"),
+            _create_output_message("response-2", finish_reason="length"),
+            _create_output_message("response-3", finish_reason="stop"),
+        ]
+        self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        attrs = _get_span_attributes(span)
+        self.assertEqual(
+            attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS],
+            ("length", "stop"),
+        )
+
     def test_llm_span_uses_expected_schema_url(self):
         invocation = LLMInvocation(
             request_model="schema-model",

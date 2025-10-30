@@ -143,13 +143,20 @@ def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
         finish_reasons = invocation.finish_reasons
     elif invocation.output_messages:
         finish_reasons = [
-            message.finish_reason for message in invocation.output_messages
+            message.finish_reason
+            for message in invocation.output_messages
+            if message.finish_reason
         ]
     else:
         finish_reasons = None
 
     if finish_reasons:
-        attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] = finish_reasons
+        # De-duplicate finish reasons
+        unique_finish_reasons = sorted(set(finish_reasons))
+        if unique_finish_reasons:
+            attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] = (
+                unique_finish_reasons
+            )
 
     if invocation.response_model_name is not None:
         attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
