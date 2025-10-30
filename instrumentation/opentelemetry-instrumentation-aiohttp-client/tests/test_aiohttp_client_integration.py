@@ -16,6 +16,7 @@
 
 import asyncio
 import contextlib
+import os
 import typing
 import unittest
 import urllib.parse
@@ -87,6 +88,7 @@ def run_with_test_server(
     return loop.run_until_complete(do_request())
 
 
+# pylint: disable=too-many-public-methods
 class TestAioHttpIntegration(TestBase):
     _test_status_codes = (
         (HTTPStatus.OK, StatusCode.UNSET),
@@ -332,7 +334,7 @@ class TestAioHttpIntegration(TestBase):
 
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
-                span.instrumentation_info.schema_url,
+                span.instrumentation_scope.schema_url,
                 "https://opentelemetry.io/schemas/1.11.0",
             )
             self.memory_exporter.clear()
@@ -349,7 +351,7 @@ class TestAioHttpIntegration(TestBase):
 
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
-                span.instrumentation_info.schema_url,
+                span.instrumentation_scope.schema_url,
                 "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
@@ -366,7 +368,7 @@ class TestAioHttpIntegration(TestBase):
 
             span = self.memory_exporter.get_finished_spans()[0]
             self.assertEqual(
-                span.instrumentation_info.schema_url,
+                span.instrumentation_scope.schema_url,
                 "https://opentelemetry.io/schemas/1.21.0",
             )
             self.memory_exporter.clear()
@@ -803,6 +805,29 @@ class TestAioHttpIntegration(TestBase):
         )
         self.memory_exporter.clear()
 
+    def test_ignores_excluded_urls(self):
+        async def request_handler(request):
+            assert "traceparent" not in request.headers
+            return aiohttp.web.Response(status=HTTPStatus.OK)
+
+        for env_var in (
+            "OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS",
+            "OTEL_PYTHON_EXCLUDED_URLS",
+        ):
+            with self.subTest(env_var=env_var):
+                with mock.patch.dict(
+                    os.environ, {env_var: "/some/path"}, clear=True
+                ):
+                    self._http_request(
+                        trace_config=aiohttp_client.create_trace_config(),
+                        request_handler=request_handler,
+                        url="/some/path?query=param&other=param2",
+                        status_code=HTTPStatus.OK,
+                    )
+
+                    self._assert_spans([], 0)
+                    self._assert_metrics(0)
+
 
 class TestAioHttpClientInstrumentor(TestBase):
     URL = "/test-path"
@@ -1114,6 +1139,21 @@ class TestAioHttpClientInstrumentor(TestBase):
         self.assertEqual("GET - /test-path", span.name)
         self.assertIn("response_hook_attr", span.attributes)
         self.assertEqual(span.attributes["response_hook_attr"], "value")
+
+    @mock.patch.dict(
+        os.environ, {"OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS": "/test-path"}
+    )
+    def test_ignores_excluded_urls(self):
+        # need the env var set at instrument time
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+
+        url = "/test-path?query=params"
+        run_with_test_server(
+            self.get_default_request(url), url, self.default_handler
+        )
+        self._assert_spans(0)
+        self._assert_metrics(0)
 
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
