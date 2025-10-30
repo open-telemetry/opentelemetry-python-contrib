@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Type, Union
+from typing import Any, Literal, Type, Union
 
 from typing_extensions import TypeAlias
 
@@ -41,14 +42,14 @@ class ContentCapturingMode(Enum):
 class ToolCall:
     arguments: Any
     name: str
-    id: Optional[str]
+    id: str | None
     type: Literal["tool_call"] = "tool_call"
 
 
 @dataclass()
 class ToolCallResponse:
     response: Any
-    id: Optional[str]
+    id: str | None
     type: Literal["tool_call_response"] = "tool_call_response"
 
 
@@ -76,18 +77,18 @@ class InputMessage:
 class OutputMessage:
     role: str
     parts: list[MessagePart]
-    finish_reason: Union[str, FinishReason]
+    finish_reason: str | FinishReason
 
 
-def _new_input_messages() -> List[InputMessage]:
+def _new_input_messages() -> list[InputMessage]:
     return []
 
 
-def _new_output_messages() -> List[OutputMessage]:
+def _new_output_messages() -> list[OutputMessage]:
     return []
 
 
-def _new_str_any_dict() -> Dict[str, Any]:
+def _new_str_any_dict() -> dict[str, Any]:
     return {}
 
 
@@ -100,28 +101,28 @@ class LLMInvocation:
     """
 
     request_model: str
-    context_token: Optional[ContextToken] = None
-    span: Optional[Span] = None
-    input_messages: List[InputMessage] = field(
+    context_token: ContextToken | None = None
+    span: Span | None = None
+    input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
-    output_messages: List[OutputMessage] = field(
+    output_messages: list[OutputMessage] = field(
         default_factory=_new_output_messages
     )
-    provider: Optional[str] = None
-    response_model_name: Optional[str] = None
-    response_id: Optional[str] = None
-    finish_reasons: Optional[List[str]] = None
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
-    attributes: Dict[str, Any] = field(default_factory=_new_str_any_dict)
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    presence_penalty: Optional[float] = None
-    max_tokens: Optional[int] = None
-    stop_sequences: Optional[List[str]] = None
-    seed: Optional[int] = None
+    provider: str | None = None
+    response_model_name: str | None = None
+    response_id: str | None = None
+    finish_reasons: list[str] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    max_tokens: int | None = None
+    stop_sequences: list[str] | None = None
+    seed: int | None = None
 
 
 @dataclass

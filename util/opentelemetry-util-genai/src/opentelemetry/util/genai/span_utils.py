@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -65,8 +67,8 @@ def _apply_common_span_attributes(
 
 def _maybe_set_span_messages(
     span: Span,
-    input_messages: List[InputMessage],
-    output_messages: List[OutputMessage],
+    input_messages: list[InputMessage],
+    output_messages: list[OutputMessage],
 ) -> None:
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
@@ -107,7 +109,7 @@ def _apply_error_attributes(span: Span, error: Error) -> None:
 
 def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
     """Attach GenAI request semantic convention attributes to the span."""
-    attributes: Dict[str, Any] = {}
+    attributes: dict[str, Any] = {}
     if invocation.temperature is not None:
         attributes[GenAI.GEN_AI_REQUEST_TEMPERATURE] = invocation.temperature
     if invocation.top_p is not None:
@@ -134,9 +136,9 @@ def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
 
 def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
     """Attach GenAI response semantic convention attributes to the span."""
-    attributes: Dict[str, Any] = {}
+    attributes: dict[str, Any] = {}
 
-    finish_reasons: Optional[List[str]]
+    finish_reasons: list[str] | None
     if invocation.finish_reasons is not None:
         finish_reasons = invocation.finish_reasons
     elif invocation.output_messages:
