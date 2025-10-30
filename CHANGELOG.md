@@ -15,11 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
+- `opentelemetry-instrumentation-httpx`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_HTTPX_EXCLUDED_URLS`
+  ([#3837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3837))
+- `opentelemetry-instrumentation-flask`: improve readthedocs for sqlcommenter configuration.
+  ([#3883](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3883))
+- `opentelemetry-instrumentation-sqlalchemy`: improve readthedocs for sqlcommenter configuration.
+  ([#3886](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3886))
+- `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: improve readthedocs for sqlcommenter configuration.
+  ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
+- `opentelemetry-instrumentation-aws-lambda`: Fix ImportError with slash-delimited handler paths
+  ([#3894](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3894))
 - `opentelemetry-exporter-richconsole`: Prevent deadlock when parent span is not part of the batch
   ([#3900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3900))
 
