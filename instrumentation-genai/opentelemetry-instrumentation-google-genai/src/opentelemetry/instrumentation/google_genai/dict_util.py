@@ -151,7 +151,7 @@ def _flatten_compound_value_using_json(
     )
 
 
-def _flatten_compound_value(
+def _flatten_compound_value(  # pylint: disable=too-many-return-statements
     key: str,
     value: Any,
     exclude_keys: Set[str],

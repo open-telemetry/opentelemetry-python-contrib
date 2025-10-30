@@ -1041,9 +1041,9 @@ def instrument_generate_content(
     opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
         _OpenTelemetryStabilitySignalType.GEN_AI
     )
-    if (
-        opt_in_mode != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-        and opt_in_mode != _StabilityMode.DEFAULT
+    if opt_in_mode not in (
+        _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        _StabilityMode.DEFAULT,
     ):
         raise ValueError(f"Sem Conv opt in mode {opt_in_mode} not supported.")
     snapshot = _MethodsSnapshot()

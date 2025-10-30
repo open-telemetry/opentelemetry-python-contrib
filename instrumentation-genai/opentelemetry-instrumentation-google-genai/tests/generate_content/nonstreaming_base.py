@@ -32,6 +32,8 @@ from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
 
+# pylint: disable=too-many-public-methods
+
 
 class ExampleResponseSchema(BaseModel):
     name: str = Field(description="A Destination's Name")
