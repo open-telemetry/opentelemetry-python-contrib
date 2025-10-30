@@ -739,6 +739,24 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
     class BaseManualTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_transport(
@@ -973,6 +991,26 @@ class BaseTestCases:
             self.assertEqual(spans[0].attributes[HTTP_URL], self.URL)
             self.assertEqual(spans[1].attributes[HTTP_URL], https_url)
 
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(
+                        client=client
+                    )
+
     @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
@@ -999,6 +1037,8 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument_client(self.client)
 
         def tearDown(self):
+            # TODO: uninstrument() is required in order to avoid leaks for instrumentations
+            # but we should audit the single tests and fix any missing uninstrumentation
             HTTPXClientInstrumentor().uninstrument()
 
         def create_proxy_mounts(self):
@@ -1329,6 +1369,24 @@ class BaseTestCases:
             result = self.perform_request(self.URL)
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
+
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    client = self.create_client()
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
 
 
 class TestSyncIntegration(BaseTestCases.BaseManualTest):
