@@ -97,6 +97,7 @@ def test_multiple_traces(tracer_provider):
         for child in trees[traceid_1].children[0].children
     )
 
+
 def test_no_deadlock(tracer_provider):
     # non-regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3254
 

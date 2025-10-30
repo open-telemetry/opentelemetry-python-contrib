@@ -180,7 +180,9 @@ class RichConsoleSpanExporter(SpanExporter):
                     trace_id = opentelemetry.trace.format_trace_id(
                         span.context.trace_id
                     )
-                    tree = trees.setdefault(trace_id, Tree(label=f"Trace {trace_id}"))
+                    tree = trees.setdefault(
+                        trace_id, Tree(label=f"Trace {trace_id}")
+                    )
                     child = tree.add(
                         label=Text.from_markup(
                             f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
