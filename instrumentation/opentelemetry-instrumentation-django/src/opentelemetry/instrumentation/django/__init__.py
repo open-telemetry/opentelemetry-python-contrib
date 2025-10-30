@@ -192,7 +192,7 @@ records are enabled. For more information, see:
 Warning:
     Duplicate sqlcomments may be appended to the sqlquery log if DjangoInstrumentor
     sqlcommenter is enabled in addition to sqlcommenter for an active instrumention
-    of a database driver or object relation mapper (ORM) in the same database client
+    of a database driver or object-relational mapper (ORM) in the same database client
     stack. For example, if psycopg2 driver is used and Psycopg2Instrumentor has
     sqlcommenter enabled, then both DjangoInstrumentor and Psycopg2Instrumentor will
     append comments to the query statement.
