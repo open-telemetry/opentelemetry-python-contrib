@@ -149,6 +149,8 @@ class UploadCompletionHook(CompletionHook):
             path,
             contents_hashed_to_filename,
         ), json_encodeable in upload_data.items():
+            if contents_hashed_to_filename and self._file_exists(path):
+                continue
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
