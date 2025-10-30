@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
 - `opentelemetry-instrumentation-httpx`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_HTTPX_EXCLUDED_URLS`
   ([#3837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3837))
+- `opentelemetry-instrumentation-flask`: improve readthedocs for sqlcommenter configuration.
+  ([#3883](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3883))
 
 ### Fixed
 
