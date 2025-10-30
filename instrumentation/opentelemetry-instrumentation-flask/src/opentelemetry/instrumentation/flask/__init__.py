@@ -209,7 +209,7 @@ records are enabled. For more information, see:
 
 Note:
     FlaskInstrumentor sqlcommenter requires that sqlcommenter is also
-    enabled for an active instrumention of a database driver or object relation
+    enabled for an active instrumentation of a database driver or object-relational
     mapper (ORM) in the same database client stack. The latter, such as
     Psycopg2Instrumentor of SQLAlchemyInstrumentor, will create a base sqlcomment
     that is enhanced by FlaskInstrumentor with additional values from context
