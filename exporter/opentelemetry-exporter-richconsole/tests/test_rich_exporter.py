@@ -98,6 +98,7 @@ def test_multiple_traces(tracer_provider):
     )
 
 
+@pytest.mark.timeout(30)
 def test_no_deadlock(tracer_provider):
     # non-regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3254
 
