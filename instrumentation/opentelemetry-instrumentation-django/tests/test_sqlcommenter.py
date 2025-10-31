@@ -27,8 +27,6 @@ from opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware imp
 )
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 
-DJANGO_2_0 = VERSION >= (2, 0)
-
 _django_instrumentor = DjangoInstrumentor()
 
 
@@ -62,10 +60,7 @@ class TestMiddleware(WsgiTestBase):
     def test_middleware_added(self, sqlcommenter_middleware):
         instance = sqlcommenter_middleware.return_value
         instance.get_response = HttpResponse()
-        if DJANGO_2_0:
-            middleware = conf.settings.MIDDLEWARE
-        else:
-            middleware = conf.settings.MIDDLEWARE_CLASSES
+        middleware = conf.settings.MIDDLEWARE
 
         self.assertTrue(
             "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
@@ -77,10 +72,7 @@ class TestMiddleware(WsgiTestBase):
     )
     def test_middleware_added_at_position(self, sqlcommenter_middleware):
         _django_instrumentor.uninstrument()
-        if DJANGO_2_0:
-            middleware = conf.settings.MIDDLEWARE
-        else:
-            middleware = conf.settings.MIDDLEWARE_CLASSES
+        middleware = conf.settings.MIDDLEWARE
 
         # adding two dummy middlewares
         temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
@@ -167,9 +159,6 @@ class TestMiddleware(WsgiTestBase):
         "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware._QueryWrapper"
     )
     def test_multiple_connection_support(self, query_wrapper):
-        if not DJANGO_2_0:
-            pytest.skip()
-
         requests_mock = MagicMock()
         get_response = MagicMock()
 
