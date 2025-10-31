@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import types
 from logging import getLogger
 from time import time
@@ -129,6 +130,17 @@ except ImportError:
     _is_asgi_supported = False
 
 _logger = getLogger(__name__)
+
+
+class RequestFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        request = getattr(record, "request", None)
+        record.request = str(request)
+        return True
+
+
+_wsgi_request_logger = logging.getLogger("django.request")
+_wsgi_request_logger.addFilter(RequestFilter())
 
 
 def _is_asgi_request(request: HttpRequest) -> bool:
@@ -276,6 +288,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                     custom_attributes = (
                         wsgi_collect_custom_request_headers_attributes(carrier)
                     )
+
                     if len(custom_attributes) > 0:
                         span.set_attributes(custom_attributes)
 
