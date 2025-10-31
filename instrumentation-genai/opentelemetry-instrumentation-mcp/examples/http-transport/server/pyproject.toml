@@ -1,0 +1,14 @@
+[project]
+name = "mcp-http-server-example"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "boto3>=1.35",
+    "mcp>=1.8.1",
+    "opentelemetry-distro>=0.58b0",
+    "opentelemetry-exporter-otlp>=1.37.0",
+    "opentelemetry-instrumentation-mcp",
+    "opentelemetry-sdk",
+    "pip>=25.2",
+    "requests>=2.32.5",
+]
