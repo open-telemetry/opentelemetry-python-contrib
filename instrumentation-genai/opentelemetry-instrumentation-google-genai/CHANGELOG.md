@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Minor change to check LRU cache in Completion Hook before acquiring semaphore/thread ([#3907](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3907)).
+
 ## Version 0.4b0 (2025-10-16)
 
 - Implement the new semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
