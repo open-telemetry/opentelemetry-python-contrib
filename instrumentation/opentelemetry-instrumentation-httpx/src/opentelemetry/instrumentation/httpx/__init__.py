@@ -225,8 +225,8 @@ from __future__ import annotations
 
 import logging
 import typing
-from asyncio import iscoroutinefunction
 from functools import partial
+from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 

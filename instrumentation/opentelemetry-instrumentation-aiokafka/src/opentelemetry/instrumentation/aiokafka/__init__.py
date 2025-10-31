@@ -95,7 +95,7 @@ ___
 
 from __future__ import annotations
 
-from asyncio import iscoroutinefunction
+from inspect import iscoroutinefunction
 from typing import TYPE_CHECKING, Collection
 
 import aiokafka
