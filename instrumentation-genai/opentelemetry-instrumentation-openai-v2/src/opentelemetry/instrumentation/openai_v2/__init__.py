@@ -29,11 +29,19 @@ Usage
     OpenAIInstrumentor().instrument()
 
     client = OpenAI()
+    
+    # Chat completions API
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "user", "content": "Write a short poem on open telemetry."},
         ],
+    )
+    
+    # Responses API
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input="Write a short poem on open telemetry.",
     )
 
 API
@@ -42,6 +50,7 @@ API
 
 from typing import Collection
 
+from packaging import version as package_version
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._logs import get_logger
@@ -54,7 +63,28 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .instruments import Instruments
-from .patch import async_chat_completions_create, chat_completions_create
+from .patch import (
+    async_chat_completions_create,
+    async_responses_create,
+    async_conversations_create,
+    async_conversation_items_list,
+    chat_completions_create,
+    responses_create,
+    conversations_create,
+    conversation_items_list,
+)
+
+
+def _is_responses_api_supported():
+    """Check if the installed OpenAI version supports the responses API."""
+    try:
+        import openai  # pylint: disable=import-outside-toplevel
+
+        return package_version.parse(openai.__version__) >= package_version.parse(
+            "1.66.0"
+        )
+    except Exception:  # pylint: disable=broad-except
+        return False
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -106,8 +136,67 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        # Only instrument responses API if supported (OpenAI >= 1.66.0)
+        if _is_responses_api_supported():
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.create",
+                wrapper=responses_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="AsyncResponses.create",
+                wrapper=async_responses_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.conversations",
+                name="Conversations.create",
+                wrapper=conversations_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.conversations",
+                name="AsyncConversations.create",
+                wrapper=async_conversations_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.items",
+                name="Items.list",
+                wrapper=conversation_items_list(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.conversations.items",
+                name="AsyncItems.list",
+                wrapper=async_conversation_items_list(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+        
+        # Only uninstrument responses API if supported (OpenAI >= 1.66.0)
+        if _is_responses_api_supported():
+            unwrap(openai.resources.responses.responses.Responses, "create")
+            unwrap(openai.resources.responses.responses.AsyncResponses, "create")
+            unwrap(openai.resources.conversations.conversations.Conversations, "create")
+            unwrap(openai.resources.conversations.conversations.AsyncConversations, "create")
+            unwrap(openai.resources.conversations.items.Items, "list")
+            unwrap(openai.resources.conversations.items.AsyncItems, "list")

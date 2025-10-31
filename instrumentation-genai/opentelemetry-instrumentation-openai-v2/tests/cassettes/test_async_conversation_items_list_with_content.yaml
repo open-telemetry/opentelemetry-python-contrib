@@ -1,0 +1,350 @@
+interactions:
+- request:
+    body: |-
+      {}
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '2'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 2.5.0
+      x-stainless-arch:
+      - other:amd64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - Windows
+      x-stainless-package-version:
+      - 2.5.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.13.9
+    method: POST
+    uri: https://api.openai.com/v1/conversations
+  response:
+    body:
+      string: |-
+        {
+          "id": "test_conversation_id",
+          "object": "conversation",
+          "created_at": 1234567890,
+          "metadata": {}
+        }
+    headers:
+      CF-RAY: test_cf_ray_id-ATL
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date: Mon, 01 Jan 2024 00:00:00 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '141'
+      openai-organization: test_openai_org_id
+      openai-processing-ms: '100'
+      openai-project: test_openai_project_id
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time: '100'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-request-id: test_request_id
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "conversation": "test_conversation_id",
+        "input": "Say hello",
+        "model": "gpt-4o-mini"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      content-length:
+      - '114'
+      content-type:
+      - application/json
+      cookie:
+      - test_cookie
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 2.5.0
+      x-stainless-arch:
+      - other:amd64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - Windows
+      x-stainless-package-version:
+      - 2.5.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.13.9
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: |-
+        {
+          "id": "test_response_id",
+          "object": "response",
+          "created_at": 1234567890,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "test_payer"
+          },
+          "conversation": {
+            "id": "test_conversation_id"
+          },
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "test_message_id",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "Hello! How can I assist you today?"
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 9,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 10,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 19
+          },
+          "user": null,
+          "metadata": {}
+        }
+    headers:
+      CF-RAY: test_cf_ray_id-ATL
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date: Mon, 01 Jan 2024 00:00:00 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1533'
+      openai-organization: test_openai_org_id
+      openai-processing-ms: '100'
+      openai-project: test_openai_project_id
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time: '100'
+      x-ratelimit-limit-requests: '1000'
+      x-ratelimit-limit-tokens: '1000'
+      x-ratelimit-remaining-requests: '1000'
+      x-ratelimit-remaining-tokens: '1000'
+      x-ratelimit-reset-requests: '1000'
+      x-ratelimit-reset-tokens: '1000'
+      x-request-id: test_request_id
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_openai_api_key
+      connection:
+      - keep-alive
+      cookie:
+      - test_cookie
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 2.5.0
+      x-stainless-arch:
+      - other:amd64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - Windows
+      x-stainless-package-version:
+      - 2.5.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.13.9
+    method: GET
+    uri: https://api.openai.com/v1/conversations/test_conversation_id/items
+  response:
+    body:
+      string: |-
+        {
+          "object": "list",
+          "data": [
+            {
+              "id": "test_message_id",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "Hello! How can I assist you today?"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "id": "test_message_id",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": "Say hello"
+                }
+              ],
+              "role": "user"
+            }
+          ],
+          "first_id": "test_message_id",
+          "has_more": false,
+          "last_id": "test_message_id"
+        }
+    headers:
+      CF-RAY: test_cf_ray_id-ATL
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date: Mon, 01 Jan 2024 00:00:00 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '824'
+      openai-organization: test_openai_org_id
+      openai-processing-ms: '100'
+      openai-project: test_openai_project_id
+      openai-version:
+      - '2020-10-01'
+      x-envoy-upstream-service-time: '100'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-request-id: test_request_id
+    status:
+      code: 200
+      message: OK
+version: 1
