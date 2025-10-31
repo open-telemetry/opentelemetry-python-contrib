@@ -23,13 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3886](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3886))
 - `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: improve readthedocs for sqlcommenter configuration.
   ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
+- `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
+  ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
 
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
+- `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-aiohttp-server`: Fix readme links and text
+  ([#3902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3902))
 - `opentelemetry-instrumentation-aws-lambda`: Fix ImportError with slash-delimited handler paths
   ([#3894](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3894))
+- `opentelemetry-exporter-richconsole`: Prevent deadlock when parent span is not part of the batch
+  ([#3900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3900))
 - `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: improve readthedocs for sqlcommenter configuration.
   ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
 
