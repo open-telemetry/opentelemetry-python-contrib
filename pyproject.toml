@@ -220,4 +220,5 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
+  "**/.venv",
 ]

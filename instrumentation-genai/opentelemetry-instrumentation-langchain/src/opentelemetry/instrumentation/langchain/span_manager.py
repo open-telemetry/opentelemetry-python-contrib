@@ -74,12 +74,18 @@ class _SpanManager:
         self,
         run_id: UUID,
         parent_run_id: Optional[UUID],
-        request_model: str,
+        request_model: Optional[str],
     ) -> Span:
+        operation_name = GenAI.GenAiOperationNameValues.CHAT.value
+        span_name = (
+            f"{operation_name} {request_model}"
+            if request_model
+            else operation_name
+        )
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            span_name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
+            span_name=span_name,
             kind=SpanKind.CLIENT,
         )
         span.set_attribute(
@@ -89,6 +95,27 @@ class _SpanManager:
         if request_model:
             span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
 
+        return span
+
+    def create_tool_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        tool_name: Optional[str],
+    ) -> Span:
+        operation_name = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+        span_name = (
+            f"{operation_name} {tool_name}" if tool_name else operation_name
+        )
+        span = self._create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=span_name,
+            kind=SpanKind.INTERNAL,
+        )
+        span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, operation_name)
+        if tool_name:
+            span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_name)
         return span
 
     def end_span(self, run_id: UUID) -> None:
