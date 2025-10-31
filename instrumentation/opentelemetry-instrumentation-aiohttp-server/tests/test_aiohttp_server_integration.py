@@ -69,7 +69,7 @@ def fixture_tracer():
     reset_trace_globals()
 
 
-@pytest.fixture(name="meter", scope="session")
+@pytest.fixture(name="meter", scope="function")
 def fixture_meter():
     test_base = TestBase()
 

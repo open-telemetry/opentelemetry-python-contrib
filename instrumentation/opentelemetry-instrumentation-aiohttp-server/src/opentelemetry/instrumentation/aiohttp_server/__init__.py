@@ -113,9 +113,9 @@ _active_requests_count_attrs = [
     HTTP_SERVER_NAME,
 ]
 
-tracer = trace.get_tracer(__name__)
-meter = metrics.get_meter(__name__, __version__)
-_excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+tracer = None
+meter = None
+_excluded_urls = None
 
 
 def _parse_duration_attrs(req_attrs):
@@ -315,9 +315,15 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
-        # update the excluded urls value at instrument time so we can test it
+        # update global values at instrument time so we can test them
         global _excluded_urls  # pylint: disable=global-statement
         _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+
+        global tracer  # pylint: disable=global-statement
+        tracer = trace.get_tracer(__name__)
+
+        global meter  # pylint: disable=global-statement
+        meter = metrics.get_meter(__name__, __version__)
 
         self._original_app = web.Application
         setattr(web, "Application", _InstrumentedApplication)
