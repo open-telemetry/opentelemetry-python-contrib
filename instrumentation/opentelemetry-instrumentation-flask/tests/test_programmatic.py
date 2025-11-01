@@ -69,6 +69,7 @@ from opentelemetry.semconv._incubating.attributes.url_attributes import (
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+from opentelemetry.trace.propagation import _SPAN_KEY
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -809,6 +810,50 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen)
         self.assertFalse(histogram_data_point_seen)
+
+    def test_duration_histogram_old_record_with_context(self):
+        with patch("opentelemetry.context.set_value") as mock_set_value:
+            self.client.get("/hello/123")
+
+            # Verify that context.set_value was called for metrics exemplar context
+            # with same trace, span ID as trace
+            mock_set_value.assert_called()
+            call_args = mock_set_value.call_args
+            self.assertEqual(len(call_args[0]), 2)
+            self.assertEqual(call_args[0][0], _SPAN_KEY)
+            span_arg = call_args[0][1]
+            self.assertIsNotNone(span_arg)
+            finished_spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(finished_spans), 1)
+            finished_span = finished_spans[0]
+            self.assertEqual(
+                span_arg.context.trace_id, finished_span.context.trace_id
+            )
+            self.assertEqual(
+                span_arg.context.span_id, finished_span.context.span_id
+            )
+
+    def test_duration_histogram_new_record_with_context_new_semconv(self):
+        with patch("opentelemetry.context.set_value") as mock_set_value:
+            self.client.get("/hello/123")
+
+            # Verify that context.set_value was called for metrics exemplar context
+            # with same trace, span ID as trace
+            mock_set_value.assert_called()
+            call_args = mock_set_value.call_args
+            self.assertEqual(len(call_args[0]), 2)
+            self.assertEqual(call_args[0][0], _SPAN_KEY)
+            span_arg = call_args[0][1]
+            self.assertIsNotNone(span_arg)
+            finished_spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(finished_spans), 1)
+            finished_span = finished_spans[0]
+            self.assertEqual(
+                span_arg.context.trace_id, finished_span.context.trace_id
+            )
+            self.assertEqual(
+                span_arg.context.span_id, finished_span.context.span_id
+            )
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
