@@ -137,6 +137,7 @@ def set_attributes_from_context(
 
         # according to https://docs.celeryproject.org/en/stable/userguide/routing.html#exchange-types
         elif key == "declare":
+            attribute_name = SpanAttributes.MESSAGING_DESTINATION_KIND
             for declare in value:
                 if declare.exchange.type == "direct":
                     value = "queue"
