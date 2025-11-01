@@ -136,6 +136,9 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
@@ -238,9 +241,6 @@ def _instrument(
 
         url = redact_url(request.url)
 
-        # Get headers early for user agent detection
-        headers = get_or_create_headers()
-
         span_attributes = {}
         _set_http_method(
             span_attributes,
@@ -251,10 +251,13 @@ def _instrument(
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         # Check for synthetic user agent type
+        headers = get_or_create_headers()
         user_agent = headers.get("User-Agent")
         synthetic_type = detect_synthetic_user_agent(user_agent)
         if synthetic_type:
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+        if user_agent:
+            span_attributes[USER_AGENT_ORIGINAL] = user_agent
 
         metric_labels = {}
         _set_http_method(

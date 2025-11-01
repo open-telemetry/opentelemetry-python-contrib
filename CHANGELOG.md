@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-requests` Detect synthetic sources on requests.
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
   ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
 
 ### Added 
