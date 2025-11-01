@@ -136,12 +136,12 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.attributes.user_agent_attributes import (
-    USER_AGENT_ORIGINAL,
-)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
