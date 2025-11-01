@@ -25,7 +25,10 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes import messaging_attributes
+from opentelemetry.semconv._incubating.attributes import (
+    exception_attributes,
+    messaging_attributes,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
@@ -36,7 +39,7 @@ from .celery_test_tasks import app, task_add, task_raises, task_returns_baggage
 class TestCeleryInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
-        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialized = False  # to have consistent behavior accross tests since this attribute ensures that initialization happens only once
         self._worker = app.Worker(app=app, pool="solo", concurrency=1)
         self._thread = threading.Thread(target=self._worker.start)
         self._thread.daemon = True
@@ -276,6 +279,80 @@ class TestCeleryInstrumentation(TestBase):
                 {
                     "celery.action": "apply_async",
                     "celery.task_name": "tests.celery_test_tasks.task_add",
+                    messaging_attributes.MESSAGING_DESTINATION_NAME: "celery",
+                },
+            )
+
+            self.assertNotEqual(consumer.parent, producer.context)
+            self.assertEqual(consumer.parent.span_id, producer.context.span_id)
+            self.assertEqual(
+                consumer.context.trace_id, producer.context.trace_id
+            )
+
+    def test_task_raises_new_sem_conv(self):
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "messaging"}
+        ):
+            CeleryInstrumentor().instrument()
+
+            result = task_raises.delay()
+
+            timeout = time.time() + 60 * 1  # 1 minutes from now
+            while not result.ready():
+                if time.time() > timeout:
+                    break
+                time.sleep(0.05)
+
+            spans = self.sorted_spans(
+                self.memory_exporter.get_finished_spans()
+            )
+            self.assertEqual(len(spans), 2)
+
+            consumer, producer = spans
+
+            self.assertEqual(
+                consumer.name, "run/tests.celery_test_tasks.task_raises"
+            )
+            self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+            self.assertSpanHasAttributes(
+                consumer,
+                {
+                    "celery.action": "run",
+                    "celery.state": "FAILURE",
+                    messaging_attributes.MESSAGING_DESTINATION_NAME: "celery",
+                    "celery.task_name": "tests.celery_test_tasks.task_raises",
+                },
+            )
+
+            self.assertEqual(consumer.status.status_code, StatusCode.ERROR)
+
+            self.assertEqual(1, len(consumer.events))
+            event = consumer.events[0]
+
+            self.assertIn(
+                exception_attributes.EXCEPTION_STACKTRACE, event.attributes
+            )
+
+            self.assertEqual(
+                "tests.celery_test_tasks.CustomError",
+                event.attributes[exception_attributes.EXCEPTION_TYPE],
+            )
+
+            self.assertEqual(
+                event.attributes[exception_attributes.EXCEPTION_MESSAGE],
+                "The task failed!",
+            )
+
+            self.assertEqual(
+                producer.name,
+                "apply_async/tests.celery_test_tasks.task_raises",
+            )
+            self.assertEqual(producer.kind, SpanKind.PRODUCER)
+            self.assertSpanHasAttributes(
+                producer,
+                {
+                    "celery.action": "apply_async",
+                    "celery.task_name": "tests.celery_test_tasks.task_raises",
                     messaging_attributes.MESSAGING_DESTINATION_NAME: "celery",
                 },
             )
