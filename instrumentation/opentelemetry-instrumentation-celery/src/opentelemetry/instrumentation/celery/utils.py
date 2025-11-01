@@ -146,14 +146,13 @@ def set_attributes_from_context(
                     value = "topic"
                     break
 
-        # set attribute name if not set specially for a key
-        if attribute_name is None and not new_attribute_name:
-            attribute_name = f"celery.{key}"
-
         if attribute_name:
             span.set_attribute(attribute_name, value)
         if new_attribute_name:
             span.set_attribute(new_attribute_name, value)
+        # set attribute name if not set specially for a key
+        if attribute_name is None and new_attribute_name is None:
+            span.set_attribute(f"celery.{key}", value)
 
 
 def attach_context(
