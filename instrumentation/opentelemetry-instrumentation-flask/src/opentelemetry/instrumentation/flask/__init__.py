@@ -331,6 +331,7 @@ def _rewrapped_app(
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
+    # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
