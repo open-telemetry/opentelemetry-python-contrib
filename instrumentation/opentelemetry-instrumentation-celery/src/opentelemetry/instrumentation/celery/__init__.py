@@ -69,6 +69,14 @@ from celery import signals  # pylint: disable=no-name-in-module
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
 from opentelemetry.instrumentation.celery.version import __version__
@@ -76,6 +84,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -116,6 +125,7 @@ celery_getter = CeleryGetter()
 class CeleryInstrumentor(BaseInstrumentor):
     metrics = None
     task_id_to_start_time = {}
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -123,12 +133,16 @@ class CeleryInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
 
+        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.MESSAGING
+        )
+
         # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
 
         meter_provider = kwargs.get("meter_provider")
@@ -136,7 +150,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
 
         self.create_celery_metrics(meter)
@@ -204,8 +218,12 @@ class CeleryInstrumentor(BaseInstrumentor):
         # request context tags
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_RUN)
-            utils.set_attributes_from_context(span, kwargs)
-            utils.set_attributes_from_context(span, task.request)
+            utils.set_attributes_from_context(
+                span, kwargs, self._sem_conv_opt_in_mode
+            )
+            utils.set_attributes_from_context(
+                span, task.request, self._sem_conv_opt_in_mode
+            )
             span.set_attribute(_TASK_NAME_KEY, task.name)
 
         activation.__exit__(None, None, None)
@@ -240,9 +258,18 @@ class CeleryInstrumentor(BaseInstrumentor):
         # apply some attributes here because most of the data is not available
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
+            if _report_new(self._sem_conv_opt_in_mode):
+                span.set_attribute(
+                    messaging_attributes.MESSAGING_MESSAGE_ID, task_id
+                )  # Not necessary since it has the same name as the old attribute but just in case it changes in the future
+            if _report_old(self._sem_conv_opt_in_mode):
+                span.set_attribute(
+                    SpanAttributes.MESSAGING_MESSAGE_ID, task_id
+                )
             span.set_attribute(_TASK_NAME_KEY, task_name)
-            utils.set_attributes_from_context(span, kwargs)
+            utils.set_attributes_from_context(
+                span, kwargs, self._sem_conv_opt_in_mode
+            )
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
