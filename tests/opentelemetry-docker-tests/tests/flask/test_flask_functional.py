@@ -26,6 +26,7 @@ from opentelemetry.trace import (
     INVALID_TRACE_ID,
 )
 
+
 class TestFunctionalFlask(TestBase):
     def setUp(self):
         super().setUp()
@@ -42,6 +43,7 @@ class TestFunctionalFlask(TestBase):
         metrics_api.set_meter_provider(self.meter_provider)
 
         self._app = Flask(__name__)
+
         @self._app.route("/test/")
         def test_route():
             return "Test response"
@@ -59,10 +61,10 @@ class TestFunctionalFlask(TestBase):
 
     def test_duration_metrics_exemplars(self):
         """Should generate exemplars with trace and span IDs for Flask HTTP requests."""
-        self._client.get("/test/")  
         self._client.get("/test/")
         self._client.get("/test/")
-        
+        self._client.get("/test/")
+
         metrics_data = self.memory_metrics_reader.get_metrics_data()
         self.assertIsNotNone(metrics_data)
         self.assertTrue(len(metrics_data.resource_metrics) > 0)
@@ -73,21 +75,24 @@ class TestFunctionalFlask(TestBase):
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
                     metric_names.append(metric.name)
-                    if metric.name in ["http.server.request.duration", "http.server.duration"]:
+                    if metric.name in [
+                        "http.server.request.duration",
+                        "http.server.duration",
+                    ]:
                         duration_metric = metric
                         break
                 if duration_metric:
                     break
             if duration_metric:
                 break
-        
-        self.assertIsNotNone(duration_metric)        
+
+        self.assertIsNotNone(duration_metric)
         data_points = list(duration_metric.data.data_points)
         self.assertTrue(len(data_points) > 0)
 
         exemplar_count = 0
         for data_point in data_points:
-            if hasattr(data_point, 'exemplars') and data_point.exemplars:
+            if hasattr(data_point, "exemplars") and data_point.exemplars:
                 for exemplar in data_point.exemplars:
                     exemplar_count += 1
                     # Exemplar has required fields and valid span context
@@ -97,13 +102,17 @@ class TestFunctionalFlask(TestBase):
                     self.assertNotEqual(exemplar.span_id, INVALID_SPAN_ID)
                     self.assertIsNotNone(exemplar.trace_id)
                     self.assertNotEqual(exemplar.trace_id, INVALID_TRACE_ID)
-                                        
+
                     # Trace and span ID of exemplar are part of finished spans
                     finished_spans = self.memory_exporter.get_finished_spans()
-                    finished_span_ids = [span.context.span_id for span in finished_spans]
-                    finished_trace_ids = [span.context.trace_id for span in finished_spans]
+                    finished_span_ids = [
+                        span.context.span_id for span in finished_spans
+                    ]
+                    finished_trace_ids = [
+                        span.context.trace_id for span in finished_spans
+                    ]
                     self.assertIn(exemplar.span_id, finished_span_ids)
                     self.assertIn(exemplar.trace_id, finished_trace_ids)
-        
+
         # At least one exemplar was generated
         self.assertGreater(exemplar_count, 0)
