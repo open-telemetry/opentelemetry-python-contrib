@@ -228,14 +228,12 @@ class TestCeleryInstrumentation(TestBase):
         unwrap(utils, "retrieve_context")
 
     def test_task_new_sem_conv(self):
-        CeleryInstrumentor().uninstrument()
         with mock.patch.dict(
             "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "messaging"}
         ):
             CeleryInstrumentor().instrument()
 
             result = task_add.delay(1, 2)
-
             timeout = time.time() + 60 * 1  # 1 minutes from now
             while not result.ready():
                 if time.time() > timeout:
@@ -280,6 +278,80 @@ class TestCeleryInstrumentation(TestBase):
                 },
             )
 
+            self.assertNotEqual(consumer.parent, producer.context)
+            self.assertEqual(consumer.parent.span_id, producer.context.span_id)
+            self.assertEqual(
+                consumer.context.trace_id, producer.context.trace_id
+            )
+
+    def test_task_both_sem_conv(self):
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "messaging/dup"}
+        ):
+            CeleryInstrumentor().instrument()
+
+            result = task_add.delay(1, 2)
+            timeout = time.time() + 60 * 1  # 1 minutes from now
+            while not result.ready():
+                if time.time() > timeout:
+                    break
+                time.sleep(0.05)
+
+            spans = self.sorted_spans(
+                self.memory_exporter.get_finished_spans()
+            )
+            self.assertEqual(len(spans), 2)
+
+            consumer, producer = spans
+
+            self.assertEqual(
+                consumer.name, "run/tests.celery_test_tasks.task_add"
+            )
+            self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+            self.assertSpanHasAttributes(
+                consumer,
+                {
+                    "celery.action": "run",
+                    "celery.state": "SUCCESS",
+                    messaging_attributes.MESSAGING_DESTINATION_NAME: "celery",
+                    "celery.task_name": "tests.celery_test_tasks.task_add",
+                },
+            )
+            self.assertSpanHasAttributes(
+                consumer,
+                {
+                    "celery.action": "run",
+                    "celery.state": "SUCCESS",
+                    SpanAttributes.MESSAGING_DESTINATION: "celery",
+                    "celery.task_name": "tests.celery_test_tasks.task_add",
+                },
+            )
+
+            self.assertEqual(consumer.status.status_code, StatusCode.UNSET)
+
+            self.assertEqual(0, len(consumer.events))
+
+            self.assertEqual(
+                producer.name, "apply_async/tests.celery_test_tasks.task_add"
+            )
+            self.assertEqual(producer.kind, SpanKind.PRODUCER)
+            self.assertSpanHasAttributes(
+                producer,
+                {
+                    "celery.action": "apply_async",
+                    "celery.task_name": "tests.celery_test_tasks.task_add",
+                    messaging_attributes.MESSAGING_DESTINATION_NAME: "celery",
+                },
+            )
+            self.assertSpanHasAttributes(
+                consumer,
+                {
+                    "celery.action": "run",
+                    "celery.state": "SUCCESS",
+                    SpanAttributes.MESSAGING_DESTINATION: "celery",
+                    "celery.task_name": "tests.celery_test_tasks.task_add",
+                },
+            )
             self.assertNotEqual(consumer.parent, producer.context)
             self.assertEqual(consumer.parent.span_id, producer.context.span_id)
             self.assertEqual(
