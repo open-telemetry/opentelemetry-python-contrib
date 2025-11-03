@@ -19,6 +19,7 @@ import aiohttp
 import pytest
 import pytest_asyncio
 
+from opentelemetry import metrics as metrics_api
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
@@ -30,7 +31,10 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
     HTTP_URL,
 )
-from opentelemetry.test.globals_test import reset_trace_globals
+from opentelemetry.test.globals_test import (
+    reset_metrics_globals,
+    reset_trace_globals,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 
@@ -64,6 +68,20 @@ def fixture_tracer():
     yield tracer_provider, memory_exporter
 
     reset_trace_globals()
+
+
+@pytest.fixture(name="meter", scope="function")
+def fixture_meter():
+    test_base = TestBase()
+
+    meter_provider, memory_reader = test_base.create_meter_provider()
+
+    reset_metrics_globals()
+    metrics_api.set_meter_provider(meter_provider)
+
+    yield meter_provider, memory_reader
+
+    reset_metrics_globals()
 
 
 async def default_handler(request, status=200):
@@ -114,6 +132,7 @@ def test_checking_instrumentor_pkg_installed():
 )
 async def test_status_code_instrumentation(
     tracer,
+    meter,
     server_fixture,
     aiohttp_client,
     url,
@@ -121,14 +140,19 @@ async def test_status_code_instrumentation(
     expected_status_code,
 ):
     _, memory_exporter = tracer
+    _, metrics_reader = meter
     server, _ = server_fixture
 
     assert len(memory_exporter.get_finished_spans()) == 0
+    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    assert len(metrics) == 0
 
     client = await aiohttp_client(server)
     await client.get(url)
 
     assert len(memory_exporter.get_finished_spans()) == 1
+    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    assert len(metrics) == 2
 
     [span] = memory_exporter.get_finished_spans()
 
@@ -200,6 +224,45 @@ async def test_remove_sensitive_params(tracer, aiohttp_server):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "env_var",
+    ["OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS", "OTEL_PYTHON_EXCLUDED_URLS"],
+)
+async def test_excluded_urls(
+    tracer, meter, aiohttp_server, monkeypatch, env_var
+):
+    """Test that excluded env vars are taken into account."""
+    _, memory_exporter = tracer
+    _, metrics_reader = meter
+
+    monkeypatch.setenv(env_var, "/status/200")
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/status/200"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 0
+
+    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    assert len(metrics) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "tracer",
     [
         TestBase().create_tracer_provider(
@@ -234,4 +297,16 @@ async def test_non_global_tracer_provider(
         0.5 * n_expected_trace_ids
         <= len(trace_ids)
         <= 1.5 * n_expected_trace_ids
+    )
+def _get_sorted_metrics(metrics_data):
+    resource_metrics = metrics_data.resource_metrics if metrics_data else []
+
+    all_metrics = []
+    for metrics in resource_metrics:
+        for scope_metrics in metrics.scope_metrics:
+            all_metrics.extend(scope_metrics.metrics)
+
+    return sorted(
+        all_metrics,
+        key=lambda m: m.name,
     )
