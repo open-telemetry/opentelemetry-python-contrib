@@ -258,9 +258,11 @@ async def middleware(request, handler):
 
     span_name, additional_attributes = get_default_span_details(request)
 
-    req_attrs = collect_request_attributes(request)
-    duration_attrs = _parse_duration_attrs(req_attrs)
-    active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
+    request_attrs = collect_request_attributes(request)
+    duration_attrs = _parse_duration_attrs(request_attrs)
+    active_requests_count_attrs = _parse_active_request_count_attrs(
+        request_attrs
+    )
 
     duration_histogram = meter.create_histogram(
         name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -279,9 +281,8 @@ async def middleware(request, handler):
         context=extract(request, getter=getter),
         kind=trace.SpanKind.SERVER,
     ) as span:
-        attributes = collect_request_attributes(request)
-        attributes.update(additional_attributes)
-        span.set_attributes(attributes)
+        request_attrs.update(additional_attributes)
+        span.set_attributes(request_attrs)
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)
         try:
