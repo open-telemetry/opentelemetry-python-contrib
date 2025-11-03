@@ -35,6 +35,25 @@ Usage
     app.add_routes([web.get('/', hello)])
 
     web.run_app(app)
+
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 """
 
 import urllib
@@ -94,9 +113,9 @@ _active_requests_count_attrs = [
     HTTP_SERVER_NAME,
 ]
 
-tracer = trace.get_tracer(__name__)
-meter = metrics.get_meter(__name__, __version__)
-_excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+tracer = None
+meter = None
+_excluded_urls = None
 
 
 def _parse_duration_attrs(req_attrs):
@@ -296,6 +315,16 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        # update global values at instrument time so we can test them
+        global _excluded_urls  # pylint: disable=global-statement
+        _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+
+        global tracer  # pylint: disable=global-statement
+        tracer = trace.get_tracer(__name__)
+
+        global meter  # pylint: disable=global-statement
+        meter = metrics.get_meter(__name__, __version__)
+
         self._original_app = web.Application
         setattr(web, "Application", _InstrumentedApplication)
 
