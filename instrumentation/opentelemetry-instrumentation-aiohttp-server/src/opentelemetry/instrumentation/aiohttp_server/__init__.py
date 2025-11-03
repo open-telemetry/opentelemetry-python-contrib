@@ -56,9 +56,10 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 
 """
 
+from __future__ import annotations
+
 import urllib
 from timeit import default_timer
-from typing import Dict, List, Union
 
 from aiohttp import web
 from multidict import CIMultiDictProxy
@@ -168,7 +169,7 @@ def _get_view_func(request: web.Request) -> str:
         return "unknown"
 
 
-def collect_request_attributes(request: web.Request) -> Dict:
+def collect_request_attributes(request: web.Request) -> dict:
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
 
@@ -271,7 +272,7 @@ def set_status_code(span, status_code: int) -> None:
 class AiohttpGetter(Getter):
     """Extract current trace from headers"""
 
-    def get(self, carrier, key: str) -> Union[List, None]:
+    def get(self, carrier, key: str) -> list | None:
         """Getter implementation to retrieve an HTTP header value from the ASGI
         scope.
 
@@ -287,7 +288,7 @@ class AiohttpGetter(Getter):
             return None
         return headers.getall(key, None)
 
-    def keys(self, carrier: Dict) -> List:
+    def keys(self, carrier: dict) -> list:
         return list(carrier.keys())
 
 
