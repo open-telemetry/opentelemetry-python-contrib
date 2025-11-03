@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
 - `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
-  ([#39xx](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/39xx))
+  ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
 
 ### Fixed
 
