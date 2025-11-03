@@ -58,7 +58,7 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 
 import urllib
 from timeit import default_timer
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 
 from aiohttp import web
 from multidict import CIMultiDictProxy
@@ -134,15 +134,15 @@ def _parse_active_request_count_attrs(req_attrs):
     return active_requests_count_attrs
 
 
-def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
+def get_default_span_name(request: web.Request) -> str:
     """Default implementation for get_default_span_details
     Args:
         request: the request object itself.
     Returns:
-        a tuple of the span name, and any attributes to attach to the span.
+        The span name.
     """
     span_name = request.path.strip() or f"HTTP {request.method}"
-    return span_name, {}
+    return span_name
 
 
 def _get_view_func(request: web.Request) -> str:
@@ -256,7 +256,7 @@ async def middleware(request, handler):
     ):
         return await handler(request)
 
-    span_name, additional_attributes = get_default_span_details(request)
+    span_name = get_default_span_name(request)
 
     request_attrs = collect_request_attributes(request)
     duration_attrs = _parse_duration_attrs(request_attrs)
@@ -281,8 +281,8 @@ async def middleware(request, handler):
         context=extract(request, getter=getter),
         kind=trace.SpanKind.SERVER,
     ) as span:
-        request_attrs.update(additional_attributes)
-        span.set_attributes(request_attrs)
+        if span.is_recording():
+            span.set_attributes(request_attrs)
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)
         try:
