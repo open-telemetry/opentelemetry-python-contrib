@@ -298,6 +298,8 @@ async def test_non_global_tracer_provider(
         <= len(trace_ids)
         <= 1.5 * n_expected_trace_ids
     )
+
+
 def _get_sorted_metrics(metrics_data):
     resource_metrics = metrics_data.resource_metrics if metrics_data else []
 
