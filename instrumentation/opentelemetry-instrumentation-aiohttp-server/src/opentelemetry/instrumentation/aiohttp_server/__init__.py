@@ -91,7 +91,17 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls, redact_url
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
+    get_custom_headers,
+    get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
+    redact_url,
+)
 
 _duration_attrs = [
     HTTP_METHOD,
@@ -203,6 +213,42 @@ def collect_request_attributes(request: web.Request) -> Dict:
     return result
 
 
+def collect_request_headers_attributes(
+    request: web.Request,
+) -> dict[str, list[str]]:
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    return sanitize.sanitize_header_values(
+        request.headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+        ),
+        normalise_request_header_name,
+    )
+
+
+def collect_response_headers_attributes(
+    response: web.Response,
+) -> dict[str, list[str]]:
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    return sanitize.sanitize_header_values(
+        response.headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+        ),
+        normalise_response_header_name,
+    )
+
+
 def set_status_code(span, status_code: int) -> None:
     """Adds HTTP response attributes to span using the status_code argument."""
 
@@ -282,12 +328,21 @@ async def middleware(request, handler):
         kind=trace.SpanKind.SERVER,
     ) as span:
         if span.is_recording():
+            request_headers_attributes = collect_request_headers_attributes(
+                request
+            )
+            request_attrs.update(request_headers_attributes)
             span.set_attributes(request_attrs)
         start = default_timer()
         active_requests_counter.add(1, active_requests_count_attrs)
         try:
             resp = await handler(request)
             set_status_code(span, resp.status)
+            if span.is_recording():
+                response_headers_attributes = (
+                    collect_response_headers_attributes(resp)
+                )
+                span.set_attributes(response_headers_attributes)
         except web.HTTPException as ex:
             set_status_code(span, ex.status_code)
             raise
