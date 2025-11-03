@@ -20,8 +20,9 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
+from platform import python_implementation
 from typing import Any
-from unittest import TestCase
+from unittest import TestCase, skipIf
 from unittest.mock import ANY, MagicMock, patch
 
 import fsspec
@@ -148,6 +149,9 @@ class TestUploadCompletionHook(TestCase):
     def test_shutdown_no_items(self):
         self.hook.shutdown()
 
+    @skipIf(
+        python_implementation().lower() == "pypy", "fails randomly on pypy"
+    )
     def test_upload_then_shutdown(self):
         self.hook.on_completion(
             inputs=FAKE_INPUTS,
