@@ -25,8 +25,13 @@ Usage
     from opentelemetry.instrumentation.aiohttp_server import (
         AioHttpServerInstrumentor
     )
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-    AioHttpServerInstrumentor().instrument()
+    resource = Resource(attributes={"service.name": "my-aiohttp-service"})
+    sampler = ParentBased(root=TraceIdRatioBased(rate=0.25))  # sample 25% of traces
+    AioHttpServerInstrumentor().instrument(tracer_provider=TracerProvider(resource=resource, sampler=sampler))
 
     async def hello(request):
         return web.Response(text="Hello, world")
