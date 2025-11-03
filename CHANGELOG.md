@@ -27,7 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
 - `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
-- `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
 
 ### Fixed
 
@@ -39,16 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3894](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3894))
 - `opentelemetry-exporter-richconsole`: Prevent deadlock when parent span is not part of the batch
   ([#3900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3900))
-
-### Added 
-
-- `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
-  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
-
-### Fixed
-
-- `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
-  ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
