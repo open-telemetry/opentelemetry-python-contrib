@@ -54,6 +54,98 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in ASGI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>, <value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in ASGI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>, <value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+API
+---
 """
 
 from __future__ import annotations
