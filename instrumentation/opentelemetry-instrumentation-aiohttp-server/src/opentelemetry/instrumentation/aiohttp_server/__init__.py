@@ -285,6 +285,18 @@ def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = Non
 middleware = create_aiohttp_middleware() # for backwards compatibility
 
 
+def create_instrumented_application(tracer_provider: trace.TracerProvider | None = None):
+    _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+    class _InstrumentedApplication(web.Application):
+        """Insert tracing middleware"""
+
+        def __init__(self, *args, **kwargs):
+            middlewares = kwargs.pop("middlewares", [])
+            middlewares.insert(0, _middleware)
+            kwargs["middlewares"] = middlewares
+            super().__init__(*args, **kwargs)
+
+    return _InstrumentedApplication
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access,attribute-defined-outside-init
@@ -300,16 +312,9 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
         )
         self._original_app = web.Application
 
-        _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
-        class _InstrumentedApplication(web.Application):
-            """Insert tracing middleware"""
-
-            def __init__(self, *args, **kwargs):
-                middlewares = kwargs.pop("middlewares", [])
-                middlewares.insert(0, _middleware)
-                kwargs["middlewares"] = middlewares
-                super().__init__(*args, **kwargs)
-
+        _InstrumentedApplication = create_instrumented_application(
+            tracer_provider=tracer_provider
+        )
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):
