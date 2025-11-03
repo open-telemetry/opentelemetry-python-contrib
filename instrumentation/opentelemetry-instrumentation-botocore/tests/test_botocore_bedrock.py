@@ -25,6 +25,9 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    InvokeModelWithResponseStreamWrapper,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -2973,6 +2976,79 @@ def test_invoke_model_with_response_stream_invalid_model(
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 0
+
+
+@pytest.mark.parametrize(
+    "input_value,expected_output",
+    [
+        ({"location": "Seattle"}, {"location": "Seattle"}),
+        ({}, {}),
+        (None, None),
+    ],
+)
+def test_anthropic_claude_chunk_tool_use_input_handling(
+    input_value, expected_output
+):
+    """Test that _process_anthropic_claude_chunk handles various tool_use input formats."""
+
+    def stream_done_callback(response, ended):
+        pass
+
+    def stream_error_callback(exc, ended):
+        pass
+
+    wrapper = InvokeModelWithResponseStreamWrapper(
+        stream=mock.MagicMock(),
+        stream_done_callback=stream_done_callback,
+        stream_error_callback=stream_error_callback,
+        model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    )
+
+    # Simulate message_start
+    wrapper._process_anthropic_claude_chunk(
+        {
+            "type": "message_start",
+            "message": {
+                "role": "assistant",
+                "content": [],
+            },
+        }
+    )
+
+    # Simulate content_block_start with specified input
+    content_block = {
+        "type": "tool_use",
+        "id": "test_id",
+        "name": "test_tool",
+    }
+    if input_value is not None:
+        content_block["input"] = input_value
+
+    wrapper._process_anthropic_claude_chunk(
+        {
+            "type": "content_block_start",
+            "index": 0,
+            "content_block": content_block,
+        }
+    )
+
+    # Simulate content_block_stop
+    wrapper._process_anthropic_claude_chunk(
+        {"type": "content_block_stop", "index": 0}
+    )
+
+    # Verify the message content
+    assert len(wrapper._message["content"]) == 1
+    tool_block = wrapper._message["content"][0]
+    assert tool_block["type"] == "tool_use"
+    assert tool_block["id"] == "test_id"
+    assert tool_block["name"] == "test_tool"
+
+    if expected_output is not None:
+        assert tool_block["input"] == expected_output
+        assert isinstance(tool_block["input"], dict)
+    else:
+        assert "input" not in tool_block
 
 
 def amazon_nova_messages():
