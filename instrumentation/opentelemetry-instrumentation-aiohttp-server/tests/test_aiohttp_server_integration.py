@@ -24,6 +24,7 @@ from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_METHOD,
     HTTP_STATUS_CODE,
@@ -32,7 +33,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
-from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+
 
 class HTTPMethod(Enum):
     """HTTP methods and descriptions"""
@@ -197,10 +198,14 @@ async def test_remove_sensitive_params(tracer, aiohttp_server):
     memory_exporter.clear()
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "tracer", [TestBase().create_tracer_provider(sampler=ParentBased(TraceIdRatioBased(0.05)))]
+    "tracer",
+    [
+        TestBase().create_tracer_provider(
+            sampler=ParentBased(TraceIdRatioBased(0.05))
+        )
+    ],
 )
 async def test_non_global_tracer_provider(
     tracer,
@@ -225,4 +230,8 @@ async def test_non_global_tracer_provider(
         for span in memory_exporter.get_finished_spans()
         if span.context is not None
     }
-    assert 0.5 * n_expected_trace_ids <= len(trace_ids) <= 1.5 * n_expected_trace_ids
+    assert (
+        0.5 * n_expected_trace_ids
+        <= len(trace_ids)
+        <= 1.5 * n_expected_trace_ids
+    )

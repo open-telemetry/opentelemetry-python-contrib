@@ -228,16 +228,22 @@ class AiohttpGetter(Getter):
 
 getter = AiohttpGetter()
 
-def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = None):
-    _tracer = tracer_provider.get_tracer(
-        __name__, __version__
-    ) if tracer_provider else tracer
+
+def create_aiohttp_middleware(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _tracer = (
+        tracer_provider.get_tracer(__name__, __version__)
+        if tracer_provider
+        else tracer
+    )
 
     @web.middleware
     async def _middleware(request, handler):
         """Middleware for aiohttp implementing tracing logic"""
-        if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-            request.url.path
+        if (
+            not is_http_instrumentation_enabled()
+            or _excluded_urls.url_disabled(request.url.path)
         ):
             return await handler(request)
 
@@ -245,7 +251,9 @@ def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = Non
 
         req_attrs = collect_request_attributes(request)
         duration_attrs = _parse_duration_attrs(req_attrs)
-        active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            req_attrs
+        )
 
         duration_histogram = meter.create_histogram(
             name=MetricInstruments.HTTP_SERVER_DURATION,
@@ -280,13 +288,18 @@ def create_aiohttp_middleware(tracer_provider: trace.TracerProvider | None = Non
                 duration_histogram.record(duration, duration_attrs)
                 active_requests_counter.add(-1, active_requests_count_attrs)
             return resp
+
     return _middleware
 
-middleware = create_aiohttp_middleware() # for backwards compatibility
+
+middleware = create_aiohttp_middleware()  # for backwards compatibility
 
 
-def create_instrumented_application(tracer_provider: trace.TracerProvider | None = None):
+def create_instrumented_application(
+    tracer_provider: trace.TracerProvider | None = None,
+):
     _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+
     class _InstrumentedApplication(web.Application):
         """Insert tracing middleware"""
 
@@ -297,6 +310,7 @@ def create_instrumented_application(tracer_provider: trace.TracerProvider | None
             super().__init__(*args, **kwargs)
 
     return _InstrumentedApplication
+
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access,attribute-defined-outside-init
