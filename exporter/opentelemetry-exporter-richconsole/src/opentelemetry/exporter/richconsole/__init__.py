@@ -76,12 +76,16 @@ def _ns_to_time(nanoseconds):
     return ts.strftime("%H:%M:%S.%f")
 
 
-def _child_to_tree(child: Tree, span: ReadableSpan, *, suppress_resource: bool):
+def _child_to_tree(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     child.add(
         Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
     )
     _add_status(child, span)
-    _child_add_optional_attributes(child, span, suppress_resource=suppress_resource)
+    _child_add_optional_attributes(
+        child, span, suppress_resource=suppress_resource
+    )
 
 
 def _add_status(child: Tree, span: ReadableSpan):
@@ -106,7 +110,9 @@ def _add_status(child: Tree, span: ReadableSpan):
         )
 
 
-def _child_add_optional_attributes(child: Tree, span: ReadableSpan, *, suppress_resource: bool):
+def _child_add_optional_attributes(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     if span.events:
         events = child.add(
             label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
@@ -165,30 +171,41 @@ class RichConsoleSpanExporter(SpanExporter):
         if not spans:
             return SpanExportResult.SUCCESS
 
-        for tree in self.spans_to_tree(spans, suppress_resource=self.suppress_resource).values():
+        for tree in self.spans_to_tree(
+            spans, suppress_resource=self.suppress_resource
+        ).values():
             self.console.print(tree)
 
         return SpanExportResult.SUCCESS
 
     @staticmethod
-    def spans_to_tree(spans: typing.Sequence[ReadableSpan], *, suppress_resource: bool = False) -> Dict[str, Tree]:
+    def spans_to_tree(
+        spans: typing.Sequence[ReadableSpan],
+        *,
+        suppress_resource: bool = False,
+    ) -> Dict[str, Tree]:
         trees = {}
         parents = {}
         spans = list(spans)
+        span_ids = {s.context.span_id for s in spans}
         while spans:
             for span in spans:
-                if not span.parent:
+                if not span.parent or span.parent.span_id not in span_ids:
                     trace_id = opentelemetry.trace.format_trace_id(
                         span.context.trace_id
                     )
-                    trees[trace_id] = Tree(label=f"Trace {trace_id}")
-                    child = trees[trace_id].add(
+                    tree = trees.setdefault(
+                        trace_id, Tree(label=f"Trace {trace_id}")
+                    )
+                    child = tree.add(
                         label=Text.from_markup(
                             f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span, suppress_resource=suppress_resource)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
                 elif span.parent and span.parent.span_id in parents:
                     child = parents[span.parent.span_id].add(
@@ -197,6 +214,8 @@ class RichConsoleSpanExporter(SpanExporter):
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span, suppress_resource=suppress_resource)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
         return trees

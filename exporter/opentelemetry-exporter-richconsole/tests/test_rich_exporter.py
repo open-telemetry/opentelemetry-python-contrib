@@ -19,8 +19,8 @@ from rich.tree import Tree
 import opentelemetry.trace
 from opentelemetry.exporter.richconsole import RichConsoleSpanExporter
 from opentelemetry.sdk import trace
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
 @pytest.fixture(name="span_processor")
@@ -99,6 +99,19 @@ def test_multiple_traces(tracer_provider):
         for child in trees[traceid_1].children[0].children
     )
 
+
+@pytest.mark.timeout(30)
+def test_no_deadlock(tracer_provider):
+    # non-regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3254
+
+    tracer = tracer_provider.get_tracer(__name__)
+    with tracer.start_as_current_span("parent"):
+        with tracer.start_as_current_span("child") as child:
+            pass
+
+    RichConsoleSpanExporter.spans_to_tree((child,))
+
+
 def test_suppress_resource(span_processor):
     attributes = {"resource.key": "resource.value"}
     resource = Resource(attributes)
@@ -110,7 +123,9 @@ def test_suppress_resource(span_processor):
         with tracer.start_as_current_span("child") as child:
             pass
 
-    trees = RichConsoleSpanExporter.spans_to_tree((parent, child), suppress_resource=True)
+    trees = RichConsoleSpanExporter.spans_to_tree(
+        (parent, child), suppress_resource=True
+    )
     assert len(trees) == 1
 
     nodes = [next(t for t in trees.values())]
