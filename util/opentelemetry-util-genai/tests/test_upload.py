@@ -150,7 +150,8 @@ class TestUploadCompletionHook(TestCase):
         self.hook.shutdown()
 
     @skipIf(
-        python_implementation().lower() == "pypy", "fails randomly on pypy: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812"
+        python_implementation().lower() == "pypy",
+        "fails randomly on pypy: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812",
     )
     def test_upload_then_shutdown(self):
         self.hook.on_completion(
