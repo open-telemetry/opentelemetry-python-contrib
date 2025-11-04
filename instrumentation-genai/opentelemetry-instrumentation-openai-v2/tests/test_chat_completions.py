@@ -17,7 +17,7 @@ from typing import Optional
 
 import pytest
 from openai import APIConnectionError, NotFoundError, OpenAI
-from openai.resources.chat.completions import ChatCompletion
+from openai.types.chat import ChatCompletion
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
