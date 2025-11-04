@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
 - `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
+- `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
+  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
 
 ### Fixed
 

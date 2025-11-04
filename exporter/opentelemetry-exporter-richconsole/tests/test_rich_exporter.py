@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import pytest
+from rich.text import Text
 from rich.tree import Tree
 
 import opentelemetry.trace
 from opentelemetry.exporter.richconsole import RichConsoleSpanExporter
 from opentelemetry.sdk import trace
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
@@ -108,3 +110,30 @@ def test_no_deadlock(tracer_provider):
             pass
 
     RichConsoleSpanExporter.spans_to_tree((child,))
+
+
+def test_suppress_resource(span_processor):
+    attributes = {"resource.key": "resource.value"}
+    resource = Resource(attributes)
+    tracer_provider = trace.TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(span_processor)
+    tracer = tracer_provider.get_tracer(__name__)
+
+    with tracer.start_as_current_span("parent") as parent:
+        with tracer.start_as_current_span("child") as child:
+            pass
+
+    trees = RichConsoleSpanExporter.spans_to_tree(
+        (parent, child), suppress_resource=True
+    )
+    assert len(trees) == 1
+
+    nodes = [next(t for t in trees.values())]
+    for node in nodes:
+        label = node.label
+        if isinstance(label, Text):
+            label = label.plain
+
+        assert "resource" not in label.lower()
+
+        nodes.extend(node.children)
