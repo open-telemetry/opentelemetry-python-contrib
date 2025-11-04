@@ -18,6 +18,7 @@ from http import HTTPStatus
 import aiohttp
 import pytest
 import pytest_asyncio
+from multidict import CIMultiDict
 
 from opentelemetry import metrics as metrics_api
 from opentelemetry import trace as trace_api
@@ -36,6 +37,11 @@ from opentelemetry.test.globals_test import (
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+)
 
 
 class HTTPMethod(Enum):
@@ -55,7 +61,7 @@ class HTTPMethod(Enum):
     TRACE = "TRACE"
 
 
-@pytest.fixture(name="tracer", scope="session")
+@pytest.fixture(name="tracer", scope="function")
 def fixture_tracer():
     test_base = TestBase()
 
@@ -67,6 +73,7 @@ def fixture_tracer():
     yield tracer_provider, memory_exporter
 
     reset_trace_globals()
+    memory_exporter.clear()
 
 
 @pytest.fixture(name="meter", scope="function")
@@ -270,5 +277,126 @@ async def test_excluded_urls(
 
     metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
     assert len(metrics) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_custom_request_headers(tracer, aiohttp_server, monkeypatch):
+    # pylint: disable=too-many-locals
+    _, memory_exporter = tracer
+
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+        ".*my-secret.*",
+    )
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+        "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+    )
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/status/200"
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "custom-test-header-1": "test-header-value-1",
+            "custom-test-header-2": "test-header-value-2",
+            "Regex-Test-Header-1": "Regex Test Value 1",
+            "regex-test-header-2": "RegexTestValue2,RegexTestValue3",
+            "My-Secret-Header": "My Secret Value",
+        }
+        async with session.get(url, headers=headers) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    expected = {
+        "http.request.header.custom_test_header_1": ("test-header-value-1",),
+        "http.request.header.custom_test_header_2": ("test-header-value-2",),
+        "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
+        "http.request.header.regex_test_header_2": (
+            "RegexTestValue2,RegexTestValue3",
+        ),
+        "http.request.header.my_secret_header": ("[REDACTED]",),
+    }
+
+    for attribute, value in expected.items():
+        assert span.attributes.get(attribute) == value
+
+    assert "http.request.header.custom_test_header_3" not in span.attributes
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
+    _, memory_exporter = tracer
+
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+        ".*my-secret.*",
+    )
+    monkeypatch.setenv(
+        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+        "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+    )
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        headers = CIMultiDict(
+            **{
+                "custom-test-header-1": "test-header-value-1",
+                "custom-test-header-2": "test-header-value-2",
+                "my-custom-regex-header-1": "my-custom-regex-value-1,my-custom-regex-value-2",
+                "My-Custom-Regex-Header-2": "my-custom-regex-value-3,my-custom-regex-value-4",
+                "My-Secret-Header": "My Secret Value",
+            }
+        )
+        return aiohttp.web.Response(text="hello", headers=headers)
+
+    app.router.add_get("/status/200", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/status/200"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    expected = {
+        "http.response.header.custom_test_header_1": ("test-header-value-1",),
+        "http.response.header.custom_test_header_2": ("test-header-value-2",),
+        "http.response.header.my_custom_regex_header_1": (
+            "my-custom-regex-value-1,my-custom-regex-value-2",
+        ),
+        "http.response.header.my_custom_regex_header_2": (
+            "my-custom-regex-value-3,my-custom-regex-value-4",
+        ),
+        "http.response.header.my_secret_header": ("[REDACTED]",),
+    }
+
+    for attribute, value in expected.items():
+        assert span.attributes.get(attribute) == value
+
+    assert "http.response.header.custom_test_header_3" not in span.attributes
 
     AioHttpServerInstrumentor().uninstrument()
