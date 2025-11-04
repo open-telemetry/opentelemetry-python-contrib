@@ -403,7 +403,8 @@ def collect_request_attributes(
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
+    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
+    See also https://peps.python.org/pep-3333/
     """
 
     sanitize = SanitizeValue(
