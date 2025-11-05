@@ -2970,7 +2970,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.11.0" },
+    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.11.1" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
