@@ -83,7 +83,9 @@ class TestElasticsearchIntegration(TestBase):
         "elasticsearch.url": "/test-index/_search",
         "elasticsearch.method": helpers.dsl_search_method,
         "elasticsearch.target": "test-index",
-        DB_STATEMENT: str({"query": {"bool": {"filter": [{"term":{"author":"?"}}]}}}),
+        DB_STATEMENT: str(
+            {"query": {"bool": {"filter": [{"term": {"author": "?"}}]}}}
+        ),
     }
 
     create_attributes = {
