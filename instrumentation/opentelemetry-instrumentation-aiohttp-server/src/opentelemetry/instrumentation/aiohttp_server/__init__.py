@@ -244,12 +244,12 @@ def get_default_span_name(request: web.Request) -> str:
     Returns:
         The span name.
     """
-    span_name = request.path.strip() or f"HTTP {request.method}"
+    path = request.path.strip()
     if request.match_info and request.match_info.route.resource:
         resource = request.match_info.route.resource
         if resource.canonical:
-            span_name = resource.canonical
-    return span_name
+            path = resource.canonical
+    return f"{request.method} {path}"
 
 
 def _get_view_func(request: web.Request) -> str:

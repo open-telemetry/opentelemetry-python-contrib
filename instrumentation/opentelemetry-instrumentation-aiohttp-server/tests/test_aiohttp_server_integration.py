@@ -181,17 +181,17 @@ async def test_status_code_instrumentation(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "url, example_paths",
+    "span_name, example_paths",
     [
         (
-            "/test-path/{url_param}",
+            "GET /test-path/{url_param}",
             (
                 "/test-path/foo",
                 "/test-path/bar",
             ),
         ),
         (
-            "/object/{object_id}/action/{another_param}",
+            "GET /object/{object_id}/action/{another_param}",
             (
                 "/object/1/action/bar",
                 "/object/234/action/baz",
@@ -203,7 +203,7 @@ async def test_url_params_instrumentation(
     tracer,
     server_fixture,
     aiohttp_client,
-    url,
+    span_name,
     example_paths,
 ):
     _, memory_exporter = tracer
@@ -220,7 +220,7 @@ async def test_url_params_instrumentation(
     for request_path, span in zip(
         example_paths, memory_exporter.get_finished_spans()
     ):
-        assert url == span.name
+        assert span_name == span.name
         assert request_path == span.attributes[HTTP_TARGET]
         full_url = f"http://{server.host}:{server.port}{request_path}"
         assert full_url == span.attributes[HTTP_URL]
