@@ -261,11 +261,21 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_getone_consume_hook(self) -> None:
         async_consume_hook_mock = mock.AsyncMock()
 
+        def is_async_consume_hook_mock(obj: Any) -> bool:
+            return obj is async_consume_hook_mock
+
         AIOKafkaInstrumentor().uninstrument()
-        AIOKafkaInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-            async_consume_hook=async_consume_hook_mock,
-        )
+
+        # mock.patch is a hack for Python 3.9 see https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880
+        with mock.patch(
+            "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
+        ) as iscoro:
+            iscoro.side_effect = is_async_consume_hook_mock
+
+            AIOKafkaInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                async_consume_hook=async_consume_hook_mock,
+            )
 
         consumer = await self.consumer_factory()
         self.addAsyncCleanup(consumer.stop)
@@ -448,11 +458,20 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     async def test_send_produce_hook(self) -> None:
         async_produce_hook_mock = mock.AsyncMock()
 
+        def is_async_produce_hook_mock(obj: Any) -> bool:
+            return obj is async_produce_hook_mock
+
         AIOKafkaInstrumentor().uninstrument()
-        AIOKafkaInstrumentor().instrument(
-            tracer_provider=self.tracer_provider,
-            async_produce_hook=async_produce_hook_mock,
-        )
+        # mock.patch is a hack for Python 3.9 see https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880
+        with mock.patch(
+            "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
+        ) as iscoro:
+            iscoro.side_effect = is_async_produce_hook_mock
+
+            AIOKafkaInstrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                async_produce_hook=async_produce_hook_mock,
+            )
 
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
