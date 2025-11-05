@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization.([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919)) 
+
+
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
