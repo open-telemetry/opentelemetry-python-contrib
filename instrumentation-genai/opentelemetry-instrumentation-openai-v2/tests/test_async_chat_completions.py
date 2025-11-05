@@ -21,9 +21,6 @@ from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    event_attributes as EventAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -842,7 +839,7 @@ async def async_chat_completion_multiple_tools_streaming(
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
+    assert log.log_record.event_name == event_name
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.OPENAI.value

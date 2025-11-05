@@ -18,7 +18,8 @@ from typing import Any, Optional
 
 from openai import Stream
 
-from opentelemetry._events import Event, EventLogger
+from opentelemetry._logs import Logger, LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -26,6 +27,7 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.trace.propagation import set_span_in_context
 
 from .instruments import Instruments
 from .utils import (
@@ -40,7 +42,7 @@ from .utils import (
 
 def chat_completions_create(
     tracer: Tracer,
-    event_logger: EventLogger,
+    logger: Logger,
     instruments: Instruments,
     capture_content: bool,
 ):
@@ -57,7 +59,7 @@ def chat_completions_create(
             end_on_exit=False,
         ) as span:
             for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
+                logger.emit(message_to_event(message, capture_content))
 
             start = default_timer()
             result = None
@@ -65,16 +67,14 @@ def chat_completions_create(
             try:
                 result = wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
-                    return StreamWrapper(
-                        result, span, event_logger, capture_content
-                    )
+                    return StreamWrapper(result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, event_logger, capture_content
+                        span, result, logger, capture_content
                     )
                 for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
+                    logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
                 return result
@@ -99,7 +99,7 @@ def chat_completions_create(
 
 def async_chat_completions_create(
     tracer: Tracer,
-    event_logger: EventLogger,
+    logger: Logger,
     instruments: Instruments,
     capture_content: bool,
 ):
@@ -116,7 +116,7 @@ def async_chat_completions_create(
             end_on_exit=False,
         ) as span:
             for message in kwargs.get("messages", []):
-                event_logger.emit(message_to_event(message, capture_content))
+                logger.emit(message_to_event(message, capture_content))
 
             start = default_timer()
             result = None
@@ -124,16 +124,14 @@ def async_chat_completions_create(
             try:
                 result = await wrapped(*args, **kwargs)
                 if is_streaming(kwargs):
-                    return StreamWrapper(
-                        result, span, event_logger, capture_content
-                    )
+                    return StreamWrapper(result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, event_logger, capture_content
+                        span, result, logger, capture_content
                     )
                 for choice in getattr(result, "choices", []):
-                    event_logger.emit(choice_to_event(choice, capture_content))
+                    logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
                 return result
@@ -349,7 +347,7 @@ def _record_metrics(
 
 
 def _set_response_attributes(
-    span, result, event_logger: EventLogger, capture_content: bool
+    span, result, logger: Logger, capture_content: bool
 ):
     set_span_attribute(
         span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
@@ -469,7 +467,7 @@ class StreamWrapper:
         self,
         stream: Stream,
         span: Span,
-        event_logger: EventLogger,
+        logger: Logger,
         capture_content: bool,
     ):
         self.stream = stream
@@ -478,7 +476,7 @@ class StreamWrapper:
         self._span_started = False
         self.capture_content = capture_content
 
-        self.event_logger = event_logger
+        self.logger = logger
         self.setup()
 
     def setup(self):
@@ -554,17 +552,13 @@ class StreamWrapper:
                 event_attributes = {
                     GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
                 }
-
-                # this span is not current, so we need to manually set the context on event
-                span_ctx = self.span.get_span_context()
-                self.event_logger.emit(
-                    Event(
-                        name="gen_ai.choice",
+                context = set_span_in_context(self.span, get_current())
+                self.logger.emit(
+                    LogRecord(
+                        event_name="gen_ai.choice",
                         attributes=event_attributes,
                         body=body,
-                        trace_id=span_ctx.trace_id,
-                        span_id=span_ctx.span_id,
-                        trace_flags=span_ctx.trace_flags,
+                        context=context,
                     )
                 )
 

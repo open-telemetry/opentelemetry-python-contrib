@@ -6,6 +6,7 @@ from vertexai.generative_models import (
     Content,
     GenerationConfig,
     GenerativeModel,
+    Image,
     Part,
 )
 from vertexai.preview.generative_models import (
@@ -24,7 +25,7 @@ from opentelemetry.trace import StatusCode
 
 
 @pytest.mark.vcr()
-def test_generate_content(
+def test_generate_content_with_files(
     span_exporter: InMemorySpanExporter,
     log_exporter: InMemoryLogExporter,
     generate_content: callable,
@@ -38,6 +39,15 @@ def test_generate_content(
                 role="user",
                 parts=[
                     Part.from_text("Say this is a test"),
+                    Part.from_uri(
+                        mime_type="image/jpeg",
+                        uri="https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
+                    ),
+                    Part.from_image(
+                        Image.from_bytes(
+                            "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+                        )
+                    ),
                 ],
             ),
         ],
@@ -52,35 +62,48 @@ def test_generate_content(
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-2.5-pro",
-        "gen_ai.system": "vertex_ai",
-        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.input_tokens": 521,
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"file_data"},{"data":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","mime_type":"image/jpeg","type":"blob"}]}]',
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
     }
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
     log = logs[0].log_record
     assert log.attributes == {
-        "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": "gemini-2.5-pro",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
-        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.input_tokens": 521,
         "gen_ai.usage.output_tokens": 5,
         "gen_ai.input.messages": (
             {
                 "role": "user",
-                "parts": ({"type": "text", "content": "Say this is a test"},),
+                "parts": (
+                    {"content": "Say this is a test", "type": "text"},
+                    {
+                        "mime_type": "image/jpeg",
+                        "uri": "https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
+                        "type": "file_data",
+                    },
+                    {
+                        "data": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82",
+                        "mime_type": "image/jpeg",
+                        "type": "blob",
+                    },
+                ),
             },
         ),
         "gen_ai.output.messages": (
             {
                 "role": "model",
-                "parts": ({"type": "text", "content": "This is a test."},),
+                "parts": ({"content": "This is a test.", "type": "text"},),
                 "finish_reason": "stop",
             },
         ),
@@ -108,10 +131,11 @@ def test_generate_content_without_events(
     assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
+        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-2.5-pro",
-        "gen_ai.system": "vertex_ai",
         "gen_ai.usage.input_tokens": 5,
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
@@ -173,9 +197,9 @@ def test_generate_content_empty_model(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "",
-        "gen_ai.system": "vertex_ai",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 
@@ -206,9 +230,9 @@ def test_generate_content_missing_model(
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-does-not-exist",
-        "gen_ai.system": "vertex_ai",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 
@@ -241,9 +265,9 @@ def test_generate_content_invalid_temperature(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.request.temperature": 1000.0,
-        "gen_ai.system": "vertex_ai",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
     }
     assert_span_error(spans[0])
 
@@ -325,7 +349,7 @@ def test_generate_content_extra_params(
         "gen_ai.request.top_p": 0.949999988079071,
         "gen_ai.response.finish_reasons": ("length",),
         "gen_ai.response.model": "gemini-2.5-pro",
-        "gen_ai.system": "vertex_ai",
+        "gen_ai.request.seed": 12345,
         "gen_ai.usage.input_tokens": 5,
         "gen_ai.usage.output_tokens": 0,
         "server.address": "us-central1-aiplatform.googleapis.com",

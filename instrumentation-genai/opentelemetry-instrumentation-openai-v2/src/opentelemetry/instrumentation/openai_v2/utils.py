@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from httpx import URL
 from openai import NOT_GIVEN
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -123,8 +123,8 @@ def message_to_event(message, capture_content):
         if tool_call_id:
             body["id"] = tool_call_id
 
-    return Event(
-        name=f"gen_ai.{role}.message",
+    return LogRecord(
+        event_name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
     )
@@ -156,8 +156,8 @@ def choice_to_event(choice, capture_content):
             message["content"] = content
         body["message"] = message
 
-    return Event(
-        name="gen_ai.choice",
+    return LogRecord(
+        event_name="gen_ai.choice",
         attributes=attributes,
         body=body,
     )
