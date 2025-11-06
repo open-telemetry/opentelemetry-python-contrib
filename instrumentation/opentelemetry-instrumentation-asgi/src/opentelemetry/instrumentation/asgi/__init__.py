@@ -117,7 +117,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -432,8 +432,8 @@ def collect_custom_headers_attributes(
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
-    Refer specifications:
-     - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    Refer to semantic conventions:
+     - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
     headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
