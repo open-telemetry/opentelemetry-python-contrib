@@ -23,11 +23,10 @@ def _mask_leaf_nodes(obj):
     """
     if isinstance(obj, dict):
         return {key: _mask_leaf_nodes(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [_mask_leaf_nodes(item) for item in obj]
-    else:
-        # Mask leaf node
-        return sanitized_value
+    # Mask leaf node
+    return sanitized_value
 
 
 def sanitize_body(body) -> str:
