@@ -293,6 +293,7 @@ class MockEvent:
         self.command_name = self.command.get("command_name")
         self.connection_id = connection_id
         self.request_id = request_id
+        self.failure = None
 
     def mark_as_failed(self):
         # CommandFailedEvent.failure is type _DocumentOut, which pymongo defines as:
@@ -301,9 +302,7 @@ class MockEvent:
         # ```
         # we go with the former, but both provide a `.get(key, default)` method.
         #
-        self.failure = {
-            "errmsg": "operation failed"
-        }
+        self.failure = {"errmsg": "operation failed"}
 
     def __getattr__(self, item):
         return item
