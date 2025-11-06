@@ -245,10 +245,12 @@ def get_default_span_name(request: web.Request) -> str:
         The span name.
     """
     path = request.path.strip()
-    if request.match_info and request.match_info.route.resource:
+    try:
         resource = request.match_info.route.resource
-        if resource.canonical:
+        if resource:
             path = resource.canonical
+    except AttributeError:
+        path = "unknown"
     return f"{request.method} {path}"
 
 
