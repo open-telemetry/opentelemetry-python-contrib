@@ -238,11 +238,11 @@ def _parse_active_request_count_attrs(req_attrs):
 
 
 def get_default_span_name(request: web.Request) -> str:
-    """Default implementation for get_default_span_details
+    """Returns the span name.
     Args:
         request: the request object itself.
     Returns:
-        The span name.
+        The canonical name of a resource if possible or just request path.
     """
     path = request.path.strip()
     try:
@@ -250,7 +250,7 @@ def get_default_span_name(request: web.Request) -> str:
         if resource:
             path = resource.canonical
     except AttributeError:
-        path = "unknown"
+        pass
     return f"{request.method} {path}"
 
 
