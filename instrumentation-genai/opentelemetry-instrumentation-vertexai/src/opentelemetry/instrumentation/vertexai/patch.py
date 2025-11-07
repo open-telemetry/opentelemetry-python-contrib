@@ -172,14 +172,15 @@ class MethodWrappers:
                 | prediction_service_v1beta1.GenerateContentResponse
                 | None,
             ) -> None:
-                event = LogRecord(
-                    event_name="gen_ai.client.inference.operation.details",
-                )
                 attributes = (
                     get_server_attributes(instance.api_endpoint)  # type: ignore[reportUnknownMemberType]
                     | request_attributes
                     | get_genai_response_attributes(response)
                 )
+                event = LogRecord(
+                    event_name="gen_ai.client.inference.operation.details",
+                )
+                event.attributes = attributes.copy()
                 system_instructions, inputs, outputs = [], [], []
                 if params.system_instruction:
                     system_instructions = convert_content_to_message_parts(
@@ -237,7 +238,6 @@ class MethodWrappers:
                                 for k, v in content_attributes.items()
                             }
                         )
-                event.attributes = attributes
                 if capture_content in (
                     ContentCapturingMode.SPAN_AND_EVENT,
                     ContentCapturingMode.EVENT_ONLY,
