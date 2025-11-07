@@ -16,7 +16,13 @@
 import logging
 
 import pytest
-from openai import NOT_GIVEN, APIConnectionError, NotFoundError, OpenAI
+from openai import (
+    NOT_GIVEN,
+    APIConnectionError,
+    NotFoundError,
+    OpenAI,
+    not_given,
+)
 
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
@@ -91,10 +97,21 @@ def test_chat_completion_handles_not_given(
         model=llm_model_value,
         stream=False,
         top_p=NOT_GIVEN,
+        max_tokens=not_given,
     )
 
-    spans = span_exporter.get_finished_spans()
-    assert_completion_attributes(spans[0], llm_model_value, response)
+    (span,) = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        span,
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
+
+    assert GenAIAttributes.GEN_AI_REQUEST_TOP_P not in span.attributes
+    assert GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS not in span.attributes
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 2
