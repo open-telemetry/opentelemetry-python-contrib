@@ -15,7 +15,17 @@
 """Unit tests for OpenAI Embeddings API instrumentation."""
 
 import pytest
-from openai import APIConnectionError, NotFoundError, OpenAI
+from openai import (
+    NOT_GIVEN,
+    APIConnectionError,
+    NotFoundError,
+    OpenAI,
+)
+
+try:
+    from openai import not_given
+except ImportError:
+    not_given = NOT_GIVEN
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
@@ -160,6 +170,33 @@ def test_embeddings_with_encoding_format(
     assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
         encoding_format,
     )
+
+
+@pytest.mark.parametrize("not_given_value", [NOT_GIVEN, not_given])
+@pytest.mark.vcr()
+def test_embeddings_with_not_given_values(
+    span_exporter,
+    metric_reader,
+    openai_client,
+    instrument_no_content,
+    not_given_value,
+):
+    """Test creating embeddings with NOT_GIVEN and not_given values"""
+    model_name = "text-embedding-3-small"
+    input_text = "This is a test for embeddings with encoding format"
+
+    response = openai_client.embeddings.create(
+        model=model_name,
+        input=input_text,
+        dimensions=not_given_value,
+    )
+
+    # Verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_embedding_attributes(spans[0], model_name, response)
+
+    assert "gen_ai.request.dimensions" not in spans[0].attributes
 
 
 @pytest.mark.vcr()

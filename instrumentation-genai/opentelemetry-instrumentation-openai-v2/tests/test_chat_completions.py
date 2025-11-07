@@ -21,8 +21,12 @@ from openai import (
     APIConnectionError,
     NotFoundError,
     OpenAI,
-    not_given,
 )
+
+try:
+    from openai import not_given
+except ImportError:
+    not_given = NOT_GIVEN
 
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
