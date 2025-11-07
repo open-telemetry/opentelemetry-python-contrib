@@ -36,7 +36,7 @@
 # This variant of the requirements aims to test the system using
 # the newest supported version of external dependencies.
 
-openai==1.26.0
+openai==1.109.1
 pydantic==2.8.2
 httpx==0.27.2
 Deprecated==1.2.14
