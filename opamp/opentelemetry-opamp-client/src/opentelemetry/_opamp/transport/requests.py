@@ -32,16 +32,30 @@ class RequestsTransport(HttpTransport):
 
     def send(
         self,
+        *,
         url: str,
         headers: Mapping[str, str],
         data: bytes,
         timeout_millis: int,
+        tls_certificate: str | bool,
+        tls_client_certificate: str | None = None,
+        tls_client_key: str | None = None,
     ):
         headers = {**base_headers, **headers}
         timeout: float = timeout_millis / 1e3
+        client_cert = (
+            (tls_client_certificate, tls_client_key)
+            if tls_client_certificate and tls_client_key
+            else tls_client_certificate
+        )
         try:
             response = self.session.post(
-                url, headers=headers, data=data, timeout=timeout
+                url,
+                headers=headers,
+                data=data,
+                timeout=timeout,
+                verify=tls_certificate,
+                cert=client_cert,
             )
             response.raise_for_status()
         except Exception as exc:
