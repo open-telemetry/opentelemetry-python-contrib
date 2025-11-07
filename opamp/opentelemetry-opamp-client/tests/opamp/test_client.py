@@ -317,6 +317,78 @@ def test_build_remote_config_status_response_message_with_error_message(
     assert message.remote_config_status.error_message == "an error message"
 
 
+def test_update_effective_config_json_content_type(client):
+    config = {"filename": {"a": "config"}}
+    client.update_effective_config(config, content_type="application/json")
+
+    assert isinstance(client._effective_config, opamp_pb2.EffectiveConfig)
+
+    decoded_config = {}
+    for (
+        file_name,
+        config_file,
+    ) in client._effective_config.config_map.config_map.items():
+        body = config_file.body.decode()
+        decoded_config[file_name] = json.loads(body)
+
+    assert config == decoded_config
+
+
+def test_build_full_state_message(client):
+    client.update_remote_config_status(
+        remote_config_hash=b"12345678",
+        status=opamp_pb2.RemoteConfigStatuses_APPLIED,
+    )
+    config = {"filename": {"a": "config"}}
+    client.update_effective_config(config, content_type="application/json")
+
+    data = client.build_full_state_message()
+
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(data)
+
+    assert message
+    assert message.instance_uid == client._instance_uid
+    assert message.sequence_num == 0
+    assert message.capabilities == _HANDLED_CAPABILITIES
+    assert message.agent_description.identifying_attributes == [
+        PB2KeyValue(key="foo", value=PB2AnyValue(string_value="bar")),
+    ]
+    assert message.remote_config_status
+    assert message.remote_config_status.last_remote_config_hash == b"12345678"
+    assert (
+        message.remote_config_status.status
+        == opamp_pb2.RemoteConfigStatuses_APPLIED
+    )
+    assert "filename" in message.effective_config.config_map.config_map
+    config_file = message.effective_config.config_map.config_map["filename"]
+    assert config_file.content_type == "application/json"
+    body = config_file.body.decode()
+    assert config["filename"] == json.loads(body)
+
+
+def test_build_full_state_message_no_config(client):
+    data = client.build_full_state_message()
+
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(data)
+
+    assert message
+    assert message.instance_uid == client._instance_uid
+    assert message.sequence_num == 0
+    assert message.capabilities == _HANDLED_CAPABILITIES
+    assert message.agent_description.identifying_attributes == [
+        PB2KeyValue(key="foo", value=PB2AnyValue(string_value="bar")),
+    ]
+    assert message.remote_config_status
+    assert message.remote_config_status.last_remote_config_hash == b""
+    assert (
+        message.remote_config_status.status
+        == opamp_pb2.RemoteConfigStatuses_UNSET
+    )
+    assert message.effective_config.config_map.config_map == {}
+
+
 def test_message_sequence_num_increases_in_send(client):
     client._transport = mock.Mock()
     for index in range(2):
