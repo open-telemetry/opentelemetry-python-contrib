@@ -24,7 +24,7 @@ from openai import (
 )
 
 try:
-    from openai import not_given
+    from openai import not_given  # pylint: disable=no-name-in-module
 except ImportError:
     not_given = NOT_GIVEN
 
