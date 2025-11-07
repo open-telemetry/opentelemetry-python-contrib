@@ -53,6 +53,9 @@ def test_can_instantiate_opamp_client_with_defaults():
         "Content-Type": "application/x-protobuf",
         "User-Agent": "OTel-OpAMP-Python/" + __version__,
     }
+    assert client._tls_certificate is True
+    assert client._tls_client_certificate is None
+    assert client._tls_client_key is None
     assert client._timeout_millis == 1_000
     assert client._sequence_num == 0
     assert isinstance(client._instance_uid, bytes)
@@ -72,6 +75,9 @@ def test_can_instantiate_opamp_client_all_params():
         agent_identifying_attributes={"foo": "bar"},
         agent_non_identifying_attributes={"bar": "baz"},
         transport=transport,
+        tls_certificate="ca.pem",
+        tls_client_certificate="client.pem",
+        tls_client_key="client-key.pem",
     )
 
     assert client
@@ -80,6 +86,9 @@ def test_can_instantiate_opamp_client_all_params():
         "User-Agent": "OTel-OpAMP-Python/" + __version__,
         "an": "header",
     }
+    assert client._tls_certificate == "ca.pem"
+    assert client._tls_client_certificate == "client.pem"
+    assert client._tls_client_key == "client-key.pem"
     assert client._timeout_millis == 2_000
     assert client._sequence_num == 0
     assert isinstance(client._instance_uid, bytes)
@@ -111,6 +120,9 @@ def test_client_headers_override_defaults():
         },
         data=b"",
         timeout_millis=1000,
+        tls_certificate=True,
+        tls_client_certificate=None,
+        tls_client_key=None,
     )
 
 
@@ -331,6 +343,9 @@ def test_send(client):
         },
         data=b"foo",
         timeout_millis=1000,
+        tls_certificate=True,
+        tls_client_certificate=None,
+        tls_client_key=None,
     )
 
 

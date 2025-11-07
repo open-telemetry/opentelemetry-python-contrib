@@ -47,10 +47,11 @@ def test_can_send():
     with mock.patch.object(transport, "session") as session_mock:
         session_mock.post.return_value = response_mock
         response = transport.send(
-            "http://127.0.0.1/v1/opamp",
+            url="http://127.0.0.1/v1/opamp",
             headers=headers,
             data=data,
             timeout_millis=1_000,
+            tls_certificate=True,
         )
 
         session_mock.post.assert_called_once_with(
@@ -58,6 +59,92 @@ def test_can_send():
             headers=expected_headers,
             data=data,
             timeout=1,
+            verify=True,
+            cert=None,
+        )
+
+    assert isinstance(response, opamp_pb2.ServerToAgent)
+
+
+def test_send_tls_certificate_mapped_to_verify():
+    transport = RequestsTransport()
+    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    response_mock = mock.Mock(content=serialized_message)
+    data = b""
+    with mock.patch.object(transport, "session") as session_mock:
+        session_mock.post.return_value = response_mock
+        response = transport.send(
+            url="https://127.0.0.1/v1/opamp",
+            headers={},
+            data=data,
+            timeout_millis=1_000,
+            tls_certificate=False,
+        )
+
+        session_mock.post.assert_called_once_with(
+            "https://127.0.0.1/v1/opamp",
+            headers=base_headers,
+            data=data,
+            timeout=1,
+            verify=False,
+            cert=None,
+        )
+
+    assert isinstance(response, opamp_pb2.ServerToAgent)
+
+
+def test_send_mtls():
+    transport = RequestsTransport()
+    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    response_mock = mock.Mock(content=serialized_message)
+    data = b""
+    with mock.patch.object(transport, "session") as session_mock:
+        session_mock.post.return_value = response_mock
+        response = transport.send(
+            url="https://127.0.0.1/v1/opamp",
+            headers={},
+            data=data,
+            timeout_millis=1_000,
+            tls_certificate="server.pem",
+            tls_client_certificate="client.pem",
+            tls_client_key="client.key",
+        )
+
+        session_mock.post.assert_called_once_with(
+            "https://127.0.0.1/v1/opamp",
+            headers=base_headers,
+            data=data,
+            timeout=1,
+            verify="server.pem",
+            cert=("client.pem", "client.key"),
+        )
+
+    assert isinstance(response, opamp_pb2.ServerToAgent)
+
+
+def test_send_mtls_no_client_key():
+    transport = RequestsTransport()
+    serialized_message = opamp_pb2.ServerToAgent().SerializeToString()
+    response_mock = mock.Mock(content=serialized_message)
+    data = b""
+    with mock.patch.object(transport, "session") as session_mock:
+        session_mock.post.return_value = response_mock
+        response = transport.send(
+            url="https://127.0.0.1/v1/opamp",
+            headers={},
+            data=data,
+            timeout_millis=1_000,
+            tls_certificate="server.pem",
+            tls_client_certificate="client.pem",
+        )
+
+        session_mock.post.assert_called_once_with(
+            "https://127.0.0.1/v1/opamp",
+            headers=base_headers,
+            data=data,
+            timeout=1,
+            verify="server.pem",
+            cert="client.pem",
         )
 
     assert isinstance(response, opamp_pb2.ServerToAgent)
@@ -74,10 +161,11 @@ def test_send_exceptions_raises_opamp_exception():
         response_mock.raise_for_status.side_effect = Exception
         with pytest.raises(OpAMPException):
             transport.send(
-                "http://127.0.0.1/v1/opamp",
+                url="http://127.0.0.1/v1/opamp",
                 headers=headers,
                 data=data,
                 timeout_millis=1_000,
+                tls_certificate=True,
             )
 
         session_mock.post.assert_called_once_with(
@@ -85,4 +173,6 @@ def test_send_exceptions_raises_opamp_exception():
             headers=expected_headers,
             data=data,
             timeout=1,
+            verify=True,
+            cert=None,
         )

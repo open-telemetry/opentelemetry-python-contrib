@@ -63,6 +63,10 @@ class OpAMPClient:
         agent_identifying_attributes: Mapping[str, AnyValue],
         agent_non_identifying_attributes: Mapping[str, AnyValue] | None = None,
         transport: HttpTransport | None = None,
+        # this matches requests but can be mapped to other http libraries APIs
+        tls_certificate: str | bool = True,
+        tls_client_certificate: str | None = None,
+        tls_client_key: str | None = None,
     ):
         self._timeout_millis = timeout_millis
         self._transport = (
@@ -72,6 +76,9 @@ class OpAMPClient:
         self._endpoint = endpoint
         headers = headers or {}
         self._headers = {**_OPAMP_HTTP_HEADERS, **headers}
+        self._tls_certificate = tls_certificate
+        self._tls_client_certificate = tls_client_certificate
+        self._tls_client_key = tls_client_key
 
         self._agent_description = messages.build_agent_description(
             identifying_attributes=agent_identifying_attributes,
@@ -159,6 +166,9 @@ class OpAMPClient:
                 headers=self._headers,
                 data=data,
                 timeout_millis=self._timeout_millis,
+                tls_certificate=self._tls_certificate,
+                tls_client_certificate=self._tls_client_certificate,
+                tls_client_key=self._tls_client_key,
             )
             return response
         finally:
