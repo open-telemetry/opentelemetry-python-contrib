@@ -46,6 +46,7 @@ _HANDLED_CAPABILITIES = (
     | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsHeartbeat
     | opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
     | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsRemoteConfig
+    | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsEffectiveConfig
 )
 
 
@@ -87,6 +88,7 @@ class OpAMPClient:
         self._sequence_num: int = 0
         self._instance_uid: bytes = uuid7().bytes
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
+        self._effective_config: opamp_pb2.EffectiveConfig | None = None
 
     def build_connection_message(self) -> bytes:
         message = messages.build_presentation_message(
@@ -115,6 +117,14 @@ class OpAMPClient:
         )
         data = messages.encode_message(message)
         return data
+
+    def update_effective_config(
+        self, effective_config: dict[str, dict[str, str]], content_type: str
+    ) -> opamp_pb2.EffectiveConfig:
+        self._effective_config = messages.build_effective_config_message(
+            config=effective_config, content_type=content_type
+        )
+        return self._effective_config
 
     def update_remote_config_status(
         self,
@@ -154,6 +164,18 @@ class OpAMPClient:
             sequence_num=self._sequence_num,
             capabilities=_HANDLED_CAPABILITIES,
             remote_config_status=remote_config_status,
+        )
+        data = messages.encode_message(message)
+        return data
+
+    def build_full_state_message(self) -> bytes:
+        message = messages.build_full_state_message(
+            instance_uid=self._instance_uid,
+            agent_description=self._agent_description,
+            remote_config_status=self._remote_config_status,
+            sequence_num=self._sequence_num,
+            effective_config=self._effective_config,
+            capabilities=_HANDLED_CAPABILITIES,
         )
         data = messages.encode_message(message)
         return data

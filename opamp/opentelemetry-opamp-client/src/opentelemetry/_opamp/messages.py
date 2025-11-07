@@ -144,6 +144,39 @@ def build_remote_config_status_response_message(
     return command
 
 
+def build_effective_config_message(
+    config: dict[str, dict[str, str]], content_type: str
+):
+    agent_config_map = opamp_pb2.AgentConfigMap()
+    for filename, value in config.items():
+        if content_type == "application/json":
+            body = json.dumps(value)
+            agent_config_map.config_map[filename].body = body.encode("utf-8")
+            agent_config_map.config_map[filename].content_type = content_type
+    return opamp_pb2.EffectiveConfig(
+        config_map=agent_config_map,
+    )
+
+
+def build_full_state_message(
+    instance_uid: bytes,
+    sequence_num: int,
+    agent_description: opamp_pb2.AgentDescription,
+    capabilities: int,
+    remote_config_status: opamp_pb2.RemoteConfigStatus | None,
+    effective_config: opamp_pb2.EffectiveConfig | None,
+) -> opamp_pb2.AgentToServer:
+    command = opamp_pb2.AgentToServer(
+        instance_uid=instance_uid,
+        sequence_num=sequence_num,
+        agent_description=agent_description,
+        remote_config_status=remote_config_status,
+        effective_config=effective_config,
+        capabilities=capabilities,
+    )
+    return command
+
+
 def encode_message(data: opamp_pb2.AgentToServer) -> bytes:
     return data.SerializeToString()
 

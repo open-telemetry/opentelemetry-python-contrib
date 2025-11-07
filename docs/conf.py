@@ -154,6 +154,10 @@ nitpick_ignore = [
         "py:class",
         "opamp_pb2.RemoteConfigStatus",
     ),
+    (
+        "py:class",
+        "opamp_pb2.EffectiveConfig",
+    ),
 ]
 
 cfg = ConfigParser()
