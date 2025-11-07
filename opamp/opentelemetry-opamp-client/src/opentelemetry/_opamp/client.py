@@ -36,7 +36,7 @@ _logger = getLogger(__name__)
 
 _DEFAULT_OPAMP_TIMEOUT_MS = 1_000
 
-_OTLP_HTTP_HEADERS = {
+_OPAMP_HTTP_HEADERS = {
     "Content-Type": "application/x-protobuf",
     "User-Agent": "OTel-OpAMP-Python/" + __version__,
 }
@@ -71,7 +71,7 @@ class OpAMPClient:
 
         self._endpoint = endpoint
         headers = headers or {}
-        self._headers = {**_OTLP_HTTP_HEADERS, **headers}
+        self._headers = {**_OPAMP_HTTP_HEADERS, **headers}
 
         self._agent_description = messages.build_agent_description(
             identifying_attributes=agent_identifying_attributes,
