@@ -197,6 +197,13 @@ async def test_status_code_instrumentation(
                 "/object/234/action/baz",
             ),
         ),
+        (
+            "GET",
+            (
+                "/i/dont/exist",
+                "/me-neither",
+            ),
+        ),
     ],
 )
 async def test_url_params_instrumentation(

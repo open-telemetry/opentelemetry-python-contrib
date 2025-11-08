@@ -244,14 +244,16 @@ def get_default_span_name(request: web.Request) -> str:
     Returns:
         The canonical name of a resource if possible or just request path.
     """
-    path = request.path.strip()
     try:
         resource = request.match_info.route.resource
-        if resource:
-            path = resource.canonical
-    except AttributeError:
-        pass
-    return f"{request.method} {path}"
+        assert resource
+        path = resource.canonical
+    except (AttributeError, AssertionError):
+        path = ""
+
+    if path:
+        return f"{request.method} {path}"
+    return f"{request.method}"
 
 
 def _get_view_func(request: web.Request) -> str:
