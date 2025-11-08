@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
 - `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
   ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
+- `opentelemetry-instrumentation-asgi` remove high cardinal path from span name
+  ([#2650](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2650))
+
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
@@ -309,8 +312,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3322](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3322))
 - `opentelemetry-instrumentation-requests` always record span status code in duration metric
   ([#3323](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3323))
-- `opentelemetry-instrumentation-asgi` remove high cardinal path from span name
-  ([#2650](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2650))
 
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
