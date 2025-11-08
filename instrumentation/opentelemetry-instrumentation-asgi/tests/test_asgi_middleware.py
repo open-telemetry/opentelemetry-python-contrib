@@ -322,6 +322,8 @@ async def websocket_session_app(scope, receive, send):
                 await send(
                     {"type": "websocket.send", "text": f"pong:{session_id}"}
                 )
+
+
 class UnhandledException(Exception):
     pass
 
@@ -1792,6 +1794,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.assertEqual(
             server_span.attributes[SpanAttributes.HTTP_SCHEME], "ws"
         )
+
     async def test_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
         app = otel_asgi.OpenTelemetryMiddleware(
