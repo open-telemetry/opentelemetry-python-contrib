@@ -118,7 +118,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -424,7 +424,8 @@ def collect_request_attributes(
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
+    See also https://peps.python.org/pep-3333/
     """
 
     sanitize = SanitizeValue(
@@ -451,8 +452,8 @@ def collect_custom_response_headers_attributes(
     response_headers: list[tuple[str, str]],
 ):
     """Returns custom HTTP response headers which are configured by the user from the
-    PEP3333-conforming WSGI environ as described in the specification
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    PEP3333-conforming WSGI environ as described in the semantic conventions
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
 
     sanitize = SanitizeValue(
