@@ -58,16 +58,16 @@ Usage
 
 .. code-block:: python
 
-    from falcon import API
+    import falcon
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     FalconInstrumentor().instrument()
 
-    app = falcon.API()
+    app = falcon.App()
 
     class HelloWorldResource(object):
         def on_get(self, req, resp):
-            resp.body = 'Hello World'
+            resp.text = 'Hello World'
 
     app.add_route('/hello', HelloWorldResource())
 
@@ -78,7 +78,9 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
 
-::
+.. code-block:: python
+
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     def request_hook(span, req):
         pass
@@ -86,12 +88,12 @@ The hooks can be configured as follows:
     def response_hook(span, req, resp):
         pass
 
-    FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic convention <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -194,6 +196,7 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -295,6 +298,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         self.active_requests_counter = self._otel_meter.create_up_down_counter(

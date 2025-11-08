@@ -2,7 +2,7 @@
 [project]
 name = "opentelemetry-python-contrib"
 version = "0.0.0" # This is not used.
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
@@ -37,12 +37,14 @@ dependencies = [
   "opentelemetry-instrumentation-httpx[instruments]",
   "opentelemetry-instrumentation-jinja2[instruments]",
   "opentelemetry-instrumentation-kafka-python[instruments]",
+  "opentelemetry-instrumentation-kafka-python[instruments-any]",
   "opentelemetry-instrumentation-logging",
   "opentelemetry-instrumentation-mysql[instruments]",
   "opentelemetry-instrumentation-mysqlclient[instruments]",
   "opentelemetry-instrumentation-pika[instruments]",
   "opentelemetry-instrumentation-psycopg[instruments]",
   "opentelemetry-instrumentation-psycopg2[instruments]",
+  "opentelemetry-instrumentation-psycopg2[instruments-any]",
   "opentelemetry-instrumentation-pymemcache[instruments]",
   "opentelemetry-instrumentation-pymongo[instruments]",
   "opentelemetry-instrumentation-pymysql[instruments]",
@@ -62,9 +64,11 @@ dependencies = [
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
   "opentelemetry-util-http",
+  "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
   "opentelemetry-instrumentation-openai-v2[instruments]",
 ]
+
 
 # https://docs.astral.sh/uv/reference/settings/
 [tool.uv]
@@ -131,6 +135,7 @@ opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
 opentelemetry-util-http = { workspace = true }
+opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
 opentelemetry-instrumentation-openai-v2 = { workspace = true }
 
@@ -142,16 +147,12 @@ members = [
   "exporter/*",
   "opentelemetry-instrumentation",
   "propagator/*",
-  "util/opentelemetry-util-http",
-]
-# TODO: remove after python 3.8 is dropped
-exclude = [
-  "instrumentation-genai/opentelemetry-instrumentation-google-genai",
+  "util/*",
 ]
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
-target-version = "py38"
+target-version = "py39"
 line-length = 79
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
@@ -187,22 +188,43 @@ known-third-party = [
   "opencensus",
 ]
 
+
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
 [tool.pyright]
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
-pythonVersion = "3.8"
+pythonVersion = "3.9"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
-  "instrumentation/opentelemetry-instrumentation-threading/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-vertexai/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-aiokafka",
+  "instrumentation/opentelemetry-instrumentation-asyncclick",
+  "instrumentation/opentelemetry-instrumentation-threading",
+  "instrumentation-genai/opentelemetry-instrumentation-vertexai",
+  "instrumentation-genai/opentelemetry-instrumentation-langchain",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate",
+  "util/opentelemetry-util-genai",
+  "exporter/opentelemetry-exporter-credential-provider-gcp",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.
 exclude = [
+  "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-threading/tests/**",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
+  "util/opentelemetry-util-genai/tests/**/*.py",
+]
+
+[dependency-groups]
+dev = [
+    "tox",
+    "tox-uv>=1",
+    "pre-commit",
 ]

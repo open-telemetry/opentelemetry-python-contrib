@@ -1,5 +1,5 @@
 OpenTelemetry Google GenAI SDK Manual Instrumentation Example
-============================================
+=============================================================
 
 This is an example of how to instrument Google GenAI SDK calls when configuring
 OpenTelemetry SDK and Instrumentations manually.

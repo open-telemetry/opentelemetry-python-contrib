@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import Any
 
 from botocore.response import StreamingBody
@@ -26,10 +27,10 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock import (
 from opentelemetry.sdk.metrics._internal.point import ResourceMetrics
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
-    event_attributes as EventAttributes,
+    gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
+    server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
@@ -40,7 +41,7 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
 )
 
 
-# pylint: disable=too-many-branches, too-many-locals
+# pylint: disable=too-many-branches, too-many-locals, too-many-statements
 def assert_completion_attributes_from_streaming_body(
     span: ReadableSpan,
     request_model: str,
@@ -54,6 +55,7 @@ def assert_completion_attributes_from_streaming_body(
     input_tokens = None
     output_tokens = None
     finish_reason = None
+    request_prompt = "Say this is a test"
     if response is not None:
         original_body = response["body"]
         body_content = original_body.read()
@@ -89,6 +91,33 @@ def assert_completion_attributes_from_streaming_body(
                 finish_reason = (response["stop_reason"],)
             else:
                 finish_reason = None
+        elif "cohere.command-r" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            text = response.get("text")
+            if text:
+                output_tokens = math.ceil(len(text) / 6)
+            finish_reason = (response["finish_reason"],)
+        elif "cohere.command" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            generations = response.get("generations")
+            if generations:
+                first_generation = generations[0]
+                output_tokens = math.ceil(len(first_generation["text"]) / 6)
+                finish_reason = (first_generation["finish_reason"],)
+        elif "meta.llama" in request_model:
+            if "prompt_token_count" in response:
+                input_tokens = response.get("prompt_token_count")
+            if "generation_token_count" in response:
+                output_tokens = response.get("generation_token_count")
+            if "stop_reason" in response:
+                finish_reason = (response["stop_reason"],)
+        elif "mistral.mistral" in request_model:
+            input_tokens = math.ceil(len(request_prompt) / 6)
+            outputs = response.get("outputs")
+            if outputs:
+                first_output = outputs[0]
+                output_tokens = math.ceil(len(first_output["text"]) / 6)
+                finish_reason = (first_output["stop_reason"],)
 
     return assert_all_attributes(
         span,
@@ -192,6 +221,8 @@ def assert_all_attributes(
     request_temperature: int | None = None,
     request_max_tokens: int | None = None,
     request_stop_sequences: tuple[str] | None = None,
+    server_address: str = "bedrock-runtime.us-east-1.amazonaws.com",
+    server_port: int = 443,
 ):
     assert span.name == f"{operation_name} {request_model}"
     assert (
@@ -205,6 +236,9 @@ def assert_all_attributes(
     assert (
         request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     )
+
+    assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
+    assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
     assert_equal_or_not_present(
         input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span
@@ -238,8 +272,6 @@ def remove_none_values(body):
             continue
         if isinstance(value, dict):
             result[key] = remove_none_values(value)
-        elif isinstance(value, list):
-            result[key] = [remove_none_values(i) for i in value]
         else:
             result[key] = value
     return result
@@ -247,7 +279,9 @@ def remove_none_values(body):
 
 def assert_log_parent(log, span):
     if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert (
+            log.log_record.trace_id == span.get_span_context().trace_id
+        ), f"{span.get_span_context().trace_id} does not equal {log.log_record.trace_id}"
         assert log.log_record.span_id == span.get_span_context().span_id
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags
@@ -255,9 +289,7 @@ def assert_log_parent(log, span):
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert (
-        log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    ), log.log_record.attributes[EventAttributes.EVENT_NAME]
+    assert log.log_record.event_name == event_name, log.log_record.event_name
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
@@ -274,7 +306,12 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
 
 
 def assert_all_metric_attributes(
-    data_point, operation_name: str, model: str, error_type: str | None = None
+    data_point,
+    operation_name: str,
+    model: str,
+    error_type: str | None = None,
+    server_address: str = "bedrock-runtime.us-east-1.amazonaws.com",
+    server_port: int = 443,
 ):
     assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
     assert (
@@ -288,6 +325,14 @@ def assert_all_metric_attributes(
     )
     assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
     assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+
+    assert ServerAttributes.SERVER_ADDRESS in data_point.attributes
+    assert (
+        data_point.attributes[ServerAttributes.SERVER_ADDRESS]
+        == server_address
+    )
+    assert ServerAttributes.SERVER_PORT in data_point.attributes
+    assert data_point.attributes[ServerAttributes.SERVER_PORT] == server_port
 
     if error_type is not None:
         assert ERROR_TYPE in data_point.attributes

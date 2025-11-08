@@ -14,7 +14,7 @@
 # pylint: disable=unnecessary-dunder-call
 
 from logging import getLogger
-from typing import Any, Collection, Dict, Optional
+from typing import Any, Collection, Dict, Optional, Union
 
 import pika
 import wrapt
@@ -24,6 +24,8 @@ from pika.adapters.blocking_connection import (
     BlockingChannel,
     _QueueConsumerGeneratorInfo,
 )
+from pika.channel import Channel
+from pika.connection import Connection
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -53,12 +55,16 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     # pylint: disable=attribute-defined-outside-init
     @staticmethod
-    def _instrument_blocking_channel_consumers(
-        channel: BlockingChannel,
+    def _instrument_channel_consumers(
+        channel: Union[BlockingChannel, Channel],
         tracer: Tracer,
         consume_hook: utils.HookT = utils.dummy_callback,
     ) -> Any:
-        for consumer_tag, consumer_info in channel._consumer_infos.items():
+        if isinstance(channel, BlockingChannel):
+            consumer_infos = channel._consumer_infos
+        elif isinstance(channel, Channel):
+            consumer_infos = channel._consumers
+        for consumer_tag, consumer_info in consumer_infos.items():
             callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
             consumer_callback = getattr(consumer_info, callback_attr, None)
             if consumer_callback is None:
@@ -79,7 +85,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     @staticmethod
     def _instrument_basic_publish(
-        channel: BlockingChannel,
+        channel: Union[BlockingChannel, Channel],
         tracer: Tracer,
         publish_hook: utils.HookT = utils.dummy_callback,
     ) -> None:
@@ -93,7 +99,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
 
     @staticmethod
     def _instrument_channel_functions(
-        channel: BlockingChannel,
+        channel: Union[BlockingChannel, Channel],
         tracer: Tracer,
         publish_hook: utils.HookT = utils.dummy_callback,
     ) -> None:
@@ -103,7 +109,9 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             )
 
     @staticmethod
-    def _uninstrument_channel_functions(channel: BlockingChannel) -> None:
+    def _uninstrument_channel_functions(
+        channel: Union[BlockingChannel, Channel],
+    ) -> None:
         for function_name in _FUNCTIONS_TO_UNINSTRUMENT:
             if not hasattr(channel, function_name):
                 continue
@@ -115,7 +123,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     @staticmethod
     # Make sure that the spans are created inside hash them set as parent and not as brothers
     def instrument_channel(
-        channel: BlockingChannel,
+        channel: Union[BlockingChannel, Channel],
         tracer_provider: Optional[TracerProvider] = None,
         publish_hook: utils.HookT = utils.dummy_callback,
         consume_hook: utils.HookT = utils.dummy_callback,
@@ -133,7 +141,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        PikaInstrumentor._instrument_blocking_channel_consumers(
+        PikaInstrumentor._instrument_channel_consumers(
             channel, tracer, consume_hook
         )
         PikaInstrumentor._decorate_basic_consume(channel, tracer, consume_hook)
@@ -178,16 +186,17 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             return channel
 
         wrapt.wrap_function_wrapper(BlockingConnection, "channel", wrapper)
+        wrapt.wrap_function_wrapper(Connection, "channel", wrapper)
 
     @staticmethod
     def _decorate_basic_consume(
-        channel: BlockingChannel,
+        channel: Union[BlockingChannel, Channel],
         tracer: Optional[Tracer],
         consume_hook: utils.HookT = utils.dummy_callback,
     ) -> None:
         def wrapper(wrapped, instance, args, kwargs):
             return_value = wrapped(*args, **kwargs)
-            PikaInstrumentor._instrument_blocking_channel_consumers(
+            PikaInstrumentor._instrument_channel_consumers(
                 channel, tracer, consume_hook
             )
             return return_value
@@ -236,6 +245,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         if hasattr(self, "__opentelemetry_tracer_provider"):
             delattr(self, "__opentelemetry_tracer_provider")
         unwrap(BlockingConnection, "channel")
+        unwrap(Connection, "channel")
         unwrap(_QueueConsumerGeneratorInfo, "__init__")
 
     def instrumentation_dependencies(self) -> Collection[str]:

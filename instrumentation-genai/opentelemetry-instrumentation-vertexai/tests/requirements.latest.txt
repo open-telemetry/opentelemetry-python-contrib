@@ -44,8 +44,8 @@ charset-normalizer==3.4.0
 Deprecated==1.2.15
 docstring_parser==0.16
 exceptiongroup==1.2.2
-google-api-core==2.23.0
-google-auth==2.36.0
+google-api-core[grpc, async_rest]==2.23.0
+google-auth[aiohttp]==2.36.0
 google-cloud-aiplatform==1.79.0
 google-cloud-bigquery==3.27.0
 google-cloud-core==2.4.1
@@ -78,6 +78,7 @@ PyYAML==6.0.2
 requests==2.32.3
 rsa==4.9
 shapely==2.0.6
+fsspec==2025.9.0
 six==1.17.0
 tomli==2.2.1
 typing_extensions==4.12.2
@@ -90,3 +91,4 @@ zipp==3.20.2
 
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
+-e util/opentelemetry-util-genai[upload]

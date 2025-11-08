@@ -10,10 +10,10 @@ Deprecated==1.2.14
 docker==7.0.0
 idna==3.7
 iniconfig==2.0.0
-Jinja2==3.1.4
+Jinja2==3.1.6
 jmespath==1.0.1
 MarkupSafe==2.1.5
-moto==5.0.9
+moto==5.1.11
 packaging==24.0
 pluggy==1.5.0
 py-cpuinfo==9.0.0

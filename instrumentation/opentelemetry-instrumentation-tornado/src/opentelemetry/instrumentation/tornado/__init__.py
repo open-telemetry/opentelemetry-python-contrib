@@ -39,7 +39,7 @@ Configuration
 
 The following environment variables are supported as configuration options:
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
+- ``OTEL_PYTHON_TORNADO_EXCLUDED_URLS`` (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations)
 
 A comma separated list of paths that should not be automatically traced. For example, if this is set to
 
@@ -72,6 +72,8 @@ created span and some other contextual information. Example:
 
 .. code-block:: python
 
+    from opentelemetry.instrumentation.tornado import TornadoInstrumentor
+
     # will be called for each incoming request to Tornado
     # web server. `handler` is an instance of
     # `tornado.web.RequestHandler`.
@@ -94,12 +96,12 @@ created span and some other contextual information. Example:
     TornadoInstrumentor().instrument(
         server_request_hook=server_request_hook,
         client_request_hook=client_request_hook,
-        client_response_hook=client_response_hook
+        client_response_hook=client_response_hook,
     )
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -160,6 +162,7 @@ from timeit import default_timer
 from typing import Collection, Dict
 
 import tornado.web
+import tornado.websocket
 import wrapt
 from wrapt import wrap_function_wrapper
 
@@ -180,8 +183,19 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import get_meter
 from opentelemetry.metrics._internal.instrument import Histogram
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_CLIENT_IP,
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -197,6 +211,7 @@ from .client import fetch_async  # pylint: disable=E0401
 
 _logger = getLogger(__name__)
 _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
+_HANDLER_STATE_KEY = "_otel_state_key"
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
@@ -349,12 +364,20 @@ def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
         "prepare",
         partial(_prepare, tracer, server_histograms, request_hook),
     )
-    _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     _wrap(
         cls,
         "log_exception",
         partial(_log_exception, tracer, server_histograms),
     )
+
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        _wrap(
+            cls,
+            "on_close",
+            partial(_websockethandler_on_close, tracer, server_histograms),
+        )
+    else:
+        _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     return True
 
 
@@ -363,8 +386,11 @@ def unpatch_handler_class(cls):
         return
 
     unwrap(cls, "prepare")
-    unwrap(cls, "on_finish")
     unwrap(cls, "log_exception")
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        unwrap(cls, "on_close")
+    else:
+        unwrap(cls, "on_finish")
     delattr(cls, _OTEL_PATCHED_KEY)
 
 
@@ -377,10 +403,14 @@ def _wrap(cls, method_name, wrapper):
 def _prepare(
     tracer, server_histograms, request_hook, func, handler, args, kwargs
 ):
-    server_histograms[_START_TIME] = default_timer()
-
     request = handler.request
-    if _excluded_urls.url_disabled(request.uri):
+    otel_handler_state = {
+        _START_TIME: default_timer(),
+        "exclude_request": _excluded_urls.url_disabled(request.uri),
+    }
+    setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
+
+    if otel_handler_state["exclude_request"]:
         return func(*args, **kwargs)
 
     _record_prepare_metrics(server_histograms, handler)
@@ -392,13 +422,21 @@ def _prepare(
 
 
 def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
-    response = func(*args, **kwargs)
+    try:
+        return func(*args, **kwargs)
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
-    _record_on_finish_metrics(server_histograms, handler)
 
-    _finish_span(tracer, handler)
-
-    return response
+def _websockethandler_on_close(
+    tracer, server_histograms, func, handler, args, kwargs
+):
+    try:
+        func()
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
 
 def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
@@ -440,23 +478,21 @@ def _collect_custom_response_headers_attributes(response_headers):
 
 def _get_attributes_from_request(request):
     attrs = {
-        SpanAttributes.HTTP_METHOD: request.method,
-        SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_HOST: request.host,
-        SpanAttributes.HTTP_TARGET: request.path,
+        HTTP_METHOD: request.method,
+        HTTP_SCHEME: request.protocol,
+        HTTP_HOST: request.host,
+        HTTP_TARGET: request.path,
     }
 
     if request.remote_ip:
         # NET_PEER_IP is the address of the network peer
         # HTTP_CLIENT_IP is the address of the client, which might be different
         # if Tornado is set to trust X-Forwarded-For headers (xheaders=True)
-        attrs[SpanAttributes.HTTP_CLIENT_IP] = request.remote_ip
+        attrs[HTTP_CLIENT_IP] = request.remote_ip
         if hasattr(request.connection, "context") and getattr(
             request.connection.context, "_orig_remote_ip", None
         ):
-            attrs[SpanAttributes.NET_PEER_IP] = (
-                request.connection.context._orig_remote_ip
-            )
+            attrs[NET_PEER_IP] = request.connection.context._orig_remote_ip
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs
@@ -548,7 +584,7 @@ def _finish_span(tracer, handler, error=None):
         return
 
     if ctx.span.is_recording():
-        ctx.span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        ctx.span.set_attribute(HTTP_STATUS_CODE, status_code)
         otel_status_code = http_status_to_status_code(
             status_code, server_span=True
         )
@@ -591,15 +627,17 @@ def _record_prepare_metrics(server_histograms, handler):
 
 
 def _record_on_finish_metrics(server_histograms, handler, error=None):
-    elapsed_time = round(
-        (default_timer() - server_histograms[_START_TIME]) * 1000
-    )
+    otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
+    if otel_handler_state.get("exclude_request"):
+        return
+    start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
+    elapsed_time = round((default_timer() - start_time) * 1000)
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)
 
     if isinstance(error, tornado.web.HTTPError):
-        metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = error.status_code
+        metric_attributes[HTTP_STATUS_CODE] = error.status_code
 
     server_histograms[MetricInstruments.HTTP_SERVER_RESPONSE_SIZE].record(
         response_size, attributes=metric_attributes
@@ -619,11 +657,11 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
 
 def _create_active_requests_attributes(request):
     metric_attributes = {
-        SpanAttributes.HTTP_METHOD: request.method,
-        SpanAttributes.HTTP_SCHEME: request.protocol,
-        SpanAttributes.HTTP_FLAVOR: request.version,
-        SpanAttributes.HTTP_HOST: request.host,
-        SpanAttributes.HTTP_TARGET: request.path,
+        HTTP_METHOD: request.method,
+        HTTP_SCHEME: request.protocol,
+        HTTP_FLAVOR: request.version,
+        HTTP_HOST: request.host,
+        HTTP_TARGET: request.path,
     }
 
     return metric_attributes
@@ -631,6 +669,6 @@ def _create_active_requests_attributes(request):
 
 def _create_metric_attributes(handler):
     metric_attributes = _create_active_requests_attributes(handler.request)
-    metric_attributes[SpanAttributes.HTTP_STATUS_CODE] = handler.get_status()
+    metric_attributes[HTTP_STATUS_CODE] = handler.get_status()
 
     return metric_attributes

@@ -97,6 +97,7 @@ For example,
 
 .. code-block:: python
 
+    from opentelemetry.trace import Span
     from wsgiref.types import WSGIEnvironment, StartResponse
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
@@ -117,7 +118,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -223,6 +224,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -251,12 +253,16 @@ from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.instrumentation.wsgi.version import __version__
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagators.textmap import Getter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_HOST,
+    HTTP_SERVER_NAME,
+    HTTP_URL,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import TracerProvider
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
@@ -268,7 +274,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
+    redact_url,
     sanitize_method,
 )
 
@@ -334,7 +340,7 @@ def collect_request_attributes(
     # old semconv v1.12.0
     server_name = environ.get("SERVER_NAME")
     if _report_old(sem_conv_opt_in_mode):
-        result[SpanAttributes.HTTP_SERVER_NAME] = server_name
+        result[HTTP_SERVER_NAME] = server_name
 
     _set_http_scheme(
         result,
@@ -348,7 +354,7 @@ def collect_request_attributes(
         _set_http_net_host(result, host, sem_conv_opt_in_mode)
         # old semconv v1.12.0
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_HOST] = host
+            result[HTTP_HOST] = host
     if host_port:
         _set_http_net_host_port(
             result,
@@ -365,9 +371,7 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_URL] = remove_url_credentials(
-                wsgiref_util.request_uri(environ)
-            )
+            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
@@ -399,7 +403,8 @@ def collect_request_attributes(
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
+    See also https://peps.python.org/pep-3333/
     """
 
     sanitize = SanitizeValue(
@@ -426,8 +431,8 @@ def collect_custom_response_headers_attributes(
     response_headers: list[tuple[str, str]],
 ):
     """Returns custom HTTP response headers which are configured by the user from the
-    PEP3333-conforming WSGI environ as described in the specification
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    PEP3333-conforming WSGI environ as described in the semantic conventions
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
 
     sanitize = SanitizeValue(
@@ -592,6 +597,7 @@ class OpenTelemetryMiddleware:
                 name=HTTP_SERVER_REQUEST_DURATION,
                 unit="s",
                 description="Duration of HTTP server requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         # We don't need a separate active request counter for old/new semantic conventions
         # because the new attributes are a subset of the old attributes

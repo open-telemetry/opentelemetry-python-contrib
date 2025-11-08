@@ -20,6 +20,7 @@ from flask import Flask, request
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_new,
@@ -39,8 +40,34 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.url_attributes import (
+    URL_PATH,
+    URL_SCHEME,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -56,15 +83,15 @@ from .base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
-        SpanAttributes.HTTP_SCHEME: "http",
-        SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.NET_HOST_NAME: "localhost",
-        SpanAttributes.HTTP_HOST: "localhost",
-        SpanAttributes.HTTP_TARGET: "/",
-        SpanAttributes.HTTP_FLAVOR: "1.1",
-        SpanAttributes.HTTP_STATUS_CODE: 200,
+        HTTP_METHOD: "GET",
+        HTTP_SERVER_NAME: "localhost",
+        HTTP_SCHEME: "http",
+        NET_HOST_PORT: 80,
+        NET_HOST_NAME: "localhost",
+        HTTP_HOST: "localhost",
+        HTTP_TARGET: "/",
+        HTTP_FLAVOR: "1.1",
+        HTTP_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -73,12 +100,12 @@ def expected_attributes(override_attributes):
 
 def expected_attributes_new(override_attributes):
     default_attributes = {
-        SpanAttributes.HTTP_REQUEST_METHOD: "GET",
-        SpanAttributes.SERVER_PORT: 80,
-        SpanAttributes.SERVER_ADDRESS: "localhost",
-        SpanAttributes.URL_PATH: "/hello/123",
-        SpanAttributes.NETWORK_PROTOCOL_VERSION: "1.1",
-        SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 200,
+        HTTP_REQUEST_METHOD: "GET",
+        SERVER_PORT: 80,
+        SERVER_ADDRESS: "localhost",
+        URL_PATH: "/hello/123",
+        NETWORK_PROTOCOL_VERSION: "1.1",
+        HTTP_RESPONSE_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -137,7 +164,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.env_patch = patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                "OTEL_PYTHON_FLASK_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg,env_excluded_arg/789",
                 OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
@@ -219,8 +246,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_simple(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/123",
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                HTTP_TARGET: "/hello/123",
+                HTTP_ROUTE: "/hello/<int:helloid>",
             }
         )
         self.client.get("/hello/123")
@@ -234,8 +261,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_simple_new_semconv(self):
         expected_attrs = expected_attributes_new(
             {
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
-                SpanAttributes.URL_SCHEME: "http",
+                HTTP_ROUTE: "/hello/<int:helloid>",
+                URL_SCHEME: "http",
             }
         )
         self.client.get("/hello/123")
@@ -249,15 +276,15 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_simple_both_semconv(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/123",
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
+                HTTP_TARGET: "/hello/123",
+                HTTP_ROUTE: "/hello/<int:helloid>",
             }
         )
         expected_attrs.update(
             expected_attributes_new(
                 {
-                    SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
-                    SpanAttributes.URL_SCHEME: "http",
+                    HTTP_ROUTE: "/hello/<int:helloid>",
+                    URL_SCHEME: "http",
                 }
             )
         )
@@ -300,9 +327,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_404(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_TARGET: "/bye",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_METHOD: "POST",
+                HTTP_TARGET: "/bye",
+                HTTP_STATUS_CODE: 404,
             }
         )
 
@@ -318,10 +345,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_404_new_semconv(self):
         expected_attrs = expected_attributes_new(
             {
-                SpanAttributes.HTTP_REQUEST_METHOD: "POST",
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 404,
-                SpanAttributes.URL_PATH: "/bye",
-                SpanAttributes.URL_SCHEME: "http",
+                HTTP_REQUEST_METHOD: "POST",
+                HTTP_RESPONSE_STATUS_CODE: 404,
+                URL_PATH: "/bye",
+                URL_SCHEME: "http",
             }
         )
 
@@ -337,18 +364,18 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_404_both_semconv(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_TARGET: "/bye",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_METHOD: "POST",
+                HTTP_TARGET: "/bye",
+                HTTP_STATUS_CODE: 404,
             }
         )
         expected_attrs.update(
             expected_attributes_new(
                 {
-                    SpanAttributes.HTTP_REQUEST_METHOD: "POST",
-                    SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 404,
-                    SpanAttributes.URL_PATH: "/bye",
-                    SpanAttributes.URL_SCHEME: "http",
+                    HTTP_REQUEST_METHOD: "POST",
+                    HTTP_RESPONSE_STATUS_CODE: 404,
+                    URL_PATH: "/bye",
+                    URL_SCHEME: "http",
                 }
             )
         )
@@ -365,9 +392,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/500",
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/500",
+                HTTP_ROUTE: "/hello/<int:helloid>",
+                HTTP_STATUS_CODE: 500,
             }
         )
         resp = self.client.get("/hello/500")
@@ -382,11 +409,11 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_internal_error_new_semconv(self):
         expected_attrs = expected_attributes_new(
             {
-                SpanAttributes.URL_PATH: "/hello/500",
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
-                SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
+                URL_PATH: "/hello/500",
+                HTTP_ROUTE: "/hello/<int:helloid>",
+                HTTP_RESPONSE_STATUS_CODE: 500,
                 ERROR_TYPE: "500",
-                SpanAttributes.URL_SCHEME: "http",
+                URL_SCHEME: "http",
             }
         )
         resp = self.client.get("/hello/500")
@@ -401,18 +428,18 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_internal_error_both_semconv(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/500",
-                SpanAttributes.HTTP_ROUTE: "/hello/<int:helloid>",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/500",
+                HTTP_ROUTE: "/hello/<int:helloid>",
+                HTTP_STATUS_CODE: 500,
             }
         )
         expected_attrs.update(
             expected_attributes_new(
                 {
-                    SpanAttributes.URL_PATH: "/hello/500",
-                    SpanAttributes.HTTP_RESPONSE_STATUS_CODE: 500,
+                    URL_PATH: "/hello/500",
+                    HTTP_RESPONSE_STATUS_CODE: 500,
                     ERROR_TYPE: "500",
-                    SpanAttributes.URL_SCHEME: "http",
+                    URL_SCHEME: "http",
                 }
             )
         )
@@ -522,6 +549,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertAlmostEqual(
                                 duration_s, point.sum, places=1
                             )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
                             histogram_data_point_seen = True
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
@@ -552,8 +583,12 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                             self.assertEqual(point.value, 0)
 
     def _assert_basic_metric(
-        self, expected_duration_attributes, expected_requests_count_attributes
+        self,
+        expected_duration_attributes,
+        expected_requests_count_attributes,
+        expected_histogram_explicit_bounds=None,
     ):
+        # pylint: disable=too-many-nested-blocks
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metrics in resource_metric.scope_metrics:
@@ -564,6 +599,11 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                                 expected_duration_attributes,
                                 dict(point.attributes),
                             )
+                            if expected_histogram_explicit_bounds is not None:
+                                self.assertEqual(
+                                    expected_histogram_explicit_bounds,
+                                    point.explicit_bounds,
+                                )
                             self.assertEqual(point.count, 1)
                         elif isinstance(point, NumberDataPoint):
                             self.assertDictEqual(
@@ -613,6 +653,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     def test_basic_metric_nonstandard_http_method_success(self):
@@ -654,6 +695,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     @patch.dict(
@@ -679,6 +721,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self._assert_basic_metric(
             expected_duration_attributes,
             expected_requests_count_attributes,
+            expected_histogram_explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
     def test_metric_uninstrument(self):
@@ -692,6 +735,80 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
                             self.assertEqual(point.count, 1)
+
+    def test_flask_metrics_excluded_urls(self):
+        start = default_timer()
+        self.client.get("/env_excluded_arg/123")
+        self.client.get("/env_excluded_noarg")
+        self.client.get("/env_excluded_arg/789")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_old)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 0)
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name],
+                            )
+        self.assertTrue(number_data_point_seen)
+        self.assertFalse(histogram_data_point_seen)
+
+    def test_flask_metrics_excluded_urls_new_semconv(self):
+        start = default_timer()
+        self.client.get("/env_excluded_arg/123")
+        self.client.get("/env_excluded_noarg")
+        self.client.get("/env_excluded_arg/789")
+        duration_s = max(default_timer() - start, 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 0)
+                            self.assertAlmostEqual(
+                                duration_s, point.sum, places=1
+                            )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name],
+                            )
+        self.assertTrue(number_data_point_seen)
+        self.assertFalse(histogram_data_point_seen)
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
