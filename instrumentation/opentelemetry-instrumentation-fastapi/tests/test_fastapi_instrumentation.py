@@ -298,7 +298,7 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         span = spans[0]
-        assert span.name == "GET /error http send"
+        assert span.name == "GET /error send"
         assert span.attributes[HTTP_STATUS_CODE] == 500
         span = spans[2]
         assert span.name == "GET /error"

@@ -506,15 +506,12 @@ def get_default_span_details(scope: dict) -> Tuple[str, dict]:
     Returns:
         a tuple of the span name, and any attributes to attach to the span.
     """
-    path = scope.get("path", "").strip()
-    method = sanitize_method(scope.get("method", "").strip())
-    if method == "_OTHER":
-        method = "HTTP"
-    if method and path:  # http
-        return f"{method} {path}", {}
-    if path:  # websocket
-        return path, {}
-    return method, {}  # http with no path
+    if scope.get("type") == "http":
+        method = sanitize_method(scope.get("method", "").strip())
+        if method == "_OTHER":
+            method = "HTTP"
+        return method, {}
+    return scope.get("type", ""), {}
 
 
 def _collect_target_attribute(
@@ -863,7 +860,7 @@ class OpenTelemetryMiddleware:
         @wraps(receive)
         async def otel_receive():
             with self.tracer.start_as_current_span(
-                " ".join((server_span_name, scope["type"], "receive"))
+                " ".join((server_span_name, "receive"))
             ) as receive_span:
                 message = await receive()
                 if callable(self.client_request_hook):
@@ -894,7 +891,7 @@ class OpenTelemetryMiddleware:
     ):
         """Set send span attributes and status code."""
         with self.tracer.start_as_current_span(
-            " ".join((server_span_name, scope["type"], "send"))
+            " ".join((server_span_name, "send"))
         ) as send_span:
             if callable(self.client_response_hook):
                 self.client_response_hook(send_span, scope, message)
