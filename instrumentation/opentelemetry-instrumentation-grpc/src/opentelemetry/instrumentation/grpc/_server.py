@@ -29,6 +29,7 @@ import grpc
 
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import extract
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
@@ -279,7 +280,9 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         )
 
     def intercept_service(self, continuation, handler_call_details):
-        if self._filter is not None and not self._filter(handler_call_details):
+        if (
+            self._filter is not None and not self._filter(handler_call_details)
+        ) or not is_instrumentation_enabled():
             return continuation(handler_call_details)
 
         def telemetry_wrapper(behavior, request_streaming, response_streaming):
