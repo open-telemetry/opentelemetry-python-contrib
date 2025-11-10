@@ -49,14 +49,7 @@ import os
 import sys
 from functools import partial
 from logging import getLogger
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Collection,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, TypeVar
 
 import asyncclick
 from typing_extensions import ParamSpec, Unpack
@@ -68,9 +61,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.asyncclick.package import _instruments
 from opentelemetry.instrumentation.asyncclick.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import (
-    unwrap,
-)
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.process_attributes import (
     PROCESS_COMMAND_ARGS,
     PROCESS_EXECUTABLE_NAME,
@@ -111,6 +102,14 @@ async def _command_invoke_wrapper(
         return await wrapped(*args, **kwargs)
 
     ctx = args[0]
+
+    # we don't want to create a root span for long running processes like servers
+    # otherwise all requests would have the same trace id
+    if (
+        "opentelemetry.instrumentation.asgi" in sys.modules
+        or "opentelemetry.instrumentation.wsgi" in sys.modules
+    ):
+        return await wrapped(*args, **kwargs)
 
     span_name = ctx.info_name
     span_attributes = {
