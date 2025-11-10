@@ -678,6 +678,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    span.record_exception(exception) 
                     metric_attributes[ERROR_TYPE] = type(
                         exception
                     ).__qualname__
@@ -879,6 +880,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    span.record_exception(exception) 
                     metric_attributes[ERROR_TYPE] = type(
                         exception
                     ).__qualname__
@@ -1116,6 +1118,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    span.record_exception(exception) 
                     metric_attributes[ERROR_TYPE] = type(
                         exception
                     ).__qualname__
@@ -1238,6 +1241,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    span.record_exception(exception) 
                 raise exception.with_traceback(exception.__traceback__)
 
             if duration_histogram_old is not None:
