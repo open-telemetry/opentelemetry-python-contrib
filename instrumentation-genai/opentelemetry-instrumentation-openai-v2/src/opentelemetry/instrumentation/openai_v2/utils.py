@@ -252,8 +252,10 @@ def get_llm_request_attributes(
 
     set_server_address_and_port(client_instance, attributes)
 
-    # filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}
+    # filter out None values and NOT_GIVEN values
+    return {
+        k: v for k, v in attributes.items() if v is not None and v != NOT_GIVEN
+    }
 
 
 def handle_span_exception(span, error):
