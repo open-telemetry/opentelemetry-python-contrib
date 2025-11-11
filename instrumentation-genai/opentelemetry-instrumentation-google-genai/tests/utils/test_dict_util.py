@@ -207,6 +207,25 @@ def test_flatten_with_mixed_structures():
     }
 
 
+def test_flatten_with_pydantic_class_not_instance():
+    """Test that passing a Pydantic class (not instance) doesn't cause model_dump() error."""
+    input_dict = {
+        "foo": PydanticModel,  # Class, not instance
+        "bar": "value",
+    }
+
+    # Should not raise "BaseModel.model_dump() missing 1 required positional argument: 'self'"
+    output = dict_util.flatten_dict(input_dict)
+    # The class should be converted using JSON serialization fallback
+    assert "bar" in output
+    assert output["bar"] == "value"
+    assert "foo.description" in output
+    assert "foo.properties.int_value.title" in output
+    assert "foo.properties.int_value.default" in output
+    assert "foo.properties.str_value.title" in output
+    assert "foo.properties.str_value.default" in output
+
+
 def test_converts_tuple_with_json_fallback():
     input_dict = {
         "foo": ("abc", 123),
