@@ -54,8 +54,12 @@ def _to_otel_value(python_value):
         return {
             key: _to_otel_value(val) for (key, val) in python_value.items()
         }
-    if hasattr(python_value, "model_dump"):
+    if hasattr(python_value, "model_dump") and not isinstance(
+        python_value, type
+    ):
         return python_value.model_dump()
+    if hasattr(python_value, "model_json_schema"):
+        return python_value.model_json_schema()
     if hasattr(python_value, "__dict__"):
         return _to_otel_value(python_value.__dict__)
     return repr(python_value)

@@ -17,6 +17,7 @@ import unittest
 from unittest.mock import patch
 
 from google.genai import types as genai_types
+from pydantic import BaseModel
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation._semconv import (
@@ -33,6 +34,13 @@ from opentelemetry.trace import get_tracer_provider
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from ..common import otel_mocker
+
+
+class PydanticModel(BaseModel):
+    """Used to verify handling of pydantic models in the flattener."""
+
+    str_value: str = ""
+    int_value: int = 0
 
 
 class TestCase(unittest.TestCase):
@@ -329,3 +337,19 @@ class TestCase(unittest.TestCase):
                             span.attributes,
                         )
                 self.tearDown()
+
+    def test_handles_pydantic_class_not_instance(self):
+        """Test that passing a Pydantic class (not instance) doesn't cause model_dump() error."""
+
+        def somefunction(arg=None):
+            return arg
+
+        wrapped_somefunction = self.wrap(somefunction)
+        # Pass the class itself, not an instance
+        wrapped_somefunction(PydanticModel)
+
+        # Should not raise "BaseModel.model_dump() missing 1 required positional argument: 'self'"
+        span = self.otel.get_span_named("execute_tool somefunction")
+        self.assertIsNotNone(span)
+        # The class should be handled without error
+        self.assertIn("code.function.parameters.arg.type", span.attributes)

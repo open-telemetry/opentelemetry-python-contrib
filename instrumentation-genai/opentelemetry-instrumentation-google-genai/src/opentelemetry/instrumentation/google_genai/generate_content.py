@@ -161,8 +161,10 @@ def _determine_genai_system(models_object: Union[Models, AsyncModels]):
 def _to_dict(value: object):
     if isinstance(value, dict):
         return value
-    if hasattr(value, "model_dump"):
+    if hasattr(value, "model_dump") and not isinstance(value, type):
         return value.model_dump()
+    if hasattr(value, "model_json_schema"):
+        return value.model_json_schema()
     return json.loads(json.dumps(value))
 
 
