@@ -366,7 +366,9 @@ class _GenerateContentInstrumentationHelper:
         self,
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict],
+        span: Span,
     ):
+        span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system)
         self._maybe_log_system_instruction(config=config)
         self._maybe_log_user_prompt(contents)
 
@@ -728,10 +730,7 @@ def _create_instrumented_generate_content(
         ) as span:
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
-                span.set_attribute(
-                    gen_ai_attributes.GEN_AI_SYSTEM, helper._genai_system
-                )
+                helper.process_request(contents, config, span)
             try:
                 response = wrapped_func(
                     self,
@@ -806,10 +805,7 @@ def _create_instrumented_generate_content_stream(
         ) as span:
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
-                span.set_attribute(
-                    gen_ai_attributes.GEN_AI_SYSTEM, helper._genai_system
-                )
+                helper.process_request(contents, config, span)
             try:
                 for response in wrapped_func(
                     self,
@@ -884,10 +880,7 @@ def _create_instrumented_async_generate_content(
         ) as span:
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
-                span.set_attribute(
-                    gen_ai_attributes.GEN_AI_SYSTEM, helper._genai_system
-                )
+                helper.process_request(contents, config, span)
             try:
                 response = await wrapped_func(
                     self,
@@ -963,10 +956,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         ) as span:
             span.set_attributes(request_attributes)
             if not is_experimental_mode:
-                helper.process_request(contents, config)
-                span.set_attribute(
-                    gen_ai_attributes.GEN_AI_SYSTEM, helper._genai_system
-                )
+                helper.process_request(contents, config, span)
             try:
                 response_async_generator = await wrapped_func(
                     self,
