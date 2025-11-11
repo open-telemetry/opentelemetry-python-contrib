@@ -170,7 +170,7 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def create_request_attributes(
+def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     is_experimental_mode: bool,
     allow_list: AllowList,
@@ -442,12 +442,14 @@ class _GenerateContentInstrumentationHelper:
         self,
         request_attributes: dict[str, Any],
         final_attributes: dict[str, Any],
-        is_experimental_mode: bool,
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
-        if not is_experimental_mode:
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
             return
         system_instructions = []
         if system_content := _config_to_system_instruction(config):
@@ -716,7 +718,7 @@ def _create_instrumented_generate_content(
             helper.sem_conv_opt_in_mode
             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
-        request_attributes = create_request_attributes(
+        request_attributes = _create_request_attributes(
             config,
             is_experimental_mode,
             helper._generate_content_config_key_allowlist,
@@ -755,7 +757,6 @@ def _create_instrumented_generate_content(
                 helper._maybe_log_completion_details(
                     request_attributes,
                     final_attributes,
-                    is_experimental_mode,
                     contents,
                     candidates,
                     config,
@@ -795,7 +796,7 @@ def _create_instrumented_generate_content_stream(
             helper.sem_conv_opt_in_mode
             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
-        request_attributes = create_request_attributes(
+        request_attributes = _create_request_attributes(
             config,
             is_experimental_mode,
             helper._generate_content_config_key_allowlist,
@@ -834,7 +835,6 @@ def _create_instrumented_generate_content_stream(
                 helper._maybe_log_completion_details(
                     request_attributes,
                     final_attributes,
-                    is_experimental_mode,
                     contents,
                     candidates,
                     config,
@@ -873,7 +873,7 @@ def _create_instrumented_async_generate_content(
             helper.sem_conv_opt_in_mode
             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
-        request_attributes = create_request_attributes(
+        request_attributes = _create_request_attributes(
             config,
             is_experimental_mode,
             helper._generate_content_config_key_allowlist,
@@ -912,7 +912,6 @@ def _create_instrumented_async_generate_content(
                 helper._maybe_log_completion_details(
                     request_attributes,
                     final_attributes,
-                    is_experimental_mode,
                     contents,
                     candidates,
                     config,
@@ -952,7 +951,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             helper.sem_conv_opt_in_mode
             == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
-        request_attributes = create_request_attributes(
+        request_attributes = _create_request_attributes(
             config,
             is_experimental_mode,
             helper._generate_content_config_key_allowlist,
@@ -984,7 +983,6 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 helper._maybe_log_completion_details(
                     request_attributes,
                     final_attributes,
-                    is_experimental_mode,
                     contents,
                     [],
                     config,
@@ -1015,7 +1013,6 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                         helper._maybe_log_completion_details(
                             request_attributes,
                             final_attributes,
-                            is_experimental_mode,
                             contents,
                             candidates,
                             config,

@@ -16,6 +16,7 @@ import json
 import unittest
 from unittest.mock import patch
 
+import pytest
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel, Field
 
@@ -111,28 +112,27 @@ class NonStreamingTestCase(TestCase):
         with patched_environ:
             _OpenTelemetrySemanticConventionStability._initialized = False
             _OpenTelemetrySemanticConventionStability._initialize()
-            try:
+            with pytest.raises(ValueError):
                 self.generate_content(
                     model="gemini-2.0-flash", contents="Does this work?"
                 )
-            except ValueError:
-                self.otel.assert_has_span_named(
-                    "generate_content gemini-2.0-flash"
-                )
-                span = self.otel.get_span_named(
-                    "generate_content gemini-2.0-flash"
-                )
-                self.otel.assert_has_event_named(
-                    "gen_ai.client.inference.operation.details"
-                )
-                event = self.otel.get_event_named(
-                    "gen_ai.client.inference.operation.details"
-                )
-                assert (
-                    span.attributes["error.type"]
-                    == event.attributes["error.type"]
-                    == "ValueError"
-                )
+            self.otel.assert_has_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            span = self.otel.get_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            self.otel.assert_has_event_named(
+                "gen_ai.client.inference.operation.details"
+            )
+            event = self.otel.get_event_named(
+                "gen_ai.client.inference.operation.details"
+            )
+            assert (
+                span.attributes["error.type"]
+                == event.attributes["error.type"]
+                == "ValueError"
+            )
 
     def test_generated_span_has_correct_function_name(self):
         self.configure_valid_response(text="Yep, it works!")
