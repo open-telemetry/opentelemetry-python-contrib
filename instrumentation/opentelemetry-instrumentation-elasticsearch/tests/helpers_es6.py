@@ -18,11 +18,11 @@ dsl_create_statement = {
         "doc": {
             "properties": {
                 "title": {
-                    "analyzer": "snowball",
-                    "fields": {"raw": {"type": "keyword"}},
-                    "type": "text",
+                    "analyzer": "?",
+                    "fields": {"raw": {"type": "?"}},
+                    "type": "?",
                 },
-                "body": {"analyzer": "snowball", "type": "text"},
+                "body": {"analyzer": "?", "type": "?"},
             }
         }
     }
