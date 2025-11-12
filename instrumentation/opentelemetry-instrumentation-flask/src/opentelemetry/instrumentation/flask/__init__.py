@@ -457,7 +457,9 @@ def _rewrapped_app(
                     duration_attrs_old[HTTP_TARGET] = str(request_route)
 
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_old = enrich_metric_attributes(duration_attrs_old)
+                duration_attrs_old = enrich_metric_attributes(
+                    duration_attrs_old
+                )
 
                 duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs_old
@@ -471,7 +473,9 @@ def _rewrapped_app(
                     duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
                 # Enhance attributes with any custom labeler attributes
-                duration_attrs_new = enrich_metric_attributes(duration_attrs_new)
+                duration_attrs_new = enrich_metric_attributes(
+                    duration_attrs_new
+                )
 
                 duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs_new
