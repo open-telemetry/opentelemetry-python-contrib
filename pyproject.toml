@@ -198,7 +198,6 @@ pythonVersion = "3.9"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
-  "instrumentation-genai/opentelemetry-instrumentation-google-genai",
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-threading",
