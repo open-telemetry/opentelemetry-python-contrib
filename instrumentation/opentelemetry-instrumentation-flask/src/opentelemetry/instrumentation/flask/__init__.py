@@ -424,17 +424,14 @@ def _rewrapped_app(
                 # Get the span from wrapped_app_environ and re-create context manually
                 # to pass to histogram for exemplars generation
                 span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-                if span:
-                    exemplar_context = context.set_value(_SPAN_KEY, span)
-                    duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0),
-                        duration_attrs_old,
-                        context=exemplar_context,
-                    )
-                else:
-                    duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0), duration_attrs_old
-                    )
+                metrics_context = (
+                    context.set_value(_SPAN_KEY, span) if span else None
+                )
+                duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=metrics_context,
+                )
             if duration_histogram_new:
                 duration_attrs_new = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
@@ -446,17 +443,14 @@ def _rewrapped_app(
                 # Get the span from wrapped_app_environ and re-create context manually
                 # to pass to histogram for exemplars generation
                 span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-                if span:
-                    exemplar_context = context.set_value(_SPAN_KEY, span)
-                    duration_histogram_new.record(
-                        max(duration_s, 0),
-                        duration_attrs_new,
-                        context=exemplar_context,
-                    )
-                else:
-                    duration_histogram_new.record(
-                        max(duration_s, 0), duration_attrs_new
-                    )
+                metrics_context = (
+                    context.set_value(_SPAN_KEY, span) if span else None
+                )
+                duration_histogram_new.record(
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=metrics_context,
+                )
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
 
