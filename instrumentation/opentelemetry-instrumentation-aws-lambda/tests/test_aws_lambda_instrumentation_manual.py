@@ -727,6 +727,53 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
         )
 
+    def test_slash_delimited_handler_path(self):
+        """Test that slash-delimited handler paths work correctly.
+
+        AWS Lambda accepts both slash-delimited (python/functions/api.handler)
+        and dot-delimited (python.functions.api.handler) handler paths.
+        This test ensures the instrumentation handles both formats.
+        """
+        # Test slash-delimited format
+        slash_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests/mocks/lambda_function.handler"},
+        )
+        slash_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertSpanHasAttributes(
+            spans[0],
+            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+        )
+
+        slash_env_patch.stop()
+        AwsLambdaInstrumentor().uninstrument()
+        self.memory_exporter.clear()
+
+        # Test dot-delimited format (should still work)
+        dot_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
+        )
+        dot_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertSpanHasAttributes(
+            spans[0],
+            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+        )
+
+        dot_env_patch.stop()
+
     def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(
         self,
     ):

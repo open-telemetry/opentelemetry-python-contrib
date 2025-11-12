@@ -20,11 +20,14 @@ pytest-asyncio==0.21.0
 pytest-vcr==1.0.2
 
 google-auth==2.15.0
-google-genai==1.0.0
-opentelemetry-api==1.31.1
-opentelemetry-sdk==1.31.1
-opentelemetry-semantic-conventions==0.52b1
-opentelemetry-instrumentation==0.52b1
+google-genai==1.32.0
+opentelemetry-api==1.37.0
+opentelemetry-sdk==1.37.0
+opentelemetry-semantic-conventions==0.58b0
+opentelemetry-instrumentation==0.58b0
+opentelemetry-util-genai[upload]==0.2b0
+
+fsspec==2025.9.0
 
 # Install locally from the folder. This path is relative to the
 # root directory, given invocation from "tox" at root level.

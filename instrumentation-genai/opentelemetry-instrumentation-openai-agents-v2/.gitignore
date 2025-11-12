@@ -1,0 +1,3 @@
+examples/.env
+examples/openai_agents_multi_agent_travel/.env
+examples/**/.env
