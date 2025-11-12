@@ -83,7 +83,9 @@ class TestElasticsearchIntegration(TestBase):
         "elasticsearch.url": "/test-index/_search",
         "elasticsearch.method": helpers.dsl_search_method,
         "elasticsearch.target": "test-index",
-        DB_STATEMENT: str({"query": {"bool": {"filter": "?"}}}),
+        DB_STATEMENT: str(
+            {"query": {"bool": {"filter": [{"term": {"author": "?"}}]}}}
+        ),
     }
 
     create_attributes = {
@@ -419,8 +421,8 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             literal_eval(span.attributes[DB_STATEMENT]),
             {
-                "body": "A few words here, a few words there",
-                "title": "About searching",
+                "body": "?",
+                "title": "?",
             },
         )
 
@@ -581,6 +583,18 @@ class TestElasticsearchIntegration(TestBase):
         self.assertEqual(
             sanitize_body(json.dumps(sanitization_queries.interval_query)),
             str(sanitization_queries.interval_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.term_query),
+            str(sanitization_queries.term_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.aggregation_query),
+            str(sanitization_queries.aggregation_query_sanitized),
+        )
+        self.assertEqual(
+            sanitize_body(sanitization_queries.script_query),
+            str(sanitization_queries.script_query_sanitized),
         )
 
     def test_bulk(self, request_mock):

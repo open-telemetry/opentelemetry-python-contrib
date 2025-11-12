@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Minor change to check LRU cache in Completion Hook before acquiring semaphore/thread ([#3907](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3907)).
+- Ensure log event is written and completion hook is called even when model call results in exception. Put new
+log event (` gen_ai.client.inference.operation.details`) behind the flag `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.
+Ensure same sem conv attributes are on the log and span. Fix an issue where the instrumentation would crash when a pydantic.BaseModel class was passed as the response schema ([#3905](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3905)).
 
 ## Version 0.4b0 (2025-10-16)
 

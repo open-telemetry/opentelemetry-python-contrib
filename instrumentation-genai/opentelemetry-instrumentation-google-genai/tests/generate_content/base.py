@@ -94,16 +94,19 @@ class TestCase(CommonTestCaseBase):
         response = create_response(**kwargs)
         self._responses.append(response)
 
-    def _create_and_install_mocks(self):
+    def configure_exception(self, e, **kwargs):
+        self._create_and_install_mocks(e)
+
+    def _create_and_install_mocks(self, e=None):
         if self._generate_content_mock is not None:
             return
         self.reset_client()
         self.reset_instrumentation()
-        self._generate_content_mock = self._create_nonstream_mock()
-        self._generate_content_stream_mock = self._create_stream_mock()
+        self._generate_content_mock = self._create_nonstream_mock(e)
+        self._generate_content_stream_mock = self._create_stream_mock(e)
         self._install_mocks()
 
-    def _create_nonstream_mock(self):
+    def _create_nonstream_mock(self, e=None):
         mock = unittest.mock.MagicMock()
 
         def _default_impl(*args, **kwargs):
@@ -114,17 +117,20 @@ class TestCase(CommonTestCaseBase):
             self._response_index += 1
             return result
 
-        mock.side_effect = _default_impl
+        mock.side_effect = e or _default_impl
         return mock
 
-    def _create_stream_mock(self):
+    def _create_stream_mock(self, e=None):
         mock = unittest.mock.MagicMock()
 
         def _default_impl(*args, **kwargs):
             for response in self._responses:
                 yield response
 
-        mock.side_effect = _default_impl
+        if not e:
+            mock.side_effect = _default_impl
+        else:
+            mock.side_effect = e
         return mock
 
     def _install_mocks(self):
