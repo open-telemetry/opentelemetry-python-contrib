@@ -198,7 +198,12 @@ class CommandTracer(monitoring.CommandListener):
         if span is None:
             return
         if span.is_recording():
-            span.set_status(Status(StatusCode.ERROR, event.failure))
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    event.failure.get("errmsg", "Unknown error"),
+                )
+            )
             try:
                 self.failed_hook(span, event)
             except (
