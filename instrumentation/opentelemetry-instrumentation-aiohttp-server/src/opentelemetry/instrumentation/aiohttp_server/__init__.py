@@ -405,8 +405,9 @@ def create_aiohttp_middleware(
     @web.middleware
     async def _middleware(request, handler):
         """Middleware for aiohttp implementing tracing logic"""
-        if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-            request.url.path
+        if (
+            not is_http_instrumentation_enabled()
+            or _excluded_urls.url_disabled(request.url.path)
         ):
             return await handler(request)
 
@@ -436,8 +437,8 @@ def create_aiohttp_middleware(
             kind=trace.SpanKind.SERVER,
         ) as span:
             if span.is_recording():
-                request_headers_attributes = collect_request_headers_attributes(
-                    request
+                request_headers_attributes = (
+                    collect_request_headers_attributes(request)
                 )
                 request_attrs.update(request_headers_attributes)
                 span.set_attributes(request_attrs)
