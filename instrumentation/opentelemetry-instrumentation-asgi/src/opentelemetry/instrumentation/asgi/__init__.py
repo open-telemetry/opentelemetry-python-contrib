@@ -117,7 +117,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -268,7 +268,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import set_span_in_context
+from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -422,8 +422,8 @@ def collect_custom_headers_attributes(
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
-    Refer specifications:
-     - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    Refer to semantic conventions:
+     - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
     headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
@@ -445,7 +445,20 @@ def get_host_port_url_tuple(scope):
     """Returns (host, port, full_url) tuple."""
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
+
+    host_header = asgi_getter.get(scope, "host")
+    if host_header:
+        host_value = host_header[0]
+        # Ensure host_value is a string, not bytes
+        if isinstance(host_value, bytes):
+            host_value = _decode_header_item(host_value)
+
+        url_host = host_value
+
+    else:
+        url_host = server[0] + (":" + str(port) if str(port) != "80" else "")
     server_host = server[0] + (":" + str(port) if str(port) != "80" else "")
+
     # using the scope path is enough, see:
     # - https://asgi.readthedocs.io/en/latest/specs/www.html#http-connection-scope (see: root_path and path)
     # - https://asgi.readthedocs.io/en/latest/specs/www.html#wsgi-compatibility (see: PATH_INFO)
@@ -453,7 +466,7 @@ def get_host_port_url_tuple(scope):
     #       -> that means that the path should contain the root_path already, so prefixing it again is not necessary
     # - https://wsgi.readthedocs.io/en/latest/definitions.html#envvar-PATH_INFO
     full_path = scope.get("path", "")
-    http_url = scope.get("scheme", "http") + "://" + server_host + full_path
+    http_url = scope.get("scheme", "http") + "://" + url_host + full_path
     return server_host, port, http_url
 
 
@@ -646,9 +659,23 @@ class OpenTelemetryMiddleware:
         self.default_span_details = (
             default_span_details or get_default_span_details
         )
-        self.server_request_hook = server_request_hook
-        self.client_request_hook = client_request_hook
-        self.client_response_hook = client_response_hook
+
+        def failsafe(func):
+            if func is None:
+                return None
+
+            @wraps(func)
+            def wrapper(span: Span, *args, **kwargs):
+                try:
+                    func(span, *args, **kwargs)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    span.record_exception(exc)
+
+            return wrapper
+
+        self.server_request_hook = failsafe(server_request_hook)
+        self.client_request_hook = failsafe(client_request_hook)
+        self.client_response_hook = failsafe(client_response_hook)
         self.content_length_header = None
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 

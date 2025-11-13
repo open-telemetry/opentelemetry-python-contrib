@@ -384,7 +384,8 @@ def _instrument(
                             result.get("statusCode"),
                         )
         finally:
-            context_api.detach(token)
+            if token:
+                context_api.detach(token)
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
@@ -459,6 +460,8 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             )
             return
         # pylint: disable=attribute-defined-outside-init
+        # Convert slash-delimited paths to dot-delimited for valid Python imports
+        lambda_handler = lambda_handler.replace("/", ".")
         (
             self._wrapped_module_name,
             self._wrapped_function_name,

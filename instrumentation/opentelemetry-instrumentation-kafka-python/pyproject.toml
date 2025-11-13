@@ -26,12 +26,13 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.5",
-  "opentelemetry-instrumentation == 0.56b0.dev",
-  "opentelemetry-semantic-conventions == 0.56b0.dev",
+  "opentelemetry-instrumentation == 0.60b0.dev",
+  "opentelemetry-semantic-conventions == 0.60b0.dev",
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
   "kafka-python >= 2.0, < 3.0",
   "kafka-python-ng >= 2.0, < 3.0"
 ]

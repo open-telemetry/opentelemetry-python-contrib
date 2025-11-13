@@ -39,7 +39,7 @@ Configuration
 
 The following environment variables are supported as configuration options:
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
+- ``OTEL_PYTHON_TORNADO_EXCLUDED_URLS`` (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations)
 
 A comma separated list of paths that should not be automatically traced. For example, if this is set to
 
@@ -101,7 +101,7 @@ created span and some other contextual information. Example:
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -162,6 +162,7 @@ from timeit import default_timer
 from typing import Collection, Dict
 
 import tornado.web
+import tornado.websocket
 import wrapt
 from wrapt import wrap_function_wrapper
 
@@ -210,6 +211,7 @@ from .client import fetch_async  # pylint: disable=E0401
 
 _logger = getLogger(__name__)
 _TraceContext = namedtuple("TraceContext", ["activation", "span", "token"])
+_HANDLER_STATE_KEY = "_otel_state_key"
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
@@ -362,12 +364,20 @@ def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
         "prepare",
         partial(_prepare, tracer, server_histograms, request_hook),
     )
-    _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     _wrap(
         cls,
         "log_exception",
         partial(_log_exception, tracer, server_histograms),
     )
+
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        _wrap(
+            cls,
+            "on_close",
+            partial(_websockethandler_on_close, tracer, server_histograms),
+        )
+    else:
+        _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
     return True
 
 
@@ -376,8 +386,11 @@ def unpatch_handler_class(cls):
         return
 
     unwrap(cls, "prepare")
-    unwrap(cls, "on_finish")
     unwrap(cls, "log_exception")
+    if issubclass(cls, tornado.websocket.WebSocketHandler):
+        unwrap(cls, "on_close")
+    else:
+        unwrap(cls, "on_finish")
     delattr(cls, _OTEL_PATCHED_KEY)
 
 
@@ -390,10 +403,14 @@ def _wrap(cls, method_name, wrapper):
 def _prepare(
     tracer, server_histograms, request_hook, func, handler, args, kwargs
 ):
-    server_histograms[_START_TIME] = default_timer()
-
     request = handler.request
-    if _excluded_urls.url_disabled(request.uri):
+    otel_handler_state = {
+        _START_TIME: default_timer(),
+        "exclude_request": _excluded_urls.url_disabled(request.uri),
+    }
+    setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
+
+    if otel_handler_state["exclude_request"]:
         return func(*args, **kwargs)
 
     _record_prepare_metrics(server_histograms, handler)
@@ -405,13 +422,21 @@ def _prepare(
 
 
 def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
-    response = func(*args, **kwargs)
+    try:
+        return func(*args, **kwargs)
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
-    _record_on_finish_metrics(server_histograms, handler)
 
-    _finish_span(tracer, handler)
-
-    return response
+def _websockethandler_on_close(
+    tracer, server_histograms, func, handler, args, kwargs
+):
+    try:
+        func()
+    finally:
+        _record_on_finish_metrics(server_histograms, handler)
+        _finish_span(tracer, handler)
 
 
 def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
@@ -602,9 +627,11 @@ def _record_prepare_metrics(server_histograms, handler):
 
 
 def _record_on_finish_metrics(server_histograms, handler, error=None):
-    elapsed_time = round(
-        (default_timer() - server_histograms[_START_TIME]) * 1000
-    )
+    otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
+    if otel_handler_state.get("exclude_request"):
+        return
+    start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
+    elapsed_time = round((default_timer() - start_time) * 1000)
 
     response_size = int(handler._headers.get("Content-Length", 0))
     metric_attributes = _create_metric_attributes(handler)

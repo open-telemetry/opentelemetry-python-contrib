@@ -199,6 +199,24 @@ Or if you are using the transport classes directly:
         response_hook=async_response_hook
     )
 
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_HTTPX_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_HTTPX_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 API
 ---
 """
@@ -207,8 +225,8 @@ from __future__ import annotations
 
 import logging
 import typing
-from asyncio import iscoroutinefunction
 from functools import partial
+from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
@@ -259,7 +277,12 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import redact_url, sanitize_method
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    redact_url,
+    sanitize_method,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -304,7 +327,7 @@ def _extract_parameters(
     args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
 ) -> tuple[
     bytes,
-    httpx.URL,
+    httpx.URL | tuple[bytes, bytes, int | None, bytes],
     httpx.Headers | None,
     httpx.SyncByteStream | httpx.AsyncByteStream | None,
     dict[str, typing.Any],
@@ -328,6 +351,22 @@ def _extract_parameters(
         )
 
     return method, url, headers, stream, extensions
+
+
+def _normalize_url(
+    url: httpx.URL | tuple[bytes, bytes, int | None, bytes],
+) -> str:
+    if isinstance(url, tuple):
+        scheme, host, port, path = [
+            part.decode() if isinstance(part, bytes) else part for part in url
+        ]
+        return (
+            f"{scheme}://{host}:{port}{path}"
+            if port
+            else f"{scheme}://{host}{path}"
+        )
+
+    return str(url)
 
 
 def _inject_propagation_headers(headers, args, kwargs):
@@ -417,7 +456,6 @@ def _apply_request_client_attributes_to_span(
 
 def _apply_response_client_attributes_to_span(
     span: Span,
-    metric_attributes: dict[str, typing.Any],
     status_code: int,
     http_version: str,
     semconv: _StabilityMode,
@@ -433,6 +471,30 @@ def _apply_response_client_attributes_to_span(
     http_status_code = http_status_to_status_code(status_code)
     span.set_status(http_status_code)
 
+    if http_status_code == StatusCode.ERROR and _report_new(semconv):
+        # http semconv transition: new error.type
+        span_attributes[ERROR_TYPE] = str(status_code)
+
+    if http_version and _report_new(semconv):
+        # http semconv transition: http.flavor -> network.protocol.version
+        _set_http_network_protocol_version(
+            span_attributes,
+            http_version.replace("HTTP/", ""),
+            semconv,
+        )
+
+    for key, val in span_attributes.items():
+        span.set_attribute(key, val)
+
+
+def _apply_response_client_attributes_to_metrics(
+    span: Span | None,
+    metric_attributes: dict[str, typing.Any],
+    status_code: int,
+    http_version: str,
+    semconv: _StabilityMode,
+) -> None:
+    """Apply response attributes to metric attributes."""
     # Set HTTP status code in metric attributes
     _set_status(
         span,
@@ -443,26 +505,12 @@ def _apply_response_client_attributes_to_span(
         sem_conv_opt_in_mode=semconv,
     )
 
-    if http_status_code == StatusCode.ERROR and _report_new(semconv):
-        # http semconv transition: new error.type
-        span_attributes[ERROR_TYPE] = str(status_code)
-
     if http_version and _report_new(semconv):
-        # http semconv transition: http.flavor -> network.protocol.version
         _set_http_network_protocol_version(
             metric_attributes,
             http_version.replace("HTTP/", ""),
             semconv,
         )
-        if _report_new(semconv):
-            _set_http_network_protocol_version(
-                span_attributes,
-                http_version.replace("HTTP/", ""),
-                semconv,
-            )
-
-    for key, val in span_attributes.items():
-        span.set_attribute(key, val)
 
 
 class SyncOpenTelemetryTransport(httpx.BaseTransport):
@@ -524,6 +572,7 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
 
     def __enter__(self) -> SyncOpenTelemetryTransport:
         self._transport.__enter__()
@@ -553,6 +602,12 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return self._transport.handle_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -592,11 +647,19 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
@@ -709,6 +772,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
 
     async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
@@ -736,6 +800,12 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -777,11 +847,19 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
@@ -875,6 +953,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             if iscoroutinefunction(async_response_hook)
             else None
         )
+        excluded_urls = get_excluded_urls("HTTPX")
 
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -923,6 +1002,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
         wrap_function_wrapper(
@@ -936,6 +1016,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 async_request_hook=async_request_hook,
                 async_response_hook=async_response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
 
@@ -955,6 +1036,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         request_hook: RequestHook,
         response_hook: ResponseHook,
+        excluded_urls: ExcludeList | None,
     ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
@@ -962,6 +1044,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -1001,11 +1087,19 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,
@@ -1063,6 +1157,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         async_request_hook: AsyncRequestHook,
         async_response_hook: AsyncResponseHook,
+        excluded_urls: ExcludeList | None,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
@@ -1070,6 +1165,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return await wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -1109,11 +1208,19 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     _extract_response(response)
                 )
 
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
+                )
+
                 if span.is_recording():
                     # apply http client response attributes according to semconv
                     _apply_response_client_attributes_to_span(
                         span,
-                        metric_attributes,
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,
@@ -1157,7 +1264,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
     @classmethod
     def instrument_client(
         cls,
@@ -1233,6 +1340,8 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             # response_hook already set
             async_response_hook = None
 
+        excluded_urls = get_excluded_urls("HTTPX")
+
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -1245,6 +1354,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     request_hook=request_hook,
                     response_hook=response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -1260,6 +1370,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             request_hook=request_hook,
                             response_hook=response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
@@ -1275,6 +1386,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     async_request_hook=async_request_hook,
                     async_response_hook=async_response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -1290,6 +1402,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             async_request_hook=async_request_hook,
                             async_response_hook=async_response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True

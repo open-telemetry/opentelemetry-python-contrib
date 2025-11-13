@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from argparse import REMAINDER, ArgumentParser
 from logging import getLogger
 from os import environ, execl, getcwd
@@ -23,6 +25,9 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_configurators,
     _load_distro,
     _load_instrumentors,
+)
+from opentelemetry.instrumentation.environment_variables import (
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
 )
 from opentelemetry.instrumentation.utils import _python_path_without_directory
 from opentelemetry.instrumentation.version import __version__
@@ -129,6 +134,30 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
         environ["PYTHONPATH"] = _python_path_without_directory(
             environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
         )
+
+    # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
+    # opentelemetry operator
+    gevent_patch: str | None = environ.get(
+        OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
+    )
+    if gevent_patch is not None:
+        if gevent_patch != "patch_all":
+            _logger.error(
+                "%s value must be `patch_all`",
+                OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
+            )
+        else:
+            try:
+                # pylint: disable=import-outside-toplevel
+                from gevent import monkey  # noqa: PLC0415
+
+                getattr(monkey, gevent_patch)()
+            except ImportError:
+                _logger.exception(
+                    "Failed to monkey patch with gevent because gevent is not available"
+                )
+                if not swallow_exceptions:
+                    raise
 
     try:
         distro = _load_distro()

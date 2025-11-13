@@ -22,73 +22,6 @@ instrumentation via the following code:
 
 .. _sqlalchemy: https://pypi.org/project/sqlalchemy/
 
-SQLCOMMENTER
-****************************************
-You can optionally configure SQLAlchemy instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-
-    SQLAlchemyInstrumentor().instrument(enable_commenter=True, commenter_options={})
-
-
-For example,
-::
-
-    Invoking engine.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
-
-db_driver = True(Default) or False
-
-For example,
-::
-Enabling this flag will add any underlying driver like psycopg2 /*db_driver='psycopg2'*/
-
-db_framework = True(Default) or False
-
-For example,
-::
-Enabling this flag will add db_framework and it's version /*db_framework='sqlalchemy:0.41b0'*/
-
-opentelemetry_values = True(Default) or False
-
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
-
-SQLComment in span attribute
-****************************
-If sqlcommenter is enabled, you can further configure SQLAlchemy instrumentation to append sqlcomment to the `db.statement` span attribute for convenience of your platform.
-
-.. code:: python
-
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-
-    SQLAlchemyInstrumentor().instrument(
-        enable_commenter=True,
-        commenter_options={},
-        enable_attribute_commenter=True,
-    )
-
-
-For example,
-::
-
-    Invoking `engine.execute("select * from auth_users")` will lead to sql query "select * from auth_users" but when SQLCommenter and `attribute_commenter` is enabled
-    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
-
-Warning: capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
-
-
 Usage
 -----
 .. code:: python
@@ -116,6 +49,85 @@ Usage
     SQLAlchemyInstrumentor().instrument(
         engine=engine.sync_engine
     )
+
+Configuration
+-------------
+
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    SQLAlchemyInstrumentor().instrument(enable_commenter=True)
+
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    # Opts into sqlcomment for SQLAlchemy trace integration.
+    # Opts out of tags for db_driver, db_framework.
+    SQLAlchemyInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "db_driver": False,
+            "db_framework": False,
+        }
+    )
+
+Available commenter_options
+###########################
+
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
+
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name.                                     | ``db_driver='psycopg2'``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``db_framework``          | Database framework name with version.                     | ``db_framework='sqlalchemy:1.4.0'``                                       |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+    # Opts into sqlcomment for SQLAlchemy trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    SQLAlchemyInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={},
+        enable_attribute_commenter=True,
+    )
+
+Warning:
+    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---

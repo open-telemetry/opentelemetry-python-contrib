@@ -64,6 +64,18 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-google-genai",
+    # Langchain instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-langchain",
+    # Weaviate instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-weaviate",
+    # OpenAI Agents instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-openai-agents-v2",
 ]
 
 # Static version specifiers for instrumentations that are released independently
@@ -84,9 +96,17 @@ def main():
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
-        if not pkg["instruments"]:
+        if not pkg["instruments"] and not pkg["instruments-any"]:
             default_instrumentations.elts.append(ast.Str(pkg["requirement"]))
         for target_pkg in pkg["instruments"]:
+            libraries.elts.append(
+                ast.Dict(
+                    keys=[ast.Str("library"), ast.Str("instrumentation")],
+                    values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
+                )
+            )
+        # instruments-any is an optional field that can be used instead of or in addition to _instruments. While _instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
+        for target_pkg in pkg["instruments-any"]:
             libraries.elts.append(
                 ast.Dict(
                     keys=[ast.Str("library"), ast.Str("instrumentation")],

@@ -59,20 +59,27 @@ Usage
     cursor.close()
     instrumented_cnx.close()
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure PyMySQL instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
+Configuration
+-------------
 
-Usage
------
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
 
     import pymysql
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
-    PyMySQLInstrumentor().instrument(enable_commenter=True, commenter_options={})
+    PyMySQLInstrumentor().instrument(enable_commenter=True)
 
     cnx = pymysql.connect(database="MySQL_Database")
     cursor = cnx.cursor()
@@ -82,72 +89,69 @@ Usage
     cursor.close()
     cnx.close()
 
-For example,
-::
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
 
-   Invoking cursor.execute("INSERT INTO test (testField) VALUES (123)") will lead to sql query "INSERT INTO test (testField) VALUES (123)" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
+.. code:: python
 
+    import pymysql
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+    # Opts into sqlcomment for PyMySQL trace integration.
+    # Opts out of tags for mysql_client_version, db_driver.
+    PyMySQLInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "mysql_client_version": False,
+            "db_driver": False,
+        }
+    )
 
-db_driver = True(Default) or False
+Available commenter_options
+###########################
 
-For example,
-::
-Enabling this flag will add pymysql and its version, e.g. /*pymysql%%3A1.2.3*/
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-dbapi_threadsafety = True(Default) or False
-
-For example,
-::
-Enabling this flag will add threadsafety /*dbapi_threadsafety=2*/
-
-dbapi_level = True(Default) or False
-
-For example,
-::
-Enabling this flag will add dbapi_level /*dbapi_level='2.0'*/
-
-mysql_client_version = True(Default) or False
-
-For example,
-::
-Enabling this flag will add mysql_client_version /*mysql_client_version='123'*/
-
-driver_paramstyle = True(Default) or False
-
-For example,
-::
-Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
-
-opentelemetry_values = True(Default) or False
-
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version.                        | ``pymysql='1.2.3'``                                                       |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``mysql_client_version``  | MySQL client version.                                     | ``mysql_client_version='123'``                                            |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
 SQLComment in span attribute
 ****************************
-If sqlcommenter is enabled, you can optionally configure PyMySQL instrumentation to append sqlcomment to query span attribute for convenience of your platform.
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
 
 .. code:: python
 
     from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 
+    # Opts into sqlcomment for PyMySQL trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
     PyMySQLInstrumentor().instrument(
         enable_commenter=True,
         enable_attribute_commenter=True,
     )
 
-
-For example,
-::
-
-    Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
-    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
+Warning:
+    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---

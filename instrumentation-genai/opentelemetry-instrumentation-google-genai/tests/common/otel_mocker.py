@@ -13,17 +13,14 @@
 # limitations under the License.
 
 
-import opentelemetry._events
 import opentelemetry._logs._internal
 import opentelemetry.metrics._internal
 import opentelemetry.trace
-from opentelemetry._events import (
-    get_event_logger_provider,
-    set_event_logger_provider,
+from opentelemetry._logs import (
+    get_logger_provider,
+    set_logger_provider,
 )
-from opentelemetry._logs import get_logger_provider, set_logger_provider
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
-from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     InMemoryLogRecordExporter,
@@ -43,7 +40,6 @@ from opentelemetry.util._once import Once
 def _bypass_otel_once():
     opentelemetry.trace._TRACER_PROVIDER_SET_ONCE = Once()
     opentelemetry._logs._internal._LOGGER_PROVIDER_SET_ONCE = Once()
-    opentelemetry._events._EVENT_LOGGER_PROVIDER_SET_ONCE = Once()
     opentelemetry.metrics._internal._METER_PROVIDER_SET_ONCE = Once()
 
 
@@ -51,14 +47,12 @@ class OTelProviderSnapshot:
     def __init__(self):
         self._tracer_provider = get_tracer_provider()
         self._logger_provider = get_logger_provider()
-        self._event_logger_provider = get_event_logger_provider()
         self._meter_provider = get_meter_provider()
 
     def restore(self):
         _bypass_otel_once()
         set_tracer_provider(self._tracer_provider)
         set_logger_provider(self._logger_provider)
-        set_event_logger_provider(self._event_logger_provider)
         set_meter_provider(self._meter_provider)
 
 
@@ -81,6 +75,10 @@ class _LogWrapper:
     @property
     def body(self):
         return self._log_data.log_record.body
+
+    @property
+    def event_name(self):
+        return self._log_data.log_record.event_name
 
     def __str__(self):
         return self._log_data.log_record.to_json()
@@ -166,39 +164,37 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert (
-            span is not None
-        ), f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        assert span is not None, (
+            f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        )
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
         assert span is None, f"Found unexpected span named {name}"
 
     def get_event_named(self, event_name):
-        for event in self.get_finished_logs():
-            event_name_attr = event.attributes.get("event.name")
-            if event_name_attr is None:
-                continue
-            if event_name_attr == event_name:
-                return event
-        return None
+        return next(
+            (
+                event
+                for event in self.get_finished_logs()
+                if event.event_name == event_name
+            ),
+            None,
+        )
 
     def get_events_named(self, event_name):
-        result = []
-        for event in self.get_finished_logs():
-            event_name_attr = event.attributes.get("event.name")
-            if event_name_attr is None:
-                continue
-            if event_name_attr == event_name:
-                result.append(event)
-        return result
+        return [
+            event
+            for event in self.get_finished_logs()
+            if event.event_name == event_name
+        ]
 
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert (
-            event is not None
-        ), f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        assert event is not None, (
+            f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        )
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)
@@ -219,8 +215,6 @@ class OTelMocker:
         provider = LoggerProvider()
         provider.add_log_record_processor(SimpleLogRecordProcessor(self._logs))
         set_logger_provider(provider)
-        event_provider = EventLoggerProvider(logger_provider=provider)
-        set_event_logger_provider(event_provider)
 
     def _install_metrics(self):
         provider = MeterProvider(metric_readers=[self._metrics])
