@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
 - `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
   ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
+- Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
+  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
 
 ### Fixed
 
