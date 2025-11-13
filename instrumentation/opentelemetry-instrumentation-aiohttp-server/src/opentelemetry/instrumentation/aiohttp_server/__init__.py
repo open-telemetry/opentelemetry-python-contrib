@@ -29,6 +29,7 @@ Usage
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
+    # Optional: configure non-default TracerProvider, resource, sampler
     resource = Resource(attributes={"service.name": "my-aiohttp-service"})
     sampler = ParentBased(root=TraceIdRatioBased(rate=0.25))  # sample 25% of traces
     AioHttpServerInstrumentor().instrument(tracer_provider=TracerProvider(resource=resource, sampler=sampler))
