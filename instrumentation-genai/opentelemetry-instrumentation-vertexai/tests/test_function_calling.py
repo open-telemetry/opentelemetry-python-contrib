@@ -1,4 +1,8 @@
 import pytest
+from tests.shared_test_utils import (
+    ask_about_weather,
+    ask_about_weather_function_response,
+)
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
@@ -6,10 +10,6 @@ from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
-)
-from tests.shared_test_utils import (
-    ask_about_weather,
-    ask_about_weather_function_response,
 )
 
 
