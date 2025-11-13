@@ -58,7 +58,7 @@ class TestUploadEntryPoint(TestCase):
     def test_upload_entry_point_no_fsspec(self):
         """Tests that the a no-op uploader is used when fsspec is not installed"""
 
-        from opentelemetry.util.genai import _upload
+        from opentelemetry.util.genai import _upload  # noqa: PLC0415
 
         # Simulate fsspec imports failing
         with patch.dict(

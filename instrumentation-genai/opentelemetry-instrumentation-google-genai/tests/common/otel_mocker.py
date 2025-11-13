@@ -164,9 +164,9 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert (
-            span is not None
-        ), f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        assert span is not None, (
+            f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        )
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
@@ -192,9 +192,9 @@ class OTelMocker:
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert (
-            event is not None
-        ), f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        assert event is not None, (
+            f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        )
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)
