@@ -29,7 +29,7 @@ def upload_completion_hook() -> CompletionHook:
     # If fsspec is not installed the hook will be a no-op.
     try:
         # pylint: disable=import-outside-toplevel
-        from opentelemetry.util.genai._upload.completion_hook import (
+        from opentelemetry.util.genai._upload.completion_hook import (  # noqa: PLC0415
             UploadCompletionHook,
         )
     except ImportError:
