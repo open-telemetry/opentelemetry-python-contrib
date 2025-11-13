@@ -320,6 +320,7 @@ def _get_sorted_metrics(metrics_data):
         key=lambda m: m.name,
     )
 
+
 @pytest.mark.asyncio
 async def test_custom_request_headers(tracer, aiohttp_server, monkeypatch):
     # pylint: disable=too-many-locals

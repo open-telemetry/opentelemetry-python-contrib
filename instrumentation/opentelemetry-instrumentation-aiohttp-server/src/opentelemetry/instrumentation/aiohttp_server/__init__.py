@@ -405,18 +405,17 @@ def create_aiohttp_middleware(
     @web.middleware
     async def _middleware(request, handler):
         """Middleware for aiohttp implementing tracing logic"""
-        if (
-            not is_http_instrumentation_enabled()
-            or _excluded_urls.url_disabled(request.url.path)
+        if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
+            request.url.path
         ):
             return await handler(request)
 
-        span_name, additional_attributes = get_default_span_details(request)
+        span_name = get_default_span_name(request)
 
-        req_attrs = collect_request_attributes(request)
-        duration_attrs = _parse_duration_attrs(req_attrs)
+        request_attrs = collect_request_attributes(request)
+        duration_attrs = _parse_duration_attrs(request_attrs)
         active_requests_count_attrs = _parse_active_request_count_attrs(
-            req_attrs
+            request_attrs
         )
 
         duration_histogram = meter.create_histogram(
@@ -436,9 +435,12 @@ def create_aiohttp_middleware(
             context=extract(request, getter=getter),
             kind=trace.SpanKind.SERVER,
         ) as span:
-            attributes = collect_request_attributes(request)
-            attributes.update(additional_attributes)
-            span.set_attributes(attributes)
+            if span.is_recording():
+                request_headers_attributes = collect_request_headers_attributes(
+                    request
+                )
+                request_attrs.update(request_headers_attributes)
+                span.set_attributes(request_attrs)
             start = default_timer()
             active_requests_counter.add(1, active_requests_count_attrs)
             try:
