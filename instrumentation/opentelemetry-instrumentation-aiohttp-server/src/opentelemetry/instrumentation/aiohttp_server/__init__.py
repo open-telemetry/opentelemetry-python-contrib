@@ -201,7 +201,7 @@ from opentelemetry.util.http import (
     normalise_response_header_name,
     redact_url,
 )
-
+from typing import Optional
 _duration_attrs = [
     HTTP_METHOD,
     HTTP_HOST,
@@ -394,7 +394,7 @@ getter = AiohttpGetter()
 
 
 def create_aiohttp_middleware(
-    tracer_provider: trace.TracerProvider | None = None,
+    tracer_provider: Optional[trace.TracerProvider] = None,
 ):
     _tracer = (
         tracer_provider.get_tracer(__name__, __version__)
@@ -468,7 +468,7 @@ middleware = create_aiohttp_middleware()  # for backwards compatibility
 
 
 def create_instrumented_application(
-    tracer_provider: trace.TracerProvider | None = None,
+    tracer_provider: Optional[trace.TracerProvider] = None,
 ):
     _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
 
