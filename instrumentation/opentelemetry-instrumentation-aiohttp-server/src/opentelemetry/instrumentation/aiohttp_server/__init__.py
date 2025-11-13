@@ -158,6 +158,7 @@ from __future__ import annotations
 
 import urllib
 from timeit import default_timer
+from typing import Optional
 
 from aiohttp import web
 from multidict import CIMultiDictProxy
@@ -201,7 +202,7 @@ from opentelemetry.util.http import (
     normalise_response_header_name,
     redact_url,
 )
-from typing import Optional
+
 _duration_attrs = [
     HTTP_METHOD,
     HTTP_HOST,
