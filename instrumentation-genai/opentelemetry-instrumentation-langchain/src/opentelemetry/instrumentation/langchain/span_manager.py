@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
+from threading import RLock
 from typing import Dict, List, Optional
 from uuid import UUID
 
+from cachetools import TTLCache
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -40,10 +42,11 @@ class _SpanManager:
         tracer: Tracer,
     ) -> None:
         self._tracer = tracer
+        self._lock = RLock()
 
         # Map from run_id -> _SpanState, to keep track of spans and parent/child relationships
-        # TODO: Use weak references or a TTL cache to avoid memory leaks in long-running processes. See #3735
-        self.spans: Dict[UUID, _SpanState] = {}
+        # Using a TTL cache to avoid memory leaks in long-running processes where end_span might not be called.
+        self.spans: TTLCache[UUID, _SpanState] = TTLCache(maxsize=1024, ttl=3600)
 
     def _create_span(
         self,
@@ -52,23 +55,24 @@ class _SpanManager:
         span_name: str,
         kind: SpanKind = SpanKind.INTERNAL,
     ) -> Span:
-        if parent_run_id is not None and parent_run_id in self.spans:
-            parent_state = self.spans[parent_run_id]
-            parent_span = parent_state.span
-            ctx = set_span_in_context(parent_span)
-            span = self._tracer.start_span(
-                name=span_name, kind=kind, context=ctx
-            )
-            parent_state.children.append(run_id)
-        else:
-            # top-level or missing parent
-            span = self._tracer.start_span(name=span_name, kind=kind)
-            set_span_in_context(span)
+        with self._lock:
+            if parent_run_id is not None and parent_run_id in self.spans:
+                parent_state = self.spans[parent_run_id]
+                parent_span = parent_state.span
+                ctx = set_span_in_context(parent_span)
+                span = self._tracer.start_span(
+                    name=span_name, kind=kind, context=ctx
+                )
+                parent_state.children.append(run_id)
+            else:
+                # top-level or missing parent
+                span = self._tracer.start_span(name=span_name, kind=kind)
+                set_span_in_context(span)
 
-        span_state = _SpanState(span=span)
-        self.spans[run_id] = span_state
+            span_state = _SpanState(span=span)
+            self.spans[run_id] = span_state
 
-        return span
+            return span
 
     def create_chat_span(
         self,
@@ -92,18 +96,25 @@ class _SpanManager:
         return span
 
     def end_span(self, run_id: UUID) -> None:
-        state = self.spans[run_id]
-        for child_id in state.children:
-            child_state = self.spans.get(child_id)
-            if child_state:
-                child_state.span.end()
-                del self.spans[child_id]
-        state.span.end()
-        del self.spans[run_id]
+        with self._lock:
+            state = self.spans.get(run_id)
+            if not state:
+                return
+            # End children first (make a copy to avoid modification during iteration)
+            for child_id in list(state.children):
+                child_state = self.spans.get(child_id)
+                if child_state:
+                    child_state.span.end()
+                    # Use pop to avoid KeyError if already expired
+                    self.spans.pop(child_id, None)
+            state.span.end()
+            # Use pop to avoid KeyError if already expired
+            self.spans.pop(run_id, None)
 
     def get_span(self, run_id: UUID) -> Optional[Span]:
-        state = self.spans.get(run_id)
-        return state.span if state else None
+        with self._lock:
+            state = self.spans.get(run_id)
+            return state.span if state else None
 
     def handle_error(self, error: BaseException, run_id: UUID):
         span = self.get_span(run_id)
