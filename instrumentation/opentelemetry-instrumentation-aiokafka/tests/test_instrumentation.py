@@ -266,7 +266,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         AIOKafkaInstrumentor().uninstrument()
 
-        # mock.patch is a hack for Python 3.9 see https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880
+        # TODO: remove mock.patch when we drop Python 3.9 support
         with mock.patch(
             "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
         ) as iscoro:
@@ -462,7 +462,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             return obj is async_produce_hook_mock
 
         AIOKafkaInstrumentor().uninstrument()
-        # mock.patch is a hack for Python 3.9 see https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880
+        # TODO: remove mock.patch when we drop Python 3.9 support
         with mock.patch(
             "opentelemetry.instrumentation.aiokafka.iscoroutinefunction"
         ) as iscoro:
