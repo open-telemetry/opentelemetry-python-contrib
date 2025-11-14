@@ -200,7 +200,17 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
 
-        with self._start_span(client_info.full_method) as span:
+        # Manually manage span lifecycle to avoid context issues with generators
+        span = self._tracer.start_span(
+            name=client_info.full_method,
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.RPC_SYSTEM: "grpc",
+                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            },
+        )
+
+        try:
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
             rpc_info = RpcInfo(
@@ -218,6 +228,9 @@ class OpenTelemetryClientInterceptor(
                 span.set_status(Status(StatusCode.ERROR))
                 span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
                 raise err
+        finally:
+            span.end()
+
 
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
