@@ -552,7 +552,7 @@ class PymemcacheHashClientTestCase(TestBase):
         current_port = TEST_PORT
 
         # pylint: disable=import-outside-toplevel
-        from pymemcache.client.hash import HashClient
+        from pymemcache.client.hash import HashClient  # noqa: PLC0415
 
         # pylint: disable=attribute-defined-outside-init
         self.client = HashClient([], **kwargs)
