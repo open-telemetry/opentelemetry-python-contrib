@@ -21,6 +21,7 @@ from typing import Callable
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
+from opentelemetry import context
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
@@ -56,6 +57,7 @@ from opentelemetry.instrumentation.wsgi import (
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
+from opentelemetry.trace.propagation import _SPAN_KEY
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -427,6 +429,12 @@ class _DjangoMiddleware(MiddlewareMixin):
                 activation.__exit__(None, None, None)
 
         if request_start_time is not None:
+            # Get the span and re-create context manually to pass to
+            # histogram for exemplars generation
+            metrics_context = (
+                context.set_value(_SPAN_KEY, span) if span else None
+            )
+
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
@@ -437,14 +445,18 @@ class _DjangoMiddleware(MiddlewareMixin):
                 if target:
                     duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
                 self._duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=metrics_context,
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
                     duration_attrs, _StabilityMode.HTTP
                 )
                 self._duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=metrics_context,
                 )
         self._active_request_counter.add(-1, active_requests_count_attrs)
         if request.META.get(self._environ_token, None) is not None:
