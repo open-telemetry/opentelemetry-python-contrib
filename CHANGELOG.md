@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name.
+  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
+
 ### Added 
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
