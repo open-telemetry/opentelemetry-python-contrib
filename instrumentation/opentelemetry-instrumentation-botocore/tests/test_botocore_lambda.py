@@ -27,6 +27,9 @@ from opentelemetry.instrumentation.botocore.extensions.lmbd import (
     _LambdaExtension,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
+from opentelemetry.semconv._incubating.attributes.aws_attributes import (
+    AWS_LAMBDA_RESOURCE_MAPPING_ID,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -126,6 +129,18 @@ class TestLambdaExtension(TestBase):
             Publish=True,
         )
 
+    def _create_sqs_queue_and_get_arn(self) -> str:
+        """Helper method to create SQS queue and return ARN"""
+        session = botocore.session.get_session()
+        session.set_credentials(
+            access_key="access-key", secret_key="secret-key"
+        )
+        sqs_client = session.create_client("sqs", region_name=self.region)
+        sqs_client.create_queue(
+            QueueName="MyTestQueue.fifo", Attributes={"FifoQueue": "true"}
+        )
+        return f"arn:aws:sqs:{self.region}:123456789012:MyTestQueue.fifo"
+
     @mark.skip(reason="Docker error, unblocking builds for now.")
     @mark.skipif(
         sys.platform == "win32",
@@ -185,3 +200,82 @@ class TestLambdaExtension(TestBase):
                 self.assertEqual(
                     function_name, attributes[SpanAttributes.FAAS_INVOKED_NAME]
                 )
+
+    @mock_aws
+    def test_get_function(self):
+        function_name = "lambda-function-name-foo"
+        self._create_lambda_function(
+            function_name, return_headers_lambda_str()
+        )
+
+        self.memory_exporter.clear()
+        self.client.get_function(FunctionName=function_name)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertEqual(
+            "GetFunction", span.attributes[SpanAttributes.RPC_METHOD]
+        )
+
+        self.assertIsNone(span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID))
+
+    @mock_aws
+    def test_create_event_source_mapping(self):
+        function_name = "MyLambdaFnFoo"
+        self._create_lambda_function(
+            function_name, return_headers_lambda_str()
+        )
+
+        queue_arn = self._create_sqs_queue_and_get_arn()
+        self.memory_exporter.clear()
+        response = self.client.create_event_source_mapping(
+            EventSourceArn=queue_arn, FunctionName=function_name, BatchSize=10
+        )
+        expected_uuid = response["UUID"]
+        self.assertIsNotNone(expected_uuid)
+        self.assertTrue(expected_uuid)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertEqual(
+            "CreateEventSourceMapping",
+            span.attributes[SpanAttributes.RPC_METHOD],
+        )
+
+        uuid = span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID)
+        self.assertIsNotNone(uuid)
+        self.assertEqual(expected_uuid, uuid)
+
+    @mock_aws
+    def test_get_event_source_mapping(self):
+        function_name = "MyLambdaFnBar"
+        self._create_lambda_function(
+            function_name, return_headers_lambda_str()
+        )
+
+        queue_arn = self._create_sqs_queue_and_get_arn()
+
+        # Create event source mapping first
+        create_response = self.client.create_event_source_mapping(
+            EventSourceArn=queue_arn, FunctionName=function_name, BatchSize=10
+        )
+        mapping_uuid = create_response["UUID"]
+
+        self.memory_exporter.clear()
+        response = self.client.get_event_source_mapping(UUID=mapping_uuid)
+        expected_uuid = response["UUID"]
+        self.assertIsNotNone(expected_uuid)
+        self.assertTrue(expected_uuid)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertEqual(
+            "GetEventSourceMapping",
+            span.attributes[SpanAttributes.RPC_METHOD],
+        )
+
+        uuid = span.attributes.get(AWS_LAMBDA_RESOURCE_MAPPING_ID)
+        self.assertIsNotNone(uuid)
+        self.assertEqual(expected_uuid, uuid)
