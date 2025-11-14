@@ -4,6 +4,10 @@ from typing import Any
 
 import fsspec
 import pytest
+from tests.shared_test_utils import (
+    ask_about_weather,
+    ask_about_weather_function_response,
+)
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
@@ -11,10 +15,6 @@ from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
-)
-from tests.shared_test_utils import (
-    ask_about_weather,
-    ask_about_weather_function_response,
 )
 
 
@@ -274,6 +274,14 @@ def test_tool_events_with_completion_hook(
     assert len(logs) == 1
     # File upload takes a few seconds sometimes.
     time.sleep(3)
+
+    # Both log and span have the same reference attributes from upload hook
+    for key in "gen_ai.input.messages_ref", "gen_ai.output.messages_ref":
+        assert spans[0].attributes.get(key)
+        assert logs[0].log_record.attributes.get(key)
+
+        assert spans[0].attributes[key] == logs[0].log_record.attributes[key]
+
     assert_fsspec_equal(
         spans[0].attributes["gen_ai.output.messages_ref"],
         [
