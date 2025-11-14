@@ -917,6 +917,29 @@ class TestMiddleware(WsgiTestBase):
                             )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
+    def test_wsgi_metrics_context_propagation(self):
+        with (
+            patch.object(
+                _DjangoMiddleware,
+                "_duration_histogram_old",
+            ) as mock_histogram_old,
+            patch.object(
+                _DjangoMiddleware,
+                "_duration_histogram_new",
+            ) as mock_histogram_new,
+        ):
+            mock_histogram_old.record = Mock()
+            mock_histogram_new.record = Mock()
+
+            Client().get("/traced/")
+
+            self.assertTrue(mock_histogram_old.record.called)
+            call_args = mock_histogram_old.record.call_args
+            self.assertIsNotNone(call_args)
+            self.assertIn("context", call_args.kwargs)
+            context_arg = call_args.kwargs["context"]
+            self.assertIsNotNone(context_arg)
+
     def test_wsgi_metrics_unistrument(self):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
