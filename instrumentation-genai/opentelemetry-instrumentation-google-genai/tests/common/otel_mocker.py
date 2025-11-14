@@ -23,7 +23,7 @@ from opentelemetry._logs import (
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
+    InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.metrics import MeterProvider
@@ -114,7 +114,7 @@ class _MetricDataPointWrapper:
 class OTelMocker:
     def __init__(self):
         self._snapshot = None
-        self._logs = InMemoryLogExporter()
+        self._logs = InMemoryLogRecordExporter()
         self._traces = InMemorySpanExporter()
         self._metrics = InMemoryMetricReader()
         self._spans = []

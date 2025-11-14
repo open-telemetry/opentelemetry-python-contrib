@@ -6,7 +6,7 @@ from tests.shared_test_utils import (
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogExporter,
+    InMemoryLogRecordExporter,
 )
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 @pytest.mark.vcr()
 def test_function_call_choice(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_content: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -96,7 +96,7 @@ def test_function_call_choice(
 
 @pytest.mark.vcr()
 def test_function_call_choice_no_content(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_no_content: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -136,7 +136,7 @@ def test_function_call_choice_no_content(
 @pytest.mark.vcr()
 def test_tool_events(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_content: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -228,7 +228,7 @@ def test_tool_events(
 @pytest.mark.vcr()
 def test_tool_events_no_content(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_no_content: VertexAIInstrumentor,
     generate_content: callable,
 ):
