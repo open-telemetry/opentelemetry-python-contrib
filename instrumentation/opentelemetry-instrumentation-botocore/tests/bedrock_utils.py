@@ -279,9 +279,9 @@ def remove_none_values(body):
 
 def assert_log_parent(log, span):
     if span:
-        assert (
-            log.log_record.trace_id == span.get_span_context().trace_id
-        ), f"{span.get_span_context().trace_id} does not equal {log.log_record.trace_id}"
+        assert log.log_record.trace_id == span.get_span_context().trace_id, (
+            f"{span.get_span_context().trace_id} does not equal {log.log_record.trace_id}"
+        )
         assert log.log_record.span_id == span.get_span_context().span_id
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags

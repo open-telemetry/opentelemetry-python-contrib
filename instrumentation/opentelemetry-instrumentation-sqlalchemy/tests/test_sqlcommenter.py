@@ -304,7 +304,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=True,
         )
-        from sqlalchemy import create_engine  # pylint: disable-all
+        from sqlalchemy import (  # noqa: PLC0415
+            create_engine,  # pylint: disable-all
+        )
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
@@ -332,7 +334,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             enable_commenter=True,
             enable_attribute_commenter=True,
         )
-        from sqlalchemy import create_engine  # pylint: disable-all
+        from sqlalchemy import (  # noqa: PLC0415
+            create_engine,  # pylint: disable-all
+        )
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
@@ -357,7 +361,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             tracer_provider=self.tracer_provider,
             enable_commenter=False,
         )
-        from sqlalchemy import create_engine  # pylint: disable-all
+        from sqlalchemy import (  # noqa: PLC0415
+            create_engine,  # pylint: disable-all
+        )
 
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
