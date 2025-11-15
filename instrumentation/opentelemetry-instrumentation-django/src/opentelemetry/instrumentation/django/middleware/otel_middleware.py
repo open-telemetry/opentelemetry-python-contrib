@@ -77,30 +77,8 @@ try:
 except ImportError:
     from django.urls import Resolver404, resolve
 
-DJANGO_2_0 = django_version >= (2, 0)
 DJANGO_3_0 = django_version >= (3, 0)
 
-if DJANGO_2_0:
-    # Since Django 2.0, only `settings.MIDDLEWARE` is supported, so new-style
-    # middlewares can be used.
-    class MiddlewareMixin:
-        def __init__(self, get_response):
-            self.get_response = get_response
-
-        def __call__(self, request):
-            self.process_request(request)
-            response = self.get_response(request)
-            return self.process_response(request, response)
-
-else:
-    # Django versions 1.x can use `settings.MIDDLEWARE_CLASSES` and expect
-    # old-style middlewares, which are created by inheriting from
-    # `deprecation.MiddlewareMixin` since its creation in Django 1.10 and 1.11,
-    # or from `object` for older versions.
-    try:
-        from django.utils.deprecation import MiddlewareMixin
-    except ImportError:
-        MiddlewareMixin = object
 
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
@@ -135,7 +113,7 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -164,6 +142,62 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        excluded_url = self._excluded_urls.url_disabled(request.build_absolute_uri("?"))
+        is_asgi_request = _is_asgi_request(request)
+        if excluded_url or is_asgi_request and not _is_asgi_supported:
+            return self.get_response(request)
+
+        # the request creates an activation and potentially a token
+        # to clean up
+        self.process_request(request)
+        activation = request.META[self._environ_activation_key]
+        try:
+            activation.__enter__()
+            self._run_request_hook(request)
+            response = self.get_response(request)
+            return self.process_response(request, response)
+        finally:
+            # record any exceptions raised while processing the request
+            exception = request.META.pop(self._environ_exception_key, None)
+
+            if exception:
+                activation.__exit__(
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
+                )
+            else:
+                activation.__exit__(None, None, None)
+
+            if request.META.get(self._environ_token, None) is not None:
+                detach(request.META.get(self._environ_token))
+                request.META.pop(self._environ_token)
+
+    def _run_request_hook(self, request):
+        span = request.META[self._environ_span_key]
+        if _DjangoMiddleware._otel_request_hook:
+            try:
+                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                    span, request
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Raising an exception here would leak the request span since process_response
+                # would not be called. Log the exception instead.
+                _logger.exception("Exception raised by request_hook")
+
+    def _run_response_hook(self, span, request, response):
+        if _DjangoMiddleware._otel_response_hook:
+            try:
+                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                    span, request, response
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                _logger.exception("Exception raised by response_hook")
 
     @staticmethod
     def _get_span_name(request):
@@ -194,12 +228,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         # Read more about request.META here:
         # https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.META
 
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
-            return
-
         is_asgi_request = _is_asgi_request(request)
-        if not _is_asgi_supported and is_asgi_request:
-            return
 
         # pylint:disable=W0212
         request._otel_start_time = time()
@@ -283,23 +312,12 @@ class _DjangoMiddleware(MiddlewareMixin):
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
         if token:
             request.META[self._environ_token] = token
-
-        if _DjangoMiddleware._otel_request_hook:
-            try:
-                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                    span, request
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Raising an exception here would leak the request span since process_response
-                # would not be called. Log the exception instead.
-                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -340,12 +358,7 @@ class _DjangoMiddleware(MiddlewareMixin):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def process_response(self, request, response):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
-            return response
-
         is_asgi_request = _is_asgi_request(request)
-        if not _is_asgi_supported and is_asgi_request:
-            return response
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
@@ -357,74 +370,56 @@ class _DjangoMiddleware(MiddlewareMixin):
         )
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
-        if activation and span:
-            if is_asgi_request:
-                set_status_code(
-                    span,
-                    response.status_code,
-                    metric_attributes=duration_attrs,
-                    sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
-                )
+        if is_asgi_request:
+            set_status_code(
+                span,
+                response.status_code,
+                metric_attributes=duration_attrs,
+                sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
+            )
 
-                if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_headers = {}
-                    for key, value in response.items():
-                        asgi_setter.set(custom_headers, key, value)
+            if span.is_recording() and span.kind == SpanKind.SERVER:
+                custom_headers = {}
+                for key, value in response.items():
+                    asgi_setter.set(custom_headers, key, value)
 
-                    custom_res_attributes = asgi_collect_custom_headers_attributes(
-                        custom_headers,
-                        SanitizeValue(
-                            get_custom_headers(
-                                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-                            )
-                        ),
+                custom_res_attributes = asgi_collect_custom_headers_attributes(
+                    custom_headers,
+                    SanitizeValue(
                         get_custom_headers(
-                            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-                        ),
-                        normalise_response_header_name,
-                    )
-                    for key, value in custom_res_attributes.items():
-                        span.set_attribute(key, value)
-            else:
-                add_response_attributes(
-                    span,
-                    f"{response.status_code} {response.reason_phrase}",
-                    response.items(),
-                    duration_attrs=duration_attrs,
-                    sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
-                )
-                if span.is_recording() and span.kind == SpanKind.SERVER:
-                    custom_attributes = (
-                        wsgi_collect_custom_response_headers_attributes(
-                            response.items()
+                            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
                         )
-                    )
-                    if len(custom_attributes) > 0:
-                        span.set_attributes(custom_attributes)
-
-            propagator = get_global_response_propagator()
-            if propagator:
-                propagator.inject(response)
-
-            # record any exceptions raised while processing the request
-            exception = request.META.pop(self._environ_exception_key, None)
-
-            if _DjangoMiddleware._otel_response_hook:
-                try:
-                    _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
-                        span, request, response
-                    )
-                except Exception:  # pylint: disable=broad-exception-caught
-                    _logger.exception("Exception raised by response_hook")
-
-            if exception:
-                activation.__exit__(
-                    type(exception),
-                    exception,
-                    getattr(exception, "__traceback__", None),
+                    ),
+                    get_custom_headers(
+                        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+                    ),
+                    normalise_response_header_name,
                 )
-            else:
-                activation.__exit__(None, None, None)
+                for key, value in custom_res_attributes.items():
+                    span.set_attribute(key, value)
+        else:
+            add_response_attributes(
+                span,
+                f"{response.status_code} {response.reason_phrase}",
+                response.items(),
+                duration_attrs=duration_attrs,
+                sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
+            )
+            if span.is_recording() and span.kind == SpanKind.SERVER:
+                custom_attributes = (
+                    wsgi_collect_custom_response_headers_attributes(
+                        response.items()
+                    )
+                )
+                if len(custom_attributes) > 0:
+                    span.set_attributes(custom_attributes)
+
+        propagator = get_global_response_propagator()
+        if propagator:
+            propagator.inject(response)
+
+        self._run_response_hook(span, request, response)
+
 
         if request_start_time is not None:
             duration_s = default_timer() - request_start_time
@@ -447,9 +442,6 @@ class _DjangoMiddleware(MiddlewareMixin):
                     max(duration_s, 0), duration_attrs_new
                 )
         self._active_request_counter.add(-1, active_requests_count_attrs)
-        if request.META.get(self._environ_token, None) is not None:
-            detach(request.META.get(self._environ_token))
-            request.META.pop(self._environ_token)
 
         return response
 
