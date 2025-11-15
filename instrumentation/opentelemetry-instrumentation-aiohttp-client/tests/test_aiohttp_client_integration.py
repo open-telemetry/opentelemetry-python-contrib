@@ -828,6 +828,52 @@ class TestAioHttpIntegration(TestBase):
                     self._assert_spans([], 0)
                     self._assert_metrics(0)
 
+    def test_metric_attributes_isolation(self):
+        async def success_handler(request):
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response(status=HTTPStatus.OK)
+
+        async def timeout_handler(request):
+            await asyncio.sleep(60)
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response(status=HTTPStatus.OK)
+
+        success_host, success_port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(),
+            url="/success",
+            request_handler=success_handler,
+        )
+
+        timeout_host, timeout_port = self._http_request(
+            trace_config=aiohttp_client.create_trace_config(),
+            url="/timeout",
+            request_handler=timeout_handler,
+            timeout=aiohttp.ClientTimeout(sock_read=0.01),
+        )
+
+        metrics = self._assert_metrics(1)
+        duration_dp_attributes = [
+            dict(dp.attributes) for dp in metrics[0].data.data_points
+        ]
+        self.assertEqual(
+            [
+                {
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: success_host,
+                    HTTP_STATUS_CODE: int(HTTPStatus.OK),
+                    NET_PEER_NAME: success_host,
+                    NET_PEER_PORT: success_port,
+                },
+                {
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: timeout_host,
+                    NET_PEER_NAME: timeout_host,
+                    NET_PEER_PORT: timeout_port,
+                },
+            ],
+            duration_dp_attributes,
+        )
+
 
 class TestAioHttpClientInstrumentor(TestBase):
     URL = "/test-path"

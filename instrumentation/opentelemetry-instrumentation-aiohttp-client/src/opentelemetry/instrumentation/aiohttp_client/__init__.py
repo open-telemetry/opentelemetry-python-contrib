@@ -287,8 +287,6 @@ def create_trace_config(
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
-    metric_attributes = {}
-
     excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
@@ -299,7 +297,7 @@ def create_trace_config(
 
         if trace_config_ctx.duration_histogram_old is not None:
             duration_attrs_old = _filter_semconv_duration_attrs(
-                metric_attributes,
+                trace_config_ctx.metric_attributes,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 _StabilityMode.DEFAULT,
@@ -310,7 +308,7 @@ def create_trace_config(
             )
         if trace_config_ctx.duration_histogram_new is not None:
             duration_attrs_new = _filter_semconv_duration_attrs(
-                metric_attributes,
+                trace_config_ctx.metric_attributes,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 _StabilityMode.HTTP,
@@ -348,7 +346,7 @@ def create_trace_config(
             sem_conv_opt_in_mode,
         )
         _set_http_method(
-            metric_attributes,
+            trace_config_ctx.metric_attributes,
             method,
             sanitize_method(method),
             sem_conv_opt_in_mode,
@@ -359,12 +357,12 @@ def create_trace_config(
             parsed_url = urlparse(request_url)
             if parsed_url.hostname:
                 _set_http_host_client(
-                    metric_attributes,
+                    trace_config_ctx.metric_attributes,
                     parsed_url.hostname,
                     sem_conv_opt_in_mode,
                 )
                 _set_http_net_peer_name_client(
-                    metric_attributes,
+                    trace_config_ctx.metric_attributes,
                     parsed_url.hostname,
                     sem_conv_opt_in_mode,
                 )
@@ -376,7 +374,9 @@ def create_trace_config(
                     )
             if parsed_url.port:
                 _set_http_peer_port_client(
-                    metric_attributes, parsed_url.port, sem_conv_opt_in_mode
+                    trace_config_ctx.metric_attributes,
+                    parsed_url.port,
+                    sem_conv_opt_in_mode,
                 )
                 if _report_new(sem_conv_opt_in_mode):
                     _set_http_peer_port_client(
@@ -411,7 +411,7 @@ def create_trace_config(
         _set_http_status_code_attribute(
             trace_config_ctx.span,
             params.response.status,
-            metric_attributes,
+            trace_config_ctx.metric_attributes,
             sem_conv_opt_in_mode,
         )
 
@@ -429,7 +429,7 @@ def create_trace_config(
             exc_type = type(params.exception).__qualname__
             if _report_new(sem_conv_opt_in_mode):
                 trace_config_ctx.span.set_attribute(ERROR_TYPE, exc_type)
-                metric_attributes[ERROR_TYPE] = exc_type
+                trace_config_ctx.metric_attributes[ERROR_TYPE] = exc_type
 
             trace_config_ctx.span.set_status(
                 Status(StatusCode.ERROR, exc_type)
@@ -450,6 +450,7 @@ def create_trace_config(
             duration_histogram_old=duration_histogram_old,
             duration_histogram_new=duration_histogram_new,
             excluded_urls=excluded_urls,
+            metric_attributes={},
             **kwargs,
         )
 
