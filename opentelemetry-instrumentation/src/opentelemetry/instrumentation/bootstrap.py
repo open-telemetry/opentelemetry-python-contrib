@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
 import argparse
 import logging
 import sys
@@ -62,18 +64,32 @@ def _syscall(func):
 def _sys_pip_install(package):
     # explicit upgrade strategy to override potential pip config
     try:
-        check_call(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "-U",
-                "--upgrade-strategy",
-                "only-if-needed",
-                package,
-            ]
-        )
+        if shutil.which("pip"):
+            check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-U",
+                    "--upgrade-strategy",
+                    "only-if-needed",
+                    package,
+                ]
+            )
+        elif shutil.which("uv"):
+            project_toml_file = "pyproject.toml"
+            uv_lock_file = "uv.lock"
+            if os.path.exists(project_toml_file) and os.path.exists(uv_lock_file):
+                check_call(
+                    [
+                        "uv",
+                        "add",
+                        package,
+                    ]
+                )
+        else:
+            raise RuntimeError("No pip or uv found to install packages")
     except CalledProcessError as error:
         print(error)
 
