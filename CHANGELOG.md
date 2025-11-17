@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added 
+### Added
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
@@ -42,10 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
 - `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
   ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
-- Replace Python 3.14-deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction`. 
+- Replace Python 3.14-deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction`.
   ([#3880](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880))
 - `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization
-  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919)) 
+  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919))
 - `opentelemetry-instrumentation-pymongo`: Fix span error descriptions
   ([#3904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3904))
 - build: bump ruff to 0.14.1
@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3941))
 - `opentelemetry-instrumentation-pymongo`: Fix invalid mongodb collection attribute type
   ([#3942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3942))
+- `opentelemetry-instrumentation-mysqlclient`: Pass all keyword parameters
+  ([#3950](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3950))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
@@ -76,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3743](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3743))
 - Add `rstcheck` to pre-commit to stop introducing invalid RST
   ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
-- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default 
+- `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default
   Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. [#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
 - `opentelemetry-instrumentation-psycopg`: Add missing parameter `capture_parameters` to instrumentor.
   ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
