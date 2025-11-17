@@ -50,3 +50,13 @@ OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT = (
 The format to use when uploading prompt and response data. Must be one of ``json`` or
 ``jsonl``. Defaults to ``json``.
 """
+
+OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE = (
+    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE"
+)
+"""
+.. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE
+
+The maximum number of concurrent uploads to queue. New uploads will be dropped if the queue is
+full. Defaults to 20.
+"""
