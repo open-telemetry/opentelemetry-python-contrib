@@ -228,13 +228,7 @@ class CommandTracer(monitoring.CommandListener):
 
 def _get_command_collection_name(event: CommandEvent) -> str | None:
     collection_name = event.command.get(event.command_name)
-    if (
-        not collection_name
-        or not isinstance(collection_name, str)
-        or ".." in collection_name
-        or collection_name[0] == "."
-        or collection_name[-1] == "."
-    ):
+    if not collection_name or not isinstance(collection_name, str):
         return None
     return collection_name
 

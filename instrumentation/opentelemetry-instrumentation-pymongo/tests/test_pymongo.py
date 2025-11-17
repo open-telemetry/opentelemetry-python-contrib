@@ -288,10 +288,7 @@ class TestPymongo(TestBase):
                 "test_collection",
             ),
             ({"command_name": "find"}, None),
-            ({"command_name": "find", "find": b'invalid'}, None),
-            ({"command_name": "find", "find": ".invalid"}, None),
-            ({"command_name": "find", "find": "invalid."}, None),
-            ({"command_name": "find", "find": "invalid..invalid"}, None),
+            ({"command_name": "find", "find": b"invalid"}, None),
         ]
         for command_attrs, expected in scenarios:
             with self.subTest(command_attrs=command_attrs, expected=expected):
