@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3904))
 - build: bump ruff to 0.14.1
   ([#3842](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3842))
+- `opentelemetry-instrumentation-redis`: Add default span name for pipeline operations
+  ([#3941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3941))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
