@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Ensure log event is written and completion hook is called even when model call results in exception. Put new
+log event (` gen_ai.client.inference.operation.details`) behind the flag `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.
+Ensure same sem conv attributes are on the log and span. Fix an issue where the instrumentation would crash when a pydantic.BaseModel class was passed as the response schema ([#3905](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3905)).
+
 ## Version 0.4b0 (2025-10-16)
 
 - Implement the new semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.

@@ -21,13 +21,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3883](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3883))
 - `opentelemetry-instrumentation-sqlalchemy`: improve readthedocs for sqlcommenter configuration.
   ([#3886](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3886))
+- `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: improve readthedocs for sqlcommenter configuration.
+  ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
+- `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
+  ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
+- `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
+  ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
 
 ### Fixed
 
-- `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
+- `opentelemetry-instrumentation-botocore`: bedrock: only decode JSON input buffer in Anthropic Claude streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
+- `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-aiohttp-server`: Fix readme links and text
+  ([#3902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3902))
 - `opentelemetry-instrumentation-aws-lambda`: Fix ImportError with slash-delimited handler paths
   ([#3894](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3894))
+- `opentelemetry-exporter-richconsole`: Prevent deadlock when parent span is not part of the batch
+  ([#3900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3900))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: improve readthedocs for sqlcommenter configuration.
+  ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
+- `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
+  ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
+- Replace Python 3.14-deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction`. 
+  ([#3880](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880))
+- `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization
+  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919)) 
+- `opentelemetry-instrumentation-pymongo`: Fix span error descriptions
+  ([#3904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3904))
+- build: bump ruff to 0.14.1
+  ([#3842](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3842))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
