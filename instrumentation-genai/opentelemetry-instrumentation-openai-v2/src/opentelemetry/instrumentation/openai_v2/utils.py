@@ -231,7 +231,7 @@ def get_llm_request_attributes(
                 ] = response_format
 
         service_tier = kwargs.get("service_tier")
-        attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = (
+        attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER] = (
             service_tier if service_tier != "auto" else None
         )
 
