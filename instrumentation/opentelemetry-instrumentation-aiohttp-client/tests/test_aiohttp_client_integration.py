@@ -838,14 +838,18 @@ class TestAioHttpIntegration(TestBase):
             assert "traceparent" in request.headers
             return aiohttp.web.Response(status=HTTPStatus.OK)
 
+        trace_config: aiohttp.TraceConfig = (
+            aiohttp_client.create_trace_config()
+        )
+
         success_host, success_port = self._http_request(
-            trace_config=aiohttp_client.create_trace_config(),
+            trace_config=trace_config,
             url="/success",
             request_handler=success_handler,
         )
 
         timeout_host, timeout_port = self._http_request(
-            trace_config=aiohttp_client.create_trace_config(),
+            trace_config=trace_config,
             url="/timeout",
             request_handler=timeout_handler,
             timeout=aiohttp.ClientTimeout(sock_read=0.01),
