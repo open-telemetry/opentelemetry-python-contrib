@@ -242,7 +242,7 @@ def get_default_span_name(request: web.Request) -> str:
     Args:
         request: the request object itself.
     Returns:
-        The canonical name of a resource if possible or just request path.
+        The span name as "{method} {canonical_name}" of a resource if possible or just "{method}".
     """
     try:
         resource = request.match_info.route.resource
