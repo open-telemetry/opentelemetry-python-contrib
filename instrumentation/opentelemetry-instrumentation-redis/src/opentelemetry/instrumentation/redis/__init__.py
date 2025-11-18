@@ -134,7 +134,10 @@ from opentelemetry.instrumentation.redis.util import (
     _set_connection_attributes,
 )
 from opentelemetry.instrumentation.redis.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
 )
@@ -196,6 +199,9 @@ def _traced_execute_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
         with tracer.start_as_current_span(
@@ -231,6 +237,9 @@ def _traced_execute_pipeline_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         (
             command_stack,
             resource,
@@ -276,6 +285,9 @@ def _async_traced_execute_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
@@ -307,6 +319,9 @@ def _async_traced_execute_pipeline_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         (
             command_stack,
             resource,
