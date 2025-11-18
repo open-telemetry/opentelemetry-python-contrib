@@ -230,7 +230,12 @@ def get_llm_request_attributes(
                     GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
                 ] = response_format
 
+        # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
         service_tier = kwargs.get("service_tier")
+        if service_tier is None:
+            extra_body = kwargs.get("extra_body")
+            if isinstance(extra_body, Mapping):
+                service_tier = extra_body.get("service_tier")
         attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER] = (
             service_tier if service_tier != "auto" else None
         )
