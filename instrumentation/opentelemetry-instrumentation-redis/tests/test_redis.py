@@ -390,6 +390,17 @@ class TestRedis(TestBase):
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
 
+    def test_span_name_empty_pipeline(self):
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "redis")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+
 
 class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
     def assert_span_count(self, count: int):
@@ -542,6 +553,22 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         # after un-instrumenting the query should not be recorder
         await self.client.set("key", "value")
         spans = self.assert_span_count(0)
+
+    @pytest.mark.asyncio
+    async def test_span_name_empty_pipeline(self):
+        redis_client = fakeredis.aioredis.FakeRedis()
+        self.instrumentor.instrument_client(
+            client=redis_client, tracer_provider=self.tracer_provider
+        )
+        async with redis_client.pipeline() as pipe:
+            await pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "redis")
+        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.UNSET)
+        self.instrumentor.uninstrument_client(client=redis_client)
 
 
 class TestRedisInstance(TestBase):
