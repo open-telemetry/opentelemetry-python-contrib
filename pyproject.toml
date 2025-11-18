@@ -223,3 +223,10 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
 ]
+
+[dependency-groups]
+dev = [
+    "tox",
+    "tox-uv>=1",
+    "pre-commit",
+]

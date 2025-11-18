@@ -13,18 +13,23 @@
 # limitations under the License.
 
 import asyncio
+import os
 import unittest
 from unittest.mock import patch
 
 from google.genai import types as genai_types
 
 from opentelemetry._logs import get_logger_provider
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.google_genai import (
     otel_wrapper,
     tool_call_wrapper,
 )
 from opentelemetry.metrics import get_meter_provider
 from opentelemetry.trace import get_tracer_provider
+from opentelemetry.util.genai.types import ContentCapturingMode
 
 from ..common import otel_mocker
 
@@ -38,6 +43,12 @@ class TestCase(unittest.TestCase):
             get_logger_provider(),
             get_meter_provider(),
         )
+        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
+            "true"
+        )
+        os.environ["OTEL_SEMCONV_STABILITY_OPT_IN"] = "default"
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
 
     @property
     def otel(self):
@@ -163,10 +174,6 @@ class TestCase(unittest.TestCase):
             "An example tool call function.",
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_int_arg(self):
         def somefunction(arg=None):
             pass
@@ -185,10 +192,6 @@ class TestCase(unittest.TestCase):
             span.attributes["code.function.parameters.arg.value"], 12345
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_string_arg(self):
         def somefunction(arg=None):
             pass
@@ -208,10 +211,6 @@ class TestCase(unittest.TestCase):
             "a string value",
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_dict_arg(self):
         def somefunction(arg=None):
             pass
@@ -231,10 +230,6 @@ class TestCase(unittest.TestCase):
             '{"key": "value"}',
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -256,10 +251,6 @@ class TestCase(unittest.TestCase):
             [1, 2, 3],
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_heterogenous_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -278,3 +269,43 @@ class TestCase(unittest.TestCase):
             span.attributes["code.function.parameters.arg.value"],
             '[123, "abc"]',
         )
+
+    def test_handle_with_new_sem_conv(self):
+        def somefunction(arg=None):
+            pass
+
+        for mode in ContentCapturingMode:
+            with self.subTest(f"mode: {mode}"):
+                self.setUp()
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                        "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                    },
+                ):
+                    _OpenTelemetrySemanticConventionStability._initialized = (
+                        False
+                    )
+                    _OpenTelemetrySemanticConventionStability._initialize()
+                    wrapped_somefunction = self.wrap(somefunction)
+                    wrapped_somefunction(12345)
+
+                    span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
+
+                    if mode in [
+                        ContentCapturingMode.NO_CONTENT,
+                        ContentCapturingMode.EVENT_ONLY,
+                    ]:
+                        self.assertNotIn(
+                            "code.function.parameters.arg.value",
+                            span.attributes,
+                        )
+                    else:
+                        self.assertIn(
+                            "code.function.parameters.arg.value",
+                            span.attributes,
+                        )
+                    self.tearDown()

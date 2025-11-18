@@ -260,6 +260,158 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-openai-v2-latest -- -ra
 
+  py310-test-instrumentation-openai_agents-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-oldest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-openai_agents-v2-oldest -- -ra
+
+  py310-test-instrumentation-openai_agents-v2-latest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-latest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-openai_agents-v2-latest -- -ra
+
+  py311-test-instrumentation-openai_agents-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-oldest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-openai_agents-v2-oldest -- -ra
+
+  py311-test-instrumentation-openai_agents-v2-latest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-openai_agents-v2-latest -- -ra
+
+  py312-test-instrumentation-openai_agents-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-oldest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-openai_agents-v2-oldest -- -ra
+
+  py312-test-instrumentation-openai_agents-v2-latest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-openai_agents-v2-latest -- -ra
+
+  py313-test-instrumentation-openai_agents-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-oldest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-openai_agents-v2-oldest -- -ra
+
+  py313-test-instrumentation-openai_agents-v2-latest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-openai_agents-v2-latest -- -ra
+
   py39-test-instrumentation-vertexai-oldest_ubuntu-latest:
     name: instrumentation-vertexai-oldest 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -4781,3 +4933,79 @@ jobs:
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-starlette-latest -- -ra
+
+  py312-test-instrumentation-starlette-oldest_ubuntu-latest:
+    name: instrumentation-starlette-oldest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-starlette-oldest -- -ra
+
+  py312-test-instrumentation-starlette-latest_ubuntu-latest:
+    name: instrumentation-starlette-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-starlette-latest -- -ra
+
+  py313-test-instrumentation-starlette-oldest_ubuntu-latest:
+    name: instrumentation-starlette-oldest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-starlette-oldest -- -ra
+
+  py313-test-instrumentation-starlette-latest_ubuntu-latest:
+    name: instrumentation-starlette-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-starlette-latest -- -ra
