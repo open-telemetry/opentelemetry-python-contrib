@@ -879,7 +879,7 @@ class TestProgrammaticHooksWithoutApp(InstrumentationTest, WsgiTestBase):
             request_hook=request_hook_test, response_hook=response_hook_test
         )
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
-        from flask import Flask
+        from flask import Flask  # noqa: PLC0415
 
         self.app = Flask(__name__)
 
@@ -949,7 +949,7 @@ class TestProgrammaticCustomTracerProviderWithoutApp(
 
         FlaskInstrumentor().instrument(tracer_provider=tracer_provider)
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
-        from flask import Flask
+        from flask import Flask  # noqa: PLC0415
 
         self.app = Flask(__name__)
 
