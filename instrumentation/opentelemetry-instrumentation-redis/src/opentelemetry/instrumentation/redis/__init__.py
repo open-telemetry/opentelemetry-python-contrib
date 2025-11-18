@@ -110,6 +110,35 @@ Request/Response Hooks
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+Suppress Instrumentation
+-------------------------
+
+You can use the ``suppress_instrumentation`` context manager to prevent instrumentation
+from being applied to specific Redis operations. This is useful when you want to avoid
+creating spans for internal operations, health checks, or during specific code paths.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.utils import suppress_instrumentation
+    import redis
+
+    # Instrument redis
+    RedisInstrumentor().instrument()
+
+    client = redis.StrictRedis(host="localhost", port=6379)
+
+    # This will report a span
+    client.get("my-key")
+
+    # This will NOT report a span
+    with suppress_instrumentation():
+        client.get("internal-key")
+        client.set("cache-key", "value")
+
+    # This will report a span again
+    client.get("another-key")
+
 API
 ---
 """
