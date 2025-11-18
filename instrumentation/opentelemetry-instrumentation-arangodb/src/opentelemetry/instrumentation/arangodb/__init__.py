@@ -140,30 +140,10 @@ class ArangoDBInstrumentor(BaseInstrumentor):
                 attributes[arangodb_attributes.ALLOW_DIRTY_READS] = (
                     options.get("allowDirtyReads")
                 )
-            if "allowRetry" in options:
-                attributes[arangodb_attributes.ALLOW_RETRY] = options.get(
-                    "allowRetry"
-                )
             if "cache" in options:
                 attributes[arangodb_attributes.CACHE] = options.get("cache")
-            if "failOnWarning" in options:
-                attributes[arangodb_attributes.FAIL_ON_WARNING] = options.get(
-                    "failOnWarning"
-                )
-            if "fullCount" in options:
-                attributes[arangodb_attributes.FULL_COUNT] = options.get(
-                    "fullCount"
-                )
-            if "maxRuntime" in options:
-                attributes[arangodb_attributes.MAX_RUNTIME] = options.get(
-                    "maxRuntime"
-                )
             if "stream" in options:
                 attributes[arangodb_attributes.STREAM] = options.get("stream")
-            if "usePlanCache" in options:
-                attributes[arangodb_attributes.USE_PLAN_CACHE] = options.get(
-                    "usePlanCache"
-                )
 
         return span_name, attributes
 
@@ -173,14 +153,12 @@ class ArangoDBInstrumentor(BaseInstrumentor):
         }
 
         if "cached" in response.body:
-            attributes["arangodb.response.cached"] = response.body.get(
-                "cached"
+            attributes[arangodb_attributes.RESPONSE_CACHED] = (
+                response.body.get("cached")
             )
         if "count" in response.body:
-            attributes["arangodb.response.count"] = response.body.get("count")
-        if "hasMore" in response.body:
-            attributes["arangodb.response.hasMore"] = response.body.get(
-                "hasMore"
+            attributes[arangodb_attributes.RESPONSE_COUNT] = response.body.get(
+                "count"
             )
 
         return attributes

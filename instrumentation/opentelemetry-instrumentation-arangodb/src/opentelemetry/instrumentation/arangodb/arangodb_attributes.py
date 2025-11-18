@@ -1,15 +1,9 @@
-ALLOW_DIRTY_READS = "arangodb.options.allowDirtyReads"
+QUERY_ALLOW_DIRTY_READS = "arangodb.query.allowDirtyReads"
 
-ALLOW_RETRY = "arangodb.options.allowRetry"
+QUERY_CACHE = "arangodb.query.cache"
 
-CACHE = "arangodb.options.cache"
+QUERY_STREAM = "arangodb.query.stream"
 
-FAIL_ON_WARNING = "arangodb.options.failOnWarning"
+RESPONSE_CACHED = "arangodb.response.cached"
 
-FULL_COUNT = "arangodb.options.fullCount"
-
-MAX_RUNTIME = "arangodb.options.maxRuntime"
-
-STREAM = "arangodb.options.stream"
-
-USE_PLAN_CACHE = "arangodb.options.usePlanCache"
+RESPONSE_COUNT = "arangodb.response.count"
