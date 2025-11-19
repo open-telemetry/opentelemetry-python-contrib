@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3941))
 - `opentelemetry-instrumentation-pymongo`: Fix invalid mongodb collection attribute type
   ([#3942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3942))
+- `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
+  ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
