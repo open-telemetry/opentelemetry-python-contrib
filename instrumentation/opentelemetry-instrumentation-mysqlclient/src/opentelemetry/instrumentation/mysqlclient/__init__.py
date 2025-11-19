@@ -160,12 +160,13 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         """Integrate with the mysqlclient library.
         https://github.com/PyMySQL/mysqlclient/
         """
-        tracer_provider = kwargs.get("tracer_provider")
-        enable_sqlcommenter = kwargs.get("enable_commenter", False)
-        commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        kwargs_with_defaults = {
+            "tracer_provider": None,
+            "enable_commenter": False,
+            "commenter_options": {},
+            "enable_attribute_commenter": False,
+            **kwargs,
+        }
 
         dbapi.wrap_connect(
             __name__,
@@ -174,10 +175,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             _DATABASE_SYSTEM,
             _CONNECTION_ATTRIBUTES,
             version=__version__,
-            tracer_provider=tracer_provider,
-            enable_commenter=enable_sqlcommenter,
-            commenter_options=commenter_options,
-            enable_attribute_commenter=enable_attribute_commenter,
+            **kwargs_with_defaults,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use

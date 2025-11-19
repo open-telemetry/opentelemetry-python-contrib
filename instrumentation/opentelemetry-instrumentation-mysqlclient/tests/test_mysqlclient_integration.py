@@ -507,3 +507,33 @@ class TestMySQLClientIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_missing_capture_parameters_if_not_specified(
+        self,
+        _mock_connect,
+        mock_wrap_connect,
+    ):
+        instrumentor = MySQLClientInstrumentor()
+        instrumentor.instrument()
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertNotIn("capture_parameters", kwargs)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_passes_capture_parameters_if_specified(
+        self,
+        _mock_connect,
+        mock_wrap_connect,
+    ):
+        """
+        MySQLClientInstrumentor.instrument should pass any provided,
+        arbitrary kwargs to DB-API wrap_connect
+        """
+        instrumentor = MySQLClientInstrumentor()
+        instrumentor.instrument(capture_parameters=True)
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertTrue(kwargs["capture_parameters"])
