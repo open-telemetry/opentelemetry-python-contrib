@@ -94,6 +94,7 @@ API
 
 from __future__ import annotations
 
+import fnmatch
 import gc
 import logging
 import os
@@ -105,6 +106,9 @@ from typing import Any, Collection, Iterable
 import psutil
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.system_metrics.environment_variables import (
+    OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS,
+)
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
@@ -154,6 +158,23 @@ if sys.platform == "darwin":
     _DEFAULT_CONFIG.pop("system.network.connections")
 
 
+def _build_default_config() -> dict[str, list[str] | None]:
+    excluded_metrics: list[str] = [
+        pat.strip()
+        for pat in os.environ.get(
+            OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, ""
+        ).split(",")
+        if pat
+    ]
+    if excluded_metrics:
+        return {
+            key: value
+            for key, value in _DEFAULT_CONFIG.items()
+            if not any(fnmatch.fnmatch(key, pat) for pat in excluded_metrics)
+        }
+    return _DEFAULT_CONFIG
+
+
 class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
@@ -161,10 +182,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
-        if config is None:
-            self._config = _DEFAULT_CONFIG
-        else:
-            self._config = config
+        self._config = config or _build_default_config()
         self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
