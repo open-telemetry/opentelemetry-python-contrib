@@ -1098,7 +1098,6 @@ class TestConfigSystemMetrics(TestBase):
 
 class TestBuildDefaultConfig(unittest.TestCase):
     def setUp(self):
-        # Store original environment to restore after each test
         self.env_patcher = mock.patch.dict("os.environ", {}, clear=False)
         self.env_patcher.start()
 
@@ -1107,7 +1106,6 @@ class TestBuildDefaultConfig(unittest.TestCase):
         os.environ.pop(OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, None)
 
     def test_default_config_without_exclusions(self):
-        """Test that _DEFAULT_CONFIG is returned when no exclusions are specified."""
         test_cases = [
             {
                 "name": "no_env_var_set",
