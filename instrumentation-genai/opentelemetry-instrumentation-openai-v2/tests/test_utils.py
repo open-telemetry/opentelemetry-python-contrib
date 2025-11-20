@@ -35,6 +35,8 @@ def assert_all_attributes(
     operation_name: str = "chat",
     server_address: str = "api.openai.com",
     server_port: int = 443,
+    request_service_tier: Optional[str] = None,
+    response_service_tier: Optional[str] = None,
 ):
     assert span.name == f"{operation_name} {request_model}"
     assert (
@@ -86,6 +88,28 @@ def assert_all_attributes(
 
     if server_port != 443 and server_port > 0:
         assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
+
+    if request_service_tier is not None:
+        assert (
+            request_service_tier
+            == span.attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER]
+        )
+    else:
+        assert (
+            GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+            not in span.attributes
+        )
+
+    if response_service_tier is not None:
+        assert (
+            response_service_tier
+            == span.attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER]
+        )
+    else:
+        assert (
+            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+            not in span.attributes
+        )
 
 
 def assert_log_parent(log, span):
