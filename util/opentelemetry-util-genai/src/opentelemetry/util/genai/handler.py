@@ -61,7 +61,7 @@ Usage:
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator, Optional
+from typing import Iterator
 
 from opentelemetry import context as otel_context
 from opentelemetry.metrics import MeterProvider, get_meter
@@ -166,6 +166,7 @@ class TelemetryHandler:
             return invocation
 
         span = invocation.span
+        _apply_finish_attributes(invocation.span, invocation)
         _apply_error_attributes(span, error)
         error_type = getattr(error.type, "__qualname__", None)
         self._record_llm_metrics(invocation, span, error_type=error_type)
@@ -176,7 +177,7 @@ class TelemetryHandler:
 
     @contextmanager
     def llm(
-        self, invocation: Optional[LLMInvocation] = None
+        self, invocation: LLMInvocation | None = None
     ) -> Iterator[LLMInvocation]:
         """Context manager for LLM invocations.
 
@@ -206,7 +207,7 @@ def get_telemetry_handler(
     """
     Returns a singleton TelemetryHandler instance.
     """
-    handler: Optional[TelemetryHandler] = getattr(
+    handler: TelemetryHandler | None = getattr(
         get_telemetry_handler, "_default_handler", None
     )
     if handler is None:
