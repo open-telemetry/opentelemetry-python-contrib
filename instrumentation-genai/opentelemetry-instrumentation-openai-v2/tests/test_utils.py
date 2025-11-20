@@ -25,6 +25,14 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 
+def _assert_optional_attribute(span, attribute_name, expected_value):
+    """Helper to assert optional span attributes."""
+    if expected_value is not None:
+        assert expected_value == span.attributes[attribute_name]
+    else:
+        assert attribute_name not in span.attributes
+
+
 def assert_all_attributes(
     span: ReadableSpan,
     request_model: str,
@@ -51,65 +59,34 @@ def assert_all_attributes(
         request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     )
 
-    if response_model:
-        assert (
-            response_model
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_MODEL not in span.attributes
-
-    if response_id:
-        assert (
-            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_RESPONSE_ID not in span.attributes
-
-    if input_tokens:
-        assert (
-            input_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        )
-    else:
-        assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
-
-    if output_tokens:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
-        )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+    )
 
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
 
     if server_port != 443 and server_port > 0:
         assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
-    if request_service_tier is not None:
-        assert (
-            request_service_tier
-            == span.attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
-            not in span.attributes
-        )
-
-    if response_service_tier is not None:
-        assert (
-            response_service_tier
-            == span.attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER]
-        )
-    else:
-        assert (
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-            not in span.attributes
-        )
+    _assert_optional_attribute(
+        span,
+        GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+        request_service_tier,
+    )
+    _assert_optional_attribute(
+        span,
+        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+        response_service_tier,
+    )
 
 
 def assert_log_parent(log, span):
