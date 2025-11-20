@@ -102,7 +102,7 @@ class TelemetryHandler:
             tracer_provider,
             schema_url=Schemas.V1_37_0.value,
         )
-        self._metrics_recorder: Optional[InvocationMetricsRecorder] = None
+        self._metrics_recorder: InvocationMetricsRecorder | None = None
         try:
             meter = get_meter(__name__, meter_provider=meter_provider)
             self._metrics_recorder = InvocationMetricsRecorder(meter)
@@ -112,9 +112,9 @@ class TelemetryHandler:
     def _record_llm_metrics(
         self,
         invocation: LLMInvocation,
-        span: Optional[Span],
+        span: Span | None = None,
         *,
-        error_type: Optional[str] = None,
+        error_type: str | None = None,
     ) -> None:
         if self._metrics_recorder is None or span is None:
             return
