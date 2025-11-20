@@ -278,6 +278,43 @@ class TestPymongo(TestBase):
             span.attributes[SpanAttributes.DB_STATEMENT], "aggregate"
         )
 
+    def test_collection_name_attribute(self):
+        scenarios = [
+            (
+                {
+                    "command_name": "find",
+                    "find": "test_collection",
+                },
+                "test_collection",
+            ),
+            ({"command_name": "find"}, None),
+            ({"command_name": "find", "find": b"invalid"}, None),
+        ]
+        for command_attrs, expected in scenarios:
+            with self.subTest(command_attrs=command_attrs, expected=expected):
+                mock_event = MockEvent(command_attrs)
+
+                command_tracer = CommandTracer(
+                    self.tracer, capture_statement=True
+                )
+                command_tracer.started(event=mock_event)
+                command_tracer.succeeded(event=mock_event)
+
+                spans_list = self.memory_exporter.get_finished_spans()
+
+                self.assertEqual(len(spans_list), 1)
+                span = spans_list[0]
+
+                self.assertEqual(
+                    span.attributes[SpanAttributes.DB_STATEMENT], "find"
+                )
+
+                self.assertEqual(
+                    span.attributes.get(SpanAttributes.DB_MONGODB_COLLECTION),
+                    expected,
+                )
+                self.memory_exporter.clear()
+
 
 class MockCommand:
     def __init__(self, command_attrs):
