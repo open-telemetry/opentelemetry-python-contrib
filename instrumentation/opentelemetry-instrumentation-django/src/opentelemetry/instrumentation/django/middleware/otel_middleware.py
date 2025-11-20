@@ -55,7 +55,7 @@ from opentelemetry.instrumentation.wsgi import (
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, set_span_in_context, use_span
+from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -349,6 +349,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
+        exception = None
         active_requests_count_attrs = request.META.pop(
             self._environ_active_request_attr_key, None
         )
@@ -417,20 +418,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 except Exception:  # pylint: disable=broad-exception-caught
                     _logger.exception("Exception raised by response_hook")
 
-            if exception:
-                activation.__exit__(
-                    type(exception),
-                    exception,
-                    getattr(exception, "__traceback__", None),
-                )
-            else:
-                activation.__exit__(None, None, None)
-
         if request_start_time is not None:
-            # Get the span and re-create context manually to pass to
-            # histogram for exemplars generation
-            metrics_context = set_span_in_context(span)
-
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
@@ -443,7 +431,6 @@ class _DjangoMiddleware(MiddlewareMixin):
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
-                    context=metrics_context,
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
@@ -452,9 +439,19 @@ class _DjangoMiddleware(MiddlewareMixin):
                 self._duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
-                    context=metrics_context,
                 )
         self._active_request_counter.add(-1, active_requests_count_attrs)
+
+        if activation and span:
+            if exception:
+                activation.__exit__(
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
+                )
+            else:
+                activation.__exit__(None, None, None)
+
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)

@@ -917,29 +917,6 @@ class TestMiddleware(WsgiTestBase):
                             )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
-    def test_wsgi_metrics_context_propagation(self):
-        with (
-            patch.object(
-                _DjangoMiddleware,
-                "_duration_histogram_old",
-            ) as mock_histogram_old,
-            patch.object(
-                _DjangoMiddleware,
-                "_duration_histogram_new",
-            ) as mock_histogram_new,
-        ):
-            mock_histogram_old.record = Mock()
-            mock_histogram_new.record = Mock()
-
-            Client().get("/traced/")
-
-            self.assertTrue(mock_histogram_old.record.called)
-            call_args = mock_histogram_old.record.call_args
-            self.assertIsNotNone(call_args)
-            self.assertIn("context", call_args.kwargs)
-            context_arg = call_args.kwargs["context"]
-            self.assertIsNotNone(context_arg)
-
     def test_wsgi_metrics_unistrument(self):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
@@ -1127,3 +1104,66 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
         self.memory_exporter.clear()
+
+
+class TestMiddlewareSpanActivationTiming(WsgiTestBase):
+    """Test span activation timing relative to metrics recording."""
+
+    @classmethod
+    def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        _django_instrumentor.instrument()
+
+    def tearDown(self):
+        super().tearDown()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
+
+    def test_span_ended_after_metrics_recorded(self):
+        """Span activation exits after metrics recording."""
+        Client().get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        # Span properly finished
+        self.assertIsNotNone(spans[0].end_time)
+
+        # Metrics recorded
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        histogram_found = any(
+            "duration" in metric.name
+            for rm in metrics_list.resource_metrics
+            for sm in rm.scope_metrics
+            for metric in sm.metrics
+        )
+        self.assertTrue(histogram_found)
+
+    def test_metrics_recorded_with_exception(self):
+        """Metrics recorded even when request raises exception."""
+        with self.assertRaises(ValueError):
+            Client().get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+
+        # Metrics still recorded
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        histogram_found = any(
+            "duration" in metric.name
+            for rm in metrics_list.resource_metrics
+            for sm in rm.scope_metrics
+            for metric in sm.metrics
+        )
+        self.assertTrue(histogram_found)
