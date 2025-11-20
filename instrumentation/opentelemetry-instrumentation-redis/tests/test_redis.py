@@ -391,7 +391,6 @@ class TestRedis(TestBase):
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
 
-
     def test_span_name_empty_pipeline(self):
         redis_client = fakeredis.FakeStrictRedis()
         pipe = redis_client.pipeline()
