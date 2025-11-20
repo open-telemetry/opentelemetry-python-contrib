@@ -137,7 +137,7 @@ from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    is_instrumentation_enabled,
+    is_http_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
@@ -325,7 +325,7 @@ def create_trace_config(
         params: aiohttp.TraceRequestStartParams,
     ):
         if (
-            not is_instrumentation_enabled()
+            not is_http_instrumentation_enabled()
             or trace_config_ctx.excluded_urls.url_disabled(str(params.url))
         ):
             trace_config_ctx.span = None
@@ -485,9 +485,6 @@ def _instrument(
 
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
-        if not is_instrumentation_enabled():
-            return wrapped(*args, **kwargs)
-
         client_trace_configs = list(kwargs.get("trace_configs") or [])
         client_trace_configs.extend(trace_configs)
 
