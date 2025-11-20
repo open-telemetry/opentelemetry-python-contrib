@@ -111,7 +111,7 @@ Request/Response Hooks
     client.get("my-key")
 
 Suppress Instrumentation
--------------------------
+------------------------
 
 You can use the ``suppress_instrumentation`` context manager to prevent instrumentation
 from being applied to specific Redis operations. This is useful when you want to avoid
