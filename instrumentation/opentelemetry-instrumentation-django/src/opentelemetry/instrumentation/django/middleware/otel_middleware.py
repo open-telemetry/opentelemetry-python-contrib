@@ -21,7 +21,6 @@ from typing import Callable
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
-from opentelemetry import context
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
@@ -56,8 +55,7 @@ from opentelemetry.instrumentation.wsgi import (
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, SpanKind, use_span
-from opentelemetry.trace.propagation import _SPAN_KEY
+from opentelemetry.trace import Span, SpanKind, set_span_in_context, use_span
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -431,9 +429,7 @@ class _DjangoMiddleware(MiddlewareMixin):
         if request_start_time is not None:
             # Get the span and re-create context manually to pass to
             # histogram for exemplars generation
-            metrics_context = (
-                context.set_value(_SPAN_KEY, span) if span else None
-            )
+            metrics_context = set_span_in_context(span)
 
             duration_s = default_timer() - request_start_time
             if self._duration_histogram_old:
