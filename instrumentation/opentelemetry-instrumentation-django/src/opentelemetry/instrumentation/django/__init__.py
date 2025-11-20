@@ -45,7 +45,7 @@ For example,
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 Request attributes
-********************
+******************
 To extract attributes from Django's request object and use them as span attributes, set the environment variable
 ``OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS`` to a comma delimited list of request attribute names.
 
@@ -60,7 +60,7 @@ will extract the ``path_info`` and ``content_type`` attributes from every traced
 * `Django Request object reference <https://docs.djangoproject.com/en/5.2/ref/request-response/#attributes>`_
 
 Request and Response hooks
-***************************
+**************************
 This instrumentation supports request and response hooks. These are functions that get called
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
@@ -81,7 +81,7 @@ The hooks can be configured as follows:
 * `Django Response object <https://docs.djangoproject.com/en/5.2/ref/request-response/#httpresponse-objects>`_
 
 Adding attributes from middleware context
-********************************************************************************
+#########################################
 In many Django applications, certain request attributes become available only *after*
 specific middlewares have executed. For example:
 
@@ -105,7 +105,7 @@ Example: Attaching the authenticated user and current site to the span:
             span.set_attribute("enduser.username", request.user.get_username())
 
         # Attach current site (if provided by CurrentSiteMiddleware)
-        if getattr(request, "site", None):
+        if hasattr(request, "site"):
             span.set_attribute("site.id", getattr(request.site, "pk", None))
             span.set_attribute("site.domain", getattr(request.site, "domain", None))
 
@@ -120,7 +120,7 @@ which can later be included as span attributes in the ``response_hook``.
 * `Django middleware reference <https://docs.djangoproject.com/en/5.2/topics/http/middleware/>`_
 
 Best practices
-***************
+##############
 - Use **response_hook** (not request_hook) when accessing attributes added by Django middlewares.
 - Common middleware-provided attributes include:
 
@@ -136,7 +136,7 @@ Best practices
 * `OpenTelemetry semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>`_
 
 Middleware execution order
-******************************************
+##########################
 In Django’s request lifecycle, the OpenTelemetry `request_hook` is executed before
 the first middleware runs. Therefore:
 
