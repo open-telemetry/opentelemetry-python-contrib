@@ -16,6 +16,7 @@ dependencies = [
   "opentelemetry-instrumentation-aiohttp-server[instruments]",
   "opentelemetry-instrumentation-aiokafka[instruments]",
   "opentelemetry-instrumentation-aiopg[instruments]",
+  "opentelemetry-instrumentation-arangodb[instruments]",
   "opentelemetry-instrumentation-asgi[instruments]",
   "opentelemetry-instrumentation-asyncio",
   "opentelemetry-instrumentation-asyncpg[instruments]",
@@ -89,6 +90,7 @@ opentelemetry-instrumentation-aiohttp-client = { workspace = true }
 opentelemetry-instrumentation-aiohttp-server = { workspace = true }
 opentelemetry-instrumentation-aiokafka = { workspace = true }
 opentelemetry-instrumentation-aiopg = { workspace = true }
+opentelemetry-instrumentation-arangodb = { workspace = true }
 opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-asyncio = { workspace = true }
 opentelemetry-instrumentation-asyncpg = { workspace = true }

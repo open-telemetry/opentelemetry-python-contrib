@@ -72,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-arangodb`: New instrumentation for `python-arango`
+  ([#3829](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3829))
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
 - `opentelemetry-instrumentation-dbapi`: Add support for `commenter_options` in `trace_integration` function to control SQLCommenter behavior
