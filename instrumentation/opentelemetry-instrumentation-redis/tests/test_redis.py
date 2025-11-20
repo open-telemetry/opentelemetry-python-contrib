@@ -41,6 +41,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
 
+# pylint: disable=too-many-public-methods
 class TestRedis(TestBase):
     def assert_span_count(self, count: int):
         """
