@@ -1,5 +1,6 @@
 import unittest.mock
 import uuid
+import time
 
 import pytest
 
@@ -98,3 +99,24 @@ class TestSpanManager:
         child_mock_span.end.assert_called_once()
         assert run_id not in handler.spans
         assert child_run_id not in handler.spans
+
+    def test_ttl_cache_expires_spans(self, tracer):
+        # Arrange - Create handler with short TTL
+        from cachetools import TTLCache
+        
+        handler = _SpanManager(tracer=tracer)
+        # Replace the cache with one that has a very short TTL
+        handler.spans = TTLCache(maxsize=1024, ttl=0.05)
+        
+        run_id = uuid.uuid4()
+        mock_span = unittest.mock.Mock(spec=Span)
+        handler.spans[run_id] = _SpanState(span=mock_span)
+
+        # Assert - Span exists immediately
+        assert run_id in handler.spans
+
+        # Act - Wait for TTL to expire
+        time.sleep(0.1)
+
+        # Assert - Span is automatically removed by TTL
+        assert run_id not in handler.spans
