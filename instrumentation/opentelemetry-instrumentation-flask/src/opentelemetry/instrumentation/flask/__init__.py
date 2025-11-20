@@ -290,7 +290,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.trace.propagation import _SPAN_KEY
 from opentelemetry.util._importlib_metadata import version
 from opentelemetry.util.http import (
     get_excluded_urls,
@@ -412,6 +411,11 @@ def _rewrapped_app(
         result = wsgi_app(wrapped_app_environ, _start_response)
         if should_trace:
             duration_s = default_timer() - start
+            # Get the span from wrapped_app_environ and re-create context manually
+            # to pass to histogram for exemplars generation
+            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+            metrics_context = trace.set_span_in_context(span)
+
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.DEFAULT
@@ -420,13 +424,6 @@ def _rewrapped_app(
                 if request_route:
                     # http.target to be included in old semantic conventions
                     duration_attrs_old[HTTP_TARGET] = str(request_route)
-
-                # Get the span from wrapped_app_environ and re-create context manually
-                # to pass to histogram for exemplars generation
-                span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-                metrics_context = (
-                    context.set_value(_SPAN_KEY, span) if span else None
-                )
                 duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
@@ -440,12 +437,6 @@ def _rewrapped_app(
                 if request_route:
                     duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-                # Get the span from wrapped_app_environ and re-create context manually
-                # to pass to histogram for exemplars generation
-                span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-                metrics_context = (
-                    context.set_value(_SPAN_KEY, span) if span else None
-                )
                 duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,

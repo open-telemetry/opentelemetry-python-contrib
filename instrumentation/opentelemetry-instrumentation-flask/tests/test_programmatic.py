@@ -69,7 +69,6 @@ from opentelemetry.semconv._incubating.attributes.url_attributes import (
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.wsgitestutil import WsgiTestBase
-from opentelemetry.trace.propagation import _SPAN_KEY
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -812,16 +811,15 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertFalse(histogram_data_point_seen)
 
     def test_duration_histogram_old_record_with_context(self):
-        with patch("opentelemetry.context.set_value") as mock_set_value:
+        with patch("opentelemetry.trace.set_span_in_context") as mock_set_span:
             self.client.get("/hello/123")
 
-            # Verify that context.set_value was called for metrics exemplar context
+            # Verify that trace.set_span_in_context was called for metrics exemplar context
             # with same trace, span ID as trace
-            mock_set_value.assert_called()
-            call_args = mock_set_value.call_args
-            self.assertEqual(len(call_args[0]), 2)
-            self.assertEqual(call_args[0][0], _SPAN_KEY)
-            span_arg = call_args[0][1]
+            mock_set_span.assert_called()
+            call_args = mock_set_span.call_args
+            self.assertEqual(len(call_args[0]), 1)
+            span_arg = call_args[0][0]
             self.assertIsNotNone(span_arg)
             finished_spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(finished_spans), 1)
@@ -834,16 +832,15 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             )
 
     def test_duration_histogram_new_record_with_context_new_semconv(self):
-        with patch("opentelemetry.context.set_value") as mock_set_value:
+        with patch("opentelemetry.trace.set_span_in_context") as mock_set_span:
             self.client.get("/hello/123")
 
-            # Verify that context.set_value was called for metrics exemplar context
+            # Verify that trace.set_span_in_context was called for metrics exemplar context
             # with same trace, span ID as trace
-            mock_set_value.assert_called()
-            call_args = mock_set_value.call_args
-            self.assertEqual(len(call_args[0]), 2)
-            self.assertEqual(call_args[0][0], _SPAN_KEY)
-            span_arg = call_args[0][1]
+            mock_set_span.assert_called()
+            call_args = mock_set_span.call_args
+            self.assertEqual(len(call_args[0]), 1)
+            span_arg = call_args[0][0]
             self.assertIsNotNone(span_arg)
             finished_spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(finished_spans), 1)
