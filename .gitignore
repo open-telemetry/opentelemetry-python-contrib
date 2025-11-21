@@ -61,3 +61,4 @@ target
 
 # Benchmark result files
 *-benchmark.json
+instrumentation-genai/opentelemetry-instrumentation-langchain/examples/multi_agent_travel_planner/.env
