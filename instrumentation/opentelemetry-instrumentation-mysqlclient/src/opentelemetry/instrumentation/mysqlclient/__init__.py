@@ -166,6 +166,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        enable_transaction_spans = kwargs.get("enable_transaction_spans", True)
 
         dbapi.wrap_connect(
             __name__,
@@ -178,6 +179,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -191,6 +193,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        enable_transaction_spans=True,
     ):
         """Enable instrumentation in a mysqlclient connection.
 
@@ -215,6 +218,8 @@ class MySQLClientInstrumentor(BaseInstrumentor):
                     - `mysql_client_version`: Adds the MySQL client version.
                     - `driver_paramstyle`: Adds the parameter style.
                     - `opentelemetry_values`: Includes traceparent values.
+            enable_transaction_spans:
+                Flag to enable/disable transaction spans (commit/rollback). Defaults to True.
         Returns:
             An instrumented MySQL connection with OpenTelemetry support enabled.
         """
@@ -230,6 +235,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=MySQLdb,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     @staticmethod

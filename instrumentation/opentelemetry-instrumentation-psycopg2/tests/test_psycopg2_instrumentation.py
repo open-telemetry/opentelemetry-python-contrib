@@ -197,6 +197,7 @@ class TestPsycopg2InstrumentorParameters(TestBase):
             commenter_options={},
             enable_attribute_commenter=False,
             capture_parameters=False,
+            enable_transaction_spans=True,
         )
 
     def test_instrument_capture_parameters(self, mock_dbapi):

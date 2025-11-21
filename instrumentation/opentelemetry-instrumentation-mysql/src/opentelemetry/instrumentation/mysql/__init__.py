@@ -182,6 +182,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        enable_transaction_spans = kwargs.get("enable_transaction_spans", True)
 
         dbapi.wrap_connect(
             __name__,
@@ -194,6 +195,7 @@ class MySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):
@@ -208,6 +210,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        enable_transaction_spans=True,
     ):
         """Enable instrumentation in a MySQL connection.
 
@@ -225,6 +228,8 @@ class MySQLInstrumentor(BaseInstrumentor):
                 Optional configurations for tags to be appended at the sql query.
             enable_attribute_commenter:
                 Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
+            enable_transaction_spans:
+                Flag to enable/disable transaction spans (commit/rollback). Defaults to True.
 
         Returns:
             An instrumented MySQL connection with OpenTelemetry tracing enabled.
@@ -240,6 +245,7 @@ class MySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=mysql.connector,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def uninstrument_connection(self, connection):
