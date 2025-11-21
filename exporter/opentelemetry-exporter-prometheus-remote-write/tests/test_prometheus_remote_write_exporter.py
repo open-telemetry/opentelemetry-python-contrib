@@ -122,9 +122,9 @@ def test_parse_metric(metric, prom_rw):
         "bool_value": True,
     }
 
-    assert (
-        len(metric.data.data_points) == 1
-    ), "We can only support a single datapoint in tests"
+    assert len(metric.data.data_points) == 1, (
+        "We can only support a single datapoint in tests"
+    )
     series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
