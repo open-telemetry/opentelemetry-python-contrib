@@ -40,7 +40,10 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor,
 )
-from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.instrumentation.utils import (
+    suppress_http_instrumentation,
+    suppress_instrumentation,
+)
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_HOST,
     HTTP_METHOD,
@@ -828,6 +831,56 @@ class TestAioHttpIntegration(TestBase):
                     self._assert_spans([], 0)
                     self._assert_metrics(0)
 
+    def test_metric_attributes_isolation(self):
+        async def success_handler(request):
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response(status=HTTPStatus.OK)
+
+        async def timeout_handler(request):
+            await asyncio.sleep(60)
+            assert "traceparent" in request.headers
+            return aiohttp.web.Response(status=HTTPStatus.OK)
+
+        trace_config: aiohttp.TraceConfig = (
+            aiohttp_client.create_trace_config()
+        )
+
+        success_host, success_port = self._http_request(
+            trace_config=trace_config,
+            url="/success",
+            request_handler=success_handler,
+        )
+
+        timeout_host, timeout_port = self._http_request(
+            trace_config=trace_config,
+            url="/timeout",
+            request_handler=timeout_handler,
+            timeout=aiohttp.ClientTimeout(sock_read=0.01),
+        )
+
+        metrics = self._assert_metrics(1)
+        duration_dp_attributes = [
+            dict(dp.attributes) for dp in metrics[0].data.data_points
+        ]
+        self.assertEqual(
+            [
+                {
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: success_host,
+                    HTTP_STATUS_CODE: int(HTTPStatus.OK),
+                    NET_PEER_NAME: success_host,
+                    NET_PEER_PORT: success_port,
+                },
+                {
+                    HTTP_METHOD: "GET",
+                    HTTP_HOST: timeout_host,
+                    NET_PEER_NAME: timeout_host,
+                    NET_PEER_PORT: timeout_port,
+                },
+            ],
+            duration_dp_attributes,
+        )
+
 
 class TestAioHttpClientInstrumentor(TestBase):
     URL = "/test-path"
@@ -1068,33 +1121,60 @@ class TestAioHttpClientInstrumentor(TestBase):
         self._assert_spans(1)
 
     def test_suppress_instrumentation(self):
-        with suppress_instrumentation():
-            run_with_test_server(
-                self.get_default_request(), self.URL, self.default_handler
-            )
-        self._assert_spans(0)
+        for suppress_ctx in (
+            suppress_instrumentation,
+            suppress_http_instrumentation,
+        ):
+            with self.subTest(suppress_ctx=suppress_ctx.__name__):
+                with suppress_ctx():
+                    run_with_test_server(
+                        self.get_default_request(),
+                        self.URL,
+                        self.default_handler,
+                    )
+                self._assert_spans(0)
+                self._assert_metrics(0)
 
     @staticmethod
-    async def suppressed_request(server: aiohttp.test_utils.TestServer):
-        async with aiohttp.test_utils.TestClient(server) as client:
-            with suppress_instrumentation():
-                await client.get(TestAioHttpClientInstrumentor.URL)
+    def make_suppressed_request(suppress_ctx):
+        async def suppressed_request(server: aiohttp.test_utils.TestServer):
+            async with aiohttp.test_utils.TestClient(server) as client:
+                with suppress_ctx():
+                    await client.get(TestAioHttpClientInstrumentor.URL)
+
+        return suppressed_request
 
     def test_suppress_instrumentation_after_creation(self):
-        run_with_test_server(
-            self.suppressed_request, self.URL, self.default_handler
-        )
-        self._assert_spans(0)
+        for suppress_ctx in (
+            suppress_instrumentation,
+            suppress_http_instrumentation,
+        ):
+            with self.subTest(suppress_ctx=suppress_ctx.__name__):
+                run_with_test_server(
+                    self.make_suppressed_request(suppress_ctx),
+                    self.URL,
+                    self.default_handler,
+                )
+                self._assert_spans(0)
+                self._assert_metrics(0)
 
     def test_suppress_instrumentation_with_server_exception(self):
         # pylint:disable=unused-argument
         async def raising_handler(request):
             raise aiohttp.web.HTTPFound(location=self.URL)
 
-        run_with_test_server(
-            self.suppressed_request, self.URL, raising_handler
-        )
-        self._assert_spans(0)
+        for suppress_ctx in (
+            suppress_instrumentation,
+            suppress_http_instrumentation,
+        ):
+            with self.subTest(suppress_ctx=suppress_ctx.__name__):
+                run_with_test_server(
+                    self.make_suppressed_request(suppress_ctx),
+                    self.URL,
+                    raising_handler,
+                )
+                self._assert_spans(0)
+                self._assert_metrics(0)
 
     def test_url_filter(self):
         def strip_query_params(url: yarl.URL) -> str:
