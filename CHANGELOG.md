@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-psycopg2`: Add parameter `capture_parameters` to instrumentor.
   ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
 
+- `opentelemetry-instrumentation-dbapi`: Add instrumentation for `commit()` and `rollback()` transaction operations
+  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
+- `opentelemetry-instrumentation-dbapi`: Add `enable_transaction_spans` configuration flag to control transaction span creation (default: `True`)
+  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
+- `opentelemetry-instrumentation-pymysql`, `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-sqlite3`, `opentelemetry-instrumentation-pymssql`: Add support for transaction span instrumentation via `enable_transaction_spans` parameter
+  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
+
 ### Fixed
 
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
