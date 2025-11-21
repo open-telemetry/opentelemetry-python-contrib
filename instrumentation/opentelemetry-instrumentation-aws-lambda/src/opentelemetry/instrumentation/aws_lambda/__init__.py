@@ -289,12 +289,32 @@ def _set_api_gateway_v2_proxy_attributes(
 def _get_lambda_context_attributes(
     lambda_context: _LambdaContext,
 ) -> dict[str, str]:
+    """Extracts OpenTelemetry span attributes from AWS Lambda context.
+
+    Extract FaaS specific attributes from the AWS Lambda context
+    according to OpenTelemetry semantic conventions for FaaS & AWS Lambda.
+
+    Args:
+        lambda_context: The AWS Lambda context object.
+
+    Returns:
+        A dictionary mapping of OpenTelemetry attribute names to their values.
+    """
     function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(
         ":"
     )
+    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
+    #
+    # See more:
+    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
     aws_account_id: str = function_arn_parts[4]
-    # Remove potential function alias or version from ARN by keeping only the
-    # first 7 parts (arn:aws:lambda:region:account:function:name)
+    # NOTE: The unmodified function ARN may contain an alias extension e.g.
+    # `arn:aws:lambda:region:account:function:name:alias`. We can ensure
+    # the alias extension is not included in the `cloud.resource_id` by keeping
+    # only the first 7 parts of the original ARN.
+    #
+    # See more:
+    # https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
     formatted_function_arn: str = ":".join(function_arn_parts[:7])
 
     # NOTE: The specs mention an exception here, allowing the
