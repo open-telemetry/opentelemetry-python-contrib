@@ -39,17 +39,17 @@ from opentelemetry.instrumentation.vertexai.utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import (
-    SimpleLogRecordProcessor,
-)
-
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 try:
-    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter  # pylint: disable=no-name-in-module
+    from opentelemetry.sdk._logs.export import (
+        InMemoryLogRecordExporter,
+        SimpleLogRecordProcessor,
+    )
 except ImportError:
     # Fallback to old name for compatibility with older SDK versions
     from opentelemetry.sdk._logs.export import (
         InMemoryLogExporter as InMemoryLogRecordExporter,
+        SimpleLogRecordProcessor,
     )
 from opentelemetry.sdk.metrics import (
     MeterProvider,
