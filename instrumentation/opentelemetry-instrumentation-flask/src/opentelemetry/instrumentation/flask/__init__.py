@@ -342,6 +342,7 @@ def _rewrapped_app(
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
+    # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -410,6 +411,11 @@ def _rewrapped_app(
         result = wsgi_app(wrapped_app_environ, _start_response)
         if should_trace:
             duration_s = default_timer() - start
+            # Get the span from wrapped_app_environ and re-create context manually
+            # to pass to histogram for exemplars generation
+            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+            metrics_context = trace.set_span_in_context(span)
+
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.DEFAULT
@@ -418,9 +424,10 @@ def _rewrapped_app(
                 if request_route:
                     # http.target to be included in old semantic conventions
                     duration_attrs_old[HTTP_TARGET] = str(request_route)
-
                 duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=metrics_context,
                 )
             if duration_histogram_new:
                 duration_attrs_new = otel_wsgi._parse_duration_attrs(
@@ -431,7 +438,9 @@ def _rewrapped_app(
                     duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
                 duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=metrics_context,
                 )
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
