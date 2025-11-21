@@ -157,6 +157,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         https://github.com/pymssql/pymssql/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        enable_transaction_spans = kwargs.get("enable_transaction_spans", True)
 
         dbapi.wrap_connect(
             __name__,
@@ -169,6 +170,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             # instead, we get the attributes from the connect method (which is done
             # via PyMSSQLDatabaseApiIntegration.wrapped_connection)
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):
@@ -176,13 +178,15 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(pymssql, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(connection, tracer_provider=None, enable_transaction_spans=True):
         """Enable instrumentation in a pymssql connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            enable_transaction_spans: Flag to enable/disable transaction spans
+                (commit/rollback). Defaults to True.
 
         Returns:
             An instrumented connection.
@@ -195,6 +199,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     @staticmethod
