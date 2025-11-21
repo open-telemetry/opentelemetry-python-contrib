@@ -72,6 +72,7 @@ for example:
 import logging
 import os
 import time
+import typing
 from importlib import import_module
 from typing import Any, Callable, Collection
 from urllib.parse import urlencode
@@ -122,6 +123,27 @@ ORIG_HANDLER = "ORIG_HANDLER"
 OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
+
+
+class _LambdaContext(typing.Protocol):
+    """Type definition for AWS Lambda context object.
+
+    This Protocol defines the interface for the context object passed to Lambda
+    function handlers, providing information about the invocation, function, and
+    execution environment.
+
+     See Also:
+        AWS Lambda Context Object documentation:
+        https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
+    """
+
+    function_name: str
+    function_version: str
+    invoked_function_arn: str
+    memory_limit_in_mb: int
+    aws_request_id: str
+    log_group_name: str
+    log_stream_name: str
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -264,6 +286,30 @@ def _set_api_gateway_v2_proxy_attributes(
     return span
 
 
+def _get_lambda_context_attributes(
+    lambda_context: _LambdaContext,
+) -> dict[str, str]:
+    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(
+        ":"
+    )
+    aws_account_id: str = function_arn_parts[4]
+    # Remove potential function alias or version from ARN by keeping only the
+    # first 7 parts (arn:aws:lambda:region:account:function:name)
+    formatted_function_arn: str = ":".join(function_arn_parts[:7])
+
+    # NOTE: The specs mention an exception here, allowing the
+    # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+    # attribute instead of a resource attribute.
+    #
+    # See more:
+    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
+    return {
+        CLOUD_ACCOUNT_ID: aws_account_id,
+        CLOUD_RESOURCE_ID: formatted_function_arn,
+        FAAS_INVOCATION_ID: lambda_context.aws_request_id,
+    }
+
+
 # pylint: disable=too-many-statements
 def _instrument(
     wrapped_module_name,
@@ -278,37 +324,13 @@ def _instrument(
     def _instrumented_lambda_handler_call(  # noqa pylint: disable=too-many-branches
         call_wrapped, instance, args, kwargs
     ):
-        orig_handler_name = ".".join(
-            [wrapped_module_name, wrapped_function_name]
-        )
-
-        lambda_event = args[0]
+        lambda_event: Any = args[0]
+        lambda_context: _LambdaContext = args[1]
 
         parent_context = _determine_parent_context(
             lambda_event,
             event_context_extractor,
         )
-
-        try:
-            event_source = lambda_event["Records"][0].get(
-                "eventSource"
-            ) or lambda_event["Records"][0].get("EventSource")
-            if event_source in {
-                "aws:sqs",
-                "aws:s3",
-                "aws:sns",
-                "aws:dynamodb",
-            }:
-                # See more:
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html
-                # https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
-                # https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
-                span_kind = SpanKind.CONSUMER
-            else:
-                span_kind = SpanKind.SERVER
-        except (IndexError, KeyError, TypeError):
-            span_kind = SpanKind.SERVER
 
         tracer = get_tracer(
             __name__,
@@ -320,38 +342,10 @@ def _instrument(
         token = context_api.attach(parent_context)
         try:
             with tracer.start_as_current_span(
-                name=orig_handler_name,
-                kind=span_kind,
+                name=lambda_context.function_name,
+                kind=SpanKind.SERVER,
+                attributes=_get_lambda_context_attributes(lambda_context),
             ) as span:
-                if span.is_recording():
-                    lambda_context = args[1]
-                    # NOTE: The specs mention an exception here, allowing the
-                    # `CLOUD_RESOURCE_ID` attribute to be set as a span
-                    # attribute instead of a resource attribute.
-                    #
-                    # See more:
-                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#resource-detector
-                    span.set_attribute(
-                        CLOUD_RESOURCE_ID,
-                        lambda_context.invoked_function_arn,
-                    )
-                    span.set_attribute(
-                        FAAS_INVOCATION_ID,
-                        lambda_context.aws_request_id,
-                    )
-
-                    # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
-                    #
-                    # See more:
-                    # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/faas/aws-lambda.md#all-triggers
-                    account_id = lambda_context.invoked_function_arn.split(
-                        ":"
-                    )[4]
-                    span.set_attribute(
-                        CLOUD_ACCOUNT_ID,
-                        account_id,
-                    )
-
                 exception = None
                 result = None
                 try:
