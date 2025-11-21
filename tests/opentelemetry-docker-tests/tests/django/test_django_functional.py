@@ -110,6 +110,25 @@ class TestFunctionalDjango(TestBase):
             if duration_metric:
                 break
 
+        self.assertGreater(
+            len(metric_names),
+            0,
+            "No metrics were generated",
+        )
+        self.assertTrue(
+            any(
+                name
+                in ["http.server.request.duration", "http.server.duration"]
+                for name in metric_names
+            ),
+            f"Expected duration metric not found. Available metrics: {metric_names}",
+        )
+        self.assertIn(
+            "http.server.active_requests",
+            metric_names,
+            f"Expected active_requests metric not found. Available metrics: {metric_names}",
+        )
+
         self.assertIsNotNone(duration_metric)
         data_points = list(duration_metric.data.data_points)
         self.assertTrue(len(data_points) > 0)
