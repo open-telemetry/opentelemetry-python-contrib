@@ -18,7 +18,7 @@ from opentelemetry.sdk._logs.export import (
 
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 try:
-    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
+    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter  # pylint: disable=no-name-in-module
 except ImportError:
     # Fallback to old name for compatibility with older SDK versions
     from opentelemetry.sdk._logs.export import (
