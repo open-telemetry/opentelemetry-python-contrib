@@ -188,6 +188,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             "enable_attribute_commenter", False
         )
         capture_parameters = kwargs.get("capture_parameters", False)
+        enable_transaction_spans = kwargs.get("enable_transaction_spans", True)
         dbapi.wrap_connect(
             __name__,
             psycopg,
@@ -201,6 +202,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
             capture_parameters=capture_parameters,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
         dbapi.wrap_connect(
@@ -216,6 +218,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
             capture_parameters=capture_parameters,
+            enable_transaction_spans=enable_transaction_spans,
         )
         dbapi.wrap_connect(
             __name__,
@@ -230,6 +233,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
             capture_parameters=capture_parameters,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs: Any):
@@ -304,7 +308,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
         kwargs["cursor_factory"] = _new_cursor_factory(**new_factory_kwargs)
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
-        return connection
+        # psycopg uses cursor_factory for cursor tracing, so disable cursor wrapping
+        return dbapi.get_traced_connection_proxy(connection, self, wrap_cursors=False)
 
 
 class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
@@ -324,7 +329,8 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
         )
         connection = await connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
-        return connection
+        # psycopg uses cursor_factory for cursor tracing, so disable cursor wrapping
+        return dbapi.get_traced_async_connection_proxy(connection, self, wrap_cursors=False)
 
 
 class CursorTracer(dbapi.CursorTracer):

@@ -480,3 +480,56 @@ class TestPyMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    @mock.patch("pymysql.connect")
+    # pylint: disable=unused-argument
+    def test_commit(self, mock_connect):
+        """Test that commit creates a span"""
+        PyMySQLInstrumentor().instrument()
+        cnx = pymysql.connect(database="test")
+        cnx.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mysql")
+
+    @mock.patch("pymysql.connect")
+    # pylint: disable=unused-argument
+    def test_rollback(self, mock_connect):
+        """Test that rollback creates a span"""
+        PyMySQLInstrumentor().instrument()
+        cnx = pymysql.connect(database="test")
+        cnx.rollback()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mysql")
+
+    @mock.patch("pymysql.connect")
+    # pylint: disable=unused-argument
+    def test_commit_and_query(self, mock_connect):
+        """Test that both execute and commit create spans"""
+        PyMySQLInstrumentor().instrument()
+        cnx = pymysql.connect(database="test")
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test")
+        cnx.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
+
+        # First span should be the SELECT
+        select_span = spans_list[0]
+        self.assertEqual(select_span.name, "SELECT")
+        self.assertIs(select_span.kind, trace_api.SpanKind.CLIENT)
+
+        # Second span should be the COMMIT
+        commit_span = spans_list[1]
+        self.assertEqual(commit_span.name, "COMMIT")
+        self.assertIs(commit_span.kind, trace_api.SpanKind.CLIENT)

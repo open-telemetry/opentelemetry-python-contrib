@@ -100,18 +100,18 @@ class MockConnection:
 
 
 class MockAsyncConnection:
-    commit = mock.MagicMock(spec=types.MethodType)
-    commit.__name__ = "commit"
-
-    rollback = mock.MagicMock(spec=types.MethodType)
-    rollback.__name__ = "rollback"
-
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
 
     @staticmethod
     async def connect(*args, **kwargs):
         return MockAsyncConnection(**kwargs)
+
+    async def commit(self):
+        pass
+
+    async def rollback(self):
+        pass
 
     def cursor(self):
         if self.cursor_factory:
@@ -392,6 +392,28 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_commit(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = psycopg.connect(database="test")
+        cnx.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+
+    def test_rollback(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = psycopg.connect(database="test")
+        cnx.rollback()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -531,6 +553,32 @@ class TestPostgresqlIntegrationAsync(
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_async_commit(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = await psycopg.AsyncConnection.connect("test")
+        await cnx.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_async_rollback(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = await psycopg.AsyncConnection.connect("test")
+        await cnx.rollback()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
 
         PsycopgInstrumentor().uninstrument()
 
