@@ -138,7 +138,7 @@ class CommandTracer(monitoring.CommandListener):
         command_name = event.command_name
         span_name = f"{event.database_name}.{command_name}"
         statement = self._get_statement_by_command_name(command_name, event)
-        collection = event.command.get(event.command_name)
+        collection = _get_command_collection_name(event)
 
         try:
             span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
@@ -224,6 +224,13 @@ class CommandTracer(monitoring.CommandListener):
         if command and self.capture_statement:
             statement += " " + str(command)
         return statement
+
+
+def _get_command_collection_name(event: CommandEvent) -> str | None:
+    collection_name = event.command.get(event.command_name)
+    if not collection_name or not isinstance(collection_name, str):
+        return None
+    return collection_name
 
 
 def _get_span_dict_key(
