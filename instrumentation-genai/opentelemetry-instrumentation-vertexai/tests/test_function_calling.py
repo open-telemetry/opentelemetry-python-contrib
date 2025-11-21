@@ -8,7 +8,7 @@ from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 try:
-    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (  # pylint: disable=no-name-in-module
         InMemoryLogRecordExporter,
     )
 except ImportError:
