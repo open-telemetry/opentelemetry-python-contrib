@@ -23,9 +23,17 @@ from opentelemetry._logs import (
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs.export import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics._internal.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider

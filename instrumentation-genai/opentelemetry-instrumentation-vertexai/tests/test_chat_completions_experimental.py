@@ -14,9 +14,17 @@ from vertexai.preview.generative_models import (
 )
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogRecordExporter,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+        InMemoryLogRecordExporter,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
