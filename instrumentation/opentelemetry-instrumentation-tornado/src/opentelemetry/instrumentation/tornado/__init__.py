@@ -39,7 +39,7 @@ Configuration
 
 The following environment variables are supported as configuration options:
 
-- OTEL_PYTHON_TORNADO_EXCLUDED_URLS
+- ``OTEL_PYTHON_TORNADO_EXCLUDED_URLS`` (or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations)
 
 A comma separated list of paths that should not be automatically traced. For example, if this is set to
 
@@ -101,7 +101,7 @@ created span and some other contextual information. Example:
 
 Capture HTTP request and response headers
 *****************************************
-You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+You can configure the agent to capture predefined HTTP headers as span attributes, according to the `semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************

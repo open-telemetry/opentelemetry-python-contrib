@@ -85,7 +85,7 @@ right after a span is created for a request and right before the span is finishe
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -191,7 +191,7 @@ from weakref import WeakSet as _WeakSet
 import fastapi
 from starlette.applications import Starlette
 from starlette.middleware.errors import ServerErrorMiddleware
-from starlette.routing import Match
+from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from opentelemetry.instrumentation._semconv import (
@@ -474,7 +474,11 @@ def _get_route_details(scope):
     route = None
 
     for starlette_route in app.routes:
-        match, _ = starlette_route.matches(scope)
+        match, _ = (
+            Route.matches(starlette_route, scope)
+            if isinstance(starlette_route, Route)
+            else starlette_route.matches(scope)
+        )
         if match == Match.FULL:
             try:
                 route = starlette_route.path

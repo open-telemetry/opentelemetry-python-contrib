@@ -460,6 +460,8 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             )
             return
         # pylint: disable=attribute-defined-outside-init
+        # Convert slash-delimited paths to dot-delimited for valid Python imports
+        lambda_handler = lambda_handler.replace("/", ".")
         (
             self._wrapped_module_name,
             self._wrapped_function_name,

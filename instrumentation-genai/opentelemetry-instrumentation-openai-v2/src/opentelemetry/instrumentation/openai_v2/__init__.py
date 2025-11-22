@@ -44,7 +44,7 @@ from typing import Collection
 
 from wrapt import wrap_function_wrapper
 
-from opentelemetry._events import get_event_logger
+from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.openai_v2.package import _instruments
 from opentelemetry.instrumentation.openai_v2.utils import is_content_enabled
@@ -54,7 +54,12 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 from .instruments import Instruments
-from .patch import async_chat_completions_create, chat_completions_create
+from .patch import (
+    async_chat_completions_create,
+    async_embeddings_create,
+    chat_completions_create,
+    embeddings_create,
+)
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -73,12 +78,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
+        logger_provider = kwargs.get("logger_provider")
+        logger = get_logger(
             __name__,
             "",
             schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_logger_provider,
+            logger_provider=logger_provider,
         )
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
@@ -94,7 +99,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer, logger, instruments, is_content_enabled()
             ),
         )
 
@@ -102,12 +107,31 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, event_logger, instruments, is_content_enabled()
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
+        # Add instrumentation for the embeddings API
+        wrap_function_wrapper(
+            module="openai.resources.embeddings",
+            name="Embeddings.create",
+            wrapper=embeddings_create(
+                tracer, instruments, is_content_enabled()
+            ),
+        )
+
+        wrap_function_wrapper(
+            module="openai.resources.embeddings",
+            name="AsyncEmbeddings.create",
+            wrapper=async_embeddings_create(
+                tracer, instruments, is_content_enabled()
             ),
         )
 
     def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel
+        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+        unwrap(openai.resources.embeddings.Embeddings, "create")
+        unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")

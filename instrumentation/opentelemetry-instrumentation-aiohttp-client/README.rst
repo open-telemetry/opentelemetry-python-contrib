@@ -19,6 +19,7 @@ Installation
 References
 ----------
 
+* `OpenTelemetry aiohttp client Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/aiohttp_client/aiohttp_client.html>`_
+* `aiohttp Tracing Reference <https://docs.aiohttp.org/en/stable/tracing_reference.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
-* `aiohttp client Tracing <https://docs.aiohttp.org/en/stable/tracing_reference.html>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_

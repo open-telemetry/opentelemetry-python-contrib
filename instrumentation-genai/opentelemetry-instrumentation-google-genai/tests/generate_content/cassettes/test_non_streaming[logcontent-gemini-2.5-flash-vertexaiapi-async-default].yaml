@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "In tangled webs of code, where logic spins,\nA silent plea for sight, when trouble wins.\nDistributed dreams, where microservices hum,\nCan hide the fault, from whence the failures come.\n\nThen from the void, a beacon starts to gleam,\nOpenTelemetry, a developer's dream.\nA standard hand, a vendor-neutral plea,\nTo weave the fabric of observability.\n\nIt paints the journey, step by fragile step,\nA request's life, where secrets often slept.\nEach function call, a \"span\" upon the thread,\nConnecting dots, where errors might have spread.\n\nThe system's heartbeat, captured, clear, and bright,\nIn counters climbing, through the digital night.\nGauges that measure, histograms that show,\nThe ebb and flow, of where the currents go.\n\nAnd logs, the narratives, of every deed,\nA detailed story, planted like a seed.\nContext attached, for clarity and grace,\nTo pinpoint flaws, and put them in their place.\n\nNo vendor lock, no proprietary chain,\nJust open arms, to ease the developer's pain.\nA unified approach, for all to see,\nThe core of insight, growing strong and free.\n\nThrough careful pipelines, data starts to flow,\nTo trusted backends, where the insights grow.\nNo matter where your services reside,\nIts watchful eye, has nowhere left to hide.\n\nSo hail the standard, comprehensive, vast,\nA future built, where understanding's cast.\nFor complex systems, now a guiding light,\nOpenTelemetry, makes everything bright."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -1.920527738683364
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 340,
+            "totalTokenCount": 2040,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 340
+              }
+            ],
+            "thoughtsTokenCount": 1692
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-10T15:56:04.095069Z",
+          "responseId": "lCzpaN3mBYqCnvgP5dCT6AU"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Fri, 10 Oct 2025 15:56:14 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1
