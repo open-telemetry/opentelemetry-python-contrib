@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
 - `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
   ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
+- `opentelemetry-instrumentation-asgi`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
+- `opentelemetry-instrumentation-wsgi`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
