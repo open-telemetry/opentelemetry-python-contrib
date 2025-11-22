@@ -69,12 +69,13 @@ for example:
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
-import typing
 from importlib import import_module
-from typing import Any, Callable, Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
@@ -124,26 +125,28 @@ OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
     "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 )
 
+if TYPE_CHECKING:
+    import typing
 
-class _LambdaContext(typing.Protocol):
-    """Type definition for AWS Lambda context object.
+    class LambdaContext(typing.Protocol):
+        """Type definition for AWS Lambda context object.
 
-    This Protocol defines the interface for the context object passed to Lambda
-    function handlers, providing information about the invocation, function, and
-    execution environment.
+        This Protocol defines the interface for the context object passed to Lambda
+        function handlers, providing information about the invocation, function, and
+        execution environment.
 
-     See Also:
-        AWS Lambda Context Object documentation:
-        https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
-    """
+         See Also:
+            AWS Lambda Context Object documentation:
+            https://docs.aws.amazon.com/lambda/latest/dg/python-context.html
+        """
 
-    function_name: str
-    function_version: str
-    invoked_function_arn: str
-    memory_limit_in_mb: int
-    aws_request_id: str
-    log_group_name: str
-    log_stream_name: str
+        function_name: str
+        function_version: str
+        invoked_function_arn: str
+        memory_limit_in_mb: int
+        aws_request_id: str
+        log_group_name: str
+        log_stream_name: str
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -287,7 +290,7 @@ def _set_api_gateway_v2_proxy_attributes(
 
 
 def _get_lambda_context_attributes(
-    lambda_context: _LambdaContext,
+    lambda_context: LambdaContext,
 ) -> dict[str, str]:
     """Extracts OpenTelemetry span attributes from AWS Lambda context.
 
@@ -345,7 +348,7 @@ def _instrument(
         call_wrapped, instance, args, kwargs
     ):
         lambda_event: Any = args[0]
-        lambda_context: _LambdaContext = args[1]
+        lambda_context: LambdaContext = args[1]
 
         parent_context = _determine_parent_context(
             lambda_event,
