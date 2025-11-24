@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from dataclasses import asdict
-from typing import List
+from typing import Any
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -60,32 +62,13 @@ def _apply_common_span_attributes(
         # TODO: clean provider name to match GenAiProviderNameValues?
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, invocation.provider)
 
-    if invocation.output_messages:
-        span.set_attribute(
-            GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
-            [gen.finish_reason for gen in invocation.output_messages],
-        )
-
-    if invocation.response_model_name is not None:
-        span.set_attribute(
-            GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name
-        )
-    if invocation.response_id is not None:
-        span.set_attribute(GenAI.GEN_AI_RESPONSE_ID, invocation.response_id)
-    if invocation.input_tokens is not None:
-        span.set_attribute(
-            GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens
-        )
-    if invocation.output_tokens is not None:
-        span.set_attribute(
-            GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens
-        )
+    _apply_response_attributes(span, invocation)
 
 
 def _maybe_set_span_messages(
     span: Span,
-    input_messages: List[InputMessage],
-    output_messages: List[OutputMessage],
+    input_messages: list[InputMessage],
+    output_messages: list[OutputMessage],
 ) -> None:
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
@@ -112,6 +95,8 @@ def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
     _maybe_set_span_messages(
         span, invocation.input_messages, invocation.output_messages
     )
+    _apply_request_attributes(span, invocation)
+    _apply_response_attributes(span, invocation)
     span.set_attributes(invocation.attributes)
 
 
@@ -122,7 +107,75 @@ def _apply_error_attributes(span: Span, error: Error) -> None:
         span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
 
 
+def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
+    """Attach GenAI request semantic convention attributes to the span."""
+    attributes: dict[str, Any] = {}
+    if invocation.temperature is not None:
+        attributes[GenAI.GEN_AI_REQUEST_TEMPERATURE] = invocation.temperature
+    if invocation.top_p is not None:
+        attributes[GenAI.GEN_AI_REQUEST_TOP_P] = invocation.top_p
+    if invocation.frequency_penalty is not None:
+        attributes[GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
+            invocation.frequency_penalty
+        )
+    if invocation.presence_penalty is not None:
+        attributes[GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY] = (
+            invocation.presence_penalty
+        )
+    if invocation.max_tokens is not None:
+        attributes[GenAI.GEN_AI_REQUEST_MAX_TOKENS] = invocation.max_tokens
+    if invocation.stop_sequences is not None:
+        attributes[GenAI.GEN_AI_REQUEST_STOP_SEQUENCES] = (
+            invocation.stop_sequences
+        )
+    if invocation.seed is not None:
+        attributes[GenAI.GEN_AI_REQUEST_SEED] = invocation.seed
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
+    """Attach GenAI response semantic convention attributes to the span."""
+    attributes: dict[str, Any] = {}
+
+    finish_reasons: list[str] | None
+    if invocation.finish_reasons is not None:
+        finish_reasons = invocation.finish_reasons
+    elif invocation.output_messages:
+        finish_reasons = [
+            message.finish_reason
+            for message in invocation.output_messages
+            if message.finish_reason
+        ]
+    else:
+        finish_reasons = None
+
+    if finish_reasons:
+        # De-duplicate finish reasons
+        unique_finish_reasons = sorted(set(finish_reasons))
+        if unique_finish_reasons:
+            attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] = (
+                unique_finish_reasons
+            )
+
+    if invocation.response_model_name is not None:
+        attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
+            invocation.response_model_name
+        )
+    if invocation.response_id is not None:
+        attributes[GenAI.GEN_AI_RESPONSE_ID] = invocation.response_id
+    if invocation.input_tokens is not None:
+        attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] = invocation.input_tokens
+    if invocation.output_tokens is not None:
+        attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] = invocation.output_tokens
+
+    if attributes:
+        span.set_attributes(attributes)
+
+
 __all__ = [
     "_apply_finish_attributes",
     "_apply_error_attributes",
+    "_apply_request_attributes",
+    "_apply_response_attributes",
 ]
