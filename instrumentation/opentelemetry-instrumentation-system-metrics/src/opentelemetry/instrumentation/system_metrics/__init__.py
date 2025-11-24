@@ -164,7 +164,7 @@ def _build_default_config() -> dict[str, list[str] | None]:
         for pat in os.environ.get(
             OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, ""
         ).split(",")
-        if pat
+        if pat.strip()
     ]
     if excluded_metrics:
         return {

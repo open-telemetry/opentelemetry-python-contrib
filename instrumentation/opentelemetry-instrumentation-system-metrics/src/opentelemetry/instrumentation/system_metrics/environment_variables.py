@@ -41,9 +41,6 @@ To exclude a specific metric:
 The environment variable supports standard glob patterns for metric filtering:
 
 - ``*`` - Matches any sequence of characters within a metric name
-- ``?`` - Matches any single character
-- ``[seq]`` - Matches any character in the sequence
-- ``[!seq]`` - Matches any character not in the sequence
 
 **Example Patterns:**
 
