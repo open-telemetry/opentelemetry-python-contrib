@@ -29,7 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
 - `opentelemetry-instrumentation-redis`: add support for `suppress_instrumentation` context manager for both sync and async Redis clients and pipelines
 - Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
-  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+  ([#3589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+- opentelemetry-instrumentation: allow to skip all instrumentations loading with a wildcard
+  ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
 
 ### Fixed
 
