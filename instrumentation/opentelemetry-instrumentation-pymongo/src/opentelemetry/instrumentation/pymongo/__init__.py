@@ -148,7 +148,7 @@ class CommandTracer(monitoring.CommandListener):
                 )
                 span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
                 span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-                if collection:
+                if collection and isinstance(collection, str):
                     span.set_attribute(
                         SpanAttributes.DB_MONGODB_COLLECTION, collection
                     )

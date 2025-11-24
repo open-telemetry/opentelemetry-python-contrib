@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
 - `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
   ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
+- `opentelemetry-instrumentation-pymongo` Fix type-related errors in certain usages of the PyMongo span `DB_MONGODB_COLLECTION` attribute
+  ([#2010](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2010))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
