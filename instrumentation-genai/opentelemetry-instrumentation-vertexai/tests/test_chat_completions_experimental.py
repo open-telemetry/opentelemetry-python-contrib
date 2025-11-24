@@ -14,9 +14,17 @@ from vertexai.preview.generative_models import (
 )
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogExporter,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -27,7 +35,7 @@ from opentelemetry.trace import StatusCode
 @pytest.mark.vcr()
 def test_generate_content_with_files(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -113,7 +121,7 @@ def test_generate_content_with_files(
 @pytest.mark.vcr()
 def test_generate_content_without_events(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -274,7 +282,7 @@ def test_generate_content_invalid_temperature(
 
 @pytest.mark.vcr()
 def test_generate_content_invalid_role(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -371,7 +379,7 @@ def assert_span_error(span: ReadableSpan) -> None:
 
 @pytest.mark.vcr()
 def test_generate_content_all_events(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -389,7 +397,7 @@ def test_generate_content_all_events(
 
 @pytest.mark.vcr()
 def test_preview_generate_content_all_input_events(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -407,7 +415,7 @@ def test_preview_generate_content_all_input_events(
 
 def generate_content_all_input_events(
     model: GenerativeModel | PreviewGenerativeModel,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model.generate_content(

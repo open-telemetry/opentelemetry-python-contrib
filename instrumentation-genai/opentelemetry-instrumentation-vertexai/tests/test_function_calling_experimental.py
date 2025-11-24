@@ -4,23 +4,31 @@ from typing import Any
 
 import fsspec
 import pytest
-
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogExporter,
-)
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 from tests.shared_test_utils import (
     ask_about_weather,
     ask_about_weather_function_response,
 )
 
+from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+
 
 def test_function_call_choice(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -92,7 +100,7 @@ def test_function_call_choice(
 
 @pytest.mark.vcr()
 def test_function_call_choice_no_content(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_no_content_with_experimental_semconvs: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -117,7 +125,7 @@ def test_function_call_choice_no_content(
 @pytest.mark.vcr()
 def test_tool_events(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -216,7 +224,7 @@ def test_tool_events(
 @pytest.mark.vcr()
 def test_tool_events_no_content(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_no_content_with_experimental_semconvs: VertexAIInstrumentor,
     generate_content: callable,
 ):
@@ -261,7 +269,7 @@ def assert_fsspec_equal(path: str, value: Any) -> None:
 @pytest.mark.vcr()
 def test_tool_events_with_completion_hook(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_upload_hook: VertexAIInstrumentor,
     generate_content: callable,
 ):
