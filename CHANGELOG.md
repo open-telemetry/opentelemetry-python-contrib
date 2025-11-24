@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-redis`: add support for `suppress_instrumentation` context manager for both sync and async Redis clients and pipelines
 - `opentelemetry-instrumentation-django`: improve docs for response_hook with examples of providing attributes from middlewares
   ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
+- Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
+  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
 
 ### Fixed
 
@@ -74,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
 - `opentelemetry-instrumentation-fastapi`: Fix handling of APIRoute subclasses
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
+- `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
 
