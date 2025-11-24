@@ -349,7 +349,6 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
-        exception = None
         active_requests_count_attrs = request.META.pop(
             self._environ_active_request_attr_key, None
         )
