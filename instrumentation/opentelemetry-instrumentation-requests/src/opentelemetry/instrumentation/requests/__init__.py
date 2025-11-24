@@ -132,10 +132,16 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
@@ -145,6 +151,7 @@ from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.util.http import (
     ExcludeList,
+    detect_synthetic_user_agent,
     get_excluded_urls,
     parse_excluded_urls,
     redact_url,
@@ -243,6 +250,15 @@ def _instrument(
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
+        # Check for synthetic user agent type
+        headers = get_or_create_headers()
+        user_agent = headers.get("User-Agent")
+        synthetic_type = detect_synthetic_user_agent(user_agent)
+        if synthetic_type:
+            span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+        if user_agent:
+            span_attributes[USER_AGENT_ORIGINAL] = user_agent
+
         metric_labels = {}
         _set_http_method(
             metric_labels,
@@ -297,7 +313,6 @@ def _instrument(
             if callable(request_hook):
                 request_hook(span, request)
 
-            headers = get_or_create_headers()
             inject(headers)
 
             with suppress_http_instrumentation():
