@@ -60,6 +60,7 @@ Usage:
 
 from __future__ import annotations
 
+import timeit
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -131,6 +132,9 @@ class TelemetryHandler:
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
         )
+        # Record a monotonic start timestamp (seconds) for duration
+        # calculation using timeit.default_timer.
+        invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
         invocation.context_token = otel_context.attach(
             set_span_in_context(span)

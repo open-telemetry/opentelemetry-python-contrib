@@ -38,15 +38,14 @@ class TelemetryHandlerMetricsTest(TestCase):
         invocation = LLMInvocation(request_model="model", provider="prov")
         invocation.input_tokens = 5
         invocation.output_tokens = 7
-        handler.start_llm(invocation)
-        span = invocation.span
-        self.assertIsNotNone(span)
-        start_ns = self._get_span_start_time(span)
-        self.assertIsNotNone(start_ns)
+        # Patch default_timer during start to ensure monotonic_start_s
+        with patch("timeit.default_timer", return_value=1000.0):
+            handler.start_llm(invocation)
 
+        # Simulate 2 seconds of elapsed monotonic time (seconds)
         with patch(
-            "time.time_ns",
-            return_value=start_ns + 2_000_000_000,
+            "timeit.default_timer",
+            return_value=1002.0,
         ):
             handler.stop_llm(invocation)
 
@@ -92,16 +91,14 @@ class TelemetryHandlerMetricsTest(TestCase):
         )
         invocation = LLMInvocation(request_model="err-model", provider=None)
         invocation.input_tokens = 11
-        handler.start_llm(invocation)
-        span = invocation.span
-        self.assertIsNotNone(span)
-        start_ns = self._get_span_start_time(span)
-        self.assertIsNotNone(start_ns)
+        # Patch default_timer during start to ensure monotonic_start_s
+        with patch("timeit.default_timer", return_value=2000.0):
+            handler.start_llm(invocation)
 
         error = Error(message="boom", type=ValueError)
         with patch(
-            "time.time_ns",
-            return_value=start_ns + 1_000_000_000,
+            "timeit.default_timer",
+            return_value=2001.0,
         ):
             handler.fail_llm(invocation, error)
 
