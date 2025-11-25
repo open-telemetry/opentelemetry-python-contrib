@@ -259,6 +259,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
@@ -272,6 +275,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -411,6 +415,11 @@ def collect_request_attributes(
     user_agent = environ.get("HTTP_USER_AGENT")
     if user_agent is not None and len(user_agent) > 0:
         _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
+
+        # Check for synthetic user agent type
+        synthetic_type = detect_synthetic_user_agent(user_agent)
+        if synthetic_type:
+            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
