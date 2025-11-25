@@ -19,7 +19,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, overload
+from typing import Callable, Iterable, Optional, overload
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -34,6 +34,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    UserAgentSyntheticTypeValues,
+)
+from opentelemetry.util.http.constants import BOT_PATTERNS, TEST_PATTERNS
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -307,3 +311,30 @@ def redact_url(url: str) -> str:
     url = remove_url_credentials(url)
     url = redact_query_parameters(url)
     return url
+
+
+def detect_synthetic_user_agent(user_agent: Optional[str]) -> Optional[str]:
+    """
+    Detect synthetic user agent type based on user agent string contents.
+
+    Args:
+        user_agent: The user agent string to analyze
+
+    Returns:
+        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
+        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
+        None otherwise
+
+    Note: Test patterns take priority over bot patterns.
+    """
+    if not user_agent:
+        return None
+
+    user_agent_lower = user_agent.lower()
+
+    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
+        return UserAgentSyntheticTypeValues.TEST.value
+    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
+        return UserAgentSyntheticTypeValues.BOT.value
+
+    return None
