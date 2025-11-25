@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
 - `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
   ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
+- `opentelemetry-util-http`: add http client header attribute env vars
+  ([#3969](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3969))
 
 ### Fixed
 
