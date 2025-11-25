@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+
 ### Added 
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
@@ -27,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
 - `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
   ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
+- `opentelemetry-instrumentation-redis`: add support for `suppress_instrumentation` context manager for both sync and async Redis clients and pipelines
+- `opentelemetry-instrumentation-django`: improve docs for response_hook with examples of providing attributes from middlewares
+  ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
+- Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
+  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
 
 ### Fixed
 
@@ -50,8 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3904))
 - build: bump ruff to 0.14.1
   ([#3842](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3842))
+- `opentelemetry-instrumentation-redis`: Add default span name for pipeline operations
+  ([#3941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3941))
 - `opentelemetry-instrumentation-pymongo`: Fix invalid mongodb collection attribute type
   ([#3942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3942))
+- `opentelemetry-instrumentation-aiohttp-client`: Fix metric attribute leakage 
+  ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
+- `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
+  ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
@@ -65,6 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
 - `opentelemetry-instrumentation-fastapi`: Fix handling of APIRoute subclasses
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
+- `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
 

@@ -269,6 +269,8 @@ def test_chat_completion_extra_params(
         response.model,
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
+        request_service_tier="default",
+        response_service_tier=getattr(response, "service_tier", None),
     )
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED] == 42
