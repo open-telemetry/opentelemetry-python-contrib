@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
 - Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+- `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
+- `opentelemetry-instrumentation-wsgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
 
 ### Fixed
 
