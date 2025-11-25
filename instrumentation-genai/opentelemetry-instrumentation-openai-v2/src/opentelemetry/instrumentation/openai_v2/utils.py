@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from os import environ
-from typing import Mapping, Optional, Union
+from typing import Mapping
 from urllib.parse import urlparse
 
 from httpx import URL
-from openai import NOT_GIVEN
+from openai import NotGiven
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import (
@@ -179,8 +181,12 @@ def is_streaming(kwargs):
     return non_numerical_value_is_set(kwargs.get("stream"))
 
 
-def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
-    return bool(value) and value != NOT_GIVEN
+def non_numerical_value_is_set(value: bool | str | NotGiven | None):
+    return bool(value) and value_is_set(value)
+
+
+def value_is_set(value):
+    return value is not None and not isinstance(value, NotGiven)
 
 
 def get_llm_request_attributes(
@@ -257,8 +263,8 @@ def get_llm_request_attributes(
 
     set_server_address_and_port(client_instance, attributes)
 
-    # filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}
+    # filter out values not set
+    return {k: v for k, v in attributes.items() if value_is_set(v)}
 
 
 def handle_span_exception(span, error):
