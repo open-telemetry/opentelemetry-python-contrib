@@ -112,6 +112,7 @@ def test_chat_completion_handles_not_given(
         response.model,
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
+        response_service_tier="default",
     )
 
     assert GenAIAttributes.GEN_AI_REQUEST_TOP_P not in span.attributes
