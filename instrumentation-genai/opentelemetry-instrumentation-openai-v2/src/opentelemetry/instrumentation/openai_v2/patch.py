@@ -370,7 +370,7 @@ def _set_response_attributes(
     if getattr(result, "service_tier", None):
         set_span_attribute(
             span,
-            GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
             result.service_tier,
         )
 
