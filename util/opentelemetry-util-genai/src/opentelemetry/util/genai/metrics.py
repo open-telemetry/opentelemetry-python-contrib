@@ -62,24 +62,21 @@ class InvocationMetricsRecorder:
         if span is None:
             return
 
-        tokens: list[tuple[int, str]] = []
-        if isinstance(invocation.input_tokens, int):
-            tokens.append(
+        token_counts: list[tuple[int, str]] = []
+        if invocation.input_tokens is not None:
+            token_counts.append(
                 (
                     invocation.input_tokens,
                     GenAI.GenAiTokenTypeValues.INPUT.value,
                 )
             )
-        if isinstance(invocation.output_tokens, int):
-            tokens.append(
+        if invocation.output_tokens is not None:
+            token_counts.append(
                 (
                     invocation.output_tokens,
-                    GenAI.GenAiTokenTypeValues.COMPLETION.value,
+                    GenAI.GenAiTokenTypeValues.OUTPUT.value,
                 )
             )
-
-        if not tokens:
-            return
 
         attributes: Dict[str, AttributeValue] = {
             GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.CHAT.value
@@ -107,17 +104,15 @@ class InvocationMetricsRecorder:
         ):
             duration_attributes: Dict[str, AttributeValue] = dict(attributes)
             self._duration_histogram.record(
-                float(duration_seconds),
+                duration_seconds,
                 attributes=duration_attributes,
                 context=span_context,
             )
 
-        for token in tokens:
-            token_attributes: Dict[str, AttributeValue] = dict(attributes)
-            token_attributes[GenAI.GEN_AI_TOKEN_TYPE] = token[1]
+        for token_count, token_type in token_counts:
             self._token_histogram.record(
-                token[0],
-                attributes=token_attributes,
+                token_count,
+                attributes=attributes | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
                 context=span_context,
             )
 

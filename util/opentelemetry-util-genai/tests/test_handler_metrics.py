@@ -145,10 +145,8 @@ class TelemetryHandlerMetricsTest(TestCase):
         self.metric_reader.collect()
         metrics_by_name: Dict[str, List[Any]] = {}
         data = self.metric_reader.get_metrics_data()
-        for resource_metric in getattr(data, "resource_metrics", []) or []:
-            for scope_metric in (
-                getattr(resource_metric, "scope_metrics", []) or []
-            ):
+        for resource_metric in data.resource_metrics or []:
+            for scope_metric in resource_metric.scope_metrics or []:
                 for metric in getattr(scope_metric, "metrics", []) or []:
                     points = list(
                         getattr(metric.data, "data_points", []) or []

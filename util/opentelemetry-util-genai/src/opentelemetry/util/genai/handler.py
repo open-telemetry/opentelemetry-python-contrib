@@ -103,11 +103,8 @@ class TelemetryHandler:
             schema_url=Schemas.V1_37_0.value,
         )
         self._metrics_recorder: InvocationMetricsRecorder | None = None
-        try:
-            meter = get_meter(__name__, meter_provider=meter_provider)
-            self._metrics_recorder = InvocationMetricsRecorder(meter)
-        except Exception:  # pragma: no cover - defensive fallback  # pylint: disable=broad-exception-caught
-            self._metrics_recorder = None
+        meter = get_meter(__name__, meter_provider=meter_provider)
+        self._metrics_recorder = InvocationMetricsRecorder(meter)
 
     def _record_llm_metrics(
         self,
@@ -118,14 +115,11 @@ class TelemetryHandler:
     ) -> None:
         if self._metrics_recorder is None or span is None:
             return
-        try:
-            self._metrics_recorder.record(
-                span,
-                invocation,
-                error_type=error_type,
-            )
-        except Exception:  # pragma: no cover - defensive fallback  # pylint: disable=broad-exception-caught
-            pass
+        self._metrics_recorder.record(
+            span,
+            invocation,
+            error_type=error_type,
+        )
 
     def start_llm(
         self,
