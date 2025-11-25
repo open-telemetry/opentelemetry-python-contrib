@@ -101,20 +101,23 @@ class _SpanManager:
         agent_name: Optional[str] = None,
     ) -> Span:
         """Create a span for agent invocation."""
-        # Use "unknown" as default if agent_name is not provided
-        effective_agent_name = agent_name or "unknown"
-        span_name = f"{_OPERATION_INVOKE_AGENT} {effective_agent_name}"
+        span_name = (
+            f"{_OPERATION_INVOKE_AGENT} {agent_name}"
+            if agent_name
+            else _OPERATION_INVOKE_AGENT
+        )
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
             span_name=span_name,
-            kind=SpanKind.CLIENT,
+            kind=SpanKind.INTERNAL,
         )
         span.set_attribute(
             GenAI.GEN_AI_OPERATION_NAME,
             _OPERATION_INVOKE_AGENT,
         )
-        span.set_attribute(GenAI.GEN_AI_AGENT_NAME, effective_agent_name)
+        if agent_name:
+            span.set_attribute(GenAI.GEN_AI_AGENT_NAME, agent_name)
 
         return span
 
