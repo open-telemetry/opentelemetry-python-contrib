@@ -30,7 +30,7 @@ def _get_span_start_time_ns(span: Optional[Span]) -> Optional[int]:
 
 
 def _calculate_duration_seconds(
-    span: Optional[Span], invocation: Optional[LLMInvocation] = None
+    span: Optional[Span], invocation: LLMInvocation
 ) -> Optional[float]:
     """Calculate duration in seconds from a start time to now.
 
@@ -41,13 +41,8 @@ def _calculate_duration_seconds(
     Returns None if no usable start time is available.
     """
     # Prefer an explicit monotonic start on the invocation (seconds)
-    if invocation is not None and getattr(
-        invocation, "monotonic_start_s", None
-    ):
-        start_s = invocation.monotonic_start_s
-        if isinstance(start_s, (int, float)):
-            elapsed_s = max(timeit.default_timer() - float(start_s), 0.0)
-            return elapsed_s
+    if invocation.monotonic_start_s is not None:
+        return max(timeit.default_timer() - invocation.monotonic_start_s, 0.0)
 
     # Fall back to span start_time (wall clock epoch ns)
     start_time_ns = _get_span_start_time_ns(span)
@@ -118,10 +113,9 @@ class InvocationMetricsRecorder:
             and isinstance(duration_seconds, Number)
             and duration_seconds >= 0
         ):
-            duration_attributes: Dict[str, AttributeValue] = dict(attributes)
             self._duration_histogram.record(
                 duration_seconds,
-                attributes=duration_attributes,
+                attributes=attributes,
                 context=span_context,
             )
 
