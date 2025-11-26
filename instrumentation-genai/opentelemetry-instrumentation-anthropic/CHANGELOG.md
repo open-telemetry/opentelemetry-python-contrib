@@ -10,5 +10,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial implementation of Anthropic instrumentation
-  ([#ISSUE_NUMBER](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/ISSUE_NUMBER))
+  ([#ISSUE_NUMBER](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3978))
 
