@@ -17,6 +17,10 @@
 
 libraries = [
     {
+        "library": "anthropic >= 0.3.0",
+        "instrumentation": "opentelemetry-instrumentation-anthropic",
+    },
+    {
         "library": "openai >= 1.26.0",
         "instrumentation": "opentelemetry-instrumentation-openai-v2",
     },
