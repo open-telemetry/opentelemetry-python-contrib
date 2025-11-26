@@ -93,9 +93,10 @@ API
 from __future__ import annotations
 
 import functools
+import os
 import types
 from timeit import default_timer
-from typing import Any, Callable, Collection, Optional
+from typing import Any, Callable, Collection, Mapping, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -150,9 +151,15 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     ExcludeList,
+    SanitizeValue,
     detect_synthetic_user_agent,
     get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
     parse_excluded_urls,
     redact_url,
     sanitize_method,
@@ -191,6 +198,36 @@ def _set_http_status_code_attribute(
     )
 
 
+def _get_custom_header_attributes(
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
+) -> dict[str, list[str]]:
+    """Extract and sanitize HTTP headers for span attributes.
+
+    Args:
+        headers: The HTTP headers to process, either from a request or response.
+            Can be None if no headers are available.
+        captured_headers: List of header regexes to capture as span attributes.
+            If None or empty, no headers will be captured.
+        sensitive_headers: List of header regexes whose values should be sanitized
+            (redacted). If None, no sanitization is applied.
+        normalize_function: Function to normalize header names
+            (e.g., normalise_request_header_name or normalise_response_header_name).
+
+    Returns:
+        Dictionary of normalized header attribute names to their values
+        as lists of strings.
+    """
+    if not headers or not captured_headers:
+        return {}
+    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
+    return sanitize.sanitize_header_values(
+        headers, captured_headers, normalize_function
+    )
+
+
 # pylint: disable=unused-argument
 # pylint: disable=R0915
 def _instrument(
@@ -201,6 +238,9 @@ def _instrument(
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`requests.session.Session.request` (this includes
@@ -258,6 +298,14 @@ def _instrument(
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
         if user_agent:
             span_attributes[USER_AGENT_ORIGINAL] = user_agent
+        span_attributes.update(
+            _get_custom_header_attributes(
+                headers,
+                captured_request_headers,
+                sensitive_headers,
+                normalise_request_header_name,
+            )
+        )
 
         metric_labels = {}
         _set_http_method(
@@ -350,6 +398,14 @@ def _instrument(
                                 version_text,
                                 sem_conv_opt_in_mode,
                             )
+                span_attributes.update(
+                    _get_custom_header_attributes(
+                        result.headers,
+                        captured_response_headers,
+                        sensitive_headers,
+                        normalise_response_header_name,
+                    )
+                )
                 for key, val in span_attributes.items():
                     span.set_attribute(key, val)
 
@@ -501,6 +557,15 @@ class RequestsInstrumentor(BaseInstrumentor):
                 else parse_excluded_urls(excluded_urls)
             ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
+            captured_request_headers=os.environ.get(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+            ),
+            captured_response_headers=os.environ.get(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+            ),
+            sensitive_headers=os.environ.get(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+            ),
         )
 
     def _uninstrument(self, **kwargs: Any):
