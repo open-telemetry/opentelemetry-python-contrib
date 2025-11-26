@@ -20,7 +20,6 @@ import pytest
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel, Field
 
-from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -324,7 +323,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes,
                         )
                     else:
-                        attrs = {
+                        expected_event_attributes = {
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
                                 {
                                     "role": "user",
@@ -346,15 +345,11 @@ class NonStreamingTestCase(TestCase):
                                 {"content": sys_instr, "type": "text"},
                             ),
                         }
-                        expected_event = Event(
-                            "gen_ai.client.inference.operation.details",
-                            attributes=attrs,
-                        )
                         self.assertEqual(
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
                         )
@@ -362,7 +357,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
                         )
@@ -370,7 +365,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
