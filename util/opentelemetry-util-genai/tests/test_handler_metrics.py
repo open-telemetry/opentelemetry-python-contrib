@@ -126,14 +126,6 @@ class TelemetryHandlerMetricsTest(TestCase):
         )
         self.assertAlmostEqual(token_point.sum, 11.0, places=3)
 
-    @staticmethod
-    def _get_span_start_time(span) -> int:
-        for attr in ("start_time", "_start_time"):
-            value = getattr(span, attr, None)
-            if isinstance(value, int):
-                return value
-        raise AssertionError("Span start time not available")
-
     def _harvest_metrics(self) -> Dict[str, List[Any]]:
         try:
             self.meter_provider.force_flush()
@@ -142,14 +134,9 @@ class TelemetryHandlerMetricsTest(TestCase):
         self.metric_reader.collect()
         metrics_by_name: Dict[str, List[Any]] = {}
         data = self.metric_reader.get_metrics_data()
-        for resource_metric in data.resource_metrics or []:
+        for resource_metric in (data and data.resource_metrics) or []:
             for scope_metric in resource_metric.scope_metrics or []:
-                for metric in getattr(scope_metric, "metrics", []) or []:
-                    points = list(
-                        getattr(metric.data, "data_points", []) or []
-                    )
-                    if points:
-                        metrics_by_name.setdefault(metric.name, []).extend(
-                            points
-                        )
+                for metric in scope_metric.metrics or []:
+                    points = metric.data.data_points or []
+                    metrics_by_name.setdefault(metric.name, []).extend(points)
         return metrics_by_name
