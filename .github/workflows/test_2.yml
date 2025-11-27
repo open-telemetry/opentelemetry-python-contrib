@@ -32,44 +32,6 @@ env:
 
 jobs:
 
-  py39-test-propagator-ot-trace_ubuntu-latest:
-    name: propagator-ot-trace 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-propagator-ot-trace -- -ra
-
-  py310-test-propagator-ot-trace_ubuntu-latest:
-    name: propagator-ot-trace 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-propagator-ot-trace -- -ra
-
   py311-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.11 Ubuntu
     runs-on: ubuntu-latest
