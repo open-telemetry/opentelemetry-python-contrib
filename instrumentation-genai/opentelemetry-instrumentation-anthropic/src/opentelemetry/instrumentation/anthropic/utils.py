@@ -13,23 +13,28 @@
 # limitations under the License.
 
 import os
+from typing import Any
+
+from opentelemetry.trace import Span
 
 
 def is_content_enabled() -> bool:
     """Check if message content capture is enabled via environment variable.
-    
+
     Returns:
         bool: True if OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT is set to 'true'
     """
     return (
-        os.getenv("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "false").lower()
+        os.getenv(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "false"
+        ).lower()
         == "true"
     )
 
 
-def set_span_attribute(span, key, value):
+def set_span_attribute(span: Span, key: str, value: Any) -> None:
     """Set a span attribute if the span is recording and value is not None.
-    
+
     Args:
         span: The OpenTelemetry span
         key: The attribute key
@@ -37,4 +42,3 @@ def set_span_attribute(span, key, value):
     """
     if span.is_recording() and value is not None:
         span.set_attribute(key, value)
-

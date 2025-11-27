@@ -14,102 +14,103 @@
 
 """Tests for the AnthropicInstrumentor class."""
 
-import pytest
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 
 
-class TestAnthropicInstrumentor:
-    """Test cases for AnthropicInstrumentor."""
+def test_instrumentor_instantiation():
+    """Test that the instrumentor can be instantiated."""
+    instrumentor = AnthropicInstrumentor()
+    assert instrumentor is not None
+    assert isinstance(instrumentor, AnthropicInstrumentor)
 
-    def test_instrumentor_instantiation(self):
-        """Test that the instrumentor can be instantiated."""
-        instrumentor = AnthropicInstrumentor()
-        assert instrumentor is not None
-        assert isinstance(instrumentor, AnthropicInstrumentor)
 
-    def test_instrumentation_dependencies(self):
-        """Test that instrumentation dependencies are correctly reported."""
-        instrumentor = AnthropicInstrumentor()
-        dependencies = instrumentor.instrumentation_dependencies()
-        
-        assert dependencies is not None
-        assert len(dependencies) > 0
-        assert "anthropic >= 0.3.0" in dependencies
+def test_instrumentation_dependencies():
+    """Test that instrumentation dependencies are correctly reported."""
+    instrumentor = AnthropicInstrumentor()
+    dependencies = instrumentor.instrumentation_dependencies()
 
-    def test_instrument_uninstrument_cycle(
-        self, tracer_provider, logger_provider, meter_provider
-    ):
-        """Test that instrument() and uninstrument() can be called multiple times."""
-        instrumentor = AnthropicInstrumentor()
-        
-        # First instrumentation
-        instrumentor.instrument(
-            tracer_provider=tracer_provider,
-            logger_provider=logger_provider,
-            meter_provider=meter_provider,
-        )
-        
-        # First uninstrumentation
-        instrumentor.uninstrument()
-        
-        # Second instrumentation (should work)
-        instrumentor.instrument(
-            tracer_provider=tracer_provider,
-            logger_provider=logger_provider,
-            meter_provider=meter_provider,
-        )
-        
-        # Second uninstrumentation
-        instrumentor.uninstrument()
+    assert dependencies is not None
+    assert len(dependencies) > 0
+    assert "anthropic >= 0.3.0" in dependencies
 
-    def test_multiple_instrumentation_calls(
-        self, tracer_provider, logger_provider, meter_provider
-    ):
-        """Test that multiple instrument() calls don't cause issues."""
-        instrumentor = AnthropicInstrumentor()
-        
-        # First call
-        instrumentor.instrument(
-            tracer_provider=tracer_provider,
-            logger_provider=logger_provider,
-            meter_provider=meter_provider,
-        )
-        
-        # Second call (should be idempotent or handle gracefully)
-        instrumentor.instrument(
-            tracer_provider=tracer_provider,
-            logger_provider=logger_provider,
-            meter_provider=meter_provider,
-        )
-        
-        # Clean up
-        instrumentor.uninstrument()
 
-    def test_uninstrument_without_instrument(self):
-        """Test that uninstrument() can be called without prior instrument()."""
-        instrumentor = AnthropicInstrumentor()
-        
-        # This should not raise an error
-        instrumentor.uninstrument()
+def test_instrument_uninstrument_cycle(
+    tracer_provider, logger_provider, meter_provider
+):
+    """Test that instrument() and uninstrument() can be called multiple times."""
+    instrumentor = AnthropicInstrumentor()
 
-    def test_instrument_with_no_providers(self):
-        """Test that instrument() works without explicit providers."""
-        instrumentor = AnthropicInstrumentor()
-        
-        # Should use global providers
-        instrumentor.instrument()
-        
-        # Clean up
-        instrumentor.uninstrument()
+    # First instrumentation
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
 
-    def test_instrumentor_has_required_attributes(self):
-        """Test that the instrumentor has the required methods."""
-        instrumentor = AnthropicInstrumentor()
-        
-        assert hasattr(instrumentor, "instrument")
-        assert hasattr(instrumentor, "uninstrument")
-        assert hasattr(instrumentor, "instrumentation_dependencies")
-        assert callable(instrumentor.instrument)
-        assert callable(instrumentor.uninstrument)
-        assert callable(instrumentor.instrumentation_dependencies)
+    # First uninstrumentation
+    instrumentor.uninstrument()
 
+    # Second instrumentation (should work)
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    # Second uninstrumentation
+    instrumentor.uninstrument()
+
+
+def test_multiple_instrumentation_calls(
+    tracer_provider, logger_provider, meter_provider
+):
+    """Test that multiple instrument() calls don't cause issues."""
+    instrumentor = AnthropicInstrumentor()
+
+    # First call
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    # Second call (should be idempotent or handle gracefully)
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    # Clean up
+    instrumentor.uninstrument()
+
+
+def test_uninstrument_without_instrument():
+    """Test that uninstrument() can be called without prior instrument()."""
+    instrumentor = AnthropicInstrumentor()
+
+    # This should not raise an error
+    instrumentor.uninstrument()
+
+
+def test_instrument_with_no_providers():
+    """Test that instrument() works without explicit providers."""
+    instrumentor = AnthropicInstrumentor()
+
+    # Should use global providers
+    instrumentor.instrument()
+
+    # Clean up
+    instrumentor.uninstrument()
+
+
+def test_instrumentor_has_required_attributes():
+    """Test that the instrumentor has the required methods."""
+    instrumentor = AnthropicInstrumentor()
+
+    assert hasattr(instrumentor, "instrument")
+    assert hasattr(instrumentor, "uninstrument")
+    assert hasattr(instrumentor, "instrumentation_dependencies")
+    assert callable(instrumentor.instrument)
+    assert callable(instrumentor.uninstrument)
+    assert callable(instrumentor.instrumentation_dependencies)

@@ -47,7 +47,7 @@ API
 ---
 """
 
-from typing import Collection
+from typing import Any, Collection
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -56,32 +56,34 @@ from opentelemetry.semconv.schemas import Schemas
 
 class AnthropicInstrumentor(BaseInstrumentor):
     """An instrumentor for the Anthropic Python SDK.
-    
+
     This instrumentor will automatically trace Anthropic API calls and
     optionally capture message content as events.
     """
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._tracer = None
+        self._logger = None
+        self._meter = None
+
+    # pylint: disable=no-self-use
     def instrumentation_dependencies(self) -> Collection[str]:
-        """Return the list of packages that this instrumentor will instrument.
-        
-        Returns:
-            Collection of package specifications
-        """
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any) -> None:
         """Enable Anthropic instrumentation.
-        
+
         Args:
             **kwargs: Optional arguments
                 - tracer_provider: TracerProvider instance
                 - meter_provider: MeterProvider instance
                 - logger_provider: LoggerProvider instance
         """
-        # Import here to avoid issues if anthropic is not installed
-        from opentelemetry._logs import get_logger
-        from opentelemetry.metrics import get_meter
-        from opentelemetry.trace import get_tracer
+        # pylint: disable=import-outside-toplevel
+        from opentelemetry._logs import get_logger  # noqa: PLC0415
+        from opentelemetry.metrics import get_meter  # noqa: PLC0415
+        from opentelemetry.trace import get_tracer  # noqa: PLC0415
 
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
@@ -119,11 +121,9 @@ class AnthropicInstrumentor(BaseInstrumentor):
 
         # Patching will be added in Ticket 3
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any) -> None:
         """Disable Anthropic instrumentation.
-        
+
         This removes all patches applied during instrumentation.
         """
         # Unpatching will be added in Ticket 3
-        pass
-

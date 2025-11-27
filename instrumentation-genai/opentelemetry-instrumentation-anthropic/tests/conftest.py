@@ -13,18 +13,23 @@
 # limitations under the License.
 
 """Test configuration and fixtures for Anthropic instrumentation tests."""
+# pylint: disable=redefined-outer-name
 
 import pytest
+
 from opentelemetry import trace
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
+)
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import InMemoryLogExporter, SimpleLogRecordProcessor
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 
 @pytest.fixture
@@ -77,7 +82,10 @@ def meter_provider(metric_reader):
 @pytest.fixture
 def instrument_anthropic(tracer_provider, logger_provider, meter_provider):
     """Fixture to instrument Anthropic with test providers."""
-    from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+    # pylint: disable=import-outside-toplevel
+    from opentelemetry.instrumentation.anthropic import (  # noqa: PLC0415
+        AnthropicInstrumentor,
+    )
 
     instrumentor = AnthropicInstrumentor()
     instrumentor.instrument(
@@ -93,7 +101,9 @@ def instrument_anthropic(tracer_provider, logger_provider, meter_provider):
 def uninstrument_anthropic():
     """Fixture to ensure Anthropic is uninstrumented after test."""
     yield
-    from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+    # pylint: disable=import-outside-toplevel
+    from opentelemetry.instrumentation.anthropic import (  # noqa: PLC0415
+        AnthropicInstrumentor,
+    )
 
     AnthropicInstrumentor().uninstrument()
-

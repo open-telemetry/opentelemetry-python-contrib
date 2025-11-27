@@ -1,3 +1,4 @@
+# pylint: skip-file
 import anthropic
 
 
@@ -15,4 +16,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
