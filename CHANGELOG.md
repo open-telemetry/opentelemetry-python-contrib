@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
-  ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
 ### Added 
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
@@ -30,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
   ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
 - `opentelemetry-instrumentation-redis`: add support for `suppress_instrumentation` context manager for both sync and async Redis clients and pipelines
+  ([#3955](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3955))
+- `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
+  ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
 
 ### Fixed
 
