@@ -84,6 +84,20 @@ Utilize request/response hooks to execute custom logic to be performed before/af
 
    AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 API
 ---
 """
@@ -123,7 +137,7 @@ from opentelemetry.instrumentation.aiohttp_client.package import _instruments
 from opentelemetry.instrumentation.aiohttp_client.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
-    is_instrumentation_enabled,
+    is_http_instrumentation_enabled,
     unwrap,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
@@ -135,7 +149,11 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import redact_url, sanitize_method
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    redact_url,
+    sanitize_method,
+)
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
 _RequestHookT = typing.Optional[
@@ -269,7 +287,7 @@ def create_trace_config(
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
-    metric_attributes = {}
+    excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
         elapsed_time = max(default_timer() - trace_config_ctx.start_time, 0)
@@ -279,7 +297,7 @@ def create_trace_config(
 
         if trace_config_ctx.duration_histogram_old is not None:
             duration_attrs_old = _filter_semconv_duration_attrs(
-                metric_attributes,
+                trace_config_ctx.metric_attributes,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 _StabilityMode.DEFAULT,
@@ -290,7 +308,7 @@ def create_trace_config(
             )
         if trace_config_ctx.duration_histogram_new is not None:
             duration_attrs_new = _filter_semconv_duration_attrs(
-                metric_attributes,
+                trace_config_ctx.metric_attributes,
                 _client_duration_attrs_old,
                 _client_duration_attrs_new,
                 _StabilityMode.HTTP,
@@ -304,7 +322,10 @@ def create_trace_config(
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
-        if not is_instrumentation_enabled():
+        if (
+            not is_http_instrumentation_enabled()
+            or trace_config_ctx.excluded_urls.url_disabled(str(params.url))
+        ):
             trace_config_ctx.span = None
             return
 
@@ -325,7 +346,7 @@ def create_trace_config(
             sem_conv_opt_in_mode,
         )
         _set_http_method(
-            metric_attributes,
+            trace_config_ctx.metric_attributes,
             method,
             sanitize_method(method),
             sem_conv_opt_in_mode,
@@ -336,12 +357,12 @@ def create_trace_config(
             parsed_url = urlparse(request_url)
             if parsed_url.hostname:
                 _set_http_host_client(
-                    metric_attributes,
+                    trace_config_ctx.metric_attributes,
                     parsed_url.hostname,
                     sem_conv_opt_in_mode,
                 )
                 _set_http_net_peer_name_client(
-                    metric_attributes,
+                    trace_config_ctx.metric_attributes,
                     parsed_url.hostname,
                     sem_conv_opt_in_mode,
                 )
@@ -353,7 +374,9 @@ def create_trace_config(
                     )
             if parsed_url.port:
                 _set_http_peer_port_client(
-                    metric_attributes, parsed_url.port, sem_conv_opt_in_mode
+                    trace_config_ctx.metric_attributes,
+                    parsed_url.port,
+                    sem_conv_opt_in_mode,
                 )
                 if _report_new(sem_conv_opt_in_mode):
                     _set_http_peer_port_client(
@@ -388,7 +411,7 @@ def create_trace_config(
         _set_http_status_code_attribute(
             trace_config_ctx.span,
             params.response.status,
-            metric_attributes,
+            trace_config_ctx.metric_attributes,
             sem_conv_opt_in_mode,
         )
 
@@ -406,7 +429,7 @@ def create_trace_config(
             exc_type = type(params.exception).__qualname__
             if _report_new(sem_conv_opt_in_mode):
                 trace_config_ctx.span.set_attribute(ERROR_TYPE, exc_type)
-                metric_attributes[ERROR_TYPE] = exc_type
+                trace_config_ctx.metric_attributes[ERROR_TYPE] = exc_type
 
             trace_config_ctx.span.set_status(
                 Status(StatusCode.ERROR, exc_type)
@@ -426,6 +449,8 @@ def create_trace_config(
             start_time=start_time,
             duration_histogram_old=duration_histogram_old,
             duration_histogram_new=duration_histogram_new,
+            excluded_urls=excluded_urls,
+            metric_attributes={},
             **kwargs,
         )
 
@@ -461,9 +486,6 @@ def _instrument(
 
     # pylint:disable=unused-argument
     def instrumented_init(wrapped, instance, args, kwargs):
-        if not is_instrumentation_enabled():
-            return wrapped(*args, **kwargs)
-
         client_trace_configs = list(kwargs.get("trace_configs") or [])
         client_trace_configs.extend(trace_configs)
 
