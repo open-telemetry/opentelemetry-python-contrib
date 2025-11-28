@@ -48,36 +48,44 @@ class TestFunctionalPyMysql(TestBase):
         PyMySQLInstrumentor().uninstrument()
         super().tearDown()
 
-    def validate_spans(self, span_name):
+    def validate_spans(self, *span_names):
         spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 2)
+        self.assertEqual(len(spans), len(span_names) + 1)  # +1 for rootSpan
+
+        root_span = None
+        db_spans = []
+
         for span in spans:
             if span.name == "rootSpan":
                 root_span = span
             else:
-                db_span = span
+                db_spans.append(span)
             self.assertIsInstance(span.start_time, int)
             self.assertIsInstance(span.end_time, int)
+
         self.assertIsNotNone(root_span)
-        self.assertIsNotNone(db_span)
         self.assertEqual(root_span.name, "rootSpan")
-        self.assertEqual(db_span.name, span_name)
-        self.assertIsNotNone(db_span.parent)
-        self.assertIs(db_span.parent, root_span.get_span_context())
-        self.assertIs(db_span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(db_span.attributes[SpanAttributes.DB_SYSTEM], "mysql")
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.DB_NAME], MYSQL_DB_NAME
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.DB_USER], MYSQL_USER
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.NET_PEER_NAME], MYSQL_HOST
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.NET_PEER_PORT], MYSQL_PORT
-        )
+        self.assertEqual(len(db_spans), len(span_names))
+
+        # Validate each db span
+        for db_span, expected_name in zip(db_spans, span_names):
+            self.assertEqual(db_span.name, expected_name)
+            self.assertIsNotNone(db_span.parent)
+            self.assertIs(db_span.parent, root_span.get_span_context())
+            self.assertIs(db_span.kind, trace_api.SpanKind.CLIENT)
+            self.assertEqual(db_span.attributes[SpanAttributes.DB_SYSTEM], "mysql")
+            self.assertEqual(
+                db_span.attributes[SpanAttributes.DB_NAME], MYSQL_DB_NAME
+            )
+            self.assertEqual(
+                db_span.attributes[SpanAttributes.DB_USER], MYSQL_USER
+            )
+            self.assertEqual(
+                db_span.attributes[SpanAttributes.NET_PEER_NAME], MYSQL_HOST
+            )
+            self.assertEqual(
+                db_span.attributes[SpanAttributes.NET_PEER_PORT], MYSQL_PORT
+            )
 
     def test_execute(self):
         """Should create a child span for execute"""
@@ -112,17 +120,31 @@ class TestFunctionalPyMysql(TestBase):
             self.validate_spans("test")
 
     def test_commit(self):
+        """Should create spans for both INSERT and COMMIT"""
         stmt = "INSERT INTO test (id) VALUES (%s)"
         with self._tracer.start_as_current_span("rootSpan"):
             data = (("4",), ("5",), ("6",))
             self._cursor.executemany(stmt, data)
             self._connection.commit()
-        self.validate_spans("INSERT")
+        self.validate_spans("INSERT", "COMMIT")
 
     def test_rollback(self):
+        """Should create spans for both INSERT and ROLLBACK"""
         stmt = "INSERT INTO test (id) VALUES (%s)"
         with self._tracer.start_as_current_span("rootSpan"):
             data = (("7",), ("8",), ("9",))
             self._cursor.executemany(stmt, data)
             self._connection.rollback()
-        self.validate_spans("INSERT")
+        self.validate_spans("INSERT", "ROLLBACK")
+
+    def test_commit_only(self):
+        """Should create a span for standalone COMMIT"""
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._connection.commit()
+        self.validate_spans("COMMIT")
+
+    def test_rollback_only(self):
+        """Should create a span for standalone ROLLBACK"""
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._connection.rollback()
+        self.validate_spans("ROLLBACK")

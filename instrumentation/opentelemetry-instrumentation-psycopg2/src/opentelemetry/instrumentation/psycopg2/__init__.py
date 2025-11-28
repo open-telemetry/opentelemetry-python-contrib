@@ -202,6 +202,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        enable_transaction_spans = kwargs.get("enable_transaction_spans", True)
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -214,6 +215,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):
@@ -279,7 +281,8 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
         kwargs["cursor_factory"] = _new_cursor_factory(**new_factory_kwargs)
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
-        return connection
+        # psycopg2 uses cursor_factory for cursor tracing, so disable cursor wrapping
+        return dbapi.get_traced_connection_proxy(connection, self, wrap_cursors=False)
 
 
 class CursorTracer(dbapi.CursorTracer):
