@@ -74,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
 ### Fixed
-
+- `opentelemetry-instrumentation-django`: fix trace failures when HTTP requests get cancelled in ASGI workers 
+  ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3848)
 - `opentelemetry-instrumentation-flask`: Do not record `http.server.duration` metrics for excluded URLs.
   ([#3794](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3794))
 - `opentelemetry-instrumentation-botocore`: migrate off the deprecated events API to use the logs API
@@ -86,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
   ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
+### Breaking changes
+- `opentelemetry-instrumentation-django`: remove support for Django < 2.0 ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3848)
 ### Added
 
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
