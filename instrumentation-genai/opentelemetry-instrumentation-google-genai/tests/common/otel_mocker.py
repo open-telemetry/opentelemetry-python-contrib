@@ -22,10 +22,21 @@ from opentelemetry._logs import (
 )
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
-    SimpleLogRecordProcessor,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs.export import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+        SimpleLogRecordProcessor,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs.export import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
+    from opentelemetry.sdk._logs.export import (
+        SimpleLogRecordProcessor,
+    )
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics._internal.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
@@ -114,7 +125,7 @@ class _MetricDataPointWrapper:
 class OTelMocker:
     def __init__(self):
         self._snapshot = None
-        self._logs = InMemoryLogExporter()
+        self._logs = InMemoryLogRecordExporter()
         self._traces = InMemorySpanExporter()
         self._metrics = InMemoryMetricReader()
         self._spans = []

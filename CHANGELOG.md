@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+
 ### Added 
 
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
@@ -31,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3955](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3955))
 - `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
+- `opentelemetry-instrumentation-django`: improve docs for response_hook with examples of providing attributes from middlewares
+  ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
+- Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
+  ([#3589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+- opentelemetry-instrumentation: allow to skip all instrumentations loading with a wildcard
+  ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
+- `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
+  ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
 
 ### Fixed
 
@@ -75,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3796](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3796))
 - `opentelemetry-instrumentation-fastapi`: Fix handling of APIRoute subclasses
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
+- `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
 

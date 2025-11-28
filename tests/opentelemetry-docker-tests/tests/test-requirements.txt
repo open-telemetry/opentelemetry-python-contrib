@@ -24,6 +24,7 @@ dockerpty==0.4.1
 docopt==0.6.2
 exceptiongroup==1.2.0
 flaky==3.7.0
+flask==3.0.2
 greenlet==3.0.3
 grpcio==1.63.2
 idna==2.10
