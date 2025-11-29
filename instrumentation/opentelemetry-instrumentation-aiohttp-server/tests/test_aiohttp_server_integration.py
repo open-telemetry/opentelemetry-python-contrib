@@ -22,14 +22,54 @@ from multidict import CIMultiDict
 
 from opentelemetry import metrics as metrics_api
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.aiohttp_server import (
     AioHttpServerInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
+from opentelemetry.sdk.metrics.export import (
+    HistogramDataPoint,
+)
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
     HTTP_METHOD,
+    HTTP_SCHEME,
     HTTP_STATUS_CODE,
+    HTTP_TARGET,
     HTTP_URL,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_PATH,
+    URL_QUERY,
+    URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.test.globals_test import (
     reset_metrics_globals,
@@ -164,10 +204,7 @@ async def test_status_code_instrumentation(
 
     assert expected_method.value == span.attributes[HTTP_METHOD]
     assert expected_status_code == span.attributes[HTTP_STATUS_CODE]
-
-    assert (
-        f"http://{server.host}:{server.port}{url}" == span.attributes[HTTP_URL]
-    )
+    assert url == span.attributes[HTTP_TARGET]
 
 
 @pytest.mark.asyncio
@@ -186,9 +223,15 @@ async def test_suppress_instrumentation(
 
 
 @pytest.mark.asyncio
-async def test_remove_sensitive_params(tracer, aiohttp_server):
+async def test_remove_sensitive_params(tracer, aiohttp_server, monkeypatch):
     """Test that sensitive information in URLs is properly redacted."""
     _, memory_exporter = tracer
+
+    # Use old semconv to test HTTP_URL redaction
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
 
     # Set up instrumentation
     AioHttpServerInstrumentor().instrument()
@@ -222,6 +265,56 @@ async def test_remove_sensitive_params(tracer, aiohttp_server):
         span.attributes[HTTP_URL]
         == f"http://{server.host}:{server.port}/status/200?Signature=REDACTED"
     )
+
+    # Clean up
+    AioHttpServerInstrumentor().uninstrument()
+    memory_exporter.clear()
+
+
+@pytest.mark.asyncio
+async def test_remove_sensitive_params_new(
+    tracer, aiohttp_server, monkeypatch
+):
+    """Test URL handling with new semantic conventions (no redaction for URL_PATH/URL_QUERY)."""
+    _, memory_exporter = tracer
+
+    # Use new semconv
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    # Set up instrumentation
+    AioHttpServerInstrumentor().instrument()
+
+    # Create app with test route
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        return aiohttp.web.Response(text="hello")
+
+    app.router.add_get("/status/200", handler)
+
+    # Start the server
+    server = await aiohttp_server(app)
+
+    # Make request with sensitive data in URL
+    url = f"http://username:password@{server.host}:{server.port}/status/200?Signature=secret"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 200
+            assert await response.text() == "hello"
+
+    # Verify span attributes with new semconv
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[HTTP_REQUEST_METHOD] == "GET"
+    assert span.attributes[HTTP_RESPONSE_STATUS_CODE] == 200
+    assert span.attributes[URL_PATH] == "/status/200"
+    assert span.attributes[URL_QUERY] == "Signature=REDACTED"
+    assert HTTP_URL not in span.attributes
 
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
@@ -400,3 +493,230 @@ async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
     assert "http.response.header.custom_test_header_3" not in span.attributes
 
     AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_semantic_conventions_metrics_old_default(
+    tracer, meter, aiohttp_server, monkeypatch
+):
+    _, memory_exporter = tracer
+    _, metrics_reader = meter
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    AioHttpServerInstrumentor().instrument()
+    app = aiohttp.web.Application()
+    app.router.add_get("/test-path", default_handler)
+    server = await aiohttp_server(app)
+    client_session = aiohttp.ClientSession()
+    try:
+        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        async with client_session.get(
+            url, headers={"User-Agent": "test-agent"}
+        ) as response:
+            assert response.status == 200
+        spans = memory_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+
+        # Old semconv span attributes present
+        assert span.attributes.get(HTTP_METHOD) == "GET"
+        assert span.attributes.get(HTTP_SCHEME) == "http"
+        assert span.attributes.get(NET_HOST_NAME) == server.host
+        assert span.attributes.get(NET_HOST_PORT) == server.port
+        assert span.attributes.get(HTTP_TARGET) == "/test-path?query=test"
+        assert span.attributes.get(HTTP_USER_AGENT) == "test-agent"
+        assert span.attributes.get(HTTP_FLAVOR) == "1.1"
+        assert span.attributes.get(HTTP_STATUS_CODE) == 200
+        # New semconv span attributes NOT present
+        assert HTTP_REQUEST_METHOD not in span.attributes
+        assert URL_SCHEME not in span.attributes
+        assert SERVER_ADDRESS not in span.attributes
+        assert SERVER_PORT not in span.attributes
+        assert URL_PATH not in span.attributes
+        assert URL_QUERY not in span.attributes
+        assert USER_AGENT_ORIGINAL not in span.attributes
+        assert NETWORK_PROTOCOL_VERSION not in span.attributes
+        assert HTTP_RESPONSE_STATUS_CODE not in span.attributes
+
+        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        recommended_metrics_attrs = {
+            "http.server.active_requests": _server_active_requests_count_attrs_old,
+            "http.server.duration": _server_duration_attrs_old,
+        }
+        for metric in metrics:
+            assert metric.name in expected_metric_names
+            if metric.name == "http.server.duration":
+                assert metric.unit == "ms"
+            for point in metric.data.data_points:
+                for attr in point.attributes:
+                    assert attr in recommended_metrics_attrs[metric.name]
+
+    finally:
+        await client_session.close()
+        AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_semantic_conventions_metrics_new(
+    tracer, meter, aiohttp_server, monkeypatch
+):
+    _, memory_exporter = tracer
+    _, metrics_reader = meter
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    AioHttpServerInstrumentor().instrument()
+    app = aiohttp.web.Application()
+    app.router.add_get("/test-path", default_handler)
+    server = await aiohttp_server(app)
+    client_session = aiohttp.ClientSession()
+    try:
+        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        async with client_session.get(
+            url, headers={"User-Agent": "test-agent"}
+        ) as response:
+            assert response.status == 200
+        spans = memory_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+
+        # New semconv span attributes present
+        assert span.attributes.get(HTTP_REQUEST_METHOD) == "GET"
+        assert span.attributes.get(URL_SCHEME) == "http"
+        assert span.attributes.get(SERVER_ADDRESS) == server.host
+        assert span.attributes.get(SERVER_PORT) == server.port
+        assert span.attributes.get(URL_PATH) == "/test-path"
+        assert span.attributes.get(URL_QUERY) == "query=test"
+        assert span.attributes.get(USER_AGENT_ORIGINAL) == "test-agent"
+        assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
+        assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
+        # Old semconv span attributes NOT present
+        assert HTTP_METHOD not in span.attributes
+        assert HTTP_SCHEME not in span.attributes
+        assert NET_HOST_NAME not in span.attributes
+        assert NET_HOST_PORT not in span.attributes
+        assert HTTP_TARGET not in span.attributes
+        assert HTTP_USER_AGENT not in span.attributes
+        assert HTTP_FLAVOR not in span.attributes
+        assert HTTP_STATUS_CODE not in span.attributes
+
+        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.request.duration",
+        ]
+        recommended_metrics_attrs = {
+            "http.server.active_requests": _server_active_requests_count_attrs_new,
+            "http.server.request.duration": _server_duration_attrs_new,
+        }
+        for metric in metrics:
+            assert metric.name in expected_metric_names
+            if metric.name == "http.server.request.duration":
+                assert metric.unit == "s"
+            for point in metric.data.data_points:
+                if (
+                    isinstance(point, HistogramDataPoint)
+                    and metric.name == "http.server.request.duration"
+                ):
+                    assert (
+                        point.explicit_bounds
+                        == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
+                    )
+                for attr in point.attributes:
+                    assert attr in recommended_metrics_attrs[metric.name]
+
+    finally:
+        await client_session.close()
+        AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_semantic_conventions_metrics_both(
+    tracer, meter, aiohttp_server, monkeypatch
+):
+    _, memory_exporter = tracer
+    _, metrics_reader = meter
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    AioHttpServerInstrumentor().instrument()
+    app = aiohttp.web.Application()
+    app.router.add_get("/test-path", default_handler)
+    server = await aiohttp_server(app)
+    client_session = aiohttp.ClientSession()
+    try:
+        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        async with client_session.get(
+            url, headers={"User-Agent": "test-agent"}
+        ) as response:
+            assert response.status == 200
+        spans = memory_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+
+        # Both old and new semconv span attributes present
+        assert span.attributes.get(HTTP_METHOD) == "GET"
+        assert span.attributes.get(HTTP_REQUEST_METHOD) == "GET"
+        assert span.attributes.get(HTTP_SCHEME) == "http"
+        assert span.attributes.get(URL_SCHEME) == "http"
+        assert span.attributes.get(NET_HOST_NAME) == server.host
+        assert span.attributes.get(SERVER_ADDRESS) == server.host
+        assert span.attributes.get(NET_HOST_PORT) == server.port
+        assert span.attributes.get(SERVER_PORT) == server.port
+        assert span.attributes.get(HTTP_TARGET) == "/test-path?query=test"
+        assert span.attributes.get(URL_PATH) == "/test-path"
+        assert span.attributes.get(URL_QUERY) == "query=test"
+        assert span.attributes.get(HTTP_USER_AGENT) == "test-agent"
+        assert span.attributes.get(USER_AGENT_ORIGINAL) == "test-agent"
+        assert span.attributes.get(HTTP_FLAVOR) == "1.1"
+        assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
+        assert span.attributes.get(HTTP_STATUS_CODE) == 200
+        assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
+
+        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        assert len(metrics) == 3  # Both duration metrics + active requests
+        server_active_requests_count_attrs_both = list(
+            _server_active_requests_count_attrs_old
+        )
+        server_active_requests_count_attrs_both.extend(
+            _server_active_requests_count_attrs_new
+        )
+        recommended_metrics_attrs = {
+            "http.server.active_requests": server_active_requests_count_attrs_both,
+            "http.server.duration": _server_duration_attrs_old,
+            "http.server.request.duration": _server_duration_attrs_new,
+        }
+        for metric in metrics:
+            if metric.unit == "ms":
+                assert metric.name == "http.server.duration"
+            elif metric.unit == "s":
+                assert metric.name == "http.server.request.duration"
+            else:
+                assert metric.name == "http.server.active_requests"
+
+            for point in metric.data.data_points:
+                if (
+                    isinstance(point, HistogramDataPoint)
+                    and metric.name == "http.server.request.duration"
+                ):
+                    assert (
+                        point.explicit_bounds
+                        == HTTP_DURATION_HISTOGRAM_BUCKETS_NEW
+                    )
+                for attr in point.attributes:
+                    assert attr in recommended_metrics_attrs[metric.name]
+
+    finally:
+        await client_session.close()
+        AioHttpServerInstrumentor().uninstrument()
