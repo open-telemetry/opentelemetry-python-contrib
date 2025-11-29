@@ -191,7 +191,12 @@ from pyramid.path import caller_package
 from pyramid.settings import aslist
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.pyramid import callbacks
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
     TWEEN_NAME,
@@ -248,6 +253,14 @@ class PyramidInstrumentor(BaseInstrumentor):
         """Integrate with Pyramid Python library.
         https://docs.pylonsproject.org/projects/pyramid/en/latest/
         """
+        # Initialize semantic conventions opt-in mode
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        # Set module-level opt-in mode in callbacks
+        callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
         _wrap("pyramid.config", "Configurator.__init__", _traced_init)
 
     def _uninstrument(self, **kwargs):
