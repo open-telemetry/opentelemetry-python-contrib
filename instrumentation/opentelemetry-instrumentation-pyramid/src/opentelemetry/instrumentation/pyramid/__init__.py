@@ -194,6 +194,7 @@ from wrapt import wrap_function_wrapper as _wrap
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pyramid import callbacks
@@ -265,6 +266,8 @@ class PyramidInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         """ "Disable Pyramid instrumentation"""
+        # Reset module-level opt-in mode to default
+        callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
         unwrap(Configurator, "__init__")
 
     @staticmethod
@@ -274,8 +277,18 @@ class PyramidInstrumentor(BaseInstrumentor):
         Args:
             config: The Configurator to instrument.
         """
+        # Initialize semantic conventions opt-in mode
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        # Set module-level opt-in mode in callbacks
+        callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
         config.include("opentelemetry.instrumentation.pyramid.callbacks")
 
     @staticmethod
     def uninstrument_config(config):
+        # Reset module-level opt-in mode to default
+        callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
         config.add_settings({SETTING_TRACE_ENABLED: False})
