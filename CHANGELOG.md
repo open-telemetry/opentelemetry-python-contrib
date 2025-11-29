@@ -70,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
 - `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
   ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
+- `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
+  ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
