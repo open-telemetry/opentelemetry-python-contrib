@@ -309,13 +309,13 @@ def collect_request_attributes(
     if target:
         _, query = _parse_url_query(target)
         _set_http_target(result, target, path, query, sem_conv_opt_in_mode)
-    else:
-        # old semconv v1.20.0
-        if _report_old(sem_conv_opt_in_mode):
-            http_url = str(request.url)
-            if query_string:
-                http_url += "?" + urllib.parse.unquote(query_string)
-            result[HTTP_URL] = redact_url(http_url)
+
+    # old semconv v1.20.0 - always set HTTP_URL when reporting old semconv
+    if _report_old(sem_conv_opt_in_mode):
+        http_url = str(request.url)
+        if query_string:
+            http_url += "?" + urllib.parse.unquote(query_string)
+        result[HTTP_URL] = redact_url(http_url)
 
     user_agent = request.headers.get("user-agent")
     if user_agent:
