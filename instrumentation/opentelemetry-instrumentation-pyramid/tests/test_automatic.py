@@ -19,14 +19,26 @@ from pyramid.config import Configurator
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
     _server_active_requests_count_attrs_old,
     _server_duration_attrs_old,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
@@ -407,6 +419,201 @@ class TestCustomRequestResponseHeaders(InstrumentationTest, WsgiTestBase):
             self.assertEqual(span.kind, SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+
+class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
+    semconv_mode = _StabilityMode.DEFAULT
+
+    def setUp(self):
+        super().setUp()
+        self.env_patch = patch.dict(
+            "os.environ",
+            {OTEL_SEMCONV_STABILITY_OPT_IN: self.semconv_mode.value},
+        )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        self.env_patch.start()
+
+        PyramidInstrumentor().instrument()
+        self.config = Configurator()
+        self._common_initialization(self.config)
+
+    def tearDown(self):
+        super().tearDown()
+        self.env_patch.stop()
+        with self.disable_logging():
+            PyramidInstrumentor().uninstrument()
+
+    def _verify_metric_names(
+        self, metrics_list, expected_names, not_expected_names=None
+    ):
+        metric_names = []
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    metric_names.append(metric.name)
+                    if expected_names:
+                        self.assertIn(metric.name, expected_names)
+                    if not_expected_names:
+                        self.assertNotIn(metric.name, not_expected_names)
+        return metric_names
+
+    def _verify_duration_point(self, point):
+        self.assertIn("http.request.method", point.attributes)
+        self.assertIn("url.scheme", point.attributes)
+        self.assertNotIn("http.method", point.attributes)
+        self.assertNotIn("http.scheme", point.attributes)
+
+    def _verify_metric_duration(self, metric):
+        if "duration" in metric.name:
+            for point in metric.data.data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self._verify_duration_point(point)
+
+    def _verify_duration_attributes(self, metrics_list):
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    self._verify_metric_duration(metric)
+
+
+class TestSemConvDefault(_SemConvTestBase):
+    semconv_mode = _StabilityMode.DEFAULT
+
+    def test_basic_old_semconv(self):
+        resp = self.client.get("/hello/123")
+        self.assertEqual(200, resp.status_code)
+
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        old_attrs = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.HTTP_HOST: "localhost",
+            SpanAttributes.HTTP_TARGET: "/hello/123",
+            SpanAttributes.NET_HOST_PORT: 80,
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            HTTP_ROUTE: "/hello/{helloid}",
+        }
+        for attr, value in old_attrs.items():
+            self.assertEqual(span.attributes[attr], value)
+
+        for attr in [SERVER_ADDRESS, SERVER_PORT, URL_SCHEME]:
+            self.assertNotIn(attr, span.attributes)
+
+    def test_metrics_old_semconv(self):
+        self.client.get("/hello/123")
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+
+        expected_metrics = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        self._verify_metric_names(
+            metrics_list, expected_metrics, ["http.server.request.duration"]
+        )
+
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in metric.data.data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertIn("http.method", point.attributes)
+                            self.assertIn("http.scheme", point.attributes)
+                            self.assertNotIn(
+                                "http.request.method", point.attributes
+                            )
+
+
+class TestSemConvNew(_SemConvTestBase):
+    semconv_mode = _StabilityMode.HTTP
+
+    def test_basic_new_semconv(self):
+        resp = self.client.get("/hello/456")
+        self.assertEqual(200, resp.status_code)
+
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        new_attrs = {
+            "http.request.method": "GET",
+            URL_SCHEME: "http",
+            SERVER_ADDRESS: "localhost",
+            SERVER_PORT: 80,
+            "http.response.status_code": 200,
+            "network.protocol.version": "1.1",
+            HTTP_ROUTE: "/hello/{helloid}",
+        }
+        for attr, value in new_attrs.items():
+            self.assertEqual(span.attributes[attr], value)
+
+        old_attrs = [
+            SpanAttributes.HTTP_METHOD,
+            SpanAttributes.HTTP_HOST,
+            SpanAttributes.HTTP_TARGET,
+            SpanAttributes.HTTP_URL,
+        ]
+        for attr in old_attrs:
+            self.assertNotIn(attr, span.attributes)
+
+    def test_metrics_new_semconv(self):
+        self.client.get("/hello/456")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+
+        expected_metrics = [
+            "http.server.request.duration",
+            "http.server.active_requests",
+        ]
+        metric_names = self._verify_metric_names(
+            metrics_list, expected_metrics
+        )
+
+        self.assertIn("http.server.request.duration", metric_names)
+        self.assertIn("http.server.active_requests", metric_names)
+
+        self._verify_duration_attributes(metrics_list)
+
+
+class TestSemConvDup(_SemConvTestBase):
+    semconv_mode = _StabilityMode.HTTP_DUP
+
+    def test_basic_both_semconv(self):
+        resp = self.client.get("/hello/789")
+        self.assertEqual(200, resp.status_code)
+
+        span = self.memory_exporter.get_finished_spans()[0]
+
+        expected_attrs = {
+            SpanAttributes.HTTP_METHOD: "GET",
+            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.HTTP_HOST: "localhost",
+            SpanAttributes.HTTP_STATUS_CODE: 200,
+            "http.request.method": "GET",
+            URL_SCHEME: "http",
+            SERVER_ADDRESS: "localhost",
+            "http.response.status_code": 200,
+            HTTP_ROUTE: "/hello/{helloid}",
+        }
+        for attr, value in expected_attrs.items():
+            self.assertEqual(span.attributes[attr], value)
+
+    def test_metrics_both_semconv(self):
+        self.client.get("/hello/789")
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+
+        expected_metrics = [
+            "http.server.duration",
+            "http.server.request.duration",
+            "http.server.active_requests",
+        ]
+        metric_names = self._verify_metric_names(metrics_list, None)
+
+        for metric_name in expected_metrics:
+            self.assertIn(metric_name, metric_names)
 
 
 @patch.dict(
