@@ -495,6 +495,7 @@ async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
     AioHttpServerInstrumentor().uninstrument()
 
 
+# pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_old_default(
     tracer, meter, aiohttp_server, monkeypatch
@@ -513,7 +514,7 @@ async def test_semantic_conventions_metrics_old_default(
     client_session = aiohttp.ClientSession()
     try:
         url = f"http://{server.host}:{server.port}/test-path?query=test"
-        async with client_session.get(
+        async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
@@ -563,6 +564,7 @@ async def test_semantic_conventions_metrics_old_default(
         AioHttpServerInstrumentor().uninstrument()
 
 
+# pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_new(
     tracer, meter, aiohttp_server, monkeypatch
@@ -581,7 +583,7 @@ async def test_semantic_conventions_metrics_new(
     client_session = aiohttp.ClientSession()
     try:
         url = f"http://{server.host}:{server.port}/test-path?query=test"
-        async with client_session.get(
+        async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
@@ -639,6 +641,7 @@ async def test_semantic_conventions_metrics_new(
         AioHttpServerInstrumentor().uninstrument()
 
 
+# pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_both(
     tracer, meter, aiohttp_server, monkeypatch
@@ -657,7 +660,7 @@ async def test_semantic_conventions_metrics_both(
     client_session = aiohttp.ClientSession()
     try:
         url = f"http://{server.host}:{server.port}/test-path?query=test"
-        async with client_session.get(
+        async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
