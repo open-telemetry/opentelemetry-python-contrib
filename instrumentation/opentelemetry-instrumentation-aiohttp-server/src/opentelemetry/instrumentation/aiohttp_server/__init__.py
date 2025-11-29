@@ -210,6 +210,7 @@ from opentelemetry.util.http import (
     get_excluded_urls,
     normalise_request_header_name,
     normalise_response_header_name,
+    redact_query_parameters,
     redact_url,
     sanitize_method,
 )
@@ -307,8 +308,11 @@ def collect_request_attributes(
     if query_string:
         target = f"{path}?{query_string}"
     if target:
-        _, query = _parse_url_query(target)
-        _set_http_target(result, target, path, query, sem_conv_opt_in_mode)
+        redacted_target = redact_query_parameters(target)
+        _, redacted_query = _parse_url_query(redacted_target)
+        _set_http_target(
+            result, redacted_target, path, redacted_query, sem_conv_opt_in_mode
+        )
 
     # old semconv v1.20.0 - always set HTTP_URL when reporting old semconv
     if _report_old(sem_conv_opt_in_mode):
