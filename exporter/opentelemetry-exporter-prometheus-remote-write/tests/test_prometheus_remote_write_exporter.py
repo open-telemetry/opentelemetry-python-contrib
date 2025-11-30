@@ -15,6 +15,8 @@
 import unittest
 from unittest.mock import patch
 
+import requests
+
 import pytest
 
 # pylint: disable=no-name-in-module
@@ -341,3 +343,38 @@ def test_build_headers(prom_rw):
     assert headers["Content-Type"] == "application/x-protobuf"
     assert headers["X-Prometheus-Remote-Write-Version"] == "0.1.0"
     assert headers["Custom Header"] == "test_header"
+
+
+@patch("opentelemetry.exporter.prometheus_remote_write.time.sleep")
+@patch("requests.post")
+def test_send_message_retries_then_succeeds(mock_post, mock_sleep, prom_rw):
+    prom_rw.max_retries = 2
+    prom_rw.retry_jitter_ratio = 0
+
+    first_response = unittest.mock.Mock()
+    first_response.ok = False
+    first_response.status_code = 500
+    second_response = unittest.mock.Mock()
+    second_response.ok = True
+    mock_post.side_effect = [first_response, second_response]
+
+    result = prom_rw._send_message(bytes(), {})
+    assert result == MetricExportResult.SUCCESS
+    assert mock_post.call_count == 2
+    mock_sleep.assert_called_once()
+
+
+@patch("requests.post")
+def test_send_message_non_retryable_status(mock_post, prom_rw):
+    prom_rw.max_retries = 2
+    response = unittest.mock.Mock()
+    response.ok = False
+    response.status_code = 400
+    response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        response=response
+    )
+    mock_post.return_value = response
+
+    result = prom_rw._send_message(bytes(), {})
+    assert result == MetricExportResult.FAILURE
+    assert mock_post.call_count == 1
