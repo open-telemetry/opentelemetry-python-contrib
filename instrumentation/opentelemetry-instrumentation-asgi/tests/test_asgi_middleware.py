@@ -321,33 +321,36 @@ class TestAsgiApplication(AsyncAsgiTestBase):
     ):
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         print(metrics_list)
-        found = {name: 0 for name in metric_names}
+        metrics = []
         for resource_metric in (
             getattr(metrics_list, "resource_metrics", []) or []
         ):
             for scope_metric in (
                 getattr(resource_metric, "scope_metrics", []) or []
             ):
-                for metric in getattr(scope_metric, "metrics", []) or []:
-                    if metric.name not in metric_names:
-                        continue
-                    for point in metric.data.data_points:
-                        found[metric.name] += 1
-                        exemplars = getattr(point, "exemplars", None)
-                        self.assertIsNotNone(
-                            exemplars,
-                            msg=f"Expected exemplars list attribute on histogram data point for {metric.name} ({context})",
-                        )
-                        self.assertGreater(
-                            len(exemplars or []),
-                            0,
-                            msg=f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
-                        )
-                        for ex in exemplars or []:
-                            if hasattr(ex, "span_id"):
-                                self.assertNotEqual(ex.span_id, 0)
-                            if hasattr(ex, "trace_id"):
-                                self.assertNotEqual(ex.trace_id, 0)
+                metrics.extend(getattr(scope_metric, "metrics", []) or [])
+
+        found = {name: 0 for name in metric_names}
+        for metric in metrics:
+            if metric.name not in metric_names:
+                continue
+            for point in metric.data.data_points:
+                found[metric.name] += 1
+                exemplars = getattr(point, "exemplars", None)
+                self.assertIsNotNone(
+                    exemplars,
+                    msg=f"Expected exemplars list attribute on histogram data point for {metric.name} ({context})",
+                )
+                self.assertGreater(
+                    len(exemplars or []),
+                    0,
+                    msg=f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
+                )
+                for ex in exemplars or []:
+                    if hasattr(ex, "span_id"):
+                        self.assertNotEqual(ex.span_id, 0)
+                    if hasattr(ex, "trace_id"):
+                        self.assertNotEqual(ex.trace_id, 0)
         for name, count in found.items():
             self.assertGreater(
                 count,
