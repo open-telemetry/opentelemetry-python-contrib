@@ -93,7 +93,6 @@ API
 from __future__ import annotations
 
 import functools
-import os
 import types
 from timeit import default_timer
 from typing import Any, Callable, Collection, Mapping, Optional
@@ -157,6 +156,7 @@ from opentelemetry.util.http import (
     ExcludeList,
     SanitizeValue,
     detect_synthetic_user_agent,
+    get_custom_headers,
     get_excluded_urls,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -213,8 +213,7 @@ def _get_custom_header_attributes(
             If None or empty, no headers will be captured.
         sensitive_headers: List of header regexes whose values should be sanitized
             (redacted). If None, no sanitization is applied.
-        normalize_function: Function to normalize header names
-            (e.g., normalise_request_header_name or normalise_response_header_name).
+        normalize_function: Function to normalize header names.
 
     Returns:
         Dictionary of normalized header attribute names to their values
@@ -557,13 +556,13 @@ class RequestsInstrumentor(BaseInstrumentor):
                 else parse_excluded_urls(excluded_urls)
             ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
-            captured_request_headers=os.environ.get(
+            captured_request_headers=get_custom_headers(
                 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
             ),
-            captured_response_headers=os.environ.get(
+            captured_response_headers=get_custom_headers(
                 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
             ),
-            sensitive_headers=os.environ.get(
+            sensitive_headers=get_custom_headers(
                 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
             ),
         )
