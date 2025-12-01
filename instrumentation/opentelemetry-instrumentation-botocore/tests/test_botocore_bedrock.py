@@ -3050,21 +3050,23 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
         assert isinstance(tool_block["input"], dict)
     else:
         assert "input" not in tool_block
-def test_converse_stream_with_malformed_response():
+
+
+def test_converse_stream_with_missing_output_in_response():
     """Test that converse stream handles malformed response missing output key."""
+
     def stream_done_callback(response, ended):
         pass
-    
+
     wrapper = ConverseStreamWrapper(
         stream=mock.MagicMock(),
         stream_done_callback=stream_done_callback,
         model_id="amazon.nova-micro-v1:0",
     )
-    
-    malformed_response = {"stopReason": "end_turn"}
-    result = wrapper._complete_stream(malformed_response)
+
+    bedrock_response = {"stopReason": "end_turn"}
+    result = wrapper._complete_stream(bedrock_response)
     assert result is None
-    
 
 def amazon_nova_messages():
     return [
