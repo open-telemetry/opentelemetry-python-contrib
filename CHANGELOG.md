@@ -34,7 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-django`: improve docs for response_hook with examples of providing attributes from middlewares
   ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
 - Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
-  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+  ([#3589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+- opentelemetry-instrumentation: allow to skip all instrumentations loading with a wildcard
+  ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
+- `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
+  ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
 
 ### Fixed
 
