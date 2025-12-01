@@ -528,7 +528,8 @@ class _Choice:
     def from_converse(
         cls, response: dict[str, Any], capture_content: bool
     ) -> _Choice:
-        orig_message = response["output"]["message"]
+        output = response.get("output", {})
+        orig_message = output.get("message", {})
         if role := orig_message.get("role"):
             message = {"role": role}
         else:
