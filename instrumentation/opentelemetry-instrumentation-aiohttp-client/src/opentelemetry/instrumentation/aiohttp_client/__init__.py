@@ -305,9 +305,9 @@ def _set_http_status_code_attribute(
 
 
 def _get_custom_header_attributes(
-    headers: Mapping[str, str | list[str]] | None,
-    captured_headers: list[str] | None,
-    sensitive_headers: list[str] | None,
+    headers: typing.Optional[Mapping[str, typing.Union[str, list[str]]]],
+    captured_headers: typing.Optional[list[str]],
+    sensitive_headers: typing.Optional[list[str]],
     normalize_function: Callable[[str], str],
 ) -> dict[str, list[str]]:
     """Extract and sanitize HTTP headers for span attributes.
@@ -342,9 +342,9 @@ def create_trace_config(
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: list[str] | None = None,
-    captured_response_headers: list[str] | None = None,
-    sensitive_headers: list[str] | None = None,
+    captured_request_headers: typing.Optional[list[str]] = None,
+    captured_response_headers: typing.Optional[list[str]] = None,
+    sensitive_headers: typing.Optional[list[str]] = None,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
 
@@ -526,7 +526,10 @@ def create_trace_config(
 
         span_attributes.update(
             _get_custom_header_attributes(
-                params.headers,
+                {
+                    key: params.headers.getall(key)
+                    for key in params.headers.keys()
+                },
                 captured_request_headers,
                 sensitive_headers,
                 normalise_request_header_name,
@@ -565,7 +568,10 @@ def create_trace_config(
 
         trace_config_ctx.span.set_attributes(
             _get_custom_header_attributes(
-                params.headers,
+                {
+                    key: params.response.headers.getall(key)
+                    for key in params.response.headers.keys()
+                },
                 captured_response_headers,
                 sensitive_headers,
                 normalise_response_header_name,
@@ -632,9 +638,9 @@ def _instrument(
         typing.Sequence[aiohttp.TraceConfig]
     ] = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: list[str] | None = None,
-    captured_response_headers: list[str] | None = None,
-    sensitive_headers: list[str] | None = None,
+    captured_request_headers: typing.Optional[list[str]] = None,
+    captured_response_headers: typing.Optional[list[str]] = None,
+    sensitive_headers: typing.Optional[list[str]] = None,
 ):
     """Enables tracing of all ClientSessions
 
