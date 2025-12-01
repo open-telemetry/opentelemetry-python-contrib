@@ -113,11 +113,11 @@ class MockAsyncConnection(psycopg.AsyncConnection):
     async def connect(*args, **kwargs):
         return MockAsyncConnection(**kwargs)
 
-    def cursor(self):
+    def cursor(self, *args, **kwargs):
         if self.cursor_factory:
             cur = self.cursor_factory(self)
             return cur
-        return MockAsyncCursor()
+        return MockAsyncCursor(*args, **kwargs)
 
     def execute(self, query, params=None, *, prepare=None, binary=False):
         cur = self.cursor()
