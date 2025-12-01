@@ -15,13 +15,14 @@
 import logging
 import random
 import re
-import time
 from collections import defaultdict
 from itertools import chain
 from typing import Dict, Mapping, Optional, Sequence
 
 import requests
 import snappy
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 from opentelemetry.exporter.prometheus_remote_write.gen.remote_pb2 import (  # pylint: disable=no-name-in-module
     WriteRequest,
@@ -55,6 +56,27 @@ logger = logging.getLogger(__name__)
 PROMETHEUS_NAME_REGEX = re.compile(r"^\d|[^\w:]")
 PROMETHEUS_LABEL_REGEX = re.compile(r"^\d|[^\w]")
 UNDERSCORE_REGEX = re.compile(r"_+")
+
+
+class _JitterRetry(Retry):
+    def __init__(
+        self,
+        *args,
+        backoff_max: float = 5.0,
+        jitter_ratio: float = 0.1,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.backoff_max = backoff_max
+        self.jitter_ratio = jitter_ratio
+
+    def get_backoff_time(self) -> float:
+        backoff = super().get_backoff_time()
+        backoff = min(backoff, self.backoff_max)
+        if self.jitter_ratio:
+            jitter = backoff * self.jitter_ratio
+            backoff += random.uniform(-jitter, jitter)
+        return max(backoff, 0.0)
 
 
 class PrometheusRemoteWriteMetricsExporter(MetricExporter):
@@ -110,6 +132,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 ObservableGauge: AggregationTemporality.CUMULATIVE,
             }
 
+        self._session = self._create_session()
         super().__init__(preferred_temporality, preferred_aggregation)
 
     @property
@@ -431,34 +454,26 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 headers[header_name] = header_value
         return headers
 
-    def _should_retry_status(self, status_code: Optional[int]) -> bool:
-        if status_code is None:
-            return False
-        return status_code in self.retry_status_codes
-
-    @staticmethod
-    def _is_retryable_error(err: requests.exceptions.RequestException) -> bool:
-        return isinstance(
-            err,
-            (
-                requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout,
-            ),
+    def _create_session(self) -> requests.Session:
+        session = requests.Session()
+        retry = _JitterRetry(
+            total=self.max_retries,
+            connect=self.max_retries,
+            read=self.max_retries,
+            status=self.max_retries,
+            allowed_methods=frozenset(["POST"]),
+            status_forcelist=self.retry_status_codes,
+            backoff_factor=self.retry_backoff_factor,
+            raise_on_status=False,
+            raise_on_redirect=False,
+            respect_retry_after_header=False,
+            backoff_max=self.retry_backoff_max,
+            jitter_ratio=self.retry_jitter_ratio,
         )
-
-    def _calculate_backoff(self, attempt: int) -> float:
-        delay = min(
-            self.retry_backoff_max,
-            self.retry_backoff_factor * (2 ** (attempt - 1)),
-        )
-        if self.retry_jitter_ratio:
-            jitter = delay * self.retry_jitter_ratio
-            delay += random.uniform(-jitter, jitter)
-        return max(delay, 0.0)
-
-    @staticmethod
-    def _sleep(duration: float) -> None:
-        time.sleep(duration)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        return session
 
     def _send_message(
         self, message: bytes, headers: Dict
@@ -483,63 +498,24 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                     self.tls_config["cert_file"],
                     self.tls_config["key_file"],
                 )
-        total_attempts = self.max_retries + 1
-
-        for attempt in range(1, total_attempts + 1):
-            try:
-                response = requests.post(
-                    self.endpoint,
-                    data=message,
-                    headers=headers,
-                    auth=auth,
-                    timeout=self.timeout,
-                    proxies=self.proxies,
-                    cert=cert,
-                    verify=verify,
-                )
-                if response.ok:
-                    return MetricExportResult.SUCCESS
-
-                if attempt < total_attempts and self._should_retry_status(
-                    response.status_code
-                ):
-                    delay = self._calculate_backoff(attempt)
-                    logger.warning(
-                        "Remote Write request failed with status %s, retrying in %.2fs (attempt %s/%s)",
-                        response.status_code,
-                        delay,
-                        attempt,
-                        total_attempts,
-                    )
-                    self._sleep(delay)
-                    continue
-
-                response.raise_for_status()
-            except requests.exceptions.RequestException as err:
-                status_code = getattr(err.response, "status_code", None)
-                retryable = self._should_retry_status(status_code) or self._is_retryable_error(err)
-                if attempt < total_attempts and retryable:
-                    delay = self._calculate_backoff(attempt)
-                    logger.warning(
-                        "Remote Write request failed with reason: %s; retrying in %.2fs (attempt %s/%s)",
-                        err,
-                        delay,
-                        attempt,
-                        total_attempts,
-                    )
-                    self._sleep(delay)
-                    continue
-
-                logger.error(
-                    "Export POST request failed with reason: %s", err
-                )
-                return MetricExportResult.FAILURE
-
-        logger.error(
-            "Export POST request failed after %s attempts",
-            total_attempts,
-        )
-        return MetricExportResult.FAILURE
+        try:
+            response = self._session.post(
+                self.endpoint,
+                data=message,
+                headers=headers,
+                auth=auth,
+                timeout=self.timeout,
+                proxies=self.proxies,
+                cert=cert,
+                verify=verify,
+            )
+            if response.ok:
+                return MetricExportResult.SUCCESS
+            response.raise_for_status()
+        except requests.exceptions.RequestException as err:
+            logger.error("Export POST request failed with reason: %s", err)
+            return MetricExportResult.FAILURE
+        return MetricExportResult.SUCCESS
 
     def force_flush(self, timeout_millis: float = 10_000) -> bool:
         return True

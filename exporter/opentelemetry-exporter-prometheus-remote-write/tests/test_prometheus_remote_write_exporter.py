@@ -285,9 +285,10 @@ class TestValidation(unittest.TestCase):
 
 
 # Ensures export is successful with valid export_records and config
-@patch("requests.post")
-def test_valid_export(mock_post, prom_rw, metric):
-    mock_post.return_value.configure_mock(**{"status_code": 200})
+def test_valid_export(prom_rw, metric):
+    mock_post = unittest.mock.Mock()
+    mock_post.return_value.configure_mock(ok=True, status_code=200)
+    prom_rw._session.post = mock_post
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
     scope = ScopeMetrics(
@@ -316,12 +317,16 @@ def test_invalid_export(prom_rw):
 @patch("requests.post")
 def test_valid_send_message(mock_post, prom_rw):
     mock_post.return_value.configure_mock(**{"ok": True})
+    prom_rw._session.post = mock_post  # use the mocked session post
     result = prom_rw._send_message(bytes(), {})
     assert mock_post.call_count == 1
     assert result == MetricExportResult.SUCCESS
 
 
 def test_invalid_send_message(prom_rw):
+    prom_rw._session.post = unittest.mock.Mock(
+        side_effect=requests.exceptions.RequestException("boom")
+    )
     result = prom_rw._send_message(bytes(), {})
     assert result == MetricExportResult.FAILURE
 
@@ -345,36 +350,23 @@ def test_build_headers(prom_rw):
     assert headers["Custom Header"] == "test_header"
 
 
-@patch("opentelemetry.exporter.prometheus_remote_write.time.sleep")
-@patch("requests.post")
-def test_send_message_retries_then_succeeds(mock_post, mock_sleep, prom_rw):
-    prom_rw.max_retries = 2
-    prom_rw.retry_jitter_ratio = 0
-
-    first_response = unittest.mock.Mock()
-    first_response.ok = False
-    first_response.status_code = 500
-    second_response = unittest.mock.Mock()
-    second_response.ok = True
-    mock_post.side_effect = [first_response, second_response]
-
-    result = prom_rw._send_message(bytes(), {})
-    assert result == MetricExportResult.SUCCESS
-    assert mock_post.call_count == 2
-    mock_sleep.assert_called_once()
+def test_session_retry_configuration(prom_rw):
+    adapter = prom_rw._session.adapters["https://"]
+    retry = adapter.max_retries
+    assert retry.total == prom_rw.max_retries
+    assert "POST" in retry.allowed_methods
+    assert 500 in retry.status_forcelist
 
 
-@patch("requests.post")
-def test_send_message_non_retryable_status(mock_post, prom_rw):
-    prom_rw.max_retries = 2
+def test_non_retryable_status(prom_rw):
     response = unittest.mock.Mock()
     response.ok = False
     response.status_code = 400
     response.raise_for_status.side_effect = requests.exceptions.HTTPError(
         response=response
     )
-    mock_post.return_value = response
+    prom_rw._session.post = unittest.mock.Mock(return_value=response)
 
     result = prom_rw._send_message(bytes(), {})
     assert result == MetricExportResult.FAILURE
-    assert mock_post.call_count == 1
+    assert prom_rw._session.post.call_count == 1

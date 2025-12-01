@@ -29,7 +29,8 @@ Installation
 Configuration highlights
 ------------------------
 
-* ``max_retries`` (default ``3``), ``retry_backoff_factor`` (default ``0.5``), ``retry_backoff_max`` (default ``5.0``), and ``retry_jitter_ratio`` (default ``0.1``) tune the retry policy for retryable statuses (429/408/5xx) and connection/timeouts.
+* ``max_retries`` (default ``3``), ``retry_backoff_factor`` (default ``0.5``), ``retry_backoff_max`` (default ``5.0``), and ``retry_jitter_ratio`` (default ``0.1``) tune the retry policy for retryable statuses (429/408/5xx) and connection/timeouts. The retry adapter is built when the exporter is instantiated; update these values at construction time.
+* Total request time can grow to roughly ``(max_retries + 1) * timeout`` plus backoff; server ``Retry-After`` hints are ignored (``respect_retry_after_header=False``).
 
 
 References
