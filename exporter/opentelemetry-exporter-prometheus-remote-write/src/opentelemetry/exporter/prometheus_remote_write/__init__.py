@@ -72,11 +72,9 @@ class _JitterRetry(Retry):
 
     def get_backoff_time(self) -> float:
         backoff = super().get_backoff_time()
-        backoff = min(backoff, self.backoff_max)
         if self.jitter_ratio:
-            jitter = backoff * self.jitter_ratio
-            backoff += random.uniform(-jitter, jitter)
-        return max(backoff, 0.0)
+            backoff += backoff * self.jitter_ratio * random.uniform(-1, 1)
+        return min(max(backoff, 0.0), self.backoff_max)
 
 
 class PrometheusRemoteWriteMetricsExporter(MetricExporter):
