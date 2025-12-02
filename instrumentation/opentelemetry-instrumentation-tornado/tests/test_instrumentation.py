@@ -71,6 +71,13 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
 
     def setUp(self):
         super().setUp()
+        # Reset semconv initialization to ensure clean state
+        # pylint: disable=import-outside-toplevel
+        from opentelemetry.instrumentation._semconv import (  # noqa: PLC0415
+            _OpenTelemetrySemanticConventionStability,
+        )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
         TornadoInstrumentor().instrument(
             server_request_hook=getattr(self, "server_request_hook", None),
             client_request_hook=getattr(self, "client_request_hook", None),
