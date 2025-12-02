@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 import timeit
 from numbers import Number
 from typing import Dict, Optional
@@ -27,29 +26,6 @@ def _get_span_start_time_ns(span: Optional[Span]) -> Optional[int]:
         if isinstance(value, int):
             return value
     return None
-
-
-def _calculate_duration_seconds(
-    span: Optional[Span], invocation: LLMInvocation
-) -> Optional[float]:
-    """Calculate duration in seconds from a start time to now.
-
-    If `invocation.monotonic_start_ns` is present, use a monotonic
-    clock (`perf_counter_ns`) for elapsed time. Otherwise fall back to the
-    span's wall-clock start time (epoch ns) and `time_ns()` for now.
-
-    Returns None if no usable start time is available.
-    """
-    # Prefer an explicit monotonic start on the invocation (seconds)
-    if invocation.monotonic_start_s is not None:
-        return max(timeit.default_timer() - invocation.monotonic_start_s, 0.0)
-
-    # Fall back to span start_time (wall clock epoch ns)
-    start_time_ns = _get_span_start_time_ns(span)
-    if start_time_ns is None:
-        return None
-    elapsed_ns = max(time.time_ns() - start_time_ns, 0)
-    return elapsed_ns / _NS_PER_SECOND
 
 
 class InvocationMetricsRecorder:
@@ -102,7 +78,11 @@ class InvocationMetricsRecorder:
             )
 
         # Calculate duration from span timing or invocation monotonic start
-        duration_seconds = _calculate_duration_seconds(span, invocation)
+        duration_seconds: Optional[float] = None
+        if invocation.monotonic_start_s is not None:
+            duration_seconds = max(
+                timeit.default_timer() - invocation.monotonic_start_s, 0.0
+            )
 
         span_context = set_span_in_context(span)
         if error_type:
