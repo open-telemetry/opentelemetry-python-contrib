@@ -3055,7 +3055,7 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
 def test_converse_stream_with_missing_output_in_response():
     # Test malformed response missing "output" key
     malformed_response = {"stopReason": "end_turn"}
-    choice = _Choice.from_converse(malformed_response, capture_content=False)
+    choice = _Choice.from_converse(malformed_response, capture_content=True)
 
     assert choice.finish_reason == "end_turn"
     assert choice.message == {}
