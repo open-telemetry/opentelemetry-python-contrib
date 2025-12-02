@@ -293,12 +293,14 @@ def trace_tween_factory(handler, registry):
                     )
 
                     if recordable_exc is not None:
-                        if _report_new(_sem_conv_opt_in_mode):
-                            if span.is_recording():
-                                span.set_attribute(
-                                    ERROR_TYPE,
-                                    type(recordable_exc).__qualname__,
-                                )
+                        if (
+                            _report_new(_sem_conv_opt_in_mode)
+                            and span.is_recording()
+                        ):
+                            span.set_attribute(
+                                ERROR_TYPE,
+                                type(recordable_exc).__qualname__,
+                            )
                         span.set_status(
                             Status(StatusCode.ERROR, str(recordable_exc))
                         )
