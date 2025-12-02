@@ -326,8 +326,7 @@ def collect_request_attributes(
         _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
 
     flavor = f"{request.version.major}.{request.version.minor}"
-    if flavor:
-        _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
+    _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
     if _report_old(sem_conv_opt_in_mode):
         result[HTTP_ROUTE] = _get_view_func(request)
