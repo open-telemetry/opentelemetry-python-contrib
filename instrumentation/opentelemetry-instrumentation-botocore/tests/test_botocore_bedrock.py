@@ -3061,6 +3061,7 @@ def test_converse_stream_with_missing_output_in_response():
     assert choice.message == {}
     assert choice.index == 0
 
+
 def amazon_nova_messages():
     return [
         {"role": "user", "content": [{"text": "Say this is a test"}]},
