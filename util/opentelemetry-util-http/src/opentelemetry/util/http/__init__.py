@@ -258,10 +258,10 @@ def get_custom_headers(env_var: str) -> list[str]:
 
 
 def get_custom_header_attributes(
-        headers: Mapping[str, str | list[str]] | None,
-        captured_headers: list[str] | None,
-        sensitive_headers: list[str] | None,
-        normalize_function: Callable[[str], str],
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
 ) -> dict[str, list[str]]:
     """Extract and sanitize HTTP headers for span attributes.
 
