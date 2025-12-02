@@ -196,7 +196,7 @@ API
 import types
 import typing
 from timeit import default_timer
-from typing import Callable, Collection, Mapping
+from typing import Collection
 from urllib.parse import urlparse
 
 import aiohttp
@@ -244,13 +244,12 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
-    SanitizeValue,
     get_custom_headers,
     get_excluded_urls,
     normalise_request_header_name,
     normalise_response_header_name,
     redact_url,
-    sanitize_method,
+    sanitize_method, get_custom_header_attributes,
 )
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
@@ -301,35 +300,6 @@ def _set_http_status_code_attribute(
         status_code_str,
         server_span=False,
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-    )
-
-
-def _get_custom_header_attributes(
-    headers: typing.Optional[Mapping[str, typing.Union[str, list[str]]]],
-    captured_headers: typing.Optional[list[str]],
-    sensitive_headers: typing.Optional[list[str]],
-    normalize_function: Callable[[str], str],
-) -> dict[str, list[str]]:
-    """Extract and sanitize HTTP headers for span attributes.
-
-    Args:
-        headers: The HTTP headers to process, either from a request or response.
-            Can be None if no headers are available.
-        captured_headers: List of header regexes to capture as span attributes.
-            If None or empty, no headers will be captured.
-        sensitive_headers: List of header regexes whose values should be sanitized
-            (redacted). If None, no sanitization is applied.
-        normalize_function: Function to normalize header names.
-
-    Returns:
-        Dictionary of normalized header attribute names to their values
-        as lists of strings.
-    """
-    if not headers or not captured_headers:
-        return {}
-    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
-    return sanitize.sanitize_header_values(
-        headers, captured_headers, normalize_function
     )
 
 
@@ -525,7 +495,7 @@ def create_trace_config(
             pass
 
         span_attributes.update(
-            _get_custom_header_attributes(
+            get_custom_header_attributes(
                 {
                     key: params.headers.getall(key)
                     for key in params.headers.keys()
@@ -567,7 +537,7 @@ def create_trace_config(
         )
 
         trace_config_ctx.span.set_attributes(
-            _get_custom_header_attributes(
+            get_custom_header_attributes(
                 {
                     key: params.response.headers.getall(key)
                     for key in params.response.headers.keys()
