@@ -528,6 +528,7 @@ class _Choice:
     def from_converse(
         cls, response: dict[str, Any], capture_content: bool
     ) -> _Choice:
+        # be defensive about malformed responses, refer to #3958 for more context
         output = response.get("output", {})
         # be defensive about malformed responses
         # refer to https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3958 for more context
