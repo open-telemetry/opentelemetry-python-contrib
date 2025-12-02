@@ -530,8 +530,6 @@ class _Choice:
     ) -> _Choice:
         # be defensive about malformed responses, refer to #3958 for more context
         output = response.get("output", {})
-        # be defensive about malformed responses
-        # refer to https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3958 for more context
         orig_message = output.get("message", {})
         if role := orig_message.get("role"):
             message = {"role": role}
