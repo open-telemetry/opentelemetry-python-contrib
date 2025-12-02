@@ -494,9 +494,6 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
-        assert tracer_provider is None or isinstance(
-            tracer_provider, trace.TracerProvider
-        )
         # update global values at instrument time so we can test them
         global _excluded_urls  # pylint: disable=global-statement
         _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
