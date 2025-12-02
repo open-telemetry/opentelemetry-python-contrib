@@ -186,7 +186,7 @@ from __future__ import annotations
 import functools
 import types
 from timeit import default_timer
-from typing import Any, Callable, Collection, Mapping, Optional
+from typing import Any, Callable, Collection, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response
@@ -245,8 +245,8 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     ExcludeList,
-    SanitizeValue,
     detect_synthetic_user_agent,
+    get_custom_header_attributes,
     get_custom_headers,
     get_excluded_urls,
     normalise_request_header_name,
@@ -286,35 +286,6 @@ def _set_http_status_code_attribute(
         status_code_str,
         server_span=False,
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-    )
-
-
-def _get_custom_header_attributes(
-    headers: Mapping[str, str | list[str]] | None,
-    captured_headers: list[str] | None,
-    sensitive_headers: list[str] | None,
-    normalize_function: Callable[[str], str],
-) -> dict[str, list[str]]:
-    """Extract and sanitize HTTP headers for span attributes.
-
-    Args:
-        headers: The HTTP headers to process, either from a request or response.
-            Can be None if no headers are available.
-        captured_headers: List of header regexes to capture as span attributes.
-            If None or empty, no headers will be captured.
-        sensitive_headers: List of header regexes whose values should be sanitized
-            (redacted). If None, no sanitization is applied.
-        normalize_function: Function to normalize header names.
-
-    Returns:
-        Dictionary of normalized header attribute names to their values
-        as lists of strings.
-    """
-    if not headers or not captured_headers:
-        return {}
-    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
-    return sanitize.sanitize_header_values(
-        headers, captured_headers, normalize_function
     )
 
 
@@ -389,7 +360,7 @@ def _instrument(
         if user_agent:
             span_attributes[USER_AGENT_ORIGINAL] = user_agent
         span_attributes.update(
-            _get_custom_header_attributes(
+            get_custom_header_attributes(
                 headers,
                 captured_request_headers,
                 sensitive_headers,
@@ -489,7 +460,7 @@ def _instrument(
                                 sem_conv_opt_in_mode,
                             )
                 span_attributes.update(
-                    _get_custom_header_attributes(
+                    get_custom_header_attributes(
                         result.headers,
                         captured_response_headers,
                         sensitive_headers,
