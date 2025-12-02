@@ -26,8 +26,8 @@ from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
-    ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
+    _Choice,
 )
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
@@ -3053,20 +3053,14 @@ def test_anthropic_claude_chunk_tool_use_input_handling(
 
 
 def test_converse_stream_with_missing_output_in_response():
-    """Test that converse stream handles malformed response missing output key."""
+    # Test malformed response missing "output" key
+    malformed_response = {"stopReason": "end_turn"}
+    choice = _Choice.from_converse(malformed_response, capture_content=False)
 
-    def stream_done_callback(response, ended):
-        pass
+    assert choice.finish_reason == "end_turn"
+    assert choice.message == {}
+    assert choice.index == 0
 
-    wrapper = ConverseStreamWrapper(
-        stream=mock.MagicMock(),
-        stream_done_callback=stream_done_callback,
-        model_id="amazon.nova-micro-v1:0",
-    )
-
-    bedrock_response = {"stopReason": "end_turn"}
-    result = wrapper._complete_stream(bedrock_response)
-    assert result is None
 
 def amazon_nova_messages():
     return [
