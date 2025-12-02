@@ -636,7 +636,9 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
             if _report_old(sem_conv_opt_in_mode):
                 attrs[NET_PEER_IP] = request.connection.context._orig_remote_ip
             if _report_new(sem_conv_opt_in_mode):
-                attrs[NETWORK_PEER_ADDRESS] = request.connection.context._orig_remote_ip
+                attrs[NETWORK_PEER_ADDRESS] = (
+                    request.connection.context._orig_remote_ip
+                )
 
     return extract_attributes_from_object(
         request, _traced_request_attrs, attrs

@@ -24,7 +24,6 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_method,
     _set_http_url,
     _set_status,
-    _StabilityMode,
 )
 from opentelemetry.propagate import inject
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
