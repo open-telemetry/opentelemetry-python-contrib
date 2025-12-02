@@ -63,6 +63,9 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -175,6 +178,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -211,6 +215,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -253,6 +258,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -276,6 +282,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "_OTHER",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 405,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -300,6 +307,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 ERROR_TYPE: "405",
                 HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
@@ -534,6 +542,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -564,6 +573,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -591,6 +601,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PEER_PORT: 80,
                 NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -613,6 +624,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -636,6 +648,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 500,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -675,6 +688,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 210,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
