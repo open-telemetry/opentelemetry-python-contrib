@@ -249,7 +249,8 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     redact_url,
-    sanitize_method, get_custom_header_attributes,
+    sanitize_method,
+    get_custom_header_attributes,
 )
 
 _UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
