@@ -77,7 +77,7 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
             _OpenTelemetrySemanticConventionStability,
         )
 
-        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialized = False  # pylint: disable=protected-access
         TornadoInstrumentor().instrument(
             server_request_hook=getattr(self, "server_request_hook", None),
             client_request_hook=getattr(self, "client_request_hook", None),

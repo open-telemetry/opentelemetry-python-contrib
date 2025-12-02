@@ -262,7 +262,7 @@ class TornadoInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs):  # pylint: disable=too-many-locals
         """
         _instrument patches tornado.web.RequestHandler and tornado.httpclient.AsyncHTTPClient classes
         to automatically instrument requests both received and sent by Tornado.
@@ -282,7 +282,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         Note that the patch does not apply on every single __init__ call, only the first one for the entire
         process lifetime.
         """
-        global _sem_conv_opt_in_mode
+        global _sem_conv_opt_in_mode  # pylint: disable=global-statement
 
         # Initialize semantic conventions opt-in mode
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -370,7 +370,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        global _sem_conv_opt_in_mode
+        global _sem_conv_opt_in_mode  # pylint: disable=global-statement
         _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
         unwrap(tornado.web.RequestHandler, "__init__")

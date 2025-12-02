@@ -59,7 +59,7 @@ def _normalize_request(args, kwargs):
     return (new_args, new_kwargs)
 
 
-def fetch_async(
+def fetch_async(  # pylint: disable=too-many-locals
     tracer,
     request_hook,
     response_hook,
@@ -130,7 +130,7 @@ def fetch_async(
         return future
 
 
-def _finish_tracing_callback(
+def _finish_tracing_callback(  # pylint: disable=too-many-locals,too-many-branches
     future,
     span,
     response_hook,

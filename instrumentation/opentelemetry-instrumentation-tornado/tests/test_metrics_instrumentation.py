@@ -300,20 +300,19 @@ class TornadoSemconvTestBase(AsyncHTTPTestCase, TestBase):
         app = make_app(tracer)
         return app
 
-    def setUp(self):
-        super().setUp()
-
     def tearDown(self):
         TornadoInstrumentor().uninstrument()
         super().tearDown()
 
-    def _get_server_span(self, spans):
+    @staticmethod
+    def _get_server_span(spans):
         for span in spans:
             if span.kind == SpanKind.SERVER:
                 return span
         return None
 
-    def _get_client_span(self, spans):
+    @staticmethod
+    def _get_client_span(spans):
         for span in spans:
             if span.kind == SpanKind.CLIENT:
                 return span
