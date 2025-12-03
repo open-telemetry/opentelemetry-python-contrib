@@ -11,7 +11,10 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import Span, set_span_in_context
-from opentelemetry.util.genai.instruments import Instruments
+from opentelemetry.util.genai.instruments import (
+    create_duration_histogram,
+    create_token_histogram,
+)
 from opentelemetry.util.genai.types import LLMInvocation
 from opentelemetry.util.types import AttributeValue
 
@@ -20,11 +23,8 @@ class InvocationMetricsRecorder:
     """Records duration and token usage histograms for GenAI invocations."""
 
     def __init__(self, meter: Meter):
-        instruments = Instruments(meter)
-        self._duration_histogram: Histogram = (
-            instruments.operation_duration_histogram
-        )
-        self._token_histogram: Histogram = instruments.token_usage_histogram
+        self._duration_histogram: Histogram = create_duration_histogram(meter)
+        self._token_histogram: Histogram = create_token_histogram(meter)
 
     def record(
         self,

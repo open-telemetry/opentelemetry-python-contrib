@@ -36,17 +36,19 @@ _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS = [
 ]
 
 
-class Instruments:
-    def __init__(self, meter: Meter):
-        self.operation_duration_histogram: Histogram = meter.create_histogram(
-            name=gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION,
-            description="Duration of GenAI client operation",
-            unit="s",
-            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
-        )
-        self.token_usage_histogram: Histogram = meter.create_histogram(
-            name=gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE,
-            description="Number of input and output tokens used by GenAI clients",
-            unit="{token}",
-            explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
-        )
+def create_duration_histogram(meter: Meter) -> Histogram:
+    return meter.create_histogram(
+        name=gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION,
+        description="Duration of GenAI client operation",
+        unit="s",
+        explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
+    )
+
+
+def create_token_histogram(meter: Meter) -> Histogram:
+    return meter.create_histogram(
+        name=gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE,
+        description="Number of input and output tokens used by GenAI clients",
+        unit="{token}",
+        explicit_bucket_boundaries_advisory=_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
+    )
