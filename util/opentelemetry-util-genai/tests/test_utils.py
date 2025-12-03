@@ -165,6 +165,16 @@ def _assert_text_message(
         assert message.get("finish_reason") == finish_reason
 
 
+def _normalize_to_list(value: Any) -> list[Any]:
+    """Normalize tuple or list to list for OpenTelemetry compatibility."""
+    return list(value) if isinstance(value, tuple) else value
+
+
+def _normalize_to_dict(value: Any) -> dict[str, Any]:
+    """Normalize tuple or dict to dict for OpenTelemetry compatibility."""
+    return dict(value) if isinstance(value, tuple) else value
+
+
 class TestVersion(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
@@ -515,14 +525,10 @@ class TestTelemetryHandler(unittest.TestCase):
         content_capturing="EVENT_ONLY",
     )
     def test_emits_llm_event(self):
-        message = _create_input_message("test query")
-        chat_generation = _create_output_message("test response")
-        system_instruction = _create_system_instruction()
-
         invocation = LLMInvocation(
             request_model="event-model",
-            input_messages=[message],
-            system_instruction=system_instruction,
+            input_messages=[_create_input_message("test query")],
+            system_instruction=_create_system_instruction(),
             provider="test-provider",
             temperature=0.7,
             max_tokens=100,
@@ -533,14 +539,13 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
         self.telemetry_handler.start_llm(invocation)
-        invocation.output_messages = [chat_generation]
+        invocation.output_messages = [_create_output_message("test response")]
         self.telemetry_handler.stop_llm(invocation)
 
         # Check that event was emitted
         logs = self.log_exporter.get_finished_logs()
         self.assertEqual(len(logs), 1)
-        log_data = logs[0]
-        log_record = log_data.log_record
+        log_record = logs[0].log_record
 
         # Verify event name
         self.assertEqual(
@@ -562,60 +567,27 @@ class TestTelemetryHandler(unittest.TestCase):
 
         # Verify messages are in structured format (not JSON string)
         # OpenTelemetry may convert lists to tuples, so we normalize
-        input_messages = attrs[GenAI.GEN_AI_INPUT_MESSAGES]
-        input_messages_list = (
-            list(input_messages)
-            if isinstance(input_messages, tuple)
-            else input_messages
-        )
-        self.assertEqual(len(input_messages_list), 1)
-        input_msg = (
-            dict(input_messages_list[0])
-            if isinstance(input_messages_list[0], tuple)
-            else input_messages_list[0]
+        input_msg = _normalize_to_dict(
+            _normalize_to_list(attrs[GenAI.GEN_AI_INPUT_MESSAGES])[0]
         )
         self.assertEqual(input_msg["role"], "Human")
-        parts = (
-            list(input_msg["parts"])
-            if isinstance(input_msg["parts"], tuple)
-            else input_msg["parts"]
+        self.assertEqual(
+            _normalize_to_list(input_msg["parts"])[0]["content"], "test query"
         )
-        self.assertEqual(parts[0]["content"], "test query")
 
-        output_messages = attrs[GenAI.GEN_AI_OUTPUT_MESSAGES]
-        output_messages_list = (
-            list(output_messages)
-            if isinstance(output_messages, tuple)
-            else output_messages
-        )
-        self.assertEqual(len(output_messages_list), 1)
-        output_msg = (
-            dict(output_messages_list[0])
-            if isinstance(output_messages_list[0], tuple)
-            else output_messages_list[0]
+        output_msg = _normalize_to_dict(
+            _normalize_to_list(attrs[GenAI.GEN_AI_OUTPUT_MESSAGES])[0]
         )
         self.assertEqual(output_msg["role"], "AI")
-        output_parts = (
-            list(output_msg["parts"])
-            if isinstance(output_msg["parts"], tuple)
-            else output_msg["parts"]
+        self.assertEqual(
+            _normalize_to_list(output_msg["parts"])[0]["content"],
+            "test response",
         )
-        self.assertEqual(output_parts[0]["content"], "test response")
         self.assertEqual(output_msg["finish_reason"], "stop")
 
         # Verify system instruction is present in event in structured format
-        self.assertIn(GenAI.GEN_AI_SYSTEM_INSTRUCTIONS, attrs)
-        system_instructions = attrs[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS]
-        system_instructions_list = (
-            list(system_instructions)
-            if isinstance(system_instructions, tuple)
-            else system_instructions
-        )
-        self.assertEqual(len(system_instructions_list), 1)
-        sys_instr = (
-            dict(system_instructions_list[0])
-            if isinstance(system_instructions_list[0], tuple)
-            else system_instructions_list[0]
+        sys_instr = _normalize_to_dict(
+            _normalize_to_list(attrs[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS])[0]
         )
         self.assertEqual(sys_instr["content"], "You are a helpful assistant.")
         self.assertEqual(sys_instr["type"], "text")
