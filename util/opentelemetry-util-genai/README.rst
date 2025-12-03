@@ -27,7 +27,7 @@ This package provides these span attributes:
 - `gen_ai.usage.output_tokens`: Int(7)
 - `gen_ai.input.messages`: Str('[{"role": "Human", "parts": [{"content": "hello world", "type": "text"}]}]')
 - `gen_ai.output.messages`: Str('[{"role": "AI", "parts": [{"content": "hello back", "type": "text"}], "finish_reason": "stop"}]')
-- `gen_ai.system.instructions`: Str('[{"content": "You are a helpful assistant.", "type": "text"}]') (when system instruction is provided)
+- `gen_ai.system_instructions`: Str('[{"content": "You are a helpful assistant.", "type": "text"}]') (when system instruction is provided)
 
 When `EVENT_ONLY` or `SPAN_AND_EVENT` mode is enabled and a LoggerProvider is configured, 
 the package also emits `gen_ai.client.inference.operation.details` events with structured 
