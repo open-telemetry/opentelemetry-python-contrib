@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -31,6 +32,7 @@ from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
     LLMInvocation,
+    MessagePart,
     OutputMessage,
 )
 from opentelemetry.util.genai.utils import (
@@ -41,63 +43,159 @@ from opentelemetry.util.genai.utils import (
 )
 
 
-def _apply_common_span_attributes(
-    span: Span, invocation: LLMInvocation
-) -> None:
-    """Apply attributes shared by finish() and error() and compute metrics.
+def _get_llm_common_attributes(
+    invocation: LLMInvocation,
+) -> dict[str, Any]:
+    """Get common LLM attributes shared by finish() and error() paths.
 
-    Returns (genai_attributes) for use with metrics.
+    Returns a dictionary of attributes.
     """
-    span.update_name(
-        f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}".strip()
-    )
-    span.set_attribute(
-        GenAI.GEN_AI_OPERATION_NAME, GenAI.GenAiOperationNameValues.CHAT.value
+    attributes: dict[str, Any] = {}
+    attributes[GenAI.GEN_AI_OPERATION_NAME] = (
+        GenAI.GenAiOperationNameValues.CHAT.value
     )
     if invocation.request_model:
-        span.set_attribute(
-            GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model
-        )
+        attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
     if invocation.provider is not None:
         # TODO: clean provider name to match GenAiProviderNameValues?
-        span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, invocation.provider)
+        attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
+    return attributes
 
-    _apply_response_attributes(span, invocation)
+
+def _get_llm_span_name(invocation: LLMInvocation) -> str:
+    """Get the span name for an LLM invocation."""
+    return f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}".strip()
 
 
-def _maybe_set_span_messages(
-    span: Span,
+def _get_llm_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
-) -> None:
+    system_instruction: list[MessagePart] | None = None,
+) -> dict[str, Any]:
+    """Get message attributes formatted for span (JSON string format).
+
+    Returns empty dict if not in experimental mode or content capturing is disabled.
+    """
+    attributes: dict[str, Any] = {}
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
-        return
+        return attributes
     if input_messages:
-        span.set_attribute(
-            GenAI.GEN_AI_INPUT_MESSAGES,
-            gen_ai_json_dumps([asdict(message) for message in input_messages]),
+        attributes[GenAI.GEN_AI_INPUT_MESSAGES] = gen_ai_json_dumps(
+            [asdict(message) for message in input_messages]
         )
     if output_messages:
-        span.set_attribute(
-            GenAI.GEN_AI_OUTPUT_MESSAGES,
-            gen_ai_json_dumps(
-                [asdict(message) for message in output_messages]
-            ),
+        attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = gen_ai_json_dumps(
+            [asdict(message) for message in output_messages]
         )
+    if system_instruction:
+        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
+            [asdict(part) for part in system_instruction]
+        )
+    return attributes
 
 
-def _apply_finish_attributes(span: Span, invocation: LLMInvocation) -> None:
-    """Apply attributes/messages common to finish() paths."""
-    _apply_common_span_attributes(span, invocation)
-    _maybe_set_span_messages(
-        span, invocation.input_messages, invocation.output_messages
+def _get_llm_messages_attributes_for_event(
+    input_messages: list[InputMessage],
+    output_messages: list[OutputMessage],
+    system_instruction: list[MessagePart] | None = None,
+) -> dict[str, Any]:
+    """Get message attributes formatted for event (structured format).
+
+    Returns empty dict if not in experimental mode or content capturing is disabled.
+    """
+    attributes: dict[str, Any] = {}
+    if not is_experimental_mode() or get_content_capturing_mode() not in (
+        ContentCapturingMode.EVENT_ONLY,
+        ContentCapturingMode.SPAN_AND_EVENT,
+    ):
+        return attributes
+    if input_messages:
+        attributes[GenAI.GEN_AI_INPUT_MESSAGES] = [
+            asdict(message) for message in input_messages
+        ]
+    if output_messages:
+        attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = [
+            asdict(message) for message in output_messages
+        ]
+    if system_instruction:
+        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = [
+            asdict(part) for part in system_instruction
+        ]
+    return attributes
+
+
+def _maybe_emit_llm_event(
+    logger: Logger | None,
+    invocation: LLMInvocation,
+    error: Error | None = None,
+) -> None:
+    """Emit a gen_ai.client.inference.operation.details event to the logger.
+
+    This function creates a LogRecord event following the semantic convention
+    for gen_ai.client.inference.operation.details as specified in the GenAI
+    event semantic conventions.
+    """
+    if not is_experimental_mode() or get_content_capturing_mode() not in (
+        ContentCapturingMode.EVENT_ONLY,
+        ContentCapturingMode.SPAN_AND_EVENT,
+    ):
+        return
+
+    if logger is None:
+        return
+
+    # Build event attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_llm_common_attributes(invocation))
+    attributes.update(_get_llm_request_attributes(invocation))
+    attributes.update(_get_llm_response_attributes(invocation))
+    attributes.update(
+        _get_llm_messages_attributes_for_event(
+            invocation.input_messages,
+            invocation.output_messages,
+            invocation.system_instruction,
+        )
     )
-    _apply_request_attributes(span, invocation)
-    _apply_response_attributes(span, invocation)
-    span.set_attributes(invocation.attributes)
+
+    # Add error.type if operation ended in error
+    if error is not None:
+        attributes[ErrorAttributes.ERROR_TYPE] = error.type.__qualname__
+
+    # Create and emit the event
+    event = LogRecord(
+        event_name="gen_ai.client.inference.operation.details",
+        attributes=attributes,
+    )
+    logger.emit(event)
+
+
+def _apply_llm_finish_attributes(
+    span: Span, invocation: LLMInvocation
+) -> None:
+    """Apply attributes/messages common to finish() paths."""
+    # Update span name
+    span.update_name(_get_llm_span_name(invocation))
+
+    # Build all attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_llm_common_attributes(invocation))
+    attributes.update(_get_llm_request_attributes(invocation))
+    attributes.update(_get_llm_response_attributes(invocation))
+    attributes.update(
+        _get_llm_messages_attributes_for_span(
+            invocation.input_messages,
+            invocation.output_messages,
+            invocation.system_instruction,
+        )
+    )
+    attributes.update(invocation.attributes)
+
+    # Set all attributes on the span
+    if attributes:
+        span.set_attributes(attributes)
 
 
 def _apply_error_attributes(span: Span, error: Error) -> None:
@@ -107,8 +205,10 @@ def _apply_error_attributes(span: Span, error: Error) -> None:
         span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
 
 
-def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
-    """Attach GenAI request semantic convention attributes to the span."""
+def _get_llm_request_attributes(
+    invocation: LLMInvocation,
+) -> dict[str, Any]:
+    """Get GenAI request semantic convention attributes."""
     attributes: dict[str, Any] = {}
     if invocation.temperature is not None:
         attributes[GenAI.GEN_AI_REQUEST_TEMPERATURE] = invocation.temperature
@@ -130,12 +230,13 @@ def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:
         )
     if invocation.seed is not None:
         attributes[GenAI.GEN_AI_REQUEST_SEED] = invocation.seed
-    if attributes:
-        span.set_attributes(attributes)
+    return attributes
 
 
-def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
-    """Attach GenAI response semantic convention attributes to the span."""
+def _get_llm_response_attributes(
+    invocation: LLMInvocation,
+) -> dict[str, Any]:
+    """Get GenAI response semantic convention attributes."""
     attributes: dict[str, Any] = {}
 
     finish_reasons: list[str] | None
@@ -169,13 +270,15 @@ def _apply_response_attributes(span: Span, invocation: LLMInvocation) -> None:
     if invocation.output_tokens is not None:
         attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] = invocation.output_tokens
 
-    if attributes:
-        span.set_attributes(attributes)
+    return attributes
 
 
 __all__ = [
-    "_apply_finish_attributes",
+    "_apply_llm_finish_attributes",
     "_apply_error_attributes",
-    "_apply_request_attributes",
-    "_apply_response_attributes",
+    "_get_llm_common_attributes",
+    "_get_llm_request_attributes",
+    "_get_llm_response_attributes",
+    "_get_llm_span_name",
+    "_maybe_emit_llm_event",
 ]

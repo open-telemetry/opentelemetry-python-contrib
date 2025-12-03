@@ -66,6 +66,10 @@ from typing import Iterator
 
 from opentelemetry import context as otel_context
 from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry._logs import (
+    LoggerProvider,
+    get_logger,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -80,7 +84,8 @@ from opentelemetry.trace import (
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
-    _apply_finish_attributes,
+    _apply_llm_finish_attributes,
+    _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import Error, LLMInvocation
 from opentelemetry.util.genai.version import __version__
@@ -96,6 +101,7 @@ class TelemetryHandler:
         self,
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
+        logger_provider: LoggerProvider | None = None,
     ):
         self._tracer = get_tracer(
             __name__,
@@ -106,6 +112,12 @@ class TelemetryHandler:
         self._metrics_recorder: InvocationMetricsRecorder | None = None
         meter = get_meter(__name__, meter_provider=meter_provider)
         self._metrics_recorder = InvocationMetricsRecorder(meter)
+        self._logger = get_logger(
+            __name__,
+            __version__,
+            logger_provider,
+            schema_url=Schemas.V1_37_0.value,
+        )
 
     def _record_llm_metrics(
         self,
@@ -148,8 +160,9 @@ class TelemetryHandler:
             return invocation
 
         span = invocation.span
-        _apply_finish_attributes(span, invocation)
+        _apply_llm_finish_attributes(span, invocation)
         self._record_llm_metrics(invocation, span)
+        _maybe_emit_llm_event(self._logger, invocation)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()
@@ -164,10 +177,11 @@ class TelemetryHandler:
             return invocation
 
         span = invocation.span
-        _apply_finish_attributes(invocation.span, invocation)
-        _apply_error_attributes(span, error)
+        _apply_llm_finish_attributes(invocation.span, invocation)
+        _apply_error_attributes(invocation.span, error)
         error_type = getattr(error.type, "__qualname__", None)
         self._record_llm_metrics(invocation, span, error_type=error_type)
+        _maybe_emit_llm_event(self._logger, invocation, error)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()
@@ -201,6 +215,7 @@ class TelemetryHandler:
 def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
     meter_provider: MeterProvider | None = None,
+    logger_provider: LoggerProvider | None = None,
 ) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
@@ -212,6 +227,7 @@ def get_telemetry_handler(
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            logger_provider=logger_provider
         )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler
