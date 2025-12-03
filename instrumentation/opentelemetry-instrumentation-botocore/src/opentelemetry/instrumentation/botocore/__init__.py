@@ -78,6 +78,24 @@ for example:
     )
     ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
+
+Thread Context Propagation
+--------------------------
+
+boto3's S3 ``upload_file`` and ``download_file`` methods use background threads
+for multipart transfers. To ensure trace context is propagated to these threads,
+also enable the threading instrumentation:
+
+.. code:: python
+
+    from opentelemetry.instrumentation.threading import ThreadingInstrumentor
+    from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+
+    ThreadingInstrumentor().instrument()
+    BotocoreInstrumentor().instrument()
+
+When using auto-instrumentation (``opentelemetry-instrument``), both instrumentors
+are enabled automatically if their packages are installed.
 """
 
 import logging
