@@ -32,7 +32,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 # Changed in opentelemetry-sdk@0.60b0
 try:
-    from opentelemetry.sdk._logs.export import (https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3994  # pylint: disable=no-name-in-module
+    from opentelemetry.sdk._logs.export import (  # pylint: disable=no-name-in-module
         InMemoryLogRecordExporter,
         SimpleLogRecordProcessor,
     )
