@@ -15,18 +15,6 @@ from opentelemetry.util.genai.instruments import Instruments
 from opentelemetry.util.genai.types import LLMInvocation
 from opentelemetry.util.types import AttributeValue
 
-_NS_PER_SECOND = 1_000_000_000
-
-
-def _get_span_start_time_ns(span: Optional[Span]) -> Optional[int]:
-    if span is None:
-        return None
-    for attr in ("start_time", "_start_time"):
-        value = getattr(span, attr, None)
-        if isinstance(value, int):
-            return value
-    return None
-
 
 class InvocationMetricsRecorder:
     """Records duration and token usage histograms for GenAI invocations."""
