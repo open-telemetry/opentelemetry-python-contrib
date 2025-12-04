@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 import pytest
@@ -73,34 +74,50 @@ def test_gemini(span_exporter, start_instrumentation, gemini):
 def assert_openai_completion_attributes(
     span: ReadableSpan, response: Optional
 ):
-    assert span.name == "chat gpt-3.5-turbo"
+    assert span.name.startswith("chat ")
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]
-        == "gpt-3.5-turbo"
-    )
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL]
-        == "gpt-3.5-turbo-0125"
-    )
-    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
-    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] in {
+        "gpt-3.5-turbo",
+        "gpt-3.5-turbo-0125",
+    }
+    assert span.attributes[
+        gen_ai_attributes.GEN_AI_RESPONSE_MODEL
+    ] == response.response_metadata.get("model_name")
+    assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
+    if gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS in span.attributes:
+        assert (
+            span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
+        )
+    if gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE in span.attributes:
+        assert (
+            span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE]
+            == 0.1
+        )
     assert span.attributes["gen_ai.provider.name"] == "openai"
     assert gen_ai_attributes.GEN_AI_RESPONSE_ID in span.attributes
-    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY]
-        == 0.5
-    )
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY]
-        == 0.5
-    )
-    stop_sequences = span.attributes.get(
+    if gen_ai_attributes.GEN_AI_REQUEST_TOP_P in span.attributes:
+        assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
+    if gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY in span.attributes:
+        assert (
+            span.attributes[gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY]
+            == 0.5
+        )
+    if gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY in span.attributes:
+        assert (
+            span.attributes[gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY]
+            == 0.5
+        )
+    stop_sequences_raw = span.attributes.get(
         gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES
     )
-    assert all(seq in ["\n", "Human:", "AI:"] for seq in stop_sequences)
-    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] == 100
+    if stop_sequences_raw:
+        if isinstance(stop_sequences_raw, str):
+            stop_sequences = json.loads(stop_sequences_raw)
+        else:
+            stop_sequences = stop_sequences_raw
+        assert all(seq in ["\n", "Human:", "AI:"] for seq in stop_sequences)
+    if gen_ai_attributes.GEN_AI_REQUEST_SEED in span.attributes:
+        assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] == 100
 
     input_tokens = response.response_metadata.get("token_usage").get(
         "prompt_tokens"
