@@ -18,6 +18,7 @@ from dataclasses import asdict
 from typing import Any
 
 from opentelemetry._logs import Logger, LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -27,6 +28,7 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import (
     Span,
 )
+from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
     Error,
@@ -129,6 +131,7 @@ def _get_llm_messages_attributes_for_event(
 
 def _maybe_emit_llm_event(
     logger: Logger | None,
+    span: Span,
     invocation: LLMInvocation,
     error: Error | None = None,
 ) -> None:
@@ -165,9 +168,11 @@ def _maybe_emit_llm_event(
         attributes[ErrorAttributes.ERROR_TYPE] = error.type.__qualname__
 
     # Create and emit the event
+    context = set_span_in_context(span, get_current())
     event = LogRecord(
         event_name="gen_ai.client.inference.operation.details",
         attributes=attributes,
+        context=context,
     )
     logger.emit(event)
 

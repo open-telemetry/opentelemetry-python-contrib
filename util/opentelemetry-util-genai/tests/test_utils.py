@@ -592,6 +592,14 @@ class TestTelemetryHandler(unittest.TestCase):
         self.assertEqual(sys_instr["content"], "You are a helpful assistant.")
         self.assertEqual(sys_instr["type"], "text")
 
+        # Verify event context matches span context
+        span = _get_single_span(self.span_exporter)
+        self.assertIsNotNone(log_record.trace_id)
+        self.assertIsNotNone(log_record.span_id)
+        self.assertIsNotNone(span.context)
+        self.assertEqual(log_record.trace_id, span.context.trace_id)
+        self.assertEqual(log_record.span_id, span.context.span_id)
+
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_AND_EVENT",
@@ -643,6 +651,13 @@ class TestTelemetryHandler(unittest.TestCase):
             else event_system_list[0]
         )
         self.assertEqual(event_sys_instr["content"], "System prompt here")
+        # Verify event context matches span context
+        span = _get_single_span(self.span_exporter)
+        self.assertIsNotNone(log_record.trace_id)
+        self.assertIsNotNone(log_record.span_id)
+        self.assertIsNotNone(span.context)
+        self.assertEqual(log_record.trace_id, span.context.trace_id)
+        self.assertEqual(log_record.span_id, span.context.span_id)
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
@@ -675,6 +690,13 @@ class TestTelemetryHandler(unittest.TestCase):
         )
         self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "chat")
         self.assertEqual(attrs[GenAI.GEN_AI_REQUEST_MODEL], "error-model")
+        # Verify event context matches span context
+        span = _get_single_span(self.span_exporter)
+        self.assertIsNotNone(log_record.trace_id)
+        self.assertIsNotNone(log_record.span_id)
+        self.assertIsNotNone(span.context)
+        self.assertEqual(log_record.trace_id, span.context.trace_id)
+        self.assertEqual(log_record.span_id, span.context.span_id)
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",

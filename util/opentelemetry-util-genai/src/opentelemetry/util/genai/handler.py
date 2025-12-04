@@ -162,7 +162,7 @@ class TelemetryHandler:
         span = invocation.span
         _apply_llm_finish_attributes(span, invocation)
         self._record_llm_metrics(invocation, span)
-        _maybe_emit_llm_event(self._logger, invocation)
+        _maybe_emit_llm_event(self._logger, span, invocation)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()
@@ -181,7 +181,7 @@ class TelemetryHandler:
         _apply_error_attributes(invocation.span, error)
         error_type = getattr(error.type, "__qualname__", None)
         self._record_llm_metrics(invocation, span, error_type=error_type)
-        _maybe_emit_llm_event(self._logger, invocation, error)
+        _maybe_emit_llm_event(self._logger, span, invocation, error)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()
