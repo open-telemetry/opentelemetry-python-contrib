@@ -978,6 +978,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Test each user agent case separately to avoid span accumulation
         for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
+                # Reinitialize test state for each iteration to avoid state pollution
+                self.setUp()
+
                 # Clear headers first
                 self.scope["headers"] = []
 
@@ -1001,9 +1004,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     outputs, modifiers=[update_expected_synthetic_test]
                 )
 
-                # Clear spans after each test case to prevent accumulation
-                self.memory_exporter.clear()
-
     async def test_user_agent_non_synthetic(self):
         """Test that normal user agents are not marked as synthetic"""
         test_cases = [
@@ -1016,6 +1016,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Test each user agent case separately to avoid span accumulation
         for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
+                # Reinitialize test state for each iteration to avoid state pollution
+                self.setUp()
+
                 # Clear headers first
                 self.scope["headers"] = []
 
@@ -1038,9 +1041,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 self.validate_outputs(
                     outputs, modifiers=[update_expected_non_synthetic]
                 )
-
-                # Clear spans after each test case to prevent accumulation
-                self.memory_exporter.clear()
 
     async def test_user_agent_synthetic_new_semconv(self):
         """Test synthetic user agent detection with new semantic conventions"""
