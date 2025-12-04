@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("langchain >= 0.3.21",)
+_instruments = ("langchain >= 1.0.0",)

@@ -1,23 +1,37 @@
 from typing import Optional
+from uuid import uuid4
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.instrumentation.langchain.callback_handler import (
+    OpenTelemetryLangChainCallbackHandler,
+)
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.semconv._incubating.attributes.azure_attributes import (
+    AZURE_RESOURCE_PROVIDER_NAMESPACE,
+)
+from opentelemetry.semconv._incubating.attributes.openai_attributes import (
+    OPENAI_REQUEST_SERVICE_TIER,
+)
 
 
-# span_exporter, start_instrumentation, chat_openai_gpt_3_5_turbo_model are coming from fixtures defined in conftest.py
+# span_exporter, start_instrumentation, chat_openai_gpt_4_1_model are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
-def test_chat_openai_gpt_3_5_turbo_model_llm_call(
-    span_exporter, start_instrumentation, chat_openai_gpt_3_5_turbo_model
+def test_chat_openai_gpt_4_1_model_llm_call(
+    span_exporter, start_instrumentation, chat_openai_gpt_4_1_model
 ):
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
+    response = chat_openai_gpt_4_1_model.invoke(messages)
     assert response.content == "The capital of France is Paris."
 
     # verify spans
@@ -73,19 +87,16 @@ def test_gemini(span_exporter, start_instrumentation, gemini):
 def assert_openai_completion_attributes(
     span: ReadableSpan, response: Optional
 ):
-    assert span.name == "chat gpt-3.5-turbo"
+    assert span.name == "chat gpt-4.1"
     assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
-    assert (
-        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]
-        == "gpt-3.5-turbo"
-    )
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-4.1"
     assert (
         span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL]
-        == "gpt-3.5-turbo-0125"
+        == "gpt-4.1-2025-04-14"
     )
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
-    assert span.attributes["gen_ai.provider.name"] == "openai"
+    assert span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME] == "openai"
     assert gen_ai_attributes.GEN_AI_RESPONSE_ID in span.attributes
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
     assert (
@@ -139,7 +150,10 @@ def assert_bedrock_completion_attributes(
         == "us.amazon.nova-lite-v1:0"
     )
 
-    assert span.attributes["gen_ai.provider.name"] == "amazon_bedrock"
+    assert (
+        span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME]
+        == "aws.bedrock"
+    )
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
 
@@ -164,3 +178,50 @@ def assert_bedrock_completion_attributes(
         assert (
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
         )
+
+
+def test_azure_chat_sets_provider_and_server_attributes():
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    handler = OpenTelemetryLangChainCallbackHandler(
+        provider.get_tracer(__name__),
+        capture_messages=True,
+    )
+
+    run_id = uuid4()
+
+    handler.on_chat_model_start(
+        serialized={"name": "AzureChatOpenAI"},
+        messages=[],
+        run_id=run_id,
+        tags=None,
+        parent_run_id=None,
+        metadata={"ls_model_name": "gpt-4o"},
+        invocation_params={
+            "params": {
+                "model": "gpt-4o",
+                "azure_endpoint": "https://example.openai.azure.com/",
+                "service_tier": "default",
+                "n": 2,
+            }
+        },
+    )
+
+    handler.span_manager.end_span(run_id)
+    span = exporter.get_finished_spans()[0]
+
+    assert span.name == "chat gpt-4o"
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-4o"
+    assert (
+        span.attributes[gen_ai_attributes.GEN_AI_PROVIDER_NAME]
+        == "azure.ai.openai"
+    )
+    assert span.attributes["server.address"] == "example.openai.azure.com"
+    assert span.attributes["server.port"] == 443
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] == 2
+    assert span.attributes[OPENAI_REQUEST_SERVICE_TIER] == "default"
+    assert (
+        span.attributes[AZURE_RESOURCE_PROVIDER_NAMESPACE]
+        == "Microsoft.CognitiveServices"
+    )
