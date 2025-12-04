@@ -65,11 +65,11 @@ from contextlib import contextmanager
 from typing import Iterator
 
 from opentelemetry import context as otel_context
-from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry._logs import (
     LoggerProvider,
     get_logger,
 )
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -227,7 +227,7 @@ def get_telemetry_handler(
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
-            logger_provider=logger_provider
+            logger_provider=logger_provider,
         )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler
