@@ -15,7 +15,7 @@
 import os
 import threading
 from enum import Enum
-from typing import Container, Mapping
+from typing import Container, Mapping, MutableMapping
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -297,14 +297,14 @@ def _filter_semconv_active_request_count_attr(
 
 
 def set_string_attribute(
-    result: Mapping[str, AttributeValue], key: str, value: AttributeValue
+    result: MutableMapping[str, AttributeValue], key: str, value: AttributeValue
 ) -> None:
     if value:
         result[key] = value
 
 
 def set_int_attribute(
-    result: dict[str, AttributeValue], key: str, value: AttributeValue
+    result: MutableMapping[str, AttributeValue], key: str, value: AttributeValue
 ) -> None:
     if value:
         try:
@@ -314,7 +314,7 @@ def set_int_attribute(
 
 
 def _set_http_method(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     original: str,
     normalized: str,
     sem_conv_opt_in_mode: _StabilityMode,
@@ -333,7 +333,7 @@ def _set_http_method(
 
 
 def _set_http_status_code(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     code: str | int,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -344,7 +344,7 @@ def _set_http_status_code(
 
 
 def _set_http_url(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     url: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -355,7 +355,7 @@ def _set_http_url(
 
 
 def _set_http_scheme(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     scheme: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -366,7 +366,7 @@ def _set_http_scheme(
 
 
 def _set_http_flavor_version(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     version: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -377,7 +377,7 @@ def _set_http_flavor_version(
 
 
 def _set_http_user_agent(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     user_agent: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -391,7 +391,7 @@ def _set_http_user_agent(
 
 
 def _set_http_host_client(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     host: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -402,7 +402,7 @@ def _set_http_host_client(
 
 
 def _set_http_net_peer_name_client(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     peer_name: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -413,7 +413,7 @@ def _set_http_net_peer_name_client(
 
 
 def _set_http_peer_port_client(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     port: str | int,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -424,7 +424,7 @@ def _set_http_peer_port_client(
 
 
 def _set_http_network_protocol_version(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     version: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -438,7 +438,7 @@ def _set_http_network_protocol_version(
 
 
 def _set_http_net_host(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     host: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -449,7 +449,7 @@ def _set_http_net_host(
 
 
 def _set_http_net_host_port(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     port: str | int,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -460,7 +460,7 @@ def _set_http_net_host_port(
 
 
 def _set_http_target(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     target: str,
     path: str | None,
     query: str | None,
@@ -476,7 +476,7 @@ def _set_http_target(
 
 
 def _set_http_host_server(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     host: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -493,7 +493,7 @@ def _set_http_host_server(
 # https://github.com/open-telemetry/semantic-conventions/blob/v1.21.0/CHANGELOG.md#v1210-2023-07-13
 # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md#common-attributes-across-http-client-and-server-spans
 def _set_http_peer_ip_server(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     ip: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -506,7 +506,7 @@ def _set_http_peer_ip_server(
 
 
 def _set_http_peer_port_server(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     port: str | int,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -517,7 +517,7 @@ def _set_http_peer_port_server(
 
 
 def _set_http_net_peer_name_server(
-    result: dict[str, AttributeValue],
+    result: MutableMapping[str, AttributeValue],
     name: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
@@ -529,7 +529,7 @@ def _set_http_net_peer_name_server(
 
 def _set_status(
     span: Span,
-    metrics_attributes: dict[str, AttributeValue],
+    metrics_attributes: MutableMapping[str, AttributeValue],
     status_code: int,
     status_code_str: str,
     server_span: bool = True,
