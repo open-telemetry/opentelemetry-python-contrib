@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 import google.genai.types as genai_types
 
+from opentelemetry.instrumentation import utils
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -440,3 +441,35 @@ class ToolCallInstrumentationTestCase(TestCase):
                             generated_span.attributes,
                         )
                 self.tearDown()
+
+    def test_suppress_tool_call_instrumentation(self):
+        calls = []
+
+        def handle(*args, **kwargs):
+            calls.append((args, kwargs))
+            return "some result"
+
+        def somefunction(somearg):
+            print("somearg=%s", somearg)
+
+        self.mock_generate_content.side_effect = handle
+        self.client.models.generate_content(
+            model="some-model-name",
+            contents="Some content",
+            config={
+                "tools": [somefunction],
+            },
+        )
+        self.assertEqual(len(calls), 1)
+        config = calls[0][1]["config"]
+        tools = config.tools
+        wrapped_somefunction = tools[0]
+
+        self.assertIsNone(
+            self.otel.get_span_named("execute_tool somefunction")
+        )
+
+        with utils.suppress_instrumentation():
+            wrapped_somefunction("someparam")
+
+        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
