@@ -53,18 +53,53 @@ class ToolCallResponse:
     type: Literal["tool_call_response"] = "tool_call_response"
 
 
-FinishReason = Literal[
-    "content_filter", "error", "length", "stop", "tool_calls"
-]
-
-
 @dataclass()
 class Text:
     content: str
     type: Literal["text"] = "text"
 
 
-MessagePart = Union[Text, ToolCall, ToolCallResponse, Any]
+@dataclass()
+class Reasoning:
+    content: str
+    type: Literal["reasoning"] = "reasoning"
+
+
+Modality = Literal["image", "video", "audio"]
+
+
+@dataclass()
+class Blob:
+    mime_type: str | None
+    modality: Union[Modality, str]
+    content: bytes
+    type: Literal["blob"] = "blob"
+
+
+@dataclass()
+class File:
+    mime_type: str | None
+    modality: Union[Modality, str]
+    file_id: str
+    type: Literal["file"] = "file"
+
+
+@dataclass()
+class Uri:
+    mime_type: str | None
+    modality: Union[Modality, str]
+    uri: str
+    type: Literal["uri"] = "uri"
+
+
+MessagePart = Union[
+    Text, ToolCall, ToolCallResponse, Blob, File, Uri, Reasoning, Any
+]
+
+
+FinishReason = Literal[
+    "content_filter", "error", "length", "stop", "tool_calls"
+]
 
 
 @dataclass()
@@ -88,6 +123,10 @@ def _new_output_messages() -> list[OutputMessage]:
     return []
 
 
+def _new_system_instruction() -> list[MessagePart]:
+    return []
+
+
 def _new_str_any_dict() -> dict[str, Any]:
     return {}
 
@@ -108,6 +147,9 @@ class LLMInvocation:
     )
     output_messages: list[OutputMessage] = field(
         default_factory=_new_output_messages
+    )
+    system_instruction: list[MessagePart] = field(
+        default_factory=_new_system_instruction
     )
     provider: str | None = None
     response_model_name: str | None = None
