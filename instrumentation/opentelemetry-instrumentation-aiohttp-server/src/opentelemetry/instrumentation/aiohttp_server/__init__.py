@@ -150,7 +150,6 @@ API
 
 from __future__ import annotations
 
-import urllib
 from timeit import default_timer
 
 from aiohttp import web
@@ -302,27 +301,22 @@ def collect_request_attributes(
     if port:
         _set_http_net_host_port(result, port, sem_conv_opt_in_mode)
 
-    path = request.path
-    query_string = request.query_string
-    target = path
-    if query_string:
-        target = f"{path}?{query_string}"
-    if target:
-        redacted_target = redact_query_parameters(target)
+    if request.path_qs:
+        redacted_target = redact_query_parameters(request.path_qs)
         _, redacted_query = _parse_url_query(redacted_target)
         _set_http_target(
-            result, redacted_target, path, redacted_query, sem_conv_opt_in_mode
+            result,
+            redacted_target,
+            request.path,
+            redacted_query,
+            sem_conv_opt_in_mode,
         )
 
     # old semconv v1.20.0 - always set HTTP_URL when reporting old semconv
     if _report_old(sem_conv_opt_in_mode):
-        http_url = str(request.url)
-        if query_string:
-            http_url += "?" + urllib.parse.unquote(query_string)
-        result[HTTP_URL] = redact_url(http_url)
+        result[HTTP_URL] = redact_url(str(request.url))
 
-    user_agent = request.headers.get("user-agent")
-    if user_agent:
+    if user_agent := request.headers.get("user-agent"):
         _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
 
     flavor = f"{request.version.major}.{request.version.minor}"
@@ -576,7 +570,7 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
-        meter_for_counter = meter_new if meter_new else meter_old
+        meter_for_counter = meter_new or meter_old
         active_requests_counter = meter_for_counter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="{request}",
