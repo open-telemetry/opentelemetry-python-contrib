@@ -55,7 +55,7 @@ API
 ---
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (``TracerProvider``) - an optional tracer provider
+* tracer_provider (``TracerProvider``) - an optional tracer provider
 
 For example:
 
