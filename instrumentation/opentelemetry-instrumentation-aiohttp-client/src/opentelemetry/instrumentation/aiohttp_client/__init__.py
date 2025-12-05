@@ -108,12 +108,12 @@ import types
 import typing
 from timeit import default_timer
 from typing import (
-    Any,
-    Collection,
-    Union,
     TYPE_CHECKING,
-    TypedDict,
+    Any,
     Callable,
+    Collection,
+    TypedDict,
+    Union,
     cast,
 )
 from urllib.parse import urlparse
@@ -153,7 +153,9 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.metrics import MetricInstruments  # type: ignore[reportDeprecated]
+from opentelemetry.semconv.metrics import (
+    MetricInstruments,  # type: ignore[reportDeprecated]
+)
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
