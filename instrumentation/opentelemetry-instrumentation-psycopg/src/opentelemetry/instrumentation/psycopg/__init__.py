@@ -268,9 +268,14 @@ class PsycopgInstrumentor(BaseInstrumentor):
             setattr(
                 connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
             )
-            connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
-            )
+            if isinstance(connection, psycopg.AsyncConnection):
+                connection.cursor_factory = _new_cursor_async_factory(
+                    tracer_provider=tracer_provider
+                )
+            else:
+                connection.cursor_factory = _new_cursor_factory(
+                    tracer_provider=tracer_provider
+                )
             connection._is_instrumented_by_opentelemetry = True
         else:
             _logger.warning(
