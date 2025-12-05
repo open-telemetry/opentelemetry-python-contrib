@@ -17,6 +17,7 @@ click-repl==0.3.0
 cryptography==44.0.1
 Deprecated==1.2.14
 distro==1.9.0
+Django==4.2.17
 dnspython==2.6.1
 docker==5.0.3
 docker-compose==1.29.2
