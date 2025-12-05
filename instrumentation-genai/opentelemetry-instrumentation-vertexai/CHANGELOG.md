@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 - Fix overwritten log attributes in vertexai instrumentation
   ([#3925](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3925))
+- Add the `GEN_AI_OUTPUT_TYPE`, `GEN_AI_REQUEST_CHOICE_COUNT` and `GEN_AI_REQUEST_SEED` sem conv request attributes to events/spans generated in the non-experimental instrumentation. This was added pre sem conv 1.36 so it should be in the non-experimental instrumentation.
 
 ## Version 2.1b0 (2025-10-16)
 

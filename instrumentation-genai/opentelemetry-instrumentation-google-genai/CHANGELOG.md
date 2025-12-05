@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ensure log event is written and completion hook is called even when model call results in exception. Put new
 log event (` gen_ai.client.inference.operation.details`) behind the flag `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.
 Ensure same sem conv attributes are on the log and span. Fix an issue where the instrumentation would crash when a pydantic.BaseModel class was passed as the response schema ([#3905](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3905)).
+- Add the `GEN_AI_OUTPUT_TYPE` sem conv request attributes to events/spans generated in the non-experimental instrumentation. This was added pre sem conv 1.36 so it should be in the non-experimental instrumentation. Fix a bug in how system instructions were recorded in the `gen_ai.system.message` log event. It will now always be recorded as `{"content" : "text of system instructions"}`.
 
 ## Version 0.4b0 (2025-10-16)
 

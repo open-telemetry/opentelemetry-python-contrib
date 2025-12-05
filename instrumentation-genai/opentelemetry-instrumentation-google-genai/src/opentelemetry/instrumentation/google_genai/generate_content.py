@@ -170,6 +170,10 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
+def system_instruction_to_text(value: object) -> str:
+    return ""
+
+
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
@@ -504,31 +508,29 @@ class _GenerateContentInstrumentationHelper:
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
     ):
-        system_instruction = None
-        if config is not None:
-            if isinstance(config, dict):
-                system_instruction = config.get("system_instruction")
-            else:
-                system_instruction = config.system_instruction
+        content_union = _config_to_system_instruction(config)
+        if not content_union:
+            return
+        content = transformers.t_contents(content_union)[0]
+        if not content.parts:
+            return
+        # System instruction is required to be text. An error will be returned by the API if it isn't.
+        system_instruction = " ".join(
+            part.text for part in content.parts if part.text
+        )
         if not system_instruction:
             return
-        attributes = {
-            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-        }
-        # TODO: determine if "role" should be reported here or not. It is unclear
-        # since the caller does not supply a "role" and since this comes through
-        # a property named "system_instruction" which would seem to align with
-        # the default "role" that is allowed to be omitted by default.
-        #
-        # See also: "TODOS.md"
-        body = {}
-        if self._content_recording_enabled:
-            body["content"] = _to_dict(system_instruction)
-        else:
-            body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_system_prompt(
-            attributes=attributes,
-            body=body,
+            attributes={
+                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            },
+            body={
+                "content": (
+                    system_instruction
+                    if self._content_recording_enabled
+                    else _CONTENT_ELIDED
+                )
+            },
         )
 
     def _maybe_log_user_prompt(
