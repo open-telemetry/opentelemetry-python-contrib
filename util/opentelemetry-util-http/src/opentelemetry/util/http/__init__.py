@@ -48,6 +48,12 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
 )
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
+)
 
 OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
     "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
@@ -249,6 +255,35 @@ def get_custom_headers(env_var: str) -> list[str]:
             for custom_headers in custom_headers.split(",")
         ]
     return []
+
+
+def get_custom_header_attributes(
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
+) -> dict[str, list[str]]:
+    """Extract and sanitize HTTP headers for span attributes.
+
+    Args:
+        headers: The HTTP headers to process, either from a request or response.
+            Can be None if no headers are available.
+        captured_headers: List of header regexes to capture as span attributes.
+            If None or empty, no headers will be captured.
+        sensitive_headers: List of header regexes whose values should be sanitized
+            (redacted). If None, no sanitization is applied.
+        normalize_function: Function to normalize header names.
+
+    Returns:
+        Dictionary of normalized header attribute names to their values
+        as lists of strings.
+    """
+    if not headers or not captured_headers:
+        return {}
+    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
+    return sanitize.sanitize_header_values(
+        headers, captured_headers, normalize_function
+    )
 
 
 def _parse_active_request_count_attrs(req_attrs):
