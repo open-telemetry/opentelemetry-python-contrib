@@ -65,15 +65,13 @@ API
 
 The `instrument` method accepts the following keyword args:
 
-* tracer_provider (TracerProvider) - an optional tracer provider
-* request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
-this function signature is:  ``def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None``
-* response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
-this function signature is:  ``def response_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None``
+* tracer_provider (``TracerProvider``) - an optional tracer provider
+* request_hook (``Callable[[Span, str, str, dict], None]``) - a function with extra user-defined logic to be performed before performing the request
+* response_hook (``Callable[[Span, str, str, dict], None]``) - a function with extra user-defined logic to be performed after performing the request
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
     import botocore.session
