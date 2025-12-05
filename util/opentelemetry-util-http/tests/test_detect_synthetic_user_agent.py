@@ -86,3 +86,20 @@ class TestDetectSyntheticUserAgent(unittest.TestCase):
         result = detect_synthetic_user_agent(user_agent)
         # alwayson should be checked first and return 'test'
         self.assertEqual(result, UserAgentSyntheticTypeValues.TEST.value)
+
+    def test_bytes_like_user_agent(self):
+        """Test that bytes-like user agents are decoded and detected."""
+
+        test_cases = [
+            (b"alwayson-monitor/1.0", UserAgentSyntheticTypeValues.TEST.value),
+            (
+                bytearray(b"googlebot/2.1"),
+                UserAgentSyntheticTypeValues.BOT.value,
+            ),
+            (memoryview(b"MyApp/1.0"), None),
+        ]
+
+        for user_agent, expected in test_cases:
+            with self.subTest(user_agent=user_agent):
+                result = detect_synthetic_user_agent(user_agent)
+                self.assertEqual(result, expected)
