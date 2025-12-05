@@ -25,7 +25,10 @@ from opentelemetry.semconv.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 
-__all__ = ["_SpanManager"]
+__all__ = ["_SpanManager", "_OPERATION_INVOKE_AGENT"]
+
+# Operation name constants
+_OPERATION_INVOKE_AGENT = "invoke_agent"
 
 
 @dataclass
@@ -89,6 +92,54 @@ class _SpanManager:
         if request_model:
             span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)
 
+        return span
+
+    def create_agent_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        agent_name: Optional[str] = None,
+    ) -> Span:
+        """Create a span for agent invocation."""
+        span_name = (
+            f"{_OPERATION_INVOKE_AGENT} {agent_name}"
+            if agent_name
+            else _OPERATION_INVOKE_AGENT
+        )
+        span = self._create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=span_name,
+            kind=SpanKind.INTERNAL,
+        )
+        span.set_attribute(
+            GenAI.GEN_AI_OPERATION_NAME,
+            _OPERATION_INVOKE_AGENT,
+        )
+        if agent_name:
+            span.set_attribute(GenAI.GEN_AI_AGENT_NAME, agent_name)
+
+        return span
+
+    def create_chain_span(
+        self,
+        run_id: UUID,
+        parent_run_id: Optional[UUID],
+        chain_name: str,
+    ) -> Span:
+        """Create a span for chain execution.
+
+        Chains are internal operations by default and don't have gen_ai.operation.name.
+        However, if the chain represents an agent (determined by metadata in the callback),
+        the operation name and agent name attributes will be set separately by the
+        callback handler to make it an agent span.
+        """
+        span = self._create_span(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            span_name=f"chain {chain_name}",
+            kind=SpanKind.INTERNAL,
+        )
         return span
 
     def end_span(self, run_id: UUID) -> None:
