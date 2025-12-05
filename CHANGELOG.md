@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+### Fixed 
+
+- `opentelemetry-instrumentation-django`: Fix exemplars generation for http.server.(request.)duration
+  ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
+
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
 ### Added 
@@ -73,8 +80,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
 - `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
   ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
-- `opentelemetry-instrumentation-django`: Fix exemplars generation for http.server.(request.)duration
-  ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
