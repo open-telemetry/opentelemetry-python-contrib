@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.2b0 (2025-11-25)
+
 - Fix service tier attribute names: use `GEN_AI_OPENAI_REQUEST_SERVICE_TIER` for request
   attributes and `GEN_AI_OPENAI_RESPONSE_SERVICE_TIER` for response attributes.
   ([#3920](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3920))
@@ -14,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3461))
 - Record prompt and completion events regardless of span sampling decision.
   ([#3226](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3226))
+- Filter out attributes with the value of NotGiven instances
+  ([#3760](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3760))
 - Migrate off the deprecated events API to use the logs API
   ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3628))
 
