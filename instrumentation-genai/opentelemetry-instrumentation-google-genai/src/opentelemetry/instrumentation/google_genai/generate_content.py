@@ -170,10 +170,6 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def system_instruction_to_text(value: object) -> str:
-    return ""
-
-
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
