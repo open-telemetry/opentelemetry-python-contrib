@@ -108,12 +108,12 @@ import types
 import typing
 from timeit import default_timer
 from typing import (
-    Any,
-    Collection,
-    Union,
     TYPE_CHECKING,
-    TypedDict,
+    Any,
     Callable,
+    Collection,
+    TypedDict,
+    Union,
     cast,
 )
 from urllib.parse import urlparse
@@ -129,18 +129,18 @@ from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     _client_duration_attrs_new,
     _client_duration_attrs_old,
-    _filter_semconv_duration_attrs,  # type: ignore[reportUnknownVariableType]
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _report_old,
-    _set_http_host_client,  # type: ignore[reportUnknownVariableType]
-    _set_http_method,  # type: ignore[reportUnknownVariableType]
-    _set_http_net_peer_name_client,  # type: ignore[reportUnknownVariableType]
-    _set_http_peer_port_client,  # type: ignore[reportUnknownVariableType]
-    _set_http_url,  # type: ignore[reportUnknownVariableType]
-    _set_status,  # type: ignore[reportUnknownVariableType]
+    _set_http_host_client,
+    _set_http_method,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_http_url,
+    _set_status,
     _StabilityMode,
 )
 from opentelemetry.instrumentation.aiohttp_client.package import _instruments
@@ -153,7 +153,9 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.metrics import MetricInstruments  # type: ignore[reportDeprecated]
+from opentelemetry.semconv.metrics import (
+    MetricInstruments,  # type: ignore[reportDeprecated]
+)
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
