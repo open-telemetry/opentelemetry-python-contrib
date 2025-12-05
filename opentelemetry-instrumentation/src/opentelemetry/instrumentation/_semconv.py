@@ -297,14 +297,18 @@ def _filter_semconv_active_request_count_attr(
 
 
 def set_string_attribute(
-    result: MutableMapping[str, AttributeValue], key: str, value: AttributeValue
+    result: MutableMapping[str, AttributeValue],
+    key: str,
+    value: AttributeValue,
 ) -> None:
     if value:
         result[key] = value
 
 
 def set_int_attribute(
-    result: MutableMapping[str, AttributeValue], key: str, value: AttributeValue
+    result: MutableMapping[str, AttributeValue],
+    key: str,
+    value: AttributeValue,
 ) -> None:
     if value:
         try:
