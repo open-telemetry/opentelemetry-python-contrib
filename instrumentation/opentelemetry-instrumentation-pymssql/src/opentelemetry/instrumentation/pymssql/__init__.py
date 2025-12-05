@@ -55,11 +55,11 @@ API
 ---
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
+tracer_provider (``TracerProvider``) - an optional tracer provider
 
 For example:
 
-.. code: python
+.. code:: python
 
     import pymssql
     from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
