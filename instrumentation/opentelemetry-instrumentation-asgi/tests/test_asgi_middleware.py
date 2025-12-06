@@ -315,7 +315,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
-    def subTest(self, msg = ..., **params):
+    def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
         # Reinitialize test state to avoid state pollution
         self.setUp()
