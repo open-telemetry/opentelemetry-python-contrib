@@ -315,6 +315,12 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
+    def subTest(self, msg = ..., **params):
+        sub = super().subTest(msg, **params)
+        # Reinitialize test state to avoid state pollution
+        self.setUp()
+        return sub
+
     # Helper to assert exemplars presence across specified histogram metric names.
     def _assert_exemplars_present(
         self, metric_names: set[str], context: str = ""
@@ -964,9 +970,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     outputs, modifiers=[update_expected_synthetic_bot]
                 )
 
-                # Clear spans after each test case to prevent accumulation
-                self.memory_exporter.clear()
-
     async def test_user_agent_synthetic_test_detection(self):
         """Test that test user agents are detected as synthetic with type 'test'"""
         test_cases = [
@@ -978,9 +981,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Test each user agent case separately to avoid span accumulation
         for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
-                # Reinitialize test state for each iteration to avoid state pollution
-                self.setUp()
-
                 # Clear headers first
                 self.scope["headers"] = []
 
@@ -1016,9 +1016,6 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         # Test each user agent case separately to avoid span accumulation
         for user_agent in test_cases:
             with self.subTest(user_agent=user_agent):
-                # Reinitialize test state for each iteration to avoid state pollution
-                self.setUp()
-
                 # Clear headers first
                 self.scope["headers"] = []
 
