@@ -118,7 +118,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -258,6 +258,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
@@ -271,6 +274,7 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
@@ -391,6 +395,11 @@ def collect_request_attributes(
     if user_agent is not None and len(user_agent) > 0:
         _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
 
+        # Check for synthetic user agent type
+        synthetic_type = detect_synthetic_user_agent(user_agent)
+        if synthetic_type:
+            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
         flavor = flavor[len(_HTTP_VERSION_PREFIX) :]
@@ -403,7 +412,8 @@ def collect_request_attributes(
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
+    See also https://peps.python.org/pep-3333/
     """
 
     sanitize = SanitizeValue(
@@ -430,8 +440,8 @@ def collect_custom_response_headers_attributes(
     response_headers: list[tuple[str, str]],
 ):
     """Returns custom HTTP response headers which are configured by the user from the
-    PEP3333-conforming WSGI environ as described in the specification
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    PEP3333-conforming WSGI environ as described in the semantic conventions
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
 
     sanitize = SanitizeValue(

@@ -584,7 +584,7 @@ def client_interceptor(
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _client
+    from . import _client  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -614,7 +614,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _server
+    from . import _server  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -637,7 +637,7 @@ def aio_client_interceptors(
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _aio_client
+    from . import _aio_client  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -683,7 +683,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _aio_server
+    from . import _aio_server  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,

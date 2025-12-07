@@ -287,9 +287,9 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
         """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
         try:
             resp = self._client.get("/error")
-            assert (
-                resp.status_code == 500
-            ), resp.content  # pragma: no cover, for debugging this test if an exception is _not_ raised
+            assert resp.status_code == 500, (
+                resp.content
+            )  # pragma: no cover, for debugging this test if an exception is _not_ raised
         except UnhandledException:
             pass
         else:
@@ -2441,9 +2441,9 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
         """If the application has an unhandled error the instrumentation should capture that a 500 response is returned."""
         try:
             resp = self._client.get("/error")
-            assert (
-                resp.status_code == 500
-            ), resp.content  # pragma: no cover, for debugging this test if an exception is _not_ raised
+            assert resp.status_code == 500, (
+                resp.content
+            )  # pragma: no cover, for debugging this test if an exception is _not_ raised
         except UnhandledException:
             pass
         else:

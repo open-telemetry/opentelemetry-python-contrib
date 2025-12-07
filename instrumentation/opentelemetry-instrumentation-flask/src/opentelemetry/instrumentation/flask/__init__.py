@@ -102,7 +102,7 @@ Flask Request object reference: https://flask.palletsprojects.com/en/2.1.x/api/#
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -189,54 +189,66 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Flask instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*framework=flask%%3A2.9.3*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
 
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
-    FlaskInstrumentor().instrument(enable_commenter=True, commenter_options={})
+    FlaskInstrumentor().instrument(enable_commenter=True)
 
-For example, FlaskInstrumentor when used with SQLAlchemyInstrumentor or Psycopg2Instrumentor,
-invoking ``cursor.execute("select * from auth_users")`` will lead to sql query
-``select * from auth_users`` but when SQLCommenter is enabled the query will get appended with
-some configurable tags like:
+Note:
+    FlaskInstrumentor sqlcommenter requires that sqlcommenter is also
+    enabled for an active instrumentation of a database driver or object-relational
+    mapper (ORM) in the same database client stack. The latter, such as
+    Psycopg2Instrumentor of SQLAlchemyInstrumentor, will create a base sqlcomment
+    that is enhanced by FlaskInstrumentor with additional values from context
+    before appending to the query statement.
 
-.. code::
-
-    select * from auth_users /*metrics=value*/;"
-
-Inorder for the commenter to append flask related tags to sql queries, the commenter needs
-to enabled on the respective SQLAlchemyInstrumentor or Psycopg2Instrumentor framework too.
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration
-inside ``commenter_options={}`` dict.
-
-For example, enabling this flag will add flask and it's version which
-is ``/*flask%%3A2.9.3*/`` to the SQL query as a comment (default is True):
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
 
 .. code:: python
 
-    framework = True
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
-For example, enabling this flag will add route uri ``/*route='/home'*/``
-to the SQL query as a comment (default is True):
+    # Opts into sqlcomment for Flask trace integration.
+    # Opts out of tags for controller.
+    FlaskInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "controller": False,
+        }
+    )
 
-.. code:: python
+Available commenter_options
+###########################
 
-    route = True
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-For example, enabling this flag will add controller name ``/*controller='home_view'*/``
-to the SQL query as a comment (default is True):
-
-.. code:: python
-
-    controller = True
++-------------------+----------------------------------------------------+----------------------------------------+
+| Commenter Option  | Description                                        | Example                                |
++===================+====================================================+========================================+
+| ``framework``     | Flask framework name with version (URL encoded).   | ``framework='flask%%%%3A2.9.3'``       |
++-------------------+----------------------------------------------------+----------------------------------------+
+| ``route``         | Flask route URI pattern.                           | ``route='/home'``                      |
++-------------------+----------------------------------------------------+----------------------------------------+
+| ``controller``    | Flask controller/endpoint name.                    | ``controller='home_view'``             |
++-------------------+----------------------------------------------------+----------------------------------------+
 
 API
 ---
@@ -330,6 +342,7 @@ def _rewrapped_app(
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
+    # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -350,11 +363,12 @@ def _rewrapped_app(
         active_requests_counter.add(1, active_requests_count_attrs)
         request_route = None
 
+        should_trace = True
+
         def _start_response(status, response_headers, *args, **kwargs):
-            if flask.request and (
-                excluded_urls is None
-                or not excluded_urls.url_disabled(flask.request.url)
-            ):
+            nonlocal should_trace
+            should_trace = _should_trace(excluded_urls)
+            if should_trace:
                 nonlocal request_route
                 request_route = flask.request.url_rule
 
@@ -395,32 +409,50 @@ def _rewrapped_app(
             return start_response(status, response_headers, *args, **kwargs)
 
         result = wsgi_app(wrapped_app_environ, _start_response)
-        duration_s = default_timer() - start
-        if duration_histogram_old:
-            duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                attributes, _StabilityMode.DEFAULT
-            )
+        if should_trace:
+            duration_s = default_timer() - start
+            # Get the span from wrapped_app_environ and re-create context manually
+            # to pass to histogram for exemplars generation
+            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+            metrics_context = trace.set_span_in_context(span)
 
-            if request_route:
-                # http.target to be included in old semantic conventions
-                duration_attrs_old[HTTP_TARGET] = str(request_route)
+            if duration_histogram_old:
+                duration_attrs_old = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.DEFAULT
+                )
 
-            duration_histogram_old.record(
-                max(round(duration_s * 1000), 0), duration_attrs_old
-            )
-        if duration_histogram_new:
-            duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                attributes, _StabilityMode.HTTP
-            )
+                if request_route:
+                    # http.target to be included in old semantic conventions
+                    duration_attrs_old[HTTP_TARGET] = str(request_route)
+                duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=metrics_context,
+                )
+            if duration_histogram_new:
+                duration_attrs_new = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.HTTP
+                )
 
-            if request_route:
-                duration_attrs_new[HTTP_ROUTE] = str(request_route)
+                if request_route:
+                    duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-            duration_histogram_new.record(
-                max(duration_s, 0), duration_attrs_new
-            )
+                duration_histogram_new.record(
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=metrics_context,
+                )
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
+
+    def _should_trace(excluded_urls) -> bool:
+        return bool(
+            flask.request
+            and (
+                excluded_urls is None
+                or not excluded_urls.url_disabled(flask.request.url)
+            )
+        )
 
     return _wrapped_app
 

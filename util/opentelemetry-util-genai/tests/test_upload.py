@@ -13,15 +13,14 @@
 # limitations under the License.
 
 
-# pylint: disable=import-outside-toplevel,no-name-in-module
-import importlib
+# pylint: disable=no-name-in-module
 import logging
-import sys
 import threading
 import time
 from contextlib import contextmanager
+from platform import python_implementation
 from typing import Any
-from unittest import TestCase
+from unittest import TestCase, skipIf
 from unittest.mock import ANY, MagicMock, patch
 
 import fsspec
@@ -32,42 +31,10 @@ from opentelemetry.util.genai import types
 from opentelemetry.util.genai._upload.completion_hook import (
     UploadCompletionHook,
 )
-from opentelemetry.util.genai.completion_hook import (
-    _NoOpCompletionHook,
-    load_completion_hook,
-)
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem
 BASE_PATH = "memory://"
-
-
-@patch.dict(
-    "os.environ",
-    {
-        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
-        "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": BASE_PATH,
-    },
-    clear=True,
-)
-class TestUploadEntryPoint(TestCase):
-    def test_upload_entry_point(self):
-        self.assertIsInstance(load_completion_hook(), UploadCompletionHook)
-
-    def test_upload_entry_point_no_fsspec(self):
-        """Tests that the a no-op uploader is used when fsspec is not installed"""
-
-        from opentelemetry.util.genai import _upload
-
-        # Simulate fsspec imports failing
-        with patch.dict(
-            sys.modules,
-            {"opentelemetry.util.genai._upload.completion_hook": None},
-        ):
-            importlib.reload(_upload)
-            self.assertIsInstance(load_completion_hook(), _NoOpCompletionHook)
-
-
 MAXSIZE = 5
 FAKE_INPUTS = [
     types.InputMessage(
@@ -124,7 +91,7 @@ class TestUploadCompletionHook(TestCase):
         self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
-            base_path=BASE_PATH, max_size=MAXSIZE, lru_cache_max_size=5
+            base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5
         )
 
     def tearDown(self) -> None:
@@ -148,6 +115,10 @@ class TestUploadCompletionHook(TestCase):
     def test_shutdown_no_items(self):
         self.hook.shutdown()
 
+    @skipIf(
+        python_implementation().lower() == "pypy",
+        "fails randomly on pypy: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812",
+    )
     def test_upload_then_shutdown(self):
         self.hook.on_completion(
             inputs=FAKE_INPUTS,
@@ -298,42 +269,6 @@ class TestUploadCompletionHook(TestCase):
 
             self.mock_fs.open.assert_called_with(
                 ANY, "w", content_type=expect_content_type
-            )
-
-    def test_parse_upload_format_envvar(self):
-        for envvar_value, expect in (
-            ("", "json"),
-            ("json", "json"),
-            ("invalid", "json"),
-            ("jsonl", "jsonl"),
-            ("jSoNl", "jsonl"),
-        ):
-            with patch.dict(
-                "os.environ",
-                {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value},
-                clear=True,
-            ):
-                hook = UploadCompletionHook(base_path=BASE_PATH)
-                self.addCleanup(hook.shutdown)
-                self.assertEqual(
-                    hook._format,
-                    expect,
-                    f"expected upload format {expect=} with {envvar_value=} got {hook._format}",
-                )
-
-        with patch.dict(
-            "os.environ",
-            {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": "json"},
-            clear=True,
-        ):
-            hook = UploadCompletionHook(
-                base_path=BASE_PATH, upload_format="jsonl"
-            )
-            self.addCleanup(hook.shutdown)
-            self.assertEqual(
-                hook._format,
-                "jsonl",
-                "upload_format kwarg should take precedence",
             )
 
     def test_upload_after_shutdown_logs(self):

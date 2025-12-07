@@ -36,16 +36,6 @@ _StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
 _StreamErrorCallableT = Callable[[Exception], None]
 
 
-def _decode_tool_use(tool_use):
-    # input get sent encoded in json
-    if "input" in tool_use:
-        try:
-            tool_use["input"] = json.loads(tool_use["input"])
-        except json.JSONDecodeError:
-            pass
-    return tool_use
-
-
 # pylint: disable=abstract-method
 class ConverseStreamWrapper(ObjectProxy):
     """Wrapper for botocore.eventstream.EventStream"""
@@ -368,10 +358,13 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         if message_type == "content_block_stop":
             # {'type': 'content_block_stop', 'index': 0}
             if self._tool_json_input_buf:
-                self._content_block["input"] = self._tool_json_input_buf
-            self._message["content"].append(
-                _decode_tool_use(self._content_block)
-            )
+                try:
+                    self._content_block["input"] = json.loads(
+                        self._tool_json_input_buf
+                    )
+                except json.JSONDecodeError:
+                    self._content_block["input"] = self._tool_json_input_buf
+            self._message["content"].append(self._content_block)
             self._content_block = {}
             self._tool_json_input_buf = ""
             return
@@ -535,7 +528,9 @@ class _Choice:
     def from_converse(
         cls, response: dict[str, Any], capture_content: bool
     ) -> _Choice:
-        orig_message = response["output"]["message"]
+        # be defensive about malformed responses, refer to #3958 for more context
+        output = response.get("output", {})
+        orig_message = output.get("message", {})
         if role := orig_message.get("role"):
             message = {"role": role}
         else:
@@ -544,8 +539,8 @@ class _Choice:
 
         if tool_calls := extract_tool_calls(orig_message, capture_content):
             message["tool_calls"] = tool_calls
-        elif capture_content:
-            message["content"] = orig_message["content"]
+        elif capture_content and (content := orig_message.get("content")):
+            message["content"] = content
 
         return cls(message, response["stopReason"], index=0)
 
