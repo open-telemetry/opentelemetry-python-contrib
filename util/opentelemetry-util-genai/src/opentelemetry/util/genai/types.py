@@ -123,6 +123,12 @@ class LLMInvocation:
     max_tokens: int | None = None
     stop_sequences: list[str] | None = None
     seed: int | None = None
+    monotonic_start_s: float | None = None
+    """
+    Monotonic start time in seconds (from timeit.default_timer) used
+    for duration calculations to avoid mixing clock sources. This is
+    populated by the TelemetryHandler when starting an invocation.
+    """
 
 
 @dataclass
