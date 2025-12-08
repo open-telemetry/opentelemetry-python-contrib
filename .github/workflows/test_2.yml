@@ -32,6 +32,101 @@ env:
 
 jobs:
 
+  py39-test-instrumentation-sio-pika-1_ubuntu-latest:
+    name: instrumentation-sio-pika-1 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-sio-pika-1 -- -ra
+
+  py310-test-instrumentation-sio-pika-0_ubuntu-latest:
+    name: instrumentation-sio-pika-0 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-sio-pika-0 -- -ra
+
+  py310-test-instrumentation-sio-pika-1_ubuntu-latest:
+    name: instrumentation-sio-pika-1 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-sio-pika-1 -- -ra
+
+  py311-test-instrumentation-sio-pika-0_ubuntu-latest:
+    name: instrumentation-sio-pika-0 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-sio-pika-0 -- -ra
+
+  py311-test-instrumentation-sio-pika-1_ubuntu-latest:
+    name: instrumentation-sio-pika-1 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-sio-pika-1 -- -ra
+
   py312-test-instrumentation-sio-pika-0_ubuntu-latest:
     name: instrumentation-sio-pika-0 3.12 Ubuntu
     runs-on: ubuntu-latest
