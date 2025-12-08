@@ -46,7 +46,7 @@ interactions:
       authorization:
       - Bearer test_openai_api_key
     method: POST
-    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-west-2%3A906383545488%3Ainference-profile%2Fus.amazon.nova-lite-v1%3A0/converse
+    uri: https://bedrock-runtime.us-west-2.amazonaws.com/model/us.amazon.nova-lite-v1%3A0/converse
   response:
     body:
       string: |-

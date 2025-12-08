@@ -32,14 +32,54 @@ Usage
     result = llm.invoke(messages)
     LangChainInstrumentor().uninstrument()
 
+# pyright: reportMissingImports=false
+
 API
 ---
 """
 
-from typing import Any, Callable, Collection
+import os
+from importlib import import_module
+from types import SimpleNamespace
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    Protocol,
+    Sequence,
+    cast,
+)
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
 from wrapt import wrap_function_wrapper  # type: ignore
+
+if TYPE_CHECKING:
+
+    class BaseCallbackHandler(Protocol):
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+        inheritable_handlers: Sequence[Any]
+
+        def add_handler(self, handler: Any, inherit: bool = False) -> None: ...
+
+else:
+    try:
+        from langchain_core.callbacks import (
+            BaseCallbackHandler,  # type: ignore[import]
+        )
+    except ImportError:  # pragma: no cover - optional dependency
+
+        class BaseCallbackHandler:
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                return
+
+            inheritable_handlers: Sequence[Any] = ()
+
+            def add_handler(self, handler: Any, inherit: bool = False) -> None:
+                raise RuntimeError(
+                    "LangChain is required for the LangChain instrumentation."
+                )
+
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
@@ -47,9 +87,26 @@ from opentelemetry.instrumentation.langchain.callback_handler import (
 )
 from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.schemas import Schemas
+
+try:
+    from opentelemetry.instrumentation.utils import unwrap
+except ImportError:  # pragma: no cover - optional dependency
+
+    def unwrap(obj: object, attr: str) -> None:
+        return None
+
+
 from opentelemetry.trace import get_tracer
+
+_schemas_module = SimpleNamespace()
+try:
+    _schemas_module = import_module("opentelemetry.semconv.schemas")
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pass
+
+SchemasModule = cast(
+    Any, getattr(_schemas_module, "Schemas", SimpleNamespace())
+)
 
 
 class LangChainInstrumentor(BaseInstrumentor):
@@ -59,9 +116,7 @@ class LangChainInstrumentor(BaseInstrumentor):
     to capture LLM telemetry.
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self) -> None:
         super().__init__()
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -72,16 +127,20 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_messages = self._resolve_capture_messages(kwargs)
+        schema_entry = getattr(SchemasModule, "V1_37_0", None)
+        schema_url = getattr(schema_entry, "value", None)
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
 
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             tracer=tracer,
-        )
+            capture_messages=capture_messages,
+        )  # pyright: ignore[reportAbstractUsage]
 
         wrap_function_wrapper(
             module="langchain_core.callbacks",
@@ -94,6 +153,18 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
+
+    def _resolve_capture_messages(self, kwargs: dict[str, Any]) -> bool:
+        if "capture_messages" in kwargs:
+            return bool(kwargs["capture_messages"])
+
+        env_value = os.getenv(
+            "OTEL_INSTRUMENTATION_LANGCHAIN_CAPTURE_MESSAGES"
+        )
+        if env_value is not None:
+            return env_value.lower() in ("1", "true", "yes", "on")
+
+        return True
 
 
 class _BaseCallbackManagerInitWrapper:
@@ -109,14 +180,14 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: BaseCallbackHandler,  # type: ignore
+        instance: BaseCallbackHandler,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):
         wrapped(*args, **kwargs)
         # Ensure our OTel callback is present if not already.
-        for handler in instance.inheritable_handlers:  # type: ignore
+        for handler in instance.inheritable_handlers:
             if isinstance(handler, type(self._otel_handler)):
                 break
         else:
-            instance.add_handler(self._otel_handler, inherit=True)  # type: ignore
+            instance.add_handler(self._otel_handler, inherit=True)
