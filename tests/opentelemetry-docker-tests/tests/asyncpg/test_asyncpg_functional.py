@@ -1,6 +1,5 @@
 import asyncio
 import os
-import unittest
 from collections import namedtuple
 from unittest.mock import patch
 
@@ -8,6 +7,11 @@ import asyncpg
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -429,37 +433,6 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertEqual(spans[0].attributes[SpanAttributes.DB_STATEMENT], "")
 
 
-class _NonRecordingSpan:
-    def __init__(self, recording=False):
-        self._recording = recording
-        self.set_status_calls = 0
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def is_recording(self):
-        return self._recording
-
-    def set_status(self, status):
-        self.set_status_calls += 1
-        self.status = status
-
-
-class _CapturingTracer:
-    def __init__(self, span):
-        self.span = span
-        self.started_spans = []
-
-    def start_as_current_span(self, name, kind=None, attributes=None):
-        self.started_spans.append(
-            {"name": name, "kind": kind, "attributes": attributes}
-        )
-        return self.span
-
-
 class _FakeParams:
     def __init__(self, database="testdb", user="dbuser"):
         self.database = database
@@ -479,11 +452,14 @@ class _FakeCursor:
         self._args = args
 
 
-class TestAsyncPGSamplingAttributes(unittest.TestCase):
+class TestAsyncPGSamplingAttributes(TestBase):
     def setUp(self):
+        super().setUp()
         self.connection = _FakeConnection()
-        self.span = _NonRecordingSpan(recording=False)
-        self.tracer = _CapturingTracer(self.span)
+        self.exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.exporter))
+        self.tracer = tracer_provider.get_tracer(__name__)
         self.instrumentor = AsyncPGInstrumentor(capture_parameters=True)
         self.instrumentor._tracer = self.tracer
 
@@ -500,10 +476,11 @@ class TestAsyncPGSamplingAttributes(unittest.TestCase):
             )
         )
 
-        self.assertEqual(len(self.tracer.started_spans), 1)
-        span_info = self.tracer.started_spans[0]
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
         self.assertEqual(
-            span_info["attributes"],
+            span.attributes,
             {
                 SpanAttributes.DB_SYSTEM: "postgresql",
                 SpanAttributes.DB_NAME: "testdb",
@@ -515,8 +492,8 @@ class TestAsyncPGSamplingAttributes(unittest.TestCase):
                 "db.statement.parameters": "('42',)",
             },
         )
-        self.assertEqual(span_info["kind"], trace.SpanKind.CLIENT)
-        self.assertEqual(span_info["name"], "SELECT")
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "SELECT")
 
     def test_cursor_attributes_available_when_span_not_recording(self):
         async def _fake_cursor_execute(*args, **kwargs):
@@ -533,10 +510,11 @@ class TestAsyncPGSamplingAttributes(unittest.TestCase):
             )
         )
 
-        self.assertEqual(len(self.tracer.started_spans), 1)
-        span_info = self.tracer.started_spans[0]
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
         self.assertEqual(
-            span_info["attributes"],
+            span.attributes,
             {
                 SpanAttributes.DB_SYSTEM: "postgresql",
                 SpanAttributes.DB_NAME: "testdb",
@@ -548,5 +526,5 @@ class TestAsyncPGSamplingAttributes(unittest.TestCase):
                 "db.statement.parameters": "('99',)",
             },
         )
-        self.assertEqual(span_info["kind"], trace.SpanKind.CLIENT)
-        self.assertEqual(span_info["name"], "CURSOR: SELECT")
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "CURSOR: SELECT")
