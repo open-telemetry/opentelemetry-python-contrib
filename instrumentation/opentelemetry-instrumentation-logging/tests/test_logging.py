@@ -44,6 +44,7 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog
+
     def setUp(self):
         super().setUp()
         LoggingInstrumentor().instrument(tracer_provider=FakeTracerProvider())
@@ -72,6 +73,7 @@ class TestLoggingInstrumentor(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog
+
     def setUp(self):
         super().setUp()
         LoggingInstrumentor().instrument()
