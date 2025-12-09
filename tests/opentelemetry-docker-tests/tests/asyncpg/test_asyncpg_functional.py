@@ -7,7 +7,6 @@ from unittest.mock import patch
 import asyncpg
 
 from opentelemetry import trace
-
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
