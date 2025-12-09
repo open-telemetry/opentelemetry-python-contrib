@@ -314,6 +314,7 @@ def test_generate_content_extra_params(
         "gen_ai.operation.name": "chat",
         "gen_ai.request.frequency_penalty": 1.0,
         "gen_ai.request.max_tokens": 5,
+        "gen_ai.request.seed": 12345,
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.request.presence_penalty": -1.5,
         "gen_ai.request.stop_sequences": ("\n\n\n",),
