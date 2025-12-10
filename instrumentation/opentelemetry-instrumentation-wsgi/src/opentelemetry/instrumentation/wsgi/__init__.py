@@ -417,7 +417,7 @@ def _apply_user_agent_attributes(
         return
 
     _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
-    synthetic_type = detect_synthetic_user_agent(user_agent_raw)
+    synthetic_type = detect_synthetic_user_agent(user_agent)
     if synthetic_type:
         result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 

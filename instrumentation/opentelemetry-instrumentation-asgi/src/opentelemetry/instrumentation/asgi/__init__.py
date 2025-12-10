@@ -410,7 +410,7 @@ def collect_request_attributes(
             )
 
         # Check for synthetic user agent type
-        synthetic_type = detect_synthetic_user_agent(user_agent_raw)
+        synthetic_type = detect_synthetic_user_agent(user_agent_value)
         if synthetic_type:
             result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 

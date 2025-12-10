@@ -17,7 +17,10 @@ import unittest
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     UserAgentSyntheticTypeValues,
 )
-from opentelemetry.util.http import detect_synthetic_user_agent
+from opentelemetry.util.http import (
+    detect_synthetic_user_agent,
+    normalize_user_agent,
+)
 
 
 class TestDetectSyntheticUserAgent(unittest.TestCase):
@@ -99,7 +102,31 @@ class TestDetectSyntheticUserAgent(unittest.TestCase):
             (memoryview(b"MyApp/1.0"), None),
         ]
 
-        for user_agent, expected in test_cases:
-            with self.subTest(user_agent=user_agent):
-                result = detect_synthetic_user_agent(user_agent)
+        for user_agent_raw, expected in test_cases:
+            with self.subTest(user_agent=user_agent_raw):
+                normalized = normalize_user_agent(user_agent_raw)
+                result = detect_synthetic_user_agent(normalized)
                 self.assertEqual(result, expected)
+
+
+class TestNormalizeUserAgent(unittest.TestCase):
+    def test_preserves_string(self):
+        self.assertEqual(normalize_user_agent("Mozilla"), "Mozilla")
+
+    def test_decodes_bytes(self):
+        self.assertEqual(
+            normalize_user_agent(b"Custom-Client/1.0"), "Custom-Client/1.0"
+        )
+
+    def test_decodes_bytearray(self):
+        self.assertEqual(
+            normalize_user_agent(bytearray(b"Bot/2.0")), "Bot/2.0"
+        )
+
+    def test_decodes_memoryview(self):
+        self.assertEqual(
+            normalize_user_agent(memoryview(b"Monitor/3.0")), "Monitor/3.0"
+        )
+
+    def test_none(self):
+        self.assertIsNone(normalize_user_agent(None))

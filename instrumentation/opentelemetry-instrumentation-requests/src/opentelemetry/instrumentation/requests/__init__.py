@@ -254,8 +254,8 @@ def _instrument(
         # Check for synthetic user agent type
         headers = get_or_create_headers()
         user_agent_value = headers.get("User-Agent")
-        synthetic_type = detect_synthetic_user_agent(user_agent_value)
         user_agent = normalize_user_agent(user_agent_value)
+        synthetic_type = detect_synthetic_user_agent(user_agent)
         if synthetic_type:
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
         if user_agent:

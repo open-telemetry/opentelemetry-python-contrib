@@ -324,9 +324,7 @@ def normalize_user_agent(
     return str(user_agent)
 
 
-def detect_synthetic_user_agent(
-    user_agent: str | bytes | bytearray | memoryview | None,
-) -> str | None:
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
     """
     Detect synthetic user agent type based on user agent string contents.
 
@@ -340,7 +338,6 @@ def detect_synthetic_user_agent(
 
     Note: Test patterns take priority over bot patterns.
     """
-    user_agent = normalize_user_agent(user_agent)
     if not user_agent:
         return None
 
