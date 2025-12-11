@@ -122,7 +122,9 @@ class UploadCompletionHook(CompletionHook):
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
-        self._executor = ThreadPoolExecutor(max_workers=self._max_queue_size)
+        self._executor = ThreadPoolExecutor(
+            max_workers=min(self._max_queue_size, 64)
+        )
         self._semaphore = threading.BoundedSemaphore(self._max_queue_size)
 
     def _submit_all(self, upload_data: UploadData) -> None:
