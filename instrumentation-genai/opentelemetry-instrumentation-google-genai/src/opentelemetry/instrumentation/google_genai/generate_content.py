@@ -44,6 +44,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
 )
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes import (
     code_attributes,
     gen_ai_attributes,
@@ -705,6 +706,11 @@ def _create_instrumented_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
+        if not is_instrumentation_enabled():
+            return wrapped_func(
+                self, model=model, contents=contents, config=config, **kwargs
+            )
+
         candidates = []
         helper = _GenerateContentInstrumentationHelper(
             self,
@@ -778,6 +784,13 @@ def _create_instrumented_generate_content_stream(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
+        if not is_instrumentation_enabled():
+            for resp in wrapped_func(
+                self, model=model, contents=contents, config=config, **kwargs
+            ):
+                yield resp
+            return
+
         candidates: list[Candidate] = []
         helper = _GenerateContentInstrumentationHelper(
             self,
@@ -851,6 +864,10 @@ def _create_instrumented_async_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
+        if not is_instrumentation_enabled():
+            return await wrapped_func(
+                self, model=model, contents=contents, config=config, **kwargs
+            )
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,
@@ -924,6 +941,11 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
+        if not is_instrumentation_enabled():
+            return await wrapped_func(
+                self, model=model, contents=contents, config=config, **kwargs
+            )
+
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,

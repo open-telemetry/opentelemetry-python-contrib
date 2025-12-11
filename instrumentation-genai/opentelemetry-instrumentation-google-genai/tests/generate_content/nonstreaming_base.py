@@ -20,6 +20,7 @@ import pytest
 from google.genai.types import GenerateContentConfig, Part
 from pydantic import BaseModel, Field
 
+from opentelemetry.instrumentation import utils
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -498,4 +499,15 @@ class NonStreamingTestCase(TestCase):
         self.otel.assert_has_metrics_data_named("gen_ai.client.token.usage")
         self.otel.assert_has_metrics_data_named(
             "gen_ai.client.operation.duration"
+        )
+
+    def test_suppress_instrumentation(self):
+        self.configure_valid_response(text="Yep, it works!")
+        with utils.suppress_instrumentation():
+            response = self.generate_content(
+                model="gemini-2.0-flash", contents="Does this work?"
+            )
+        self.assertEqual(response.text, "Yep, it works!")
+        self.otel.assert_does_not_have_span_named(
+            "generate_content gemini-2.0-flash"
         )
