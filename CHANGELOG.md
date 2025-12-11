@@ -9,13 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > The following components are released independently and maintain individual CHANGELOG files.
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
-## Version 1.39.0/0.60b0 (2025-12-03)
+## Unreleased
 
-- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
-  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+### Fixed
+
+- `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
+  ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
+
+## Version 1.39.0/0.60b0 (2025-12-03)
 
 ### Added 
 
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
 - `opentelemetry-instrumentation-httpx`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_HTTPX_EXCLUDED_URLS`
