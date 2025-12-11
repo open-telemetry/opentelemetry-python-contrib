@@ -40,6 +40,12 @@ class ContentCapturingMode(Enum):
 
 @dataclass()
 class ToolCall:
+    """Represents a tool call requested by the model
+
+    This model is specified as part of semconv in `GenAI messages Python models - ToolCallRequestPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     arguments: Any
     name: str
     id: str | None
@@ -48,6 +54,12 @@ class ToolCall:
 
 @dataclass()
 class ToolCallResponse:
+    """Represents a tool call result sent to the model or a built-in tool call outcome and details
+
+    This model is specified as part of semconv in `GenAI messages Python models - ToolCallResponsePart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     response: Any
     id: str | None
     type: Literal["tool_call_response"] = "tool_call_response"
@@ -55,12 +67,24 @@ class ToolCallResponse:
 
 @dataclass()
 class Text:
+    """Represents text content sent to or received from the model
+
+    This model is specified as part of semconv in `GenAI messages Python models - TextPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     content: str
     type: Literal["text"] = "text"
 
 
 @dataclass()
 class Reasoning:
+    """Represents reasoning/thinking content received from the model
+
+    This model is specified as part of semconv in `GenAI messages Python models - ReasoningPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     content: str
     type: Literal["reasoning"] = "reasoning"
 
@@ -70,6 +94,12 @@ Modality = Literal["image", "video", "audio"]
 
 @dataclass()
 class Blob:
+    """Represents blob binary data sent inline to the model
+
+    This model is specified as part of semconv in `GenAI messages Python models - BlobPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     mime_type: str | None
     modality: Union[Modality, str]
     content: bytes
@@ -78,6 +108,12 @@ class Blob:
 
 @dataclass()
 class File:
+    """Represents an external referenced file sent to the model by file id
+
+    This model is specified as part of semconv in `GenAI messages Python models - FilePart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     mime_type: str | None
     modality: Union[Modality, str]
     file_id: str
@@ -86,6 +122,12 @@ class File:
 
 @dataclass()
 class Uri:
+    """Represents an external referenced file sent to the model by URI
+
+    This model is specified as part of semconv in `GenAI messages Python models - UriPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
     mime_type: str | None
     modality: Union[Modality, str]
     uri: str

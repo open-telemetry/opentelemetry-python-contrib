@@ -42,6 +42,7 @@ from opentelemetry.util.genai.utils import (
     gen_ai_json_dumps,
     get_content_capturing_mode,
     is_experimental_mode,
+    should_emit_event,
 )
 
 
@@ -140,14 +141,11 @@ def _maybe_emit_llm_event(
     This function creates a LogRecord event following the semantic convention
     for gen_ai.client.inference.operation.details as specified in the GenAI
     event semantic conventions.
-    """
-    if not is_experimental_mode() or get_content_capturing_mode() not in (
-        ContentCapturingMode.EVENT_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
-        return
 
-    if logger is None:
+    For more details, see the semantic convention documentation:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#event-eventgen_aiclientinferenceoperationdetails
+    """
+    if not is_experimental_mode() or not should_emit_event() or logger is None:
         return
 
     # Build event attributes by reusing the attribute getter functions

@@ -23,28 +23,16 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogRecordExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-
-# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
-# Changed in opentelemetry-sdk@0.60b0
-try:
-    from opentelemetry.sdk._logs.export import (  # pylint: disable=no-name-in-module
-        InMemoryLogRecordExporter,
-        SimpleLogRecordProcessor,
-    )
-except ImportError:
-    # Fallback to old name for compatibility with older SDK versions
-    from opentelemetry.sdk._logs.export import (
-        InMemoryLogExporter as InMemoryLogRecordExporter,
-    )
-    from opentelemetry.sdk._logs.export import (
-        SimpleLogRecordProcessor,
-    )
-from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -55,6 +43,7 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
@@ -66,16 +55,20 @@ from opentelemetry.util.genai.types import (
     OutputMessage,
     Text,
 )
-from opentelemetry.util.genai.utils import get_content_capturing_mode
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+    should_emit_event,
+)
 
 
-def patch_env_vars(stability_mode, content_capturing):
+def patch_env_vars(stability_mode, content_capturing, emit_event):
     def decorator(test_case):
         @patch.dict(
             os.environ,
             {
                 OTEL_SEMCONV_STABILITY_OPT_IN: stability_mode,
                 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_capturing,
+                OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT: emit_event,
             },
         )
         def wrapper(*args, **kwargs):
@@ -179,17 +172,24 @@ class TestVersion(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_get_content_capturing_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
         assert get_content_capturing_mode() == ContentCapturingMode.SPAN_ONLY
 
     @patch_env_vars(
-        stability_mode="gen_ai_latest_experimental", content_capturing=""
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="",
+        emit_event="",
     )
     def test_empty_content_capturing_envvar(self):  # pylint: disable=no-self-use
         assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
-    @patch_env_vars(stability_mode="default", content_capturing="True")
+    @patch_env_vars(
+        stability_mode="default",
+        content_capturing="True",
+        emit_event="",
+    )
     def test_get_content_capturing_mode_raises_exception_when_semconv_stability_default(
         self,
     ):  # pylint: disable=no-self-use
@@ -199,6 +199,7 @@ class TestVersion(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="INVALID_VALUE",
+        emit_event="",
     )
     def test_get_content_capturing_mode_raises_exception_on_invalid_envvar(
         self,
@@ -209,6 +210,75 @@ class TestVersion(unittest.TestCase):
             )
         self.assertEqual(len(cm.output), 1)
         self.assertIn("INVALID_VALUE is not a valid option for ", cm.output[0])
+
+
+class TestShouldEmitEvent(unittest.TestCase):
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="true",
+    )
+    def test_should_emit_event_returns_true_when_set_to_true(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_emit_event() is True
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="True",
+    )
+    def test_should_emit_event_case_insensitive_true(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_emit_event() is True
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="false",
+    )
+    def test_should_emit_event_returns_false_when_set_to_false(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="False",
+    )
+    def test_should_emit_event_case_insensitive_false(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="",
+    )
+    def test_should_emit_event_by_defaults(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="INVALID_VALUE",
+    )
+    def test_should_emit_event_with_invalid_value(
+        self,
+    ):  # pylint: disable=no-self-use
+        with self.assertLogs(level="WARNING") as cm:
+            result = should_emit_event()
+            assert result is False, f"Expected False but got {result}"
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn("INVALID_VALUE is not a valid option for", cm.output[0])
+        self.assertIn(
+            "Must be one of true or false (case-insensitive)", cm.output[0]
+        )
 
 
 class TestTelemetryHandler(unittest.TestCase):
@@ -237,6 +307,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
         message = _create_input_message("hello world")
@@ -311,6 +382,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_llm_manual_start_and_stop_creates_span(self):
         message = _create_input_message("hi")
@@ -436,6 +508,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_parent_child_span_relationship(self):
         message = _create_input_message("hi")
@@ -523,6 +596,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="EVENT_ONLY",
+        emit_event="true",
     )
     def test_emits_llm_event(self):
         invocation = LLMInvocation(
@@ -603,6 +677,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_AND_EVENT",
+        emit_event="true",
     )
     def test_emits_llm_event_and_span(self):
         message = _create_input_message("combined test")
@@ -662,6 +737,7 @@ class TestTelemetryHandler(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="EVENT_ONLY",
+        emit_event="true",
     )
     def test_emits_llm_event_with_error(self):
         class TestError(RuntimeError):
@@ -700,14 +776,15 @@ class TestTelemetryHandler(unittest.TestCase):
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
-        content_capturing="NO_CONTENT",
+        content_capturing="EVENT_ONLY",
+        emit_event="false",
     )
-    def test_does_not_emit_llm_event_when_no_content(self):
-        message = _create_input_message("no content test")
-        chat_generation = _create_output_message("no content response")
+    def test_does_not_emit_llm_event_when_emit_event_false(self):
+        message = _create_input_message("emit false test")
+        chat_generation = _create_output_message("emit false response")
 
         invocation = LLMInvocation(
-            request_model="no-content-model",
+            request_model="emit-false-model",
             input_messages=[message],
             provider="test-provider",
         )
@@ -717,5 +794,28 @@ class TestTelemetryHandler(unittest.TestCase):
         self.telemetry_handler.stop_llm(invocation)
 
         # Check no event was emitted
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 0)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="",
+    )
+    def test_does_not_emit_llm_event_by_default(self):
+        """Test that event is not emitted by default when OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
+        invocation = LLMInvocation(
+            request_model="default-model",
+            input_messages=[_create_input_message("default test")],
+            provider="test-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        invocation.output_messages = [
+            _create_output_message("default response")
+        ]
+        self.telemetry_handler.stop_llm(invocation)
+
+        # Check that no event was emitted (default behavior is false)
         logs = self.log_exporter.get_finished_logs()
         self.assertEqual(len(logs), 0)
