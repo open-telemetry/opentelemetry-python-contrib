@@ -14,6 +14,7 @@
 
 import asyncio
 import types
+from typing import Optional
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
@@ -89,10 +90,14 @@ class MockConnection:
 
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
+        self.server_cursor_factory = lambda _: MockCursor()
 
-    def cursor(self):
-        if self.cursor_factory:
+    def cursor(self, name: Optional[str] = None):
+        if not name and self.cursor_factory:
             return self.cursor_factory(self)
+
+        if name and self.server_cursor_factory:
+            return self.server_cursor_factory(self)
         return MockCursor()
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
@@ -108,15 +113,18 @@ class MockAsyncConnection:
 
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
+        self.server_cursor_factory = lambda _: MockAsyncCursor()
 
     @staticmethod
     async def connect(*args, **kwargs):
         return MockAsyncConnection(**kwargs)
 
-    def cursor(self):
-        if self.cursor_factory:
-            cur = self.cursor_factory(self)
-            return cur
+    def cursor(self, name: Optional[str] = None):
+        if not name and self.cursor_factory:
+            return self.cursor_factory(self)
+
+        if name and self.server_cursor_factory:
+            return self.server_cursor_factory(self)
         return MockAsyncCursor()
 
     def execute(self, query, params=None, *, prepare=None, binary=False):
@@ -203,6 +211,36 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_instrumentor_with_named_cursor(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = psycopg.connect(database="test")
+
+        cursor = cnx.cursor(name="named_cursor")
+
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor(name="named_cursor")
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
     # pylint: disable=unused-argument
     def test_instrumentor_with_connection_class(self):
         PsycopgInstrumentor().instrument()
@@ -228,6 +266,36 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
         cnx = psycopg.Connection.connect(database="test")
         cursor = cnx.cursor()
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrumentor_with_connection_class_and_named_cursor(self):
+        PsycopgInstrumentor().instrument()
+
+        cnx = psycopg.Connection.connect(database="test")
+
+        cursor = cnx.cursor(name="named_cursor")
+
+        query = "SELECT * FROM test"
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+
+        cnx = psycopg.Connection.connect(database="test")
+        cursor = cnx.cursor(name="named_cursor")
         query = "SELECT * FROM test"
         cursor.execute(query)
 
@@ -339,6 +407,23 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
 
     # pylint: disable=unused-argument
+    def test_instrument_connection_with_named_cursor(self):
+        cnx = psycopg.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor(name="named_cursor")
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+        cursor = cnx.cursor(name="named_cursor")
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):
         cnx = psycopg.connect(database="test")
         query = "SELECT * FROM test"
@@ -392,6 +477,25 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    def test_uninstrument_connection_with_instrument_connection_and_named_cursor(
+        self,
+    ):
+        cnx = psycopg.connect(database="test")
+        PsycopgInstrumentor().instrument_connection(cnx)
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor(name="named_cursor")
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = PsycopgInstrumentor().uninstrument_connection(cnx)
+        cursor = cnx.cursor(name="named_cursor")
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -423,6 +527,33 @@ class TestPostgresqlIntegrationAsync(
             acnx = await psycopg.AsyncConnection.connect("test")
             async with acnx as cnx:
                 async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+        await test_async_connection()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.psycopg
+        )
+
+        # check that no spans are generated after uninstrument
+        PsycopgInstrumentor().uninstrument()
+
+        await test_async_connection()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    async def test_wrap_async_connection_class_with_named_cursor(self):
+        PsycopgInstrumentor().instrument()
+
+        async def test_async_connection():
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor(name="named_cursor") as cursor:
                     await cursor.execute("SELECT * FROM test")
 
         await test_async_connection()
