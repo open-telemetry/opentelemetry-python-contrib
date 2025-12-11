@@ -34,11 +34,11 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_USER,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NetTransportValues,
     NET_PEER_NAME,
     NET_PEER_PORT,
     NET_TRANSPORT,
 )
-from opentelemetry.semconv.trace import NetTransportValues
 from opentelemetry.trace.status import Status, StatusCode
 
 
