@@ -60,12 +60,22 @@ Make sure to configure OpenTelemetry tracing, logging, metrics, and events to ca
         model="gemini-1.5-flash-002",
         contents="Write a short poem on OpenTelemetry.")
 
+Enabling experimental semconvs
+******************************
+
+Set the environment variable `OTEL_SEMCONV_STABILITY_OPT_IN` to `gen_ai_latest_experimental` to 
+emit the latest experimental version of GenAI conventions and do not emit the old ones (v1.36.0 or prior).
+
 Enabling message content
 *************************
 
 Message content such as the contents of the prompt and response
 are not captured by default. To capture message content as log events, set the environment variable
 `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to `true`.
+
+If `OTEL_SEMCONV_STABILITY_OPT_IN` is set to `gen_ai_latest_experimental` then `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`
+must instead be one of `SPAN_AND_EVENT`, `NO_CONTENT`, `EVENT_ONLY` or `SPAN_ONLY`. This controls whether message content 
+is captured in spans, events, or neither.
 
 Uninstrument
 ************
