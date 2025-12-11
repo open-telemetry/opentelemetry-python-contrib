@@ -60,20 +60,24 @@ Usage:
 
 from __future__ import annotations
 
+import timeit
 from contextlib import contextmanager
 from typing import Iterator
 
 from opentelemetry import context as otel_context
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
+    Span,
     SpanKind,
     TracerProvider,
     get_tracer,
     set_span_in_context,
 )
+from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_finish_attributes,
@@ -88,12 +92,34 @@ class TelemetryHandler:
     them as spans, metrics, and events.
     """
 
-    def __init__(self, tracer_provider: TracerProvider | None = None):
+    def __init__(
+        self,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+    ):
         self._tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
             schema_url=Schemas.V1_37_0.value,
+        )
+        self._metrics_recorder: InvocationMetricsRecorder | None = None
+        meter = get_meter(__name__, meter_provider=meter_provider)
+        self._metrics_recorder = InvocationMetricsRecorder(meter)
+
+    def _record_llm_metrics(
+        self,
+        invocation: LLMInvocation,
+        span: Span | None = None,
+        *,
+        error_type: str | None = None,
+    ) -> None:
+        if self._metrics_recorder is None or span is None:
+            return
+        self._metrics_recorder.record(
+            span,
+            invocation,
+            error_type=error_type,
         )
 
     def start_llm(
@@ -106,6 +132,9 @@ class TelemetryHandler:
             name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
             kind=SpanKind.CLIENT,
         )
+        # Record a monotonic start timestamp (seconds) for duration
+        # calculation using timeit.default_timer.
+        invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
         invocation.context_token = otel_context.attach(
             set_span_in_context(span)
@@ -118,10 +147,12 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        _apply_finish_attributes(invocation.span, invocation)
+        span = invocation.span
+        _apply_finish_attributes(span, invocation)
+        self._record_llm_metrics(invocation, span)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        invocation.span.end()
+        span.end()
         return invocation
 
     def fail_llm(  # pylint: disable=no-self-use
@@ -132,11 +163,14 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
+        span = invocation.span
         _apply_finish_attributes(invocation.span, invocation)
-        _apply_error_attributes(invocation.span, error)
+        _apply_error_attributes(span, error)
+        error_type = getattr(error.type, "__qualname__", None)
+        self._record_llm_metrics(invocation, span, error_type=error_type)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        invocation.span.end()
+        span.end()
         return invocation
 
     @contextmanager
@@ -166,6 +200,7 @@ class TelemetryHandler:
 
 def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
@@ -174,6 +209,9 @@ def get_telemetry_handler(
         get_telemetry_handler, "_default_handler", None
     )
     if handler is None:
-        handler = TelemetryHandler(tracer_provider=tracer_provider)
+        handler = TelemetryHandler(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+        )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler

@@ -34,6 +34,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    UserAgentSyntheticTypeValues,
+)
+from opentelemetry.util.http.constants import BOT_PATTERNS, TEST_PATTERNS
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -301,3 +305,47 @@ def redact_url(url: str) -> str:
     url = remove_url_credentials(url)
     url = redact_query_parameters(url)
     return url
+
+
+def normalize_user_agent(
+    user_agent: str | bytes | bytearray | memoryview | None,
+) -> str | None:
+    """Convert user-agent header values into a usable string."""
+    # Different servers/frameworks surface headers as str, bytes, bytearray or memoryview;
+    # keep decoding logic centralized so instrumentation modules just call this helper.
+    if user_agent is None:
+        return None
+    if isinstance(user_agent, str):
+        return user_agent
+    if isinstance(user_agent, (bytes, bytearray)):
+        return user_agent.decode("latin-1")
+    if isinstance(user_agent, memoryview):
+        return user_agent.tobytes().decode("latin-1")
+    return str(user_agent)
+
+
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
+    """
+    Detect synthetic user agent type based on user agent string contents.
+
+    Args:
+        user_agent: The user agent string to analyze
+
+    Returns:
+        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
+        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
+        None otherwise
+
+    Note: Test patterns take priority over bot patterns.
+    """
+    if not user_agent:
+        return None
+
+    user_agent_lower = user_agent.lower()
+
+    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
+        return UserAgentSyntheticTypeValues.TEST.value
+    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
+        return UserAgentSyntheticTypeValues.BOT.value
+
+    return None

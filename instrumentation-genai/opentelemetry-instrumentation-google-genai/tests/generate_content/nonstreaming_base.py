@@ -17,10 +17,9 @@ import unittest
 from unittest.mock import patch
 
 import pytest
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, Part
 from pydantic import BaseModel, Field
 
-from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -183,6 +182,57 @@ class NonStreamingTestCase(TestCase):
 
     @patch.dict(
         "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text(self):
+        config = GenerateContentConfig(
+            system_instruction=["help", "me please."]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text_parts(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_text(text="help"),
+                Part.from_text(text="me please."),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_is_invalid(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_uri(file_uri="test.jpg"),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_does_not_have_event_named("gen_ai.system.message")
+
+    @patch.dict(
+        "os.environ",
         {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false"},
     )
     def test_does_not_record_system_prompt_as_log_if_disabled_by_env(self):
@@ -324,7 +374,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes,
                         )
                     else:
-                        attrs = {
+                        expected_event_attributes = {
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
                                 {
                                     "role": "user",
@@ -346,15 +396,11 @@ class NonStreamingTestCase(TestCase):
                                 {"content": sys_instr, "type": "text"},
                             ),
                         }
-                        expected_event = Event(
-                            "gen_ai.client.inference.operation.details",
-                            attributes=attrs,
-                        )
                         self.assertEqual(
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
                         )
@@ -362,7 +408,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
                         )
@@ -370,7 +416,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
