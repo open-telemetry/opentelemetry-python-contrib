@@ -26,6 +26,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 
@@ -62,6 +63,28 @@ def get_content_capturing_mode() -> ContentCapturingMode:
             ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
+
+
+def should_emit_event() -> bool:
+    """Check if event emission is enabled.
+
+    Returns True if event emission is enabled, False otherwise.
+    Defaults to False if the environment variable is not set.
+    """
+    envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT)
+    if not envvar:
+        return False
+    envvar_lower = envvar.lower()
+    if envvar_lower == "true":
+        return True
+    if envvar_lower == "false":
+        return False
+    logger.warning(
+        "%s is not a valid option for `%s` environment variable. Must be one of true or false (case-insensitive). Defaulting to `false`.",
+        envvar,
+        OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
+    )
+    return False
 
 
 class _GenAiJsonEncoder(json.JSONEncoder):
