@@ -817,7 +817,7 @@ async def test_async_chat_completion_streaming_unsampled(
 
     assert logs[0].log_record.trace_id is not None
     assert logs[0].log_record.span_id is not None
-    assert logs[0].log_record.trace_flags == 0
+    assert not logs[0].log_record.trace_flags.sampled
 
     assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
     assert logs[0].log_record.span_id == logs[1].log_record.span_id
