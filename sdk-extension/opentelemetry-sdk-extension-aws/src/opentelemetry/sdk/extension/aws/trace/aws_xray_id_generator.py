@@ -77,10 +77,12 @@ class AwsXRayIdGenerator(IdGenerator):
     def generate_span_id(self) -> int:
         return self.random_id_generator.generate_span_id()
 
+    # pylint: disable=no-self-use
     def generate_trace_id(self) -> int:
         trace_time = int(time.time())
         trace_identifier = random.getrandbits(96)
         return (trace_time << 96) + trace_identifier
 
+    # pylint: disable=no-self-use
     def is_trace_id_random(self) -> bool:
         return True

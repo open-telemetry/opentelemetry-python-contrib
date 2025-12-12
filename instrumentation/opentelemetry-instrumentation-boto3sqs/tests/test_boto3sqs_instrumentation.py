@@ -230,7 +230,9 @@ class TestBoto3SQSInstrumentation(TestBase):
         }
 
     @staticmethod
-    def _to_trace_parent(trace_id: int, span_id: int, trace_flags: TraceFlags) -> str:
+    def _to_trace_parent(
+        trace_id: int, span_id: int, trace_flags: TraceFlags
+    ) -> str:
         return f"00-{format_trace_id(trace_id)}-{format_span_id(span_id)}-{trace_flags:02x}".lower()
 
     def _get_only_span(self):
@@ -254,7 +256,9 @@ class TestBoto3SQSInstrumentation(TestBase):
         self, message: Dict[str, Any], trace_id: int, span_id: int
     ):
         message["MessageAttributes"]["traceparent"] = {
-            "StringValue": self._to_trace_parent(trace_id, span_id, TraceFlags.get_default()),
+            "StringValue": self._to_trace_parent(
+                trace_id, span_id, TraceFlags.get_default()
+            ),
             "DataType": "String",
         }
 
