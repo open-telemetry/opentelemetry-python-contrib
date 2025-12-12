@@ -70,9 +70,6 @@ from opentelemetry._logs import (
     get_logger,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAI,
-)
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
     Span,
@@ -141,7 +138,7 @@ class TelemetryHandler:
         """Start an LLM invocation and create a pending span entry."""
         # Create a span and attach it as current; keep the token to detach later
         span = self._tracer.start_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}",
+            name=f"{invocation.operation_name} {invocation.request_model}",
             kind=SpanKind.CLIENT,
         )
         # Record a monotonic start timestamp (seconds) for duration
