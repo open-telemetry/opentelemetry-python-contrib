@@ -73,17 +73,10 @@ from .views import (
     traced_template,
 )
 
-DJANGO_2_0 = VERSION >= (2, 0)
 DJANGO_2_2 = VERSION >= (2, 2)
 DJANGO_3_0 = VERSION >= (3, 0)
 
-if DJANGO_2_0:
-    from django.urls import path, re_path
-else:
-    from django.conf.urls import url as re_path
-
-    def path(path_argument, *args, **kwargs):
-        return re_path(rf"^{path_argument}$", *args, **kwargs)
+from django.urls import path, re_path
 
 
 urlpatterns = [
@@ -161,10 +154,7 @@ class TestMiddleware(WsgiTestBase):
 
     def test_middleware_added_at_position(self):
         _django_instrumentor.uninstrument()
-        if DJANGO_2_0:
-            middleware = conf.settings.MIDDLEWARE
-        else:
-            middleware = conf.settings.MIDDLEWARE_CLASSES
+        middleware = conf.settings.MIDDLEWARE
         # adding two dummy middlewares
         temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
         middleware.append(temprory_middelware)
@@ -181,10 +171,7 @@ class TestMiddleware(WsgiTestBase):
 
     def test_middleware_added_at_position_if_wrong_position(self):
         _django_instrumentor.uninstrument()
-        if DJANGO_2_0:
-            middleware = conf.settings.MIDDLEWARE
-        else:
-            middleware = conf.settings.MIDDLEWARE_CLASSES
+        middleware = conf.settings.MIDDLEWARE
         # adding middleware
         temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
         middleware.append(temprory_middelware)
