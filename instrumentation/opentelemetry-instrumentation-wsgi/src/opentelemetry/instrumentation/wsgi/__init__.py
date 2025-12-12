@@ -221,6 +221,7 @@ import functools
 import wsgiref.util as wsgiref_util
 from timeit import default_timer
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, TypeVar, cast
+from urllib.parse import quote
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
@@ -376,7 +377,27 @@ def collect_request_attributes(
     else:
         # old semconv v1.20.0
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_URL] = redact_url(wsgiref_util.request_uri(environ))
+            path_info = environ.get("PATH_INFO", "")
+            try:
+                result[HTTP_URL] = redact_url(
+                    wsgiref_util.request_uri(environ)
+                )
+            except UnicodeEncodeError as e:
+                url = wsgiref_util.application_uri(environ)
+                path = environ.get("PATH_INFO", "")
+                # Taken from repercent_broken_unicode function in django/utils/encoding
+                repercent = quote(
+                    path[e.start : e.end], safe=b"/#%[]=:;$&()+,!?*@'~"
+                )
+                path = path[: e.start] + repercent.encode().decode()
+                # Most of this taken directly from original wsgiref library https://github.com/python/cpython/blob/bbe589f93ccaf32eb95fd9d1f8f3dc9a536e8db1/Lib/wsgiref/util.py#L61
+                if not environ.get("SCRIPT_NAME"):
+                    url += path[1:]
+                else:
+                    url += path
+                if environ.get("QUERY_STRING"):
+                    url += "?" + environ["QUERY_STRING"]
+                result[HTTP_URL] = url
 
     remote_addr = environ.get("REMOTE_ADDR")
     if remote_addr:
