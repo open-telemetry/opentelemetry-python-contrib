@@ -252,6 +252,7 @@ def test_chat_completion_extra_params(
     messages_value = [{"role": "user", "content": "Say this is a test"}]
 
     response = openai_client.chat.completions.create(
+        n=2,
         messages=messages_value,
         model=llm_model_value,
         seed=42,
@@ -260,6 +261,7 @@ def test_chat_completion_extra_params(
         stream=False,
         extra_body={"service_tier": "default"},
         response_format={"type": "text"},
+        stop=["full", "stop"],
     )
 
     spans = span_exporter.get_finished_spans()
@@ -290,6 +292,68 @@ def test_chat_completion_extra_params(
         ]
         == "text"
     )
+    assert spans[0].attributes[
+        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES
+    ] == ("full", "stop")
+    assert (
+        spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] == 2
+    )
+
+
+@pytest.mark.vcr()
+def test_chat_completion_n_1_is_not_reported(
+    span_exporter, openai_client, instrument_no_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = openai_client.chat.completions.create(
+        n=1,
+        messages=messages_value,
+        model=llm_model_value,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+        response_service_tier=getattr(response, "service_tier", None),
+    )
+    assert (
+        GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT not in spans[0].attributes
+    )
+
+
+@pytest.mark.vcr()
+def test_chat_completion_handle_stop_sequences_as_string(
+    span_exporter, openai_client, instrument_no_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+
+    response = openai_client.chat.completions.create(
+        messages=messages_value,
+        model=llm_model_value,
+        stop="stop",
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+        response_service_tier=getattr(response, "service_tier", None),
+    )
+    assert spans[0].attributes[
+        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES
+    ] == ("stop",)
 
 
 @pytest.mark.vcr()
@@ -311,6 +375,10 @@ def test_chat_completion_multiple_choices(
         response.model,
         response.usage.prompt_tokens,
         response.usage.completion_tokens,
+    )
+
+    assert (
+        spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] == 2
     )
 
     logs = log_exporter.get_finished_logs()
