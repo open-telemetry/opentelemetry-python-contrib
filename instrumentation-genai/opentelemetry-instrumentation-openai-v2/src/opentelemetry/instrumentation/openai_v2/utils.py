@@ -194,6 +194,8 @@ def get_llm_request_attributes(
     client_instance,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
+    # pylint: disable=too-many-branches
+
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
