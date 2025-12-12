@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-sdk-extension-aws`: Update xray trace id generator for 'random-trace-id' flags compatibility 
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
+
 ### Fixed
 
 - `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
