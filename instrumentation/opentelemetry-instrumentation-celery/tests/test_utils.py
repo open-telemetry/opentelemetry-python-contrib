@@ -55,7 +55,8 @@ class TestUtils(unittest.TestCase):
             "44b7f305",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION), "celery"
+            span.attributes.get(SpanAttributes.MESSAGING_DESTINATION),
+            "celery",
         )
 
         self.assertEqual(
