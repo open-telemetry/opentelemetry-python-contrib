@@ -279,6 +279,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
     redact_url,
     sanitize_method,
 )
@@ -412,14 +413,7 @@ def collect_request_attributes(
             result, remote_host, sem_conv_opt_in_mode
         )
 
-    user_agent = environ.get("HTTP_USER_AGENT")
-    if user_agent is not None and len(user_agent) > 0:
-        _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
-
-        # Check for synthetic user agent type
-        synthetic_type = detect_synthetic_user_agent(user_agent)
-        if synthetic_type:
-            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+    _apply_user_agent_attributes(result, environ, sem_conv_opt_in_mode)
 
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
@@ -428,6 +422,25 @@ def collect_request_attributes(
         _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
     return result
+
+
+def _apply_user_agent_attributes(
+    result: dict[str, str | None],
+    environ: WSGIEnvironment,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    user_agent_raw = environ.get("HTTP_USER_AGENT")
+    if not user_agent_raw:
+        return
+
+    user_agent = normalize_user_agent(user_agent_raw)
+    if not user_agent:
+        return
+
+    _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
+    synthetic_type = detect_synthetic_user_agent(user_agent)
+    if synthetic_type:
+        result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
 
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):

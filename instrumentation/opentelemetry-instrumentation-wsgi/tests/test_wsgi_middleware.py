@@ -795,6 +795,13 @@ class TestWsgiAttributes(unittest.TestCase):
             expected_new.items(),
         )
 
+    def test_http_user_agent_bytes_like_attribute(self):
+        self.environ["HTTP_USER_AGENT"] = b"AlwaysOn-Monitor/1.0"
+        attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+        self.assertEqual(attributes[HTTP_USER_AGENT], "AlwaysOn-Monitor/1.0")
+        self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "test")
+
     def test_http_user_agent_synthetic_bot_detection(self):
         """Test that bot user agents are detected as synthetic with type 'bot'"""
         test_cases = [
