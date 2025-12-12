@@ -253,11 +253,12 @@ def get_llm_request_attributes(
     ):
         # Add embedding dimensions if specified
         if (dimensions := kwargs.get("dimensions")) is not None:
+            # TODO: move to GEN_AI_EMBEDDINGS_DIMENSION_COUNT when 1.39.0 is baseline
             attributes["gen_ai.embeddings.dimension.count"] = dimensions
 
         # Add encoding format if specified
         if "encoding_format" in kwargs:
-            attributes["gen_ai.request.encoding_formats"] = [
+            attributes[GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS] = [
                 kwargs["encoding_format"]
             ]
 
