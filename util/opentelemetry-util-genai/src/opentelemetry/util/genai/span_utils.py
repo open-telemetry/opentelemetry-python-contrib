@@ -67,7 +67,7 @@ def _get_llm_common_attributes(
 
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
     """Get the span name for an LLM invocation."""
-    return f"{GenAI.GenAiOperationNameValues.CHAT.value} {invocation.request_model}".strip()
+    return f"{invocation.operation_name} {invocation.request_model}".strip()
 
 
 def _get_llm_messages_attributes_for_span(
