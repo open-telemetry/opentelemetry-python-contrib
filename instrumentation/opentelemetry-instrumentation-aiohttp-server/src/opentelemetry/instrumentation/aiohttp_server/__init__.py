@@ -457,7 +457,7 @@ class _InstrumentedApplication(web.Application):
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for aiohttp.web.Application
 
     See `BaseInstrumentor`
