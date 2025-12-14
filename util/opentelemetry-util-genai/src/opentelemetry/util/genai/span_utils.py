@@ -54,9 +54,7 @@ def _get_llm_common_attributes(
     Returns a dictionary of attributes.
     """
     attributes: dict[str, Any] = {}
-    attributes[GenAI.GEN_AI_OPERATION_NAME] = (
-        GenAI.GenAiOperationNameValues.CHAT.value
-    )
+    attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
     if invocation.request_model:
         attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
     if invocation.provider is not None:

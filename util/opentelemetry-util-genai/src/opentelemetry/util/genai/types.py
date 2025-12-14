@@ -22,11 +22,10 @@ from typing import Any, Literal, Type, Union
 from typing_extensions import TypeAlias
 
 from opentelemetry.context import Context
-from opentelemetry.trace import Span
-
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.trace import Span
 
 ContextToken: TypeAlias = Token[Context]
 
