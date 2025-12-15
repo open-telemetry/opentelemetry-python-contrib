@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix `AttributeError` when handling `LegacyAPIResponse` (from `with_raw_response`)
+  ([#4002](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4002))
+
 ## Version 2.2b0 (2025-11-25)
 
 - Fix service tier attribute names: use `GEN_AI_OPENAI_REQUEST_SERVICE_TIER` for request
