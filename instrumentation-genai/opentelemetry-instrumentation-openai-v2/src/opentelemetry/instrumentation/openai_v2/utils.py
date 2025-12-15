@@ -225,6 +225,7 @@ def get_llm_request_attributes(
         )
 
         if (choice_count := kwargs.get("n")) is not None:
+            # Only add non default, meaningful values
             if isinstance(choice_count, int) and choice_count != 1:
                 attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
                     choice_count
