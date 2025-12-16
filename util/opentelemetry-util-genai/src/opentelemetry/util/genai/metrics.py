@@ -69,8 +69,8 @@ class InvocationMetricsRecorder:
         duration_seconds: Optional[float] = None
         if invocation.monotonic_start_s is not None:  # pyright: ignore[reportUnknownMemberType,reportAttributeAccessIssue]
             duration_seconds = max(
-                timeit.default_timer() - invocation.monotonic_start_s,
-                0.0,  # pyright: ignore[reportUnknownMemberType,reportAttributeAccessIssue,reportUnknownArgumentType]
+                timeit.default_timer() - invocation.monotonic_start_s,  # pyright: ignore[reportUnknownMemberType,reportAttributeAccessIssue,reportUnknownArgumentType]
+                0.0,
             )
 
         span_context = set_span_in_context(span)

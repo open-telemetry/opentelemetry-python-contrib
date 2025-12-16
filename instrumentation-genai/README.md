@@ -1,7 +1,7 @@
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
-| [opentelemetry-instrumentation-anthropic](./opentelemetry-instrumentation-anthropic) | anthropic >= 0.3.0 | No | development
+| [opentelemetry-instrumentation-anthropic](./opentelemetry-instrumentation-anthropic) | anthropic >= 0.27.0 | No | development
 | [opentelemetry-instrumentation-google-genai](./opentelemetry-instrumentation-google-genai) | google-genai >= 1.0.0 | No | development
 | [opentelemetry-instrumentation-langchain](./opentelemetry-instrumentation-langchain) | langchain >= 0.3.21 | No | development
 | [opentelemetry-instrumentation-openai-agents-v2](./opentelemetry-instrumentation-openai-agents-v2) | openai-agents >= 0.3.3 | No | development
