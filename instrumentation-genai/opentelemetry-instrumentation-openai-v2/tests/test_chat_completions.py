@@ -276,9 +276,7 @@ def test_chat_completion_extra_params(
         request_service_tier="default",
         response_service_tier=getattr(response, "service_tier", None),
     )
-    assert (
-        spans[0].attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED] == 42
-    )
+    assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] == 42
     assert (
         spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.5
     )
