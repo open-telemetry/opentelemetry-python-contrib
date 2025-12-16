@@ -17,6 +17,7 @@
 import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
 
+from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -78,11 +79,11 @@ def assert_span_attributes(
         )
 
     if finish_reasons is not None:
-            # OpenTelemetry converts lists to tuples when storing as attributes
-            assert (
-                tuple(finish_reasons)
-                == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS]
-            )
+        # OpenTelemetry converts lists to tuples when storing as attributes
+        assert (
+            tuple(finish_reasons)
+            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS]
+        )
 
 
 @pytest.mark.vcr()
@@ -121,7 +122,7 @@ def test_sync_messages_create_with_all_params(
     model = "claude-3-5-sonnet-20241022"
     messages = [{"role": "user", "content": "Say hello."}]
 
-    response = anthropic_client.messages.create(
+    anthropic_client.messages.create(
         model=model,
         max_tokens=50,
         messages=messages,
@@ -134,8 +135,6 @@ def test_sync_messages_create_with_all_params(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
-
-    # Check optional request attributes
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == 50
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.7
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] == 0.9
@@ -255,8 +254,6 @@ def test_uninstrument_removes_patching(
     span_exporter, tracer_provider, logger_provider, meter_provider
 ):
     """Test that uninstrument() removes the patching."""
-    from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
-
     instrumentor = AnthropicInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -278,8 +275,6 @@ def test_multiple_instrument_uninstrument_cycles(
     tracer_provider, logger_provider, meter_provider
 ):
     """Test that multiple instrument/uninstrument cycles work correctly."""
-    from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
-
     instrumentor = AnthropicInstrumentor()
 
     # First cycle
@@ -305,4 +300,3 @@ def test_multiple_instrument_uninstrument_cycles(
         meter_provider=meter_provider,
     )
     instrumentor.uninstrument()
-

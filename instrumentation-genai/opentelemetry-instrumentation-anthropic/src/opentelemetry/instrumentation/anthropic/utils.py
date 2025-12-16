@@ -81,7 +81,7 @@ def get_llm_request_attributes(
     """Extract LLM request attributes from kwargs."""
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
         GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
         GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),

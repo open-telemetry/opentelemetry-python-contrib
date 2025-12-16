@@ -134,7 +134,7 @@ class TelemetryHandler:
         )
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
-        invocation.monotonic_start_s = timeit.default_timer()
+        invocation.monotonic_start_s = timeit.default_timer()  # pyright: ignore[reportAttributeAccessIssue]
         invocation.span = span
         invocation.context_token = otel_context.attach(
             set_span_in_context(span)

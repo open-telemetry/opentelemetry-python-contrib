@@ -49,10 +49,14 @@ API
 
 from typing import Any, Collection
 
-from wrapt import wrap_function_wrapper
+from wrapt import (
+    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
+)
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
-from opentelemetry.instrumentation.anthropic.patch import messages_create
+from opentelemetry.instrumentation.anthropic.patch import (
+    messages_create,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownVariableType]
+)
 from opentelemetry.instrumentation.anthropic.utils import is_content_enabled
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
@@ -128,7 +132,7 @@ class AnthropicInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="Messages.create",
-            wrapper=messages_create(tracer, is_content_enabled()),
+            wrapper=messages_create(tracer, is_content_enabled()),  # pyright: ignore[reportUnknownArgumentType]
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -138,4 +142,7 @@ class AnthropicInstrumentor(BaseInstrumentor):
         """
         import anthropic  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
-        unwrap(anthropic.resources.messages.Messages, "create")
+        unwrap(
+            anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "create",
+        )

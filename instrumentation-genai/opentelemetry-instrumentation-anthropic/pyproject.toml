@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "anthropic >= 0.3.0",
+  "anthropic >= 0.27.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]

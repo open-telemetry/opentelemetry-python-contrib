@@ -1,4 +1,4 @@
-anthropic~=0.3.0
+anthropic>=0.27.0
 opentelemetry-sdk~=1.36.0
 opentelemetry-instrumentation-anthropic #TODO: update to 2.1b0 when released
 opentelemetry-exporter-otlp-proto-grpc~=1.36.0
