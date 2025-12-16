@@ -49,8 +49,13 @@ API
 
 from typing import Any, Collection
 
+from wrapt import wrap_function_wrapper
+
 from opentelemetry.instrumentation.anthropic.package import _instruments
+from opentelemetry.instrumentation.anthropic.patch import messages_create
+from opentelemetry.instrumentation.anthropic.utils import is_content_enabled
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
 
 
@@ -119,11 +124,18 @@ class AnthropicInstrumentor(BaseInstrumentor):
         self._logger = logger
         self._meter = meter
 
-        # Patching will be added in Ticket 3
+        # Patch Messages.create
+        wrap_function_wrapper(
+            module="anthropic.resources.messages",
+            name="Messages.create",
+            wrapper=messages_create(tracer, is_content_enabled()),
+        )
 
     def _uninstrument(self, **kwargs: Any) -> None:
         """Disable Anthropic instrumentation.
 
         This removes all patches applied during instrumentation.
         """
-        # Unpatching will be added in Ticket 3
+        import anthropic  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+
+        unwrap(anthropic.resources.messages.Messages, "create")

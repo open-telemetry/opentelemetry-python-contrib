@@ -1,0 +1,60 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hello"
+          }
+        ],
+        "model": "invalid-model-name"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '110'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python
+      x-api-key:
+      - test_anthropic_api_key
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "type": "error",
+          "error": {
+            "type": "not_found_error",
+            "message": "model: invalid-model-name"
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 15 Dec 2024 10:00:04 GMT
+      Server:
+      - cloudflare
+      content-length:
+      - '105'
+    status:
+      code: 404
+      message: Not Found
+version: 1
+
