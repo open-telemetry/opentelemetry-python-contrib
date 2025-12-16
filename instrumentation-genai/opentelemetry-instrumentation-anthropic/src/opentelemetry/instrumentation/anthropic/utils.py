@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from os import environ
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -28,6 +29,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
+from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
@@ -43,18 +45,20 @@ def is_content_enabled() -> bool:
     return capture_content.lower() == "true"
 
 
-def set_server_address_and_port(client_instance, attributes):
+def set_server_address_and_port(
+    client_instance: Any, attributes: dict[str, Any]
+) -> None:
     """Extract server address and port from the Anthropic client instance."""
     base_client = getattr(client_instance, "_client", None)
     base_url = getattr(base_client, "base_url", None)
     if not base_url:
         return
 
-    port = -1
+    port: Optional[int] = None
     if hasattr(base_url, "host"):
         # httpx.URL object
         attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
-        port = base_url.port
+        port = getattr(base_url, "port", None)
     elif isinstance(base_url, str):
         url = urlparse(base_url)
         attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
@@ -64,14 +68,16 @@ def set_server_address_and_port(client_instance, attributes):
         attributes[ServerAttributes.SERVER_PORT] = port
 
 
-def set_span_attribute(span, name, value):
+def set_span_attribute(span: Span, name: str, value: Any) -> None:
     """Set a span attribute if the value is not None."""
     if value is None:
         return
     span.set_attribute(name, value)
 
 
-def get_llm_request_attributes(kwargs, client_instance):
+def get_llm_request_attributes(
+    kwargs: dict[str, Any], client_instance: Any
+) -> dict[str, Any]:
     """Extract LLM request attributes from kwargs."""
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
@@ -92,7 +98,7 @@ def get_llm_request_attributes(kwargs, client_instance):
     return {k: v for k, v in attributes.items() if v is not None}
 
 
-def handle_span_exception(span, error):
+def handle_span_exception(span: Span, error: Exception) -> None:
     """Handle an exception by setting span status and error attributes."""
     span.set_status(Status(StatusCode.ERROR, str(error)))
     if span.is_recording():
@@ -100,4 +106,3 @@ def handle_span_exception(span, error):
             ErrorAttributes.ERROR_TYPE, type(error).__qualname__
         )
     span.end()
-

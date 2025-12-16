@@ -14,10 +14,12 @@
 
 """Patching functions for Anthropic instrumentation."""
 
+from typing import Any, Callable
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.trace import Span, SpanKind, Tracer
 
 from .utils import (
     get_llm_request_attributes,
@@ -28,11 +30,16 @@ from .utils import (
 
 def messages_create(
     tracer: Tracer,
-    capture_content: bool,
-):
+    _capture_content: bool,
+) -> Callable[..., Any]:
     """Wrap the `create` method of the `Messages` class to trace it."""
 
-    def traced_method(wrapped, instance, args, kwargs):
+    def traced_method(
+        wrapped: Callable[..., Any],
+        instance: Any,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Any:
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
@@ -58,7 +65,7 @@ def messages_create(
     return traced_method
 
 
-def _set_response_attributes(span, result):
+def _set_response_attributes(span: Span, result: Any) -> None:
     """Set span attributes from the Anthropic response."""
     if getattr(result, "model", None):
         set_span_attribute(
