@@ -64,7 +64,7 @@ Enabling experimental semconvs
 ******************************
 
 Set the environment variable `OTEL_SEMCONV_STABILITY_OPT_IN` to `gen_ai_latest_experimental` to 
-emit the latest experimental version of GenAI conventions and do not emit the old ones (v1.36.0 or prior).
+emit the latest experimental version of GenAI conventions and to not emit the ones at v1.36.0 or prior.
 
 Enabling message content
 *************************
