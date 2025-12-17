@@ -219,6 +219,7 @@ from typing import Any, Awaitable, Callable, DefaultDict, Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
+
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -288,7 +289,9 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_SERVER_NAME,
+)
 
 class ASGIGetter(Getter[dict]):
     def get(
@@ -397,7 +400,7 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
+           result[HTTP_SERVER_NAME] = ",".join(
                 http_host_value_list
             )
     http_user_agent = asgi_getter.get(scope, "user-agent")
