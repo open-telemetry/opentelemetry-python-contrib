@@ -23,6 +23,9 @@ from opentelemetry.instrumentation.openai_v2.responses import (
     output_to_event,
     responses_input_to_event,
 )
+from opentelemetry.instrumentation.openai_v2.responses_patch import (
+    _log_responses_inputs,
+)
 
 
 @dataclass
@@ -36,6 +39,14 @@ class OutputItemMock:
     role: Optional[str] = None
     content: Any = None
     arguments: Optional[str] = None
+
+
+class _CapturingLogger:
+    def __init__(self) -> None:
+        self.emitted: list[Any] = []
+
+    def emit(self, record: Any) -> None:
+        self.emitted.append(record)
 
 
 @pytest.mark.parametrize(
@@ -150,6 +161,24 @@ def test_string_input_does_not_crash():
         responses_input_to_event("Hello world", capture_content=False)
         is not None
     )
+
+
+def test_responses_create_input_none_is_noop_for_logging():
+    logger = _CapturingLogger()
+
+    _log_responses_inputs(logger, {"input": None}, capture_content=True)
+    _log_responses_inputs(logger, {"input": None}, capture_content=False)
+
+    assert logger.emitted == []
+
+
+def test_responses_create_input_omitted_is_noop_for_logging():
+    logger = _CapturingLogger()
+
+    _log_responses_inputs(logger, {}, capture_content=True)
+    _log_responses_inputs(logger, {}, capture_content=False)
+
+    assert logger.emitted == []
 
 
 @pytest.mark.parametrize(
