@@ -15,9 +15,11 @@
 """Resilience tests for Responses input/output conversion helpers."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pytest
+from openai.types.responses import ResponseOutputItem
+from openai.types.responses import ResponseInputItemParam
 
 from opentelemetry.instrumentation.openai_v2.responses import (
     output_to_event,
@@ -26,6 +28,7 @@ from opentelemetry.instrumentation.openai_v2.responses import (
 from opentelemetry.instrumentation.openai_v2.responses_patch import (
     _log_responses_inputs,
 )
+from opentelemetry._logs import Logger
 
 
 @dataclass
@@ -47,6 +50,13 @@ class _CapturingLogger:
 
     def emit(self, record: Any) -> None:
         self.emitted.append(record)
+
+
+def _as_output_item(value: Any) -> ResponseOutputItem:
+    # These tests intentionally pass minimal "shape-only" objects to exercise
+    # resilience for new/unknown output types. Cast keeps type-checkers happy
+    # without weakening the production signature.
+    return cast(ResponseOutputItem, value)
 
 
 @pytest.mark.parametrize(
@@ -145,10 +155,16 @@ class _CapturingLogger:
 def test_input_type_handler_does_not_crash(input_data):
     """Each known input type should be processed without exceptions."""
     assert (
-        responses_input_to_event(input_data, capture_content=True) is not None
+        responses_input_to_event(
+            cast(ResponseInputItemParam, input_data), capture_content=True
+        )
+        is not None
     )
     assert (
-        responses_input_to_event(input_data, capture_content=False) is not None
+        responses_input_to_event(
+            cast(ResponseInputItemParam, input_data), capture_content=False
+        )
+        is not None
     )
 
 
@@ -166,19 +182,19 @@ def test_string_input_does_not_crash():
 def test_responses_create_input_none_is_noop_for_logging():
     logger = _CapturingLogger()
 
-    _log_responses_inputs(logger, {"input": None}, capture_content=True)
-    _log_responses_inputs(logger, {"input": None}, capture_content=False)
+    _log_responses_inputs(cast(Logger, logger), {"input": None}, capture_content=True)
+    _log_responses_inputs(cast(Logger, logger), {"input": None}, capture_content=False)
 
-    assert logger.emitted == []
+    assert not logger.emitted
 
 
 def test_responses_create_input_omitted_is_noop_for_logging():
     logger = _CapturingLogger()
 
-    _log_responses_inputs(logger, {}, capture_content=True)
-    _log_responses_inputs(logger, {}, capture_content=False)
+    _log_responses_inputs(cast(Logger, logger), {}, capture_content=True)
+    _log_responses_inputs(cast(Logger, logger), {}, capture_content=False)
 
-    assert logger.emitted == []
+    assert not logger.emitted
 
 
 @pytest.mark.parametrize(
@@ -204,7 +220,9 @@ def test_responses_create_input_omitted_is_noop_for_logging():
 )
 def test_unexpected_input_does_not_crash(unexpected_input):
     # Should not raise
-    responses_input_to_event(unexpected_input, capture_content=True)
+    responses_input_to_event(
+        cast(ResponseInputItemParam, unexpected_input), capture_content=True
+    )
 
 
 def test_deeply_nested_content_does_not_crash():
@@ -222,7 +240,9 @@ def test_deeply_nested_content_does_not_crash():
         ],
     }
     assert (
-        responses_input_to_event(nested_input, capture_content=True)
+        responses_input_to_event(
+            cast(ResponseInputItemParam, nested_input), capture_content=True
+        )
         is not None
     )
 
@@ -240,10 +260,13 @@ def test_future_union_types_are_best_effort():
         "name": "some_tool",
         "arguments": {"x": 1},
     }
-    event = responses_input_to_event(future_call, capture_content=True)
+    event = responses_input_to_event(
+        cast(ResponseInputItemParam, future_call), capture_content=True
+    )
     assert event is not None
     assert event.event_name == "gen_ai.assistant.input"
-    assert event.body and event.body.get("type") == "future_provider_tool_call"
+    body: Any = event.body
+    assert body and body.get("type") == "future_provider_tool_call"
 
     # New tool call output (tool -> model): routed by `*_call_output`
     future_call_output = {
@@ -251,10 +274,13 @@ def test_future_union_types_are_best_effort():
         "call_id": "call_123",
         "output": "ok",
     }
-    event = responses_input_to_event(future_call_output, capture_content=True)
+    event = responses_input_to_event(
+        cast(ResponseInputItemParam, future_call_output), capture_content=True
+    )
     assert event is not None
     assert event.event_name == "gen_ai.tool.input"
-    assert event.body and event.body.get("id") == "call_123"
+    body = event.body
+    assert body and body.get("id") == "call_123"
 
     # Another output naming style: routed by `*_output`
     future_output_alt = {
@@ -262,7 +288,9 @@ def test_future_union_types_are_best_effort():
         "id": "id_999",
         "output": [{"type": "text", "text": "ok"}],
     }
-    event = responses_input_to_event(future_output_alt, capture_content=True)
+    event = responses_input_to_event(
+        cast(ResponseInputItemParam, future_output_alt), capture_content=True
+    )
     assert event is not None
     assert event.event_name == "gen_ai.tool.input"
 
@@ -279,8 +307,14 @@ def test_message_output_does_not_crash():
         content = [ContentPart()]
         index = 0
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
-    assert output_to_event(MockOutput(), capture_content=False) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=False)
+        is not None
+    )
 
 
 def test_function_call_output_does_not_crash():
@@ -292,7 +326,10 @@ def test_function_call_output_does_not_crash():
         status = "completed"
         index = 0
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )
 
 
 def test_reasoning_output_does_not_crash():
@@ -306,7 +343,10 @@ def test_reasoning_output_does_not_crash():
         status = "completed"
         summary = [Part()]
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )
 
 
 @pytest.mark.parametrize(
@@ -328,7 +368,7 @@ def test_tool_call_outputs_do_not_crash(output_type):
         name="tool_name",
         status="completed",
     )
-    assert output_to_event(mock, capture_content=True) is not None  # type: ignore[arg-type]
+    assert output_to_event(_as_output_item(mock), capture_content=True) is not None
 
 
 def test_unknown_output_type_does_not_crash():
@@ -337,14 +377,20 @@ def test_unknown_output_type_does_not_crash():
         id = "id_123"
         status = "completed"
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )
 
 
 def test_minimal_output_does_not_crash():
     class MockOutput:
         type = "message"
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )
 
 
 def test_output_with_none_values_does_not_crash():
@@ -355,4 +401,7 @@ def test_output_with_none_values_does_not_crash():
         content = None
         index = None
 
-    assert output_to_event(MockOutput(), capture_content=True) is not None  # type: ignore[arg-type]
+    assert (
+        output_to_event(_as_output_item(MockOutput()), capture_content=True)
+        is not None
+    )

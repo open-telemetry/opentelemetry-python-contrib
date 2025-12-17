@@ -74,7 +74,7 @@ def test_responses_basic_with_content(
     # First log should be the input message
     input_log = logs[0]
     assert input_log.log_record.event_name == "gen_ai.user.input"
-    assert input_log.log_record.body["content"] == input_text  # type: ignore[index]
+    assert input_log.log_record.body["content"] == input_text
     assert_log_parent(input_log, span)
 
     output_logs = [

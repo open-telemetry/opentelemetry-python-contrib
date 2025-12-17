@@ -15,10 +15,9 @@
 
 import asyncio
 import inspect
+from collections.abc import AsyncIterator, Iterator
 from timeit import default_timer
-from typing import Any, Optional
-
-from openai import Stream
+from typing import Any, Optional, cast
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import get_current
@@ -537,7 +536,7 @@ class StreamWrapper:
 
     def __init__(
         self,
-        stream: Stream,
+        stream: Iterator[Any] | AsyncIterator[Any],
         span: Span,
         logger: Logger,
         capture_content: bool,
@@ -663,14 +662,18 @@ class StreamWrapper:
 
     def close(self):
         try:
-            close_result = self.stream.close()
+            close_fn = getattr(self.stream, "close", None)
+            if not callable(close_fn):
+                return
+
+            close_result = close_fn()
             if inspect.isawaitable(close_result):
                 try:
                     loop = asyncio.get_running_loop()
                 except RuntimeError:
-                    asyncio.run(close_result)
+                    asyncio.run(cast(Any, close_result))
                 else:
-                    loop.create_task(close_result)
+                    loop.create_task(cast(Any, close_result))
         finally:
             self.cleanup()
 
@@ -682,7 +685,7 @@ class StreamWrapper:
 
     def __next__(self):
         try:
-            chunk = next(self.stream)
+            chunk = next(cast(Iterator[Any], self.stream))
             self.process_chunk(chunk)
             return chunk
         except StopIteration:
@@ -695,7 +698,7 @@ class StreamWrapper:
 
     async def __anext__(self):
         try:
-            chunk = await self.stream.__anext__()  # type: ignore[attr-defined]
+            chunk = await anext(cast(AsyncIterator[Any], self.stream))
             self.process_chunk(chunk)
             return chunk
         except StopAsyncIteration:

@@ -276,7 +276,7 @@ class ResponsesStreamWrapper:
         context = set_span_in_context(self.span, get_current())
         self.logger.emit(
             LogRecord(
-                event_name="gen_ai.output",  # type: ignore[call-arg]
+                event_name="gen_ai.output",
                 attributes={
                     GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
                 },
@@ -340,7 +340,7 @@ class ResponsesStreamWrapper:
 
     async def __anext__(self):
         try:
-            event = await self.stream.__anext__()  # type: ignore[attr-defined]
+            event = await self.stream.__anext__()
             self._process_event(event)
             return event
         except StopAsyncIteration:

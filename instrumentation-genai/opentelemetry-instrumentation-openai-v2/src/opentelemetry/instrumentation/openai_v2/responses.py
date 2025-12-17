@@ -107,7 +107,7 @@ def _create_log_record(
     event_name: str, body: Mapping[str, Any] | None
 ) -> LogRecord:
     return LogRecord(
-        event_name=event_name,  # type: ignore[call-arg]
+        event_name=event_name,
         attributes=_GEN_AI_SYSTEM_ATTRIBUTES,
         body=dict(body) if body else None,
     )

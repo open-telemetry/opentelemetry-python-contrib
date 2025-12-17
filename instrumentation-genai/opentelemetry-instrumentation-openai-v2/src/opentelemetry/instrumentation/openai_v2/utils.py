@@ -173,7 +173,7 @@ def set_span_attributes(span, attributes):
     but tests may pass dicts or other lightweight objects.
     """
     if hasattr(attributes, "model_dump"):
-        for field, value in attributes.model_dump(by_alias=True).items():  # type: ignore[attr-defined]
+        for field, value in attributes.model_dump(by_alias=True).items():
             set_span_attribute(span, field, value)
         return
 
