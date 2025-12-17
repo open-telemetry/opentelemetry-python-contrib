@@ -25,6 +25,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 import pytest
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
@@ -1485,6 +1486,38 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(
             parent_span.context.span_id, span_list[3].context.span_id
         )
+
+
+class TestMiddlewareWrappedApplication(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.fastapi_app = fastapi.FastAPI()
+
+        @self.fastapi_app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        self.app = CORSMiddleware(self.fastapi_app, allow_origins=["*"])
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_instrumentation_with_existing_middleware(self):
+        resp = self.client.get("/foobar")
+        self.assertEqual(200, resp.status_code)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+        self.assertEqual(server_span.name, "GET /foobar")
 
 
 class TestFastAPIGarbageCollection(unittest.TestCase):
