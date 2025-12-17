@@ -40,6 +40,7 @@ API
 ---
 """
 
+import importlib
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -59,6 +60,12 @@ from .patch import (
     async_embeddings_create,
     chat_completions_create,
     embeddings_create,
+)
+from .responses_patch import (
+    async_responses_compact,
+    async_responses_create,
+    responses_compact,
+    responses_create,
 )
 
 
@@ -128,10 +135,56 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
-    def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        # Add instrumentation for the Responses API
+        wrap_function_wrapper(
+            module="openai.resources.responses",
+            name="Responses.create",
+            wrapper=responses_create(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
 
-        unwrap(openai.resources.chat.completions.Completions, "create")
-        unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
-        unwrap(openai.resources.embeddings.Embeddings, "create")
-        unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+        wrap_function_wrapper(
+            module="openai.resources.responses",
+            name="AsyncResponses.create",
+            wrapper=async_responses_create(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
+        # `Responses.compact` was added later in openai-python; guard so older
+        # supported versions don't fail instrumentation.
+        try:
+            wrap_function_wrapper(
+                module="openai.resources.responses",
+                name="Responses.compact",
+                wrapper=responses_compact(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+            wrap_function_wrapper(
+                module="openai.resources.responses",
+                name="AsyncResponses.compact",
+                wrapper=async_responses_compact(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+        except AttributeError:
+            pass
+
+    def _uninstrument(self, **kwargs):
+        chat_mod = importlib.import_module("openai.resources.chat.completions")
+        unwrap(chat_mod.Completions, "create")
+        unwrap(chat_mod.AsyncCompletions, "create")
+
+        embeddings_mod = importlib.import_module("openai.resources.embeddings")
+        unwrap(embeddings_mod.Embeddings, "create")
+        unwrap(embeddings_mod.AsyncEmbeddings, "create")
+
+        responses_mod = importlib.import_module("openai.resources.responses")
+        unwrap(responses_mod.Responses, "create")
+        unwrap(responses_mod.AsyncResponses, "create")
+        if hasattr(responses_mod.Responses, "compact"):
+            unwrap(responses_mod.Responses, "compact")
+        if hasattr(responses_mod.AsyncResponses, "compact"):
+            unwrap(responses_mod.AsyncResponses, "compact")

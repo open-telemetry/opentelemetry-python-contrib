@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import asyncio
+import inspect
 from timeit import default_timer
 from typing import Any, Optional
 
@@ -336,28 +338,39 @@ def _record_metrics(
     )
 
     if result and getattr(result, "usage", None):
-        # Always record input tokens
-        input_attributes = {
-            **common_attributes,
-            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
-        }
-        instruments.token_usage_histogram.record(
-            result.usage.prompt_tokens,
-            attributes=input_attributes,
+        # Get input tokens - Responses API uses input_tokens, Chat Completions uses prompt_tokens
+        input_tokens = getattr(result.usage, "input_tokens", None) or getattr(
+            result.usage, "prompt_tokens", None
         )
+
+        if input_tokens is not None:
+            input_attributes = {
+                **common_attributes,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+            }
+            instruments.token_usage_histogram.record(
+                input_tokens,
+                attributes=input_attributes,
+            )
 
         # For embeddings, don't record output tokens as all tokens are input tokens
         if (
             operation_name
             != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
         ):
-            output_attributes = {
-                **common_attributes,
-                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
-            }
-            instruments.token_usage_histogram.record(
-                result.usage.completion_tokens, attributes=output_attributes
-            )
+            # Get output tokens - Responses API uses output_tokens, Chat Completions uses completion_tokens
+            output_tokens = getattr(
+                result.usage, "output_tokens", None
+            ) or getattr(result.usage, "completion_tokens", None)
+
+            if output_tokens is not None:
+                output_attributes = {
+                    **common_attributes,
+                    GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+                }
+                instruments.token_usage_histogram.record(
+                    output_tokens, attributes=output_attributes
+                )
 
 
 def _set_response_attributes(
@@ -401,6 +414,50 @@ def _set_response_attributes(
             GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
             result.usage.completion_tokens,
         )
+
+
+def _set_responses_response_attributes(
+    span, result, logger: Logger, capture_content: bool
+):
+    """Set span attributes from a Responses API result."""
+    set_span_attribute(
+        span,
+        GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+        getattr(result, "model", None),
+    )
+
+    if getattr(result, "id", None):
+        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
+
+    # Responses API uses "output" instead of "choices", and "status" instead of "finish_reason"
+    if getattr(result, "output", None):
+        finish_reasons = []
+        for output_item in result.output:
+            status = getattr(output_item, "status", None)
+            finish_reasons.append(status or "error")
+        set_span_attribute(
+            span,
+            GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            finish_reasons,
+        )
+
+    # Get the usage - Responses API uses input_tokens/output_tokens
+    if getattr(result, "usage", None):
+        input_tokens = getattr(result.usage, "input_tokens", None)
+        if input_tokens is not None:
+            set_span_attribute(
+                span,
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                input_tokens,
+            )
+
+        output_tokens = getattr(result.usage, "output_tokens", None)
+        if output_tokens is not None:
+            set_span_attribute(
+                span,
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                output_tokens,
+            )
 
 
 def _set_embeddings_response_attributes(
@@ -539,7 +596,7 @@ class StreamWrapper:
                 )
 
             for idx, choice in enumerate(self.choice_buffers):
-                message = {"role": "assistant"}
+                message: dict[str, Any] = {"role": "assistant"}
                 if self.capture_content and choice.text_content:
                     message["content"] = "".join(choice.text_content)
                 if choice.tool_calls_buffers:
@@ -605,8 +662,17 @@ class StreamWrapper:
         return False  # Propagate the exception
 
     def close(self):
-        self.stream.close()
-        self.cleanup()
+        try:
+            close_result = self.stream.close()
+            if inspect.isawaitable(close_result):
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    asyncio.run(close_result)
+                else:
+                    loop.create_task(close_result)
+        finally:
+            self.cleanup()
 
     def __iter__(self):
         return self
@@ -629,7 +695,7 @@ class StreamWrapper:
 
     async def __anext__(self):
         try:
-            chunk = await self.stream.__anext__()
+            chunk = await self.stream.__anext__()  # type: ignore[attr-defined]
             self.process_chunk(chunk)
             return chunk
         except StopAsyncIteration:

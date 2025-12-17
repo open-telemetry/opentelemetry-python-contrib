@@ -165,9 +165,21 @@ def choice_to_event(choice, capture_content):
     )
 
 
-def set_span_attributes(span, attributes: dict):
-    for field, value in attributes.model_dump(by_alias=True).items():
-        set_span_attribute(span, field, value)
+def set_span_attributes(span, attributes):
+    """
+    Set span attributes from either a Pydantic model or a plain dict.
+
+    The OpenAI SDK returns Pydantic models for some objects (with `model_dump()`),
+    but tests may pass dicts or other lightweight objects.
+    """
+    if hasattr(attributes, "model_dump"):
+        for field, value in attributes.model_dump(by_alias=True).items():  # type: ignore[attr-defined]
+            set_span_attribute(span, field, value)
+        return
+
+    if isinstance(attributes, dict):
+        for field, value in attributes.items():
+            set_span_attribute(span, field, value)
 
 
 def set_span_attribute(span, name, value):
@@ -213,7 +225,8 @@ def get_llm_request_attributes(
                 or kwargs.get("top_p"),
                 GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get(
                     "max_tokens"
-                ),
+                )
+                or kwargs.get("max_output_tokens"),
                 GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
                     "presence_penalty"
                 ),
