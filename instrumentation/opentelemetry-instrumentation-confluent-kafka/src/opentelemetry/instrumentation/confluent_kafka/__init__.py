@@ -109,7 +109,10 @@ from confluent_kafka import Consumer, Producer
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import (
+    unwrap,
+    _SUPPRESS_INSTRUMENTATION_KEY,
+)
 from opentelemetry.semconv.trace import MessagingOperationValues
 from opentelemetry.trace import Tracer
 
@@ -373,6 +376,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
+        if context.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return func(*args, **kwargs)
+
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
