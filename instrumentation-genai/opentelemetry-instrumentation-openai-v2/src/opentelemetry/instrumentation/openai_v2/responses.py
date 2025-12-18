@@ -65,42 +65,13 @@ _InputHandlerResult = tuple[str, _InputBody]
 _InputHandler = Callable[[Any, bool], _InputHandlerResult]
 
 
-def _select_input_handler(item_type: Any) -> _InputHandler:
-    """
-    Select an input handler for a Responses input item.
-
-    We avoid enumerating every OpenAI `type` value. Instead we:
-    - Handle a few semantically special types explicitly.
-    - Route tool requests/results by naming patterns (`*_call`, `*_call_output`, etc.).
-    - Fall back to `_handle_generic_input` for unknown/future types.
-    """
-    handler: _InputHandler = _handle_generic_input
-    if not isinstance(item_type, str) or not item_type:
-        return handler
-
-    # Explicit "special" types where we want stable, structured bodies.
-    if item_type == "message":
-        handler = _handle_message_input
-    elif item_type == "function_call":
-        handler = _handle_function_tool_call
-    elif item_type == "mcp_call":
-        handler = _handle_mcp_call
-    elif item_type == "reasoning":
-        handler = _handle_reasoning_item
-    elif item_type == "image_generation_call":
-        handler = _handle_image_generation_call
-    # Tool call results sent back to the model.
-    elif (
-        item_type.endswith("_call_output")
-        or item_type.endswith("_output")
-        or item_type.endswith("_response")
-    ):
-        handler = _handle_tool_call_output_input
-    # Tool calls requested by the model.
-    elif item_type.endswith("_call") or item_type.startswith("mcp_"):
-        handler = _handle_tool_call_input
-
-    return handler
+def _put(body: dict[str, Any], key: str, value: Any) -> None:
+    """Set `body[key] = value` only when value is meaningfully present."""
+    if value is None:
+        return
+    if isinstance(value, str) and not value:
+        return
+    body[key] = value
 
 
 def _create_log_record(
@@ -113,17 +84,26 @@ def _create_log_record(
     )
 
 
+def _tool_item_id(value: Any) -> Any:
+    return get_property_value(value, "call_id") or get_property_value(value, "id")
+
+
+def _tool_item_base_body(
+    value: Any, *, include_name: bool = False, include_type: bool = False
+) -> _InputBody:
+    body: _InputBody = {}
+    _put(body, "id", _tool_item_id(value))
+    if include_name:
+        _put(body, "name", get_property_value(value, "name"))
+    if include_type:
+        _put(body, "type", get_property_value(value, "type"))
+    return body
+
+
 def responses_input_to_event(
     input_value: str | ResponseInputItemParam, capture_content: bool
 ) -> LogRecord | None:
-    """
-    Convert a single Responses API input item to an input log event.
-
-    Flow:
-    - Determine the item "type"
-    - Dispatch to a handler that extracts a minimal body + role
-    - Build a `gen_ai.<role>.input` `LogRecord`
-    """
+    """Convert one Responses input item into a `gen_ai.<role>.input` `LogRecord`."""
     if isinstance(input_value, str):
         body = {"content": input_value} if capture_content else {}
         return _create_log_record(
@@ -132,9 +112,42 @@ def responses_input_to_event(
         )
 
     item_type = get_property_value(input_value, "type")
-    handler = _select_input_handler(item_type)
+
+    # Pattern-based routing avoids having to enumerate every OpenAI `type` string.
+    handler: _InputHandler = _input_generic
+    if isinstance(item_type, str) and item_type:
+        if item_type == "message":
+            handler = _input_message
+        elif item_type == "function_call":
+            handler = _input_function_tool_call
+        elif item_type == "mcp_call":
+            handler = _input_mcp_call
+        elif item_type == "reasoning":
+            handler = _input_reasoning
+        elif item_type == "image_generation_call":
+            handler = _input_image_generation_call
+        elif (
+            item_type.endswith("_call_output")
+            or item_type.endswith("_output")
+            or item_type.endswith("_response")
+        ):
+            handler = _input_tool_call_output
+        elif item_type.endswith("_call") or item_type.startswith("mcp_"):
+            handler = _input_tool_call
+
     role, body = handler(input_value, capture_content)
     return _create_log_record(_EVENT_NAME_INPUT_FMT.format(role=role), body)
+
+
+def output_to_event(
+    output: ResponseOutputItem, capture_content: bool
+) -> LogRecord | None:
+    """Convert one Responses output item into a `gen_ai.output` `LogRecord`."""
+    body = _base_output_body(output)
+    output_type = getattr(output, "type", None)
+    handler = _OUTPUT_TYPE_HANDLERS.get(output_type, _output_unknown_body)
+    body.update(handler(output, capture_content))
+    return _create_log_record(_EVENT_NAME_OUTPUT, body)
 
 
 def _base_output_body(output: ResponseOutputItem) -> dict[str, Any]:
@@ -187,9 +200,7 @@ def _output_reasoning_body(
 ) -> dict[str, Any]:
     body: dict[str, Any] = {"type": "reasoning"}
 
-    item_id = getattr(output, "id", None)
-    if item_id:
-        body["id"] = item_id
+    _put(body, "id", getattr(output, "id", None))
 
     if capture_content:
         summary = getattr(output, "summary", None)
@@ -207,12 +218,8 @@ def _output_tool_call_body(
     body: dict[str, Any] = {"type": output_type}
 
     call_id = getattr(output, "call_id", None) or getattr(output, "id", None)
-    if call_id:
-        body["id"] = call_id
-
-    name = getattr(output, "name", None)
-    if name:
-        body["name"] = name
+    _put(body, "id", call_id)
+    _put(body, "name", getattr(output, "name", None))
 
     return body
 
@@ -228,35 +235,12 @@ _OUTPUT_TYPE_HANDLERS: dict[Any, _OutputBodyBuilder] = {
     "message": _output_message_body,
     "function_call": _output_function_call_body,
     "reasoning": _output_reasoning_body,
+    **{t: _output_tool_call_body for t in _TOOL_CALL_OUTPUT_TYPES},
 }
 
-
-def output_to_event(
-    output: ResponseOutputItem, capture_content: bool
-) -> LogRecord | None:
-    """
-    Convert a single Responses API output item to an output log event.
-
-    Flow:
-    - Extract common output fields (`index`, `finish_reason`)
-    - Dispatch by `output.type` to a small body builder
-    - Build a `gen_ai.output` `LogRecord`
-    """
-    body = _base_output_body(output)
-    output_type = getattr(output, "type", None)
-    if output_type in _TOOL_CALL_OUTPUT_TYPES:
-        body.update(_output_tool_call_body(output, capture_content))
-    else:
-        handler = _OUTPUT_TYPE_HANDLERS.get(output_type, _output_unknown_body)
-        body.update(handler(output, capture_content))
-
-    return _create_log_record(_EVENT_NAME_OUTPUT, body)
-
-
-def _handle_message_input(
+def _input_message(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """Message: { content: ContentPart[], role, type: "message" }"""
     role = get_property_value(input_value, "role") or "user"
     body: _InputBody = {}
 
@@ -270,24 +254,13 @@ def _handle_message_input(
     return role, body
 
 
-def _handle_mcp_call(
+def _input_mcp_call(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """McpCall: { id, name, arguments, output?, type: "mcp_call" }"""
-    body: _InputBody = {}
-
-    item_id = get_property_value(input_value, "id")
-    if item_id:
-        body["id"] = item_id
-
-    name = get_property_value(input_value, "name")
-    if name:
-        body["name"] = name
+    body = _tool_item_base_body(input_value, include_name=True)
 
     if capture_content:
-        arguments = get_property_value(input_value, "arguments")
-        if arguments:
-            body["arguments"] = arguments
+        _put(body, "arguments", get_property_value(input_value, "arguments"))
 
         output = get_property_value(input_value, "output")
         if output and isinstance(output, str):
@@ -296,10 +269,9 @@ def _handle_mcp_call(
     return "tool", body
 
 
-def _handle_function_tool_call(
+def _input_function_tool_call(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """FunctionToolCall: { call_id, name, arguments, type: "function_call" }"""
     body: _InputBody = {}
 
     call_id = get_property_value(input_value, "call_id")
@@ -321,15 +293,11 @@ def _handle_function_tool_call(
     return "assistant", body
 
 
-def _handle_reasoning_item(
+def _input_reasoning(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """ReasoningItem: { id, summary: ContentPart[], type: "reasoning" }"""
     body: _InputBody = {}
-
-    item_id = get_property_value(input_value, "id")
-    if item_id:
-        body["id"] = item_id
+    _put(body, "id", get_property_value(input_value, "id"))
 
     if capture_content:
         summary = get_property_value(input_value, "summary")
@@ -341,53 +309,23 @@ def _handle_reasoning_item(
     return "assistant", body
 
 
-def _handle_tool_call_input(
+def _input_tool_call(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """Generic handler for tool call inputs (file_search, web_search, computer, code_interpreter, etc.)."""
-    body: _InputBody = {}
-
-    call_id = get_property_value(input_value, "call_id") or get_property_value(
-        input_value, "id"
-    )
-    if call_id:
-        body["id"] = call_id
-
-    name = get_property_value(input_value, "name")
-    if name:
-        body["name"] = name
-
-    item_type = get_property_value(input_value, "type")
-    if item_type:
-        body["type"] = item_type
+    body = _tool_item_base_body(input_value, include_name=True, include_type=True)
 
     if capture_content:
-        query = get_property_value(input_value, "query")
-        if query:
-            body["query"] = query
-
-        arguments = get_property_value(input_value, "arguments")
-        if arguments:
-            body["arguments"] = arguments
-
-        code = get_property_value(input_value, "code")
-        if code:
-            body["content"] = code
+        _put(body, "query", get_property_value(input_value, "query"))
+        _put(body, "arguments", get_property_value(input_value, "arguments"))
+        _put(body, "content", get_property_value(input_value, "code"))
 
     return "assistant", body
 
 
-def _handle_tool_call_output_input(
+def _input_tool_call_output(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """Generic handler for tool call output inputs (tool results sent back to the model)."""
-    body: _InputBody = {}
-
-    call_id = get_property_value(input_value, "call_id") or get_property_value(
-        input_value, "id"
-    )
-    if call_id:
-        body["id"] = call_id
+    body = _tool_item_base_body(input_value)
 
     if capture_content:
         output = get_property_value(input_value, "output")
@@ -406,19 +344,12 @@ def _handle_tool_call_output_input(
     return "tool", body
 
 
-def _handle_image_generation_call(
+def _input_image_generation_call(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """ImageGenerationCall: { id, result, status, type: "image_generation_call" }"""
     body: _InputBody = {}
-
-    item_id = get_property_value(input_value, "id")
-    if item_id:
-        body["id"] = item_id
-
-    status = get_property_value(input_value, "status")
-    if status:
-        body["status"] = status
+    _put(body, "id", get_property_value(input_value, "id"))
+    _put(body, "status", get_property_value(input_value, "status"))
 
     if capture_content:
         result = get_property_value(input_value, "result")
@@ -428,22 +359,13 @@ def _handle_image_generation_call(
     return "assistant", body
 
 
-def _handle_generic_input(
+def _input_generic(
     input_value: Any, capture_content: bool
 ) -> _InputHandlerResult:
-    """Fallback handler for unknown input types."""
     role = get_property_value(input_value, "role") or "user"
     body: _InputBody = {}
-
-    item_id = get_property_value(input_value, "id") or get_property_value(
-        input_value, "call_id"
-    )
-    if item_id:
-        body["id"] = item_id
-
-    item_type = get_property_value(input_value, "type")
-    if item_type:
-        body["type"] = item_type
+    _put(body, "id", get_property_value(input_value, "id") or get_property_value(input_value, "call_id"))
+    _put(body, "type", get_property_value(input_value, "type"))
 
     if capture_content:
         content = get_property_value(input_value, "content")
@@ -459,14 +381,12 @@ def _handle_generic_input(
 
 
 def _extract_text_from_content_parts(content_parts) -> str | None:
-    """Extract text content from a list of content parts."""
     if not content_parts:
         return None
 
     if isinstance(content_parts, str):
         return content_parts
 
-    # Handle non-iterable types gracefully
     if not isinstance(content_parts, (list, tuple)):
         return None
 
