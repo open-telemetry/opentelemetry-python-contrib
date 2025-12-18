@@ -258,6 +258,106 @@ async def test_async_chat_completion_multiple_choices(
 
 @pytest.mark.vcr()
 @pytest.mark.asyncio()
+async def test_async_chat_completion_with_raw_repsonse(
+    span_exporter, log_exporter, async_openai_client, instrument_with_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+    response = (
+        await async_openai_client.chat.completions.with_raw_response.create(
+            messages=messages_value,
+            model=llm_model_value,
+        )
+    )
+    response = response.parse()
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response.id,
+        response.model,
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_message = {"content": messages_value[0]["content"]}
+    assert_message_in_logs(
+        logs[0], "gen_ai.user.message", user_message, spans[0]
+    )
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "role": "assistant",
+            "content": response.choices[0].message.content,
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
+async def test_chat_completion_with_raw_response_streaming(
+    span_exporter, log_exporter, async_openai_client, instrument_with_content
+):
+    llm_model_value = "gpt-4o-mini"
+    messages_value = [{"role": "user", "content": "Say this is a test"}]
+    raw_response = (
+        await async_openai_client.chat.completions.with_raw_response.create(
+            messages=messages_value,
+            model=llm_model_value,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
+    )
+    response = raw_response.parse()
+
+    message_content = ""
+    async for chunk in response:
+        if chunk.choices:
+            message_content += chunk.choices[0].delta.content or ""
+        # get the last chunk
+        if getattr(chunk, "usage", None):
+            response_stream_usage = chunk.usage
+            response_stream_model = chunk.model
+            response_stream_id = chunk.id
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        response_stream_id,
+        response_stream_model,
+        response_stream_usage.prompt_tokens,
+        response_stream_usage.completion_tokens,
+        response_service_tier="default",
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_message = {"content": messages_value[0]["content"]}
+    assert_message_in_logs(
+        logs[0], "gen_ai.user.message", user_message, spans[0]
+    )
+
+    choice_event = {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+            "role": "assistant",
+            "content": message_content,
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio()
 async def test_async_chat_completion_tool_calls_with_content(
     span_exporter, log_exporter, async_openai_client, instrument_with_content
 ):
