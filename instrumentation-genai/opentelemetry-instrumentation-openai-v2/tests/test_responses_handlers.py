@@ -25,9 +25,7 @@ from opentelemetry.instrumentation.openai_v2.responses import (
     output_to_event,
     responses_input_to_event,
 )
-from opentelemetry.instrumentation.openai_v2.responses_patch import (
-    _log_responses_inputs,
-)
+from opentelemetry.instrumentation.openai_v2.patch import _log_responses_inputs
 from opentelemetry._logs import Logger
 
 

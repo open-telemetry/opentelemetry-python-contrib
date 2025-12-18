@@ -60,8 +60,6 @@ from .patch import (
     async_embeddings_create,
     chat_completions_create,
     embeddings_create,
-)
-from .responses_patch import (
     async_responses_compact,
     async_responses_create,
     responses_compact,

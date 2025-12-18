@@ -26,9 +26,7 @@ from openai import (
 
 from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.openai_v2.instruments import Instruments
-from opentelemetry.instrumentation.openai_v2.responses_patch import (
-    responses_compact,
-)
+from opentelemetry.instrumentation.openai_v2.patch import responses_compact
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
