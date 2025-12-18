@@ -304,3 +304,43 @@ def handle_span_exception(span, error):
             ErrorAttributes.ERROR_TYPE, type(error).__qualname__
         )
     span.end()
+
+
+class ToolCallBuffer:
+    """Buffer for accumulating streaming tool call data."""
+
+    def __init__(self, index, tool_call_id, function_name):
+        self.index = index
+        self.function_name = function_name
+        self.tool_call_id = tool_call_id
+        self.arguments = []
+
+    def append_arguments(self, arguments):
+        self.arguments.append(arguments)
+
+
+class ChoiceBuffer:
+    """Buffer for accumulating streaming choice data."""
+
+    def __init__(self, index):
+        self.index = index
+        self.finish_reason = None
+        self.text_content = []
+        self.tool_calls_buffers = []
+
+    def append_text_content(self, content):
+        self.text_content.append(content)
+
+    def append_tool_call(self, tool_call):
+        idx = tool_call.index
+        # make sure we have enough tool call buffers
+        for _ in range(len(self.tool_calls_buffers), idx + 1):
+            self.tool_calls_buffers.append(None)
+
+        if not self.tool_calls_buffers[idx]:
+            self.tool_calls_buffers[idx] = ToolCallBuffer(
+                idx, tool_call.id, tool_call.function.name
+            )
+        self.tool_calls_buffers[idx].append_arguments(
+            tool_call.function.arguments
+        )
