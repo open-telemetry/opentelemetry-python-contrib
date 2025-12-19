@@ -399,7 +399,7 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-           result[HTTP_SERVER_NAME] = ",".join(
+            result[HTTP_SERVER_NAME] = ",".join(
                 http_host_value_list
             )
     http_user_agent = asgi_getter.get(scope, "user-agent")
