@@ -64,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
 - `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
   ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
+- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name.
+  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 - Replace Python 3.14-deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction`. 
   ([#3880](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880))
 - `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization

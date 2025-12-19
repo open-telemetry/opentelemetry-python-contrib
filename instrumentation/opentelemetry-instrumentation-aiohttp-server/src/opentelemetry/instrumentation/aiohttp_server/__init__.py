@@ -238,14 +238,22 @@ def _parse_active_request_count_attrs(req_attrs):
 
 
 def get_default_span_name(request: web.Request) -> str:
-    """Default implementation for get_default_span_details
+    """Returns the span name.
     Args:
         request: the request object itself.
     Returns:
-        The span name.
+        The span name as "{method} {canonical_name}" of a resource if possible or just "{method}".
     """
-    span_name = request.path.strip() or f"HTTP {request.method}"
-    return span_name
+    try:
+        resource = request.match_info.route.resource
+        assert resource
+        path = resource.canonical
+    except (AttributeError, AssertionError):
+        path = ""
+
+    if path:
+        return f"{request.method} {path}"
+    return f"{request.method}"
 
 
 def _get_view_func(request: web.Request) -> str:
