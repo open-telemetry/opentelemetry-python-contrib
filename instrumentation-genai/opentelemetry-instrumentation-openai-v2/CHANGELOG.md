@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Fix `AttributeError` when handling `LegacyAPIResponse` (from `with_raw_response`)
-  ([#4002](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4002))
+  ([#4017](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4017))
+- Add support for chat completions choice count and stop sequences span attributes
+  ([#4028](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4028))
+- Fix crash with streaming `with_raw_response`
+  ([#4033](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4033))
 
 ## Version 2.2b0 (2025-11-25)
 
