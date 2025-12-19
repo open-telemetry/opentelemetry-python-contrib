@@ -220,7 +220,7 @@ def get_llm_request_attributes(
                 GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
                     "frequency_penalty"
                 ),
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
+                GenAIAttributes.GEN_AI_REQUEST_SEED: kwargs.get("seed"),
             }
         )
 
