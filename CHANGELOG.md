@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-aiohttp-client`: add ability to capture custom headers
   ([#3988](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3988))
+- `opentelemetry-instrumentation-requests`: add ability to capture custom headers
+  ([#3987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3987))
 - `opentelemetry-instrumentation-aiohttp-client`: add typechecking for aiohttp-client instrumentation
   ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
 - `opentelemetry-instrumentation-flask`: Add support for 3.1+ streaming responses
