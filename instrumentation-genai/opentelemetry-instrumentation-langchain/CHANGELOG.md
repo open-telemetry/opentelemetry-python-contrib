@@ -9,3 +9,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added span support for genAI langchain llm invocation.
   ([#3665](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3665))
+- Use weak reference in langchain instrumentation span map.
+  ([#3735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3735))
