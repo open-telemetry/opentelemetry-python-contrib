@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-aiohttp-client`: add typechecking for aiohttp-client instrumentation
+  ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
