@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
 - `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
   ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
+- `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
+  ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
