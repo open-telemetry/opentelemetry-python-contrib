@@ -184,6 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
 - infra(ci): Fix git pull failures in core contrib test
   ([#3357](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3357))
+- `opentelemetry-instrumentation-celery`: Implement new messaging semantic convention opt-in in celery instrumentation and add corresponding tests ([#3712](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3712))
 
 ### Added
 

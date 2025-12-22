@@ -171,6 +171,7 @@ class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
     DATABASE = "database"
     GEN_AI = "gen_ai"
+    MESSAGING = "messaging"
 
 
 class _StabilityMode(Enum):
@@ -180,6 +181,8 @@ class _StabilityMode(Enum):
     DATABASE = "database"
     DATABASE_DUP = "database/dup"
     GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
+    MESSAGING = "messaging"
+    MESSAGING_DUP = "messaging/dup"
 
 
 def _report_new(mode: _StabilityMode):
@@ -187,7 +190,11 @@ def _report_new(mode: _StabilityMode):
 
 
 def _report_old(mode: _StabilityMode):
-    return mode not in (_StabilityMode.HTTP, _StabilityMode.DATABASE)
+    return mode not in (
+        _StabilityMode.HTTP,
+        _StabilityMode.DATABASE,
+        _StabilityMode.MESSAGING,
+    )
 
 
 class _OpenTelemetrySemanticConventionStability:
@@ -211,6 +218,7 @@ class _OpenTelemetrySemanticConventionStability:
                     _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.MESSAGING: _StabilityMode.DEFAULT,
                 }
                 cls._initialized = True
                 return
@@ -238,6 +246,15 @@ class _OpenTelemetrySemanticConventionStability:
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
             )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.MESSAGING
+            ] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.MESSAGING,
+                _StabilityMode.MESSAGING_DUP,
+            )
+
             cls._initialized = True
 
     @staticmethod
