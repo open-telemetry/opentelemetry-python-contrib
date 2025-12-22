@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Fixed 
+### Fixed
 
+- `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
+  ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
   ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
 - `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
