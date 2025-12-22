@@ -3,6 +3,7 @@ import typing
 from collections.abc import Coroutine
 
 import wrapt
+from psycopg2.sql import Composable  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
@@ -120,6 +121,18 @@ class AsyncCursorTracer(CursorTracer):
         ) as span:
             self._populate_span(span, cursor, *args)
             return await query_method(*args, **kwargs)
+
+    def get_operation_name(self, cursor, args):
+        if len(args) and isinstance(args[0], Composable):
+            return args[0].as_string(cursor)
+
+        return super().get_operation_name(cursor, args)
+
+    def get_statement(self, cursor, args):
+        if len(args) and isinstance(args[0], Composable):
+            return args[0].as_string(cursor)
+
+        return super().get_statement(cursor, args)
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
