@@ -34,6 +34,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    UserAgentSyntheticTypeValues,
+)
+from opentelemetry.util.http.constants import BOT_PATTERNS, TEST_PATTERNS
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -43,6 +47,12 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
 )
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
 )
 
 OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
@@ -247,6 +257,35 @@ def get_custom_headers(env_var: str) -> list[str]:
     return []
 
 
+def get_custom_header_attributes(
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
+) -> dict[str, list[str]]:
+    """Extract and sanitize HTTP headers for span attributes.
+
+    Args:
+        headers: The HTTP headers to process, either from a request or response.
+            Can be None if no headers are available.
+        captured_headers: List of header regexes to capture as span attributes.
+            If None or empty, no headers will be captured.
+        sensitive_headers: List of header regexes whose values should be sanitized
+            (redacted). If None, no sanitization is applied.
+        normalize_function: Function to normalize header names.
+
+    Returns:
+        Dictionary of normalized header attribute names to their values
+        as lists of strings.
+    """
+    if not headers or not captured_headers:
+        return {}
+    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
+    return sanitize.sanitize_header_values(
+        headers, captured_headers, normalize_function
+    )
+
+
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {
         key: req_attrs[key]
@@ -301,3 +340,47 @@ def redact_url(url: str) -> str:
     url = remove_url_credentials(url)
     url = redact_query_parameters(url)
     return url
+
+
+def normalize_user_agent(
+    user_agent: str | bytes | bytearray | memoryview | None,
+) -> str | None:
+    """Convert user-agent header values into a usable string."""
+    # Different servers/frameworks surface headers as str, bytes, bytearray or memoryview;
+    # keep decoding logic centralized so instrumentation modules just call this helper.
+    if user_agent is None:
+        return None
+    if isinstance(user_agent, str):
+        return user_agent
+    if isinstance(user_agent, (bytes, bytearray)):
+        return user_agent.decode("latin-1")
+    if isinstance(user_agent, memoryview):
+        return user_agent.tobytes().decode("latin-1")
+    return str(user_agent)
+
+
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
+    """
+    Detect synthetic user agent type based on user agent string contents.
+
+    Args:
+        user_agent: The user agent string to analyze
+
+    Returns:
+        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
+        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
+        None otherwise
+
+    Note: Test patterns take priority over bot patterns.
+    """
+    if not user_agent:
+        return None
+
+    user_agent_lower = user_agent.lower()
+
+    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
+        return UserAgentSyntheticTypeValues.TEST.value
+    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
+        return UserAgentSyntheticTypeValues.BOT.value
+
+    return None

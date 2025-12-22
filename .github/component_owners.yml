@@ -1,5 +1,8 @@
 components:
 
+  instrumentation/opentelemetry-instrumentation-aiohttp-client:
+    - herin049
+
   instrumentation/opentelemetry-instrumentation-aiokafka:
     - dimastbk
 
@@ -51,3 +54,6 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
     - nagkumar91
+
+  instrumentation-genai/opentelemetry-instrumentation-anthropic:
+    - vasantteja

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from os import environ
-from typing import Mapping, Optional, Union
+from typing import Mapping
 from urllib.parse import urlparse
 
 from httpx import URL
-from openai import NOT_GIVEN
+from openai import NotGiven
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import (
@@ -179,8 +181,12 @@ def is_streaming(kwargs):
     return non_numerical_value_is_set(kwargs.get("stream"))
 
 
-def non_numerical_value_is_set(value: Optional[Union[bool, str]]):
-    return bool(value) and value != NOT_GIVEN
+def non_numerical_value_is_set(value: bool | str | NotGiven | None):
+    return bool(value) and value_is_set(value)
+
+
+def value_is_set(value):
+    return value is not None and not isinstance(value, NotGiven)
 
 
 def get_llm_request_attributes(
@@ -188,6 +194,8 @@ def get_llm_request_attributes(
     client_instance,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
+    # pylint: disable=too-many-branches
+
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
@@ -212,9 +220,23 @@ def get_llm_request_attributes(
                 GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
                     "frequency_penalty"
                 ),
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_SEED: kwargs.get("seed"),
+                GenAIAttributes.GEN_AI_REQUEST_SEED: kwargs.get("seed"),
             }
         )
+
+        if (choice_count := kwargs.get("n")) is not None:
+            # Only add non default, meaningful values
+            if isinstance(choice_count, int) and choice_count != 1:
+                attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+                    choice_count
+                )
+
+        if (stop_sequences := kwargs.get("stop")) is not None:
+            if isinstance(stop_sequences, str):
+                stop_sequences = [stop_sequences]
+            attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
+                stop_sequences
+            )
 
         if (response_format := kwargs.get("response_format")) is not None:
             # response_format may be string or object with a string in the `type` key
@@ -230,8 +252,13 @@ def get_llm_request_attributes(
                     GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
                 ] = response_format
 
+        # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
         service_tier = kwargs.get("service_tier")
-        attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = (
+        if service_tier is None:
+            extra_body = kwargs.get("extra_body")
+            if isinstance(extra_body, Mapping):
+                service_tier = extra_body.get("service_tier")
+        attributes[GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER] = (
             service_tier if service_tier != "auto" else None
         )
 
@@ -242,18 +269,19 @@ def get_llm_request_attributes(
     ):
         # Add embedding dimensions if specified
         if (dimensions := kwargs.get("dimensions")) is not None:
+            # TODO: move to GEN_AI_EMBEDDINGS_DIMENSION_COUNT when 1.39.0 is baseline
             attributes["gen_ai.embeddings.dimension.count"] = dimensions
 
         # Add encoding format if specified
         if "encoding_format" in kwargs:
-            attributes["gen_ai.request.encoding_formats"] = [
+            attributes[GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS] = [
                 kwargs["encoding_format"]
             ]
 
     set_server_address_and_port(client_instance, attributes)
 
-    # filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}
+    # filter out values not set
+    return {k: v for k, v in attributes.items() if value_is_set(v)}
 
 
 def handle_span_exception(span, error):

@@ -258,6 +258,9 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_active_requests,
     create_http_server_request_body_size,
@@ -276,9 +279,11 @@ from opentelemetry.util.http import (
     ExcludeList,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
     parse_excluded_urls,
     redact_url,
     sanitize_method,
@@ -397,7 +402,17 @@ def collect_request_attributes(
             )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
+        user_agent_raw = http_user_agent[0]
+        user_agent_value = normalize_user_agent(user_agent_raw)
+        if user_agent_value:
+            _set_http_user_agent(
+                result, user_agent_value, sem_conv_opt_in_mode
+            )
+
+        # Check for synthetic user agent type
+        synthetic_type = detect_synthetic_user_agent(user_agent_value)
+        if synthetic_type:
+            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
     if "client" in scope and scope["client"] is not None:
         _set_http_peer_ip_server(
@@ -814,13 +829,18 @@ class OpenTelemetryMiddleware:
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
+                span_ctx = set_span_in_context(span)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0), duration_attrs_old
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                        context=span_ctx,
                     )
                 if self.duration_histogram_new:
                     self.duration_histogram_new.record(
-                        max(duration_s, 0), duration_attrs_new
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=span_ctx,
                     )
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
@@ -828,11 +848,15 @@ class OpenTelemetryMiddleware:
                 if self.content_length_header:
                     if self.server_response_size_histogram:
                         self.server_response_size_histogram.record(
-                            self.content_length_header, duration_attrs_old
+                            self.content_length_header,
+                            duration_attrs_old,
+                            context=span_ctx,
                         )
                     if self.server_response_body_size_histogram:
                         self.server_response_body_size_histogram.record(
-                            self.content_length_header, duration_attrs_new
+                            self.content_length_header,
+                            duration_attrs_new,
+                            context=span_ctx,
                         )
 
                 request_size = asgi_getter.get(scope, "content-length")
@@ -844,11 +868,15 @@ class OpenTelemetryMiddleware:
                     else:
                         if self.server_request_size_histogram:
                             self.server_request_size_histogram.record(
-                                request_size_amount, duration_attrs_old
+                                request_size_amount,
+                                duration_attrs_old,
+                                context=span_ctx,
                             )
                         if self.server_request_body_size_histogram:
                             self.server_request_body_size_histogram.record(
-                                request_size_amount, duration_attrs_new
+                                request_size_amount,
+                                duration_attrs_new,
+                                context=span_ctx,
                             )
             if token:
                 context.detach(token)
