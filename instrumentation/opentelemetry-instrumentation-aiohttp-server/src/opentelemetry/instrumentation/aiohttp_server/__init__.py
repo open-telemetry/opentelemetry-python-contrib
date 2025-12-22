@@ -158,7 +158,6 @@ from __future__ import annotations
 
 import urllib
 from timeit import default_timer
-from typing import Optional
 
 from aiohttp import web
 from multidict import CIMultiDictProxy
@@ -395,7 +394,7 @@ getter = AiohttpGetter()
 
 
 def create_aiohttp_middleware(
-    tracer_provider: Optional[trace.TracerProvider] = None,
+    tracer_provider: trace.TracerProvider | None = None,
 ):
     _tracer = (
         tracer_provider.get_tracer(__name__, __version__)
@@ -469,7 +468,7 @@ middleware = create_aiohttp_middleware()  # for backwards compatibility
 
 
 def create_instrumented_application(
-    tracer_provider: Optional[trace.TracerProvider] = None,
+    tracer_provider: trace.TracerProvider | None = None,
 ):
     _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
 
