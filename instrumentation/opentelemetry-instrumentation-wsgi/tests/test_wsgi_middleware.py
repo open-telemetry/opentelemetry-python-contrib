@@ -294,6 +294,41 @@ class TestWsgiApplication(WsgiTestBase):
                 expected_attributes[HTTP_REQUEST_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
+    # Helper modeled after ASGI test suite to assert presence of exemplars on histogram metrics
+    def _assert_exemplars_present(self, metric_names, context=""):
+        metrics_data = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(
+            len(metrics_data.resource_metrics) > 0,
+            f"No resource metrics collected while checking exemplars ({context})",
+        )
+        checked = set()
+        for resource_metric in metrics_data.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name not in metric_names:
+                        continue
+                    checked.add(metric.name)
+                    # Expect exactly one datapoint per histogram metric in these tests
+                    data_points = list(metric.data.data_points)
+                    self.assertGreater(
+                        len(data_points),
+                        0,
+                        f"No data points for {metric.name} while checking exemplars ({context})",
+                    )
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertGreater(
+                                len(point.exemplars),
+                                0,
+                                f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
+                            )
+        # Ensure we actually saw all targeted metrics
+        self.assertSetEqual(
+            set(metric_names),
+            checked,
+            f"Did not observe all targeted metrics when asserting exemplars ({context}). Expected {metric_names} got {checked}",
+        )
+
     def test_basic_wsgi_call(self):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
@@ -417,6 +452,42 @@ class TestWsgiApplication(WsgiTestBase):
                                 _recommended_metrics_attrs_old[metric.name],
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_wsgi_metrics_exemplars_expected_old_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for duration histogram (old semconv)."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        # generate several requests to increase chance of exemplar sampling
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            # exhaust response iterable
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.duration"}, context="old semconv"
+        )
+
+    def test_wsgi_metrics_exemplars_expected_new_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for request duration histogram (new semconv)."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.request.duration"}, context="new semconv"
+        )
+
+    def test_wsgi_metrics_exemplars_expected_both_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.duration", "http.server.request.duration"},
+            context="both semconv",
+        )
 
     def test_wsgi_metrics_new_semconv(self):
         # pylint: disable=too-many-nested-blocks
@@ -794,6 +865,13 @@ class TestWsgiAttributes(unittest.TestCase):
             ).items(),
             expected_new.items(),
         )
+
+    def test_http_user_agent_bytes_like_attribute(self):
+        self.environ["HTTP_USER_AGENT"] = b"AlwaysOn-Monitor/1.0"
+        attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+        self.assertEqual(attributes[HTTP_USER_AGENT], "AlwaysOn-Monitor/1.0")
+        self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "test")
 
     def test_http_user_agent_synthetic_bot_detection(self):
         """Test that bot user agents are detected as synthetic with type 'bot'"""
