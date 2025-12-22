@@ -26,81 +26,109 @@ Usage
     import MySQLdb
     from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-
     MySQLClientInstrumentor().instrument()
 
     cnx = MySQLdb.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure MySQLClient instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
+Configuration
+-------------
+
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
 
     import MySQLdb
     from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-
-    MySQLClientInstrumentor().instrument(enable_commenter=True, commenter_options={})
+    MySQLClientInstrumentor().instrument(enable_commenter=True)
 
     cnx = MySQLdb.connect(database="MySQL_Database")
     cursor = cnx.cursor()
-    cursor.execute("INSERT INTO test (testField) VALUES (123)"
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cnx.commit()
     cursor.close()
     cnx.close()
 
-For example,
-::
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
 
-   Invoking cursor.execute("INSERT INTO test (testField) VALUES (123)") will lead to sql query "INSERT INTO test (testField) VALUES (123)" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "INSERT INTO test (testField) VALUES (123) /*tag=value*/;"
+.. code:: python
 
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
+    import MySQLdb
+    from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-db_driver = True(Default) or False
+    # Opts into sqlcomment for MySQLClient trace integration.
+    # Opts out of tags for mysql_client_version, db_driver.
+    MySQLClientInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "mysql_client_version": False,
+            "db_driver": False,
+        }
+    )
 
-For example,
-::
-Enabling this flag will add MySQLdb and its version, e.g. /*MySQLdb%%3A1.2.3*/
+Available commenter_options
+###########################
 
-dbapi_threadsafety = True(Default) or False
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-For example,
-::
-Enabling this flag will add threadsafety /*dbapi_threadsafety=2*/
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version (URL encoded).          | ``MySQLdb%%%%3A1.2.3``                                                    |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``mysql_client_version``  | MySQL client version.                                     | ``mysql_client_version='123'``                                            |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
-dbapi_level = True(Default) or False
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
 
-For example,
-::
-Enabling this flag will add dbapi_level /*dbapi_level='2.0'*/
+.. code:: python
 
-mysql_client_version = True(Default) or False
+    from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
-For example,
-::
-Enabling this flag will add mysql_client_version /*mysql_client_version='123'*/
+    # Opts into sqlcomment for mysqlclient trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    MySQLClientInstrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
 
-driver_paramstyle = True(Default) or False
-
-For example,
-::
-Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
-
-opentelemetry_values = True(Default) or False
-
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
+Warning:
+    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---
@@ -135,6 +163,9 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
 
         dbapi.wrap_connect(
             __name__,
@@ -146,6 +177,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -158,16 +190,33 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         tracer_provider=None,
         enable_commenter=None,
         commenter_options=None,
+        enable_attribute_commenter=None,
     ):
         """Enable instrumentation in a mysqlclient connection.
 
         Args:
-            connection: The connection to instrument.
-            tracer_provider: The optional tracer provider to use. If omitted
-                the current globally configured one is used.
+            connection:
+                The MySQL connection instance to instrument. This connection is typically
+                created using `MySQLdb.connect()` and needs to be wrapped to collect telemetry.
+            tracer_provider:
+                A custom `TracerProvider` instance to be used for tracing. If not specified,
+                the globally configured tracer provider will be used.
+            enable_commenter:
+                A flag to enable the OpenTelemetry SQLCommenter feature. If set to `True`,
+                SQL queries will be enriched with contextual information (e.g., database client details).
+                Default is `None`.
+            commenter_options:
+                A dictionary of configuration options for SQLCommenter. All options are enabled (True) by default.
+                This allows you to customize metadata appended to queries. Possible options include:
 
+                    - `db_driver`: Adds the database driver name and version.
+                    - `dbapi_threadsafety`: Adds threadsafety information.
+                    - `dbapi_level`: Adds the DB-API version.
+                    - `mysql_client_version`: Adds the MySQL client version.
+                    - `driver_paramstyle`: Adds the parameter style.
+                    - `opentelemetry_values`: Includes traceparent values.
         Returns:
-            An instrumented connection.
+            An instrumented MySQL connection with OpenTelemetry support enabled.
         """
 
         return dbapi.instrument_connection(
@@ -180,6 +229,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             enable_commenter=enable_commenter,
             commenter_options=commenter_options,
             connect_module=MySQLdb,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     @staticmethod

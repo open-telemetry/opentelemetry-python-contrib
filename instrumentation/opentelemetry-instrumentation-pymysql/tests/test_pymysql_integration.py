@@ -20,6 +20,7 @@ import opentelemetry.instrumentation.pymysql
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 
@@ -125,12 +126,14 @@ class TestPyMysqlIntegration(TestBase):
             cnx,
             enable_commenter=True,
             commenter_options={"foo": True},
+            enable_attribute_commenter=True,
         )
         cursor = cnx.cursor()
         cursor.execute("SELECT * FROM test")
         kwargs = mock_instrument_connection.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
+        self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
         mock_connect_module = mock.MagicMock(
@@ -161,6 +164,49 @@ class TestPyMysqlIntegration(TestBase):
             trace_id = format(span.get_span_context().trace_id, "032x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
+
+    def test_instrument_connection_with_dbapi_sqlcomment_enabled_stmt_enabled(
+        self,
+    ):
+        mock_connect_module = mock.MagicMock(
+            __name__="pymysql",
+            __version__="foobar",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with mock.patch(
+            "opentelemetry.instrumentation.pymysql.pymysql",
+            mock_connect_module,
+        ):
+            cnx_proxy = PyMySQLInstrumentor().instrument_connection(
+                mock_connection,
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            cnx_proxy.cursor().execute("Select 1;")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -202,6 +248,10 @@ class TestPyMysqlIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
@@ -230,6 +280,12 @@ class TestPyMysqlIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 "Select 1;",
             )
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     @mock.patch("pymysql.connect")
@@ -242,10 +298,12 @@ class TestPyMysqlIntegration(TestBase):
         PyMySQLInstrumentor()._instrument(
             enable_commenter=True,
             commenter_options={"foo": True},
+            enable_attribute_commenter=True,
         )
         kwargs = mock_wrap_connect.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
+        self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
@@ -279,6 +337,50 @@ class TestPyMysqlIntegration(TestBase):
             trace_id = format(span.get_span_context().trace_id, "032x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
+
+    def test_instrument_with_dbapi_sqlcomment_enabled_stmt_enabled(
+        self,
+    ):
+        mock_connect_module = mock.MagicMock(
+            __name__="pymysql",
+            __version__="foobar",
+            threadsafety="123",
+            apilevel="123",
+            paramstyle="test",
+        )
+        mock_connect_module.get_client_info.return_value = "foobaz"
+        mock_cursor = mock_connect_module.connect().cursor()
+        mock_connection = mock.MagicMock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        with mock.patch(
+            "opentelemetry.instrumentation.pymysql.pymysql",
+            mock_connect_module,
+        ):
+            PyMySQLInstrumentor()._instrument(
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            cnx = mock_connect_module.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("Select 1;")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                mock_cursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+            )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -321,6 +423,10 @@ class TestPyMysqlIntegration(TestBase):
                 mock_cursor.execute.call_args[0][0],
                 f"Select 1 /*db_driver='pymysql%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
+                "Select 1;",
+            )
 
     def test_instrument_with_dbapi_sqlcomment_not_enabled_default(
         self,
@@ -347,6 +453,12 @@ class TestPyMysqlIntegration(TestBase):
             cursor.execute("Select 1;")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
+                "Select 1;",
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes[SpanAttributes.DB_STATEMENT],
                 "Select 1;",
             )
 

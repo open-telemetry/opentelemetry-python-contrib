@@ -11,16 +11,14 @@ your OpenAI requests.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true` configures
-OpenAI instrumentation to capture prompt and completion contents on
-events.
+- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures OpenAI instrumentation to capture prompt and completion contents on events.
 
 Setup
 -----
 
-Minimally, update the `.env <.env>`_ file with your "OPENAI_API_KEY". An
+Minimally, update the `.env <.env>`_ file with your ``OPENAI_API_KEY``. An
 OTLP compatible endpoint should be listening for traces and logs on
-http://localhost:4317. If not, update "OTEL_EXPORTER_OTLP_ENDPOINT" as well.
+http://localhost:4317. If not, update ``OTEL_EXPORTER_OTLP_ENDPOINT`` as well.
 
 Next, set up a virtual environment like this:
 

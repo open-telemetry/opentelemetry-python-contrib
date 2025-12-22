@@ -58,16 +58,16 @@ Usage
 
 .. code-block:: python
 
-    from falcon import API
+    import falcon
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     FalconInstrumentor().instrument()
 
-    app = falcon.API()
+    app = falcon.App()
 
     class HelloWorldResource(object):
         def on_get(self, req, resp):
-            resp.body = 'Hello World'
+            resp.text = 'Hello World'
 
     app.add_route('/hello', HelloWorldResource())
 
@@ -78,7 +78,9 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
 
-::
+.. code-block:: python
+
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
     def request_hook(span, req):
         pass
@@ -86,12 +88,12 @@ The hooks can be configured as follows:
     def response_hook(span, req, resp):
         pass
 
-    FalconInstrumentation().instrument(request_hook=request_hook, response_hook=response_hook)
+    FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic convention <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -193,6 +195,15 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.falcon.package import _instruments
 from opentelemetry.instrumentation.falcon.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -203,18 +214,22 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     extract_attributes_from_object,
-    http_status_to_status_code,
 )
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_SERVER_REQUEST_DURATION,
+)
 from opentelemetry.util.http import get_excluded_urls, get_traced_request_attrs
 
 _logger = getLogger(__name__)
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-falcon.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-falcon.span_key"
+_ENVIRON_REQ_ATTRS = "opentelemetry-falcon.req_attrs"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-falcon.activation_key"
 _ENVIRON_TOKEN = "opentelemetry-falcon.token"
 _ENVIRON_EXC = "opentelemetry-falcon.exc"
@@ -243,6 +258,10 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
     def __init__(self, *args, **kwargs):
         otel_opts = kwargs.pop("_otel_opts", {})
 
+        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+
         # inject trace middleware
         self._middlewares_list = kwargs.pop("middleware", [])
         if self._middlewares_list is None:
@@ -257,19 +276,31 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
         self._otel_meter = get_meter(
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
-        self.duration_histogram = self._otel_meter.create_histogram(
-            name=MetricInstruments.HTTP_SERVER_DURATION,
-            unit="ms",
-            description="Measures the duration of inbound HTTP requests.",
-        )
+
+        self.duration_histogram_old = None
+        if _report_old(self._sem_conv_opt_in_mode):
+            self.duration_histogram_old = self._otel_meter.create_histogram(
+                name=MetricInstruments.HTTP_SERVER_DURATION,
+                unit="ms",
+                description="Measures the duration of inbound HTTP requests.",
+            )
+        self.duration_histogram_new = None
+        if _report_new(self._sem_conv_opt_in_mode):
+            self.duration_histogram_new = self._otel_meter.create_histogram(
+                name=HTTP_SERVER_REQUEST_DURATION,
+                description="Duration of HTTP server requests.",
+                unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
+
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
             name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
             unit="requests",
@@ -283,6 +314,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             ),
             otel_opts.pop("request_hook", None),
             otel_opts.pop("response_hook", None),
+            self._sem_conv_opt_in_mode,
         )
         self._middlewares_list.insert(0, trace_middleware)
         kwargs["middleware"] = self._middlewares_list
@@ -343,11 +375,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
         )
-        attributes = otel_wsgi.collect_request_attributes(env)
-        active_requests_count_attrs = (
-            otel_wsgi._parse_active_request_count_attrs(attributes)
+        attributes = otel_wsgi.collect_request_attributes(
+            env, self._sem_conv_opt_in_mode
         )
-        duration_attrs = otel_wsgi._parse_duration_attrs(attributes)
+        active_requests_count_attrs = (
+            otel_wsgi._parse_active_request_count_attrs(
+                attributes, self._sem_conv_opt_in_mode
+            )
+        )
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
@@ -364,6 +399,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         activation.__enter__()
         env[_ENVIRON_SPAN_KEY] = span
         env[_ENVIRON_ACTIVATION_KEY] = activation
+        env[_ENVIRON_REQ_ATTRS] = attributes
         exception = None
 
         def _start_response(status, response_headers, *args, **kwargs):
@@ -379,12 +415,22 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
             exception = exc
             raise
         finally:
-            if span.is_recording():
-                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
-                    span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
+            duration_s = default_timer() - start
+            if self.duration_histogram_old:
+                duration_attrs = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.DEFAULT
                 )
-            duration = max(round((default_timer() - start) * 1000), 0)
-            self.duration_histogram.record(duration, duration_attrs)
+                self.duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0), duration_attrs
+                )
+            if self.duration_histogram_new:
+                duration_attrs = otel_wsgi._parse_duration_attrs(
+                    attributes, _StabilityMode.HTTP
+                )
+                self.duration_histogram_new.record(
+                    max(duration_s, 0), duration_attrs
+                )
+
             self.active_requests_counter.add(-1, active_requests_count_attrs)
             if exception is None:
                 activation.__exit__(None, None, None)
@@ -407,11 +453,13 @@ class _TraceMiddleware:
         traced_request_attrs=None,
         request_hook=None,
         response_hook=None,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         self.tracer = tracer
         self._traced_request_attrs = traced_request_attrs
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
     def process_request(self, req, resp):
         span = req.env.get(_ENVIRON_SPAN_KEY)
@@ -437,58 +485,60 @@ class _TraceMiddleware:
 
     def process_response(self, req, resp, resource, req_succeeded=None):  # pylint:disable=R0201,R0912
         span = req.env.get(_ENVIRON_SPAN_KEY)
+        req_attrs = req.env.get(_ENVIRON_REQ_ATTRS)
 
-        if not span or not span.is_recording():
+        if not span:
             return
 
         status = resp.status
-        reason = None
         if resource is None:
-            status = "404"
-            reason = "NotFound"
+            status = falcon.HTTP_404
         else:
+            exc_type, exc = None, None
             if _ENVIRON_EXC in req.env:
                 exc = req.env[_ENVIRON_EXC]
                 exc_type = type(exc)
-            else:
-                exc_type, exc = None, None
+
             if exc_type and not req_succeeded:
                 if "HTTPNotFound" in exc_type.__name__:
-                    status = "404"
-                    reason = "NotFound"
+                    status = falcon.HTTP_404
+                elif isinstance(exc, (falcon.HTTPError, falcon.HTTPStatus)):
+                    try:
+                        if _falcon_version > 2:
+                            status = falcon.code_to_http_status(exc.status)
+                        else:
+                            status = exc.status
+                    except ValueError:
+                        status = falcon.HTTP_500
                 else:
-                    status = "500"
-                    reason = f"{exc_type.__name__}: {exc}"
+                    status = falcon.HTTP_500
 
-        status = status.split(" ")[0]
+        # Falcon 1 does not support response headers. So
+        # send an empty dict.
+        response_headers = {}
+        if _falcon_version > 1:
+            response_headers = resp.headers
+
+        otel_wsgi.add_response_attributes(
+            span,
+            status,
+            response_headers,
+            req_attrs,
+            self._sem_conv_opt_in_mode,
+        )
+
+        if (
+            _report_new(self._sem_conv_opt_in_mode)
+            and req.uri_template
+            and req_attrs is not None
+        ):
+            req_attrs[HTTP_ROUTE] = req.uri_template
         try:
-            status_code = int(status)
-            span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
-            otel_status_code = http_status_to_status_code(
-                status_code, server_span=True
-            )
-
-            # set the description only when the status code is ERROR
-            if otel_status_code is not StatusCode.ERROR:
-                reason = None
-
-            span.set_status(
-                Status(
-                    status_code=otel_status_code,
-                    description=reason,
-                )
-            )
-
-            # Falcon 1 does not support response headers. So
-            # send an empty dict.
-            response_headers = {}
-            if _falcon_version > 1:
-                response_headers = resp.headers
-
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 # Check if low-cardinality route is available as per semantic-conventions
                 if req.uri_template:
                     span.update_name(f"{req.method} {req.uri_template}")
+                    span.set_attribute(HTTP_ROUTE, req.uri_template)
                 else:
                     span.update_name(f"{req.method}")
 
@@ -542,7 +592,7 @@ class FalconInstrumentor(BaseInstrumentor):
                     for x in app._middlewares_list
                     if not isinstance(x, _TraceMiddleware)
                 ]
-                # pylint: disable=c-extension-no-member
+                # pylint: disable=no-member
                 app._middleware = falcon.api_helpers.prepare_middleware(
                     app._middlewares_list,
                     independent_middleware=app._independent_middleware,

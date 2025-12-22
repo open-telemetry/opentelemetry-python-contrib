@@ -22,7 +22,12 @@ from packaging import version as package_version
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
     _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
     _server_duration_attrs_old,
 )
 from opentelemetry.instrumentation.falcon import FalconInstrumentor
@@ -36,6 +41,24 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_PATH,
+    URL_SCHEME,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
@@ -52,22 +75,60 @@ _expected_metric_names = [
     "http.server.active_requests",
     "http.server.duration",
 ]
+
 _recommended_attrs = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new
+    + _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_new
+    + _server_duration_attrs_old,
+}
+
+_recommended_metrics_attrs_old = {
     "http.server.active_requests": _server_active_requests_count_attrs_old,
     "http.server.duration": _server_duration_attrs_old,
 }
+_recommended_metrics_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
+_server_active_requests_count_attrs_both = (
+    _server_active_requests_count_attrs_old
+)
+_server_active_requests_count_attrs_both.extend(
+    _server_active_requests_count_attrs_new
+)
+_recommended_metrics_attrs_both = {
+    "http.server.active_requests": _server_active_requests_count_attrs_both,
+    "http.server.duration": _server_duration_attrs_old,
+    "http.server.request.duration": _server_duration_attrs_new,
+}
+
+_parsed_falcon_version = package_version.parse(_falcon_version)
 
 
 class TestFalconBase(TestBase):
     def setUp(self):
         super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
         self.env_patch = patch.dict(
             "os.environ",
             {
                 "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
                 "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
         FalconInstrumentor().instrument(
@@ -75,6 +136,13 @@ class TestFalconBase(TestBase):
             response_hook=getattr(self, "response_hook", None),
         )
         self.app = make_app()
+
+    @property
+    def _has_fixed_http_target(self):
+        # In falcon<3.1.2, HTTP_TARGET is always set to / in TestClient
+        # In falcon>=3.1.2, HTTP_TARGET is set to unencoded path by default
+        # https://github.com/falconry/falcon/blob/69cdcd6edd2ee33f4ac9f7793e1cc3c4f99da692/falcon/testing/helpers.py#L1153-1156 # noqa
+        return _parsed_falcon_version < package_version.parse("3.1.2")
 
     def client(self):
         return testing.TestClient(self.app)
@@ -86,26 +154,63 @@ class TestFalconBase(TestBase):
         self.env_patch.stop()
 
 
+# pylint: disable=too-many-public-methods
 class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
     def test_get(self):
         self._test_method("GET")
 
+    def test_get_new_semconv(self):
+        self._test_method("GET", old_semconv=False, new_semconv=True)
+
+    def test_get_both_semconv(self):
+        self._test_method("GET", old_semconv=True, new_semconv=True)
+
     def test_post(self):
         self._test_method("POST")
+
+    def test_post_new_semconv(self):
+        self._test_method("POST", old_semconv=False, new_semconv=True)
+
+    def test_post_both_semconv(self):
+        self._test_method("POST", old_semconv=True, new_semconv=True)
 
     def test_patch(self):
         self._test_method("PATCH")
 
+    def test_patch_new_semconv(self):
+        self._test_method("PATCH", old_semconv=False, new_semconv=True)
+
+    def test_patch_both_semconv(self):
+        self._test_method("PATCH", old_semconv=True, new_semconv=True)
+
     def test_put(self):
         self._test_method("PUT")
+
+    def test_put_new_semconv(self):
+        self._test_method("PUT", old_semconv=False, new_semconv=True)
+
+    def test_put_both_semconv(self):
+        self._test_method("PUT", old_semconv=True, new_semconv=True)
 
     def test_delete(self):
         self._test_method("DELETE")
 
+    def test_delete_new_semconv(self):
+        self._test_method("DELETE", old_semconv=False, new_semconv=True)
+
+    def test_delete_both_semconv(self):
+        self._test_method("DELETE", old_semconv=True, new_semconv=True)
+
     def test_head(self):
         self._test_method("HEAD")
 
-    def _test_method(self, method):
+    def test_head_new_semconv(self):
+        self._test_method("HEAD", old_semconv=False, new_semconv=True)
+
+    def test_head_both_semconv(self):
+        self._test_method("HEAD", old_semconv=True, new_semconv=True)
+
+    def _test_method(self, method, old_semconv=True, new_semconv=False):
         self.client().simulate_request(method=method, path="/hello")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -116,23 +221,44 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             span.status.description,
             None,
         )
-        self.assertSpanHasAttributes(
-            span,
-            {
-                SpanAttributes.HTTP_METHOD: method,
-                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.NET_PEER_PORT: 65133,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
-                "falcon.resource": "HelloWorldResource",
-                SpanAttributes.HTTP_STATUS_CODE: 201,
-            },
-        )
+
+        expected_attributes = {}
+        expected_attributes_old = {
+            SpanAttributes.HTTP_METHOD: method,
+            SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
+            SpanAttributes.HTTP_SCHEME: "http",
+            SpanAttributes.NET_HOST_PORT: 80,
+            SpanAttributes.HTTP_HOST: "falconframework.org",
+            SpanAttributes.HTTP_TARGET: "/"
+            if self._has_fixed_http_target
+            else "/hello",
+            SpanAttributes.NET_PEER_PORT: 65133,
+            SpanAttributes.HTTP_FLAVOR: "1.1",
+            "falcon.resource": "HelloWorldResource",
+            SpanAttributes.HTTP_STATUS_CODE: 201,
+            SpanAttributes.HTTP_ROUTE: "/hello",
+        }
+        expected_attributes_new = {
+            HTTP_REQUEST_METHOD: method,
+            SERVER_ADDRESS: "falconframework.org",
+            URL_SCHEME: "http",
+            SERVER_PORT: 80,
+            URL_PATH: "/" if self._has_fixed_http_target else "/hello",
+            CLIENT_PORT: 65133,
+            NETWORK_PROTOCOL_VERSION: "1.1",
+            "falcon.resource": "HelloWorldResource",
+            HTTP_RESPONSE_STATUS_CODE: 201,
+            SpanAttributes.HTTP_ROUTE: "/hello",
+        }
+
+        if old_semconv:
+            expected_attributes.update(expected_attributes_old)
+        if new_semconv:
+            expected_attributes.update(expected_attributes_new)
+
+        self.assertSpanHasAttributes(span, expected_attributes)
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
@@ -155,14 +281,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/does-not-exist",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 404,
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
@@ -180,10 +308,16 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertEqual(span.name, "GET /error")
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            "NameError: name 'non_existent_var' is not defined",
-        )
+
+        _parsed_falcon_version = package_version.parse(_falcon_version)
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            self.assertEqual(
+                span.status.description,
+                "NameError: name 'non_existent_var' is not defined",
+            )
+        else:
+            self.assertEqual(span.status.description, None)
+
         self.assertSpanHasAttributes(
             span,
             {
@@ -192,19 +326,63 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/error",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 SpanAttributes.HTTP_STATUS_CODE: 500,
+                SpanAttributes.HTTP_ROUTE: "/error",
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
-        # In falcon>3, NET_PEER_IP is not set to anything by default to
+        # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
         if SpanAttributes.NET_PEER_IP in span.attributes:
             self.assertEqual(
                 span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
             )
+
+    def test_url_template_new_semconv(self):
+        self.client().simulate_get("/user/123")
+        spans = self.memory_exporter.get_finished_spans()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+
+        self.assertEqual(len(spans), 1)
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        span = spans[0]
+        self.assertEqual(span.name, "GET /user/{user_id}")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(
+            span.status.description,
+            None,
+        )
+        self.assertSpanHasAttributes(
+            span,
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                SERVER_ADDRESS: "falconframework.org",
+                URL_SCHEME: "http",
+                SERVER_PORT: 80,
+                URL_PATH: "/" if self._has_fixed_http_target else "/user/123",
+                CLIENT_PORT: 65133,
+                NETWORK_PROTOCOL_VERSION: "1.1",
+                "falcon.resource": "UserResource",
+                HTTP_RESPONSE_STATUS_CODE: 200,
+                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
+            },
+        )
+
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name == "http.server.request.duration":
+                        data_points = list(metric.data.data_points)
+                        for point in data_points:
+                            self.assertIn(
+                                "http.route",
+                                point.attributes,
+                            )
 
     def test_url_template(self):
         self.client().simulate_get("/user/123")
@@ -225,11 +403,14 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 SpanAttributes.HTTP_SCHEME: "http",
                 SpanAttributes.NET_HOST_PORT: 80,
                 SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/",
+                SpanAttributes.HTTP_TARGET: "/"
+                if self._has_fixed_http_target
+                else "/user/123",
                 SpanAttributes.NET_PEER_PORT: 65133,
                 SpanAttributes.HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
                 SpanAttributes.HTTP_STATUS_CODE: 200,
+                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
             },
         )
 
@@ -243,6 +424,20 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         FalconInstrumentor().uninstrument()
         self.app = make_app()
         self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_no_op_tracer_provider(self):
+        FalconInstrumentor().uninstrument()
+
+        FalconInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
@@ -288,6 +483,27 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            self.assertTrue(len(metrics_list.resource_metrics) != 0)
+
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metric in resource_metric.scope_metrics:
+                    for metric in scope_metric.metrics:
+                        data_points = list(metric.data.data_points)
+                        self.assertEqual(len(data_points), 1)
+                        for point in list(metric.data.data_points):
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertEqual(point.count, 1)
+                            if isinstance(point, NumberDataPoint):
+                                self.assertEqual(point.value, 0)
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr,
+                                    _recommended_metrics_attrs_old[
+                                        metric.name
+                                    ],
+                                )
+
     def test_uninstrument_after_instrument(self):
         self.client().simulate_get(path="/hello")
         spans = self.memory_exporter.get_finished_spans()
@@ -328,47 +544,128 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_falcon_metric_values(self):
-        expected_duration_attributes = {
-            "http.method": "GET",
-            "http.host": "falconframework.org",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "falconframework.org",
-            "net.host.port": 80,
-            "net.host.name": "falconframework.org",
-            "http.status_code": 404,
-        }
-        expected_requests_count_attributes = {
-            "http.method": "GET",
-            "http.host": "falconframework.org",
-            "http.scheme": "http",
-            "http.flavor": "1.1",
-            "http.server_name": "falconframework.org",
-        }
+    def test_falcon_metric_values_new_semconv(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
         start = default_timer()
         self.client().simulate_get("/hello/756")
-        duration = max(round((default_timer() - start) * 1000), 0)
+        duration = max(default_timer() - start, 0)
+
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            histogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration, point.sum, delta=10
+                            )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_new[metric.name],
+                            )
+
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metric_values_both_semconv(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        start = default_timer()
+        self.client().simulate_get("/hello/756")
+        duration_s = default_timer() - start
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+
+        # pylint: disable=too-many-nested-blocks
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.unit == "ms":
+                        self.assertEqual(metric.name, "http.server.duration")
+                    elif metric.unit == "s":
+                        self.assertEqual(
+                            metric.name, "http.server.request.duration"
+                        )
+                    else:
+                        self.assertEqual(
+                            metric.name, "http.server.active_requests"
+                        )
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            if metric.unit == "ms":
+                                self.assertAlmostEqual(
+                                    max(round(duration_s * 1000), 0),
+                                    point.sum,
+                                    delta=10,
+                                )
+                            elif metric.unit == "s":
+                                self.assertAlmostEqual(
+                                    max(duration_s, 0), point.sum, delta=10
+                                )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_both[metric.name],
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metric_values(self):
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        start = default_timer()
+        self.client().simulate_get("/hello/756")
+        duration = max(round((default_timer() - start) * 1000), 0)
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
                     for point in list(metric.data.data_points):
                         if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
                             self.assertEqual(point.count, 1)
+                            histogram_data_point_seen = True
                             self.assertAlmostEqual(
                                 duration, point.sum, delta=10
                             )
                         if isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
                             self.assertEqual(point.value, 0)
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_old[metric.name],
+                            )
+
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_metric_uninstrument(self):
         self.client().simulate_request(method="POST", path="/hello/756")
@@ -524,8 +821,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
                 self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_version)
-        < package_version.parse("2.0.0"),
+        condition=_parsed_falcon_version < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
     def test_custom_response_header_added_in_server_span(self):
@@ -559,8 +855,7 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertNotIn(key, span.attributes)
 
     @pytest.mark.skipif(
-        condition=package_version.parse(_falcon_version)
-        < package_version.parse("2.0.0"),
+        condition=_parsed_falcon_version < package_version.parse("2.0.0"),
         reason="falcon<2 does not implement custom response headers",
     )
     def test_custom_response_header_not_added_in_internal_span(self):

@@ -1,6 +1,6 @@
 pylint==3.0.2
 httpretty==1.1.4
-mypy==0.931
+pyright==v1.1.404
 sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
 sphinx-autodoc-typehints==1.25.2
@@ -15,4 +15,4 @@ ruamel.yaml==0.17.21
 flaky==3.7.0
 pre-commit==3.7.0; python_version >= '3.9'
 pre-commit==3.5.0; python_version < '3.9'
-ruff==0.6.9
+ruff==0.14.1

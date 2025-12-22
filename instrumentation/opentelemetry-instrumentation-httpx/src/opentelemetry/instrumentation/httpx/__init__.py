@@ -23,17 +23,21 @@ When using the instrumentor, all clients will automatically trace requests.
 
 .. code-block:: python
 
-     import httpx
-     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+    import httpx
+    import asyncio
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-     url = "https://some.url/get"
-     HTTPXClientInstrumentor().instrument()
+    url = "https://example.com"
+    HTTPXClientInstrumentor().instrument()
 
-     with httpx.Client() as client:
-          response = client.get(url)
+    with httpx.Client() as client:
+        response = client.get(url)
 
-     async with httpx.AsyncClient() as client:
-          response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+
+    asyncio.run(get(url))
 
 Instrumenting single clients
 ****************************
@@ -45,18 +49,21 @@ use the `instrument_client` method.
 .. code-block:: python
 
     import httpx
+    import asyncio
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-    url = "https://some.url/get"
+    url = "https://example.com"
 
-    with httpx.Client(transport=telemetry_transport) as client:
+    with httpx.Client() as client:
         HTTPXClientInstrumentor.instrument_client(client)
         response = client.get(url)
 
-    async with httpx.AsyncClient(transport=telemetry_transport) as client:
-        HTTPXClientInstrumentor.instrument_client(client)
-        response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient() as client:
+            HTTPXClientInstrumentor.instrument_client(client)
+            response = await client.get(url)
 
+    asyncio.run(get(url))
 
 Uninstrument
 ************
@@ -65,17 +72,17 @@ If you need to uninstrument clients, there are two options available.
 
 .. code-block:: python
 
-     import httpx
-     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+    import httpx
+    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-     HTTPXClientInstrumentor().instrument()
-     client = httpx.Client()
+    HTTPXClientInstrumentor().instrument()
+    client = httpx.Client()
 
-     # Uninstrument a specific client
-     HTTPXClientInstrumentor.uninstrument_client(client)
+    # Uninstrument a specific client
+    HTTPXClientInstrumentor.uninstrument_client(client)
 
-     # Uninstrument all clients
-     HTTPXClientInstrumentor().uninstrument()
+    # Uninstrument all clients
+    HTTPXClientInstrumentor().uninstrument()
 
 
 Using transports directly
@@ -87,12 +94,13 @@ If you don't want to use the instrumentor class, you can use the transport class
 .. code-block:: python
 
     import httpx
+    import asyncio
     from opentelemetry.instrumentation.httpx import (
         AsyncOpenTelemetryTransport,
         SyncOpenTelemetryTransport,
     )
 
-    url = "https://some.url/get"
+    url = "https://example.com"
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(transport)
 
@@ -102,9 +110,11 @@ If you don't want to use the instrumentor class, you can use the transport class
     transport = httpx.AsyncHTTPTransport()
     telemetry_transport = AsyncOpenTelemetryTransport(transport)
 
-    async with httpx.AsyncClient(transport=telemetry_transport) as client:
-        response = await client.get(url)
+    async def get(url):
+        async with httpx.AsyncClient(transport=telemetry_transport) as client:
+            response = await client.get(url)
 
+    asyncio.run(get(url))
 
 Request and response hooks
 ***************************
@@ -154,6 +164,7 @@ Or if you are using the transport classes directly:
 
 .. code-block:: python
 
+    import httpx
     from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
 
     def request_hook(span, request):
@@ -188,6 +199,24 @@ Or if you are using the transport classes directly:
         response_hook=async_response_hook
     )
 
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_HTTPX_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_HTTPX_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
 API
 ---
 """
@@ -196,24 +225,34 @@ from __future__ import annotations
 
 import logging
 import typing
-from asyncio import iscoroutinefunction
 from functools import partial
+from inspect import iscoroutinefunction
+from timeit import default_timer
 from types import TracebackType
 
 import httpx
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+    _client_duration_attrs_new,
+    _client_duration_attrs_old,
+    _filter_semconv_duration_attrs,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _set_http_host_client,
     _set_http_method,
+    _set_http_net_peer_name_client,
     _set_http_network_protocol_version,
     _set_http_peer_port_client,
+    _set_http_scheme,
     _set_http_status_code,
     _set_http_url,
+    _set_status,
     _StabilityMode,
 )
 from opentelemetry.instrumentation.httpx.package import _instruments
@@ -224,21 +263,29 @@ from opentelemetry.instrumentation.utils import (
     is_http_instrumentation_enabled,
     unwrap,
 )
+from opentelemetry.metrics import Histogram, MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
 )
-from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
+from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics.http_metrics import (
+    HTTP_CLIENT_REQUEST_DURATION,
+)
+from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import remove_url_credentials, sanitize_method
+from opentelemetry.util.http import (
+    ExcludeList,
+    get_excluded_urls,
+    redact_url,
+    sanitize_method,
+)
 
 _logger = logging.getLogger(__name__)
 
-URL = typing.Tuple[bytes, bytes, typing.Optional[int], bytes]
-Headers = typing.List[typing.Tuple[bytes, bytes]]
 RequestHook = typing.Callable[[Span, "RequestInfo"], None]
 ResponseHook = typing.Callable[[Span, "RequestInfo", "ResponseInfo"], None]
 AsyncRequestHook = typing.Callable[
@@ -253,17 +300,15 @@ class RequestInfo(typing.NamedTuple):
     method: bytes
     url: httpx.URL
     headers: httpx.Headers | None
-    stream: typing.Optional[
-        typing.Union[httpx.SyncByteStream, httpx.AsyncByteStream]
-    ]
-    extensions: typing.Optional[dict]
+    stream: httpx.SyncByteStream | httpx.AsyncByteStream | None
+    extensions: dict[str, typing.Any] | None
 
 
 class ResponseInfo(typing.NamedTuple):
     status_code: int
     headers: httpx.Headers | None
-    stream: typing.Iterable[bytes]
-    extensions: typing.Optional[dict]
+    stream: httpx.SyncByteStream | httpx.AsyncByteStream
+    extensions: dict[str, typing.Any] | None
 
 
 def _get_default_span_name(method: str) -> str:
@@ -274,16 +319,24 @@ def _get_default_span_name(method: str) -> str:
     return method
 
 
-def _prepare_headers(headers: typing.Optional[Headers]) -> httpx.Headers:
+def _prepare_headers(headers: httpx.Headers | None) -> httpx.Headers:
     return httpx.Headers(headers)
 
 
-def _extract_parameters(args, kwargs):
+def _extract_parameters(
+    args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
+) -> tuple[
+    bytes,
+    httpx.URL | tuple[bytes, bytes, int | None, bytes],
+    httpx.Headers | None,
+    httpx.SyncByteStream | httpx.AsyncByteStream | None,
+    dict[str, typing.Any],
+]:
     if isinstance(args[0], httpx.Request):
         # In httpx >= 0.20.0, handle_request receives a Request object
         request: httpx.Request = args[0]
         method = request.method.encode()
-        url = httpx.URL(remove_url_credentials(str(request.url)))
+        url = httpx.URL(str(request.url))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
@@ -300,6 +353,22 @@ def _extract_parameters(args, kwargs):
     return method, url, headers, stream, extensions
 
 
+def _normalize_url(
+    url: httpx.URL | tuple[bytes, bytes, int | None, bytes],
+) -> str:
+    if isinstance(url, tuple):
+        scheme, host, port, path = [
+            part.decode() if isinstance(part, bytes) else part for part in url
+        ]
+        return (
+            f"{scheme}://{host}:{port}{path}"
+            if port
+            else f"{scheme}://{host}{path}"
+        )
+
+    return str(url)
+
+
 def _inject_propagation_headers(headers, args, kwargs):
     _headers = _prepare_headers(headers)
     inject(_headers)
@@ -311,10 +380,15 @@ def _inject_propagation_headers(headers, args, kwargs):
 
 
 def _extract_response(
-    response: typing.Union[
-        httpx.Response, typing.Tuple[int, Headers, httpx.SyncByteStream, dict]
-    ],
-) -> typing.Tuple[int, Headers, httpx.SyncByteStream, dict, str]:
+    response: httpx.Response
+    | tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]],
+) -> tuple[
+    int,
+    httpx.Headers,
+    httpx.SyncByteStream | httpx.AsyncByteStream,
+    dict[str, typing.Any],
+    str,
+]:
     if isinstance(response, httpx.Response):
         status_code = response.status_code
         headers = response.headers
@@ -331,8 +405,9 @@ def _extract_response(
 
 
 def _apply_request_client_attributes_to_span(
-    span_attributes: dict,
-    url: typing.Union[str, URL, httpx.URL],
+    span_attributes: dict[str, typing.Any],
+    metric_attributes: dict[str, typing.Any],
+    url: str | httpx.URL,
     method_original: str,
     semconv: _StabilityMode,
 ):
@@ -344,19 +419,39 @@ def _apply_request_client_attributes_to_span(
         sanitize_method(method_original),
         semconv,
     )
+
     # http semconv transition: http.url -> url.full
-    _set_http_url(span_attributes, str(url), semconv)
+    _set_http_url(span_attributes, redact_url(str(url)), semconv)
+
+    # Set HTTP method in metric labels
+    _set_http_method(
+        metric_attributes,
+        method_original,
+        sanitize_method(method_original),
+        semconv,
+    )
+
+    if _report_old(semconv):
+        # TODO: Support opt-in for url.scheme in new semconv
+        _set_http_scheme(metric_attributes, url.scheme, semconv)
 
     if _report_new(semconv):
         if url.host:
             # http semconv transition: http.host -> server.address
             _set_http_host_client(span_attributes, url.host, semconv)
+            # Add metric labels
+            _set_http_host_client(metric_attributes, url.host, semconv)
+            _set_http_net_peer_name_client(
+                metric_attributes, url.host, semconv
+            )
             # http semconv transition: net.sock.peer.addr -> network.peer.address
             span_attributes[NETWORK_PEER_ADDRESS] = url.host
         if url.port:
             # http semconv transition: net.sock.peer.port -> network.peer.port
             _set_http_peer_port_client(span_attributes, url.port, semconv)
             span_attributes[NETWORK_PEER_PORT] = url.port
+            # Add metric labels
+            _set_http_peer_port_client(metric_attributes, url.port, semconv)
 
 
 def _apply_response_client_attributes_to_span(
@@ -392,12 +487,39 @@ def _apply_response_client_attributes_to_span(
         span.set_attribute(key, val)
 
 
+def _apply_response_client_attributes_to_metrics(
+    span: Span | None,
+    metric_attributes: dict[str, typing.Any],
+    status_code: int,
+    http_version: str,
+    semconv: _StabilityMode,
+) -> None:
+    """Apply response attributes to metric attributes."""
+    # Set HTTP status code in metric attributes
+    _set_status(
+        span,
+        metric_attributes,
+        status_code,
+        str(status_code),
+        server_span=False,
+        sem_conv_opt_in_mode=semconv,
+    )
+
+    if http_version and _report_new(semconv):
+        _set_http_network_protocol_version(
+            metric_attributes,
+            http_version.replace("HTTP/", ""),
+            semconv,
+        )
+
+
 class SyncOpenTelemetryTransport(httpx.BaseTransport):
     """Sync transport class that will trace all requests made with a client.
 
     Args:
         transport: SyncHTTPTransport instance to wrap
         tracer_provider: Tracer provider to use
+        meter_provider: Meter provider to use
         request_hook: A hook that receives the span and request that is called
             right after the span is created
         response_hook: A hook that receives the span, request, and response
@@ -407,46 +529,72 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
     def __init__(
         self,
         transport: httpx.BaseTransport,
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[RequestHook] = None,
-        response_hook: typing.Optional[ResponseHook] = None,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        request_hook: RequestHook | None = None,
+        response_hook: ResponseHook | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
+        schema_url = _get_schema_url(self._sem_conv_opt_in_mode)
 
         self._transport = transport
         self._tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url,
+        )
+
+        self._duration_histogram_old = None
+        if _report_old(self._sem_conv_opt_in_mode):
+            self._duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
+        self._duration_histogram_new = None
+        if _report_new(self._sem_conv_opt_in_mode):
+            self._duration_histogram_new = meter.create_histogram(
+                name=HTTP_CLIENT_REQUEST_DURATION,
+                unit="s",
+                description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
 
-    def __enter__(self) -> "SyncOpenTelemetryTransport":
+    def __enter__(self) -> SyncOpenTelemetryTransport:
         self._transport.__enter__()
         return self
 
     def __exit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]] = None,
-        exc_value: typing.Optional[BaseException] = None,
-        traceback: typing.Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         self._transport.__exit__(exc_type, exc_value, traceback)
 
     # pylint: disable=R0914
     def handle_request(
         self,
-        *args,
-        **kwargs,
-    ) -> typing.Union[
-        typing.Tuple[int, "Headers", httpx.SyncByteStream, dict],
-        httpx.Response,
-    ]:
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> (
+        tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]]
+        | httpx.Response
+    ):
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
@@ -454,12 +602,20 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return self._transport.handle_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
+        metric_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
+            metric_attributes,
             url,
             method_original,
             self._sem_conv_opt_in_mode,
@@ -476,15 +632,28 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
 
             _inject_propagation_headers(headers, args, kwargs)
 
+            start_time = default_timer()
+
             try:
                 response = self._transport.handle_request(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
+            finally:
+                elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (httpx.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
                     _extract_response(response)
+                )
+
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
                 )
 
                 if span.is_recording():
@@ -509,7 +678,32 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
                 raise exception.with_traceback(exception.__traceback__)
+
+            if self._duration_histogram_old is not None:
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.DEFAULT,
+                )
+                self._duration_histogram_old.record(
+                    max(round(elapsed_time * 1000), 0),
+                    attributes=duration_attrs_old,
+                )
+            if self._duration_histogram_new is not None:
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                )
+                self._duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -523,6 +717,7 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     Args:
         transport: AsyncHTTPTransport instance to wrap
         tracer_provider: Tracer provider to use
+        meter_provider: Meter provider to use
         request_hook: A hook that receives the span and request that is called
             right after the span is created
         response_hook: A hook that receives the span, request, and response
@@ -532,24 +727,52 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
     def __init__(
         self,
         transport: httpx.AsyncBaseTransport,
-        tracer_provider: typing.Optional[TracerProvider] = None,
-        request_hook: typing.Optional[AsyncRequestHook] = None,
-        response_hook: typing.Optional[AsyncResponseHook] = None,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        request_hook: AsyncRequestHook | None = None,
+        response_hook: AsyncResponseHook | None = None,
     ):
         _OpenTelemetrySemanticConventionStability._initialize()
         self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
+        schema_url = _get_schema_url(self._sem_conv_opt_in_mode)
 
         self._transport = transport
         self._tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
+
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url,
+        )
+
+        self._duration_histogram_old = None
+        if _report_old(self._sem_conv_opt_in_mode):
+            self._duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
+        self._duration_histogram_new = None
+        if _report_new(self._sem_conv_opt_in_mode):
+            self._duration_histogram_new = meter.create_histogram(
+                name=HTTP_CLIENT_REQUEST_DURATION,
+                unit="s",
+                description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
+
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
 
     async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
@@ -557,19 +780,19 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
     async def __aexit__(
         self,
-        exc_type: typing.Optional[typing.Type[BaseException]] = None,
-        exc_value: typing.Optional[BaseException] = None,
-        traceback: typing.Optional[TracebackType] = None,
+        exc_type: typing.Type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         await self._transport.__aexit__(exc_type, exc_value, traceback)
 
     # pylint: disable=R0914
     async def handle_async_request(
-        self, *args, **kwargs
-    ) -> typing.Union[
-        typing.Tuple[int, "Headers", httpx.AsyncByteStream, dict],
-        httpx.Response,
-    ]:
+        self, *args: typing.Any, **kwargs: typing.Any
+    ) -> (
+        tuple[int, httpx.Headers, httpx.AsyncByteStream, dict[str, typing.Any]]
+        | httpx.Response
+    ):
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
@@ -577,12 +800,20 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
+        metric_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
+            metric_attributes,
             url,
             method_original,
             self._sem_conv_opt_in_mode,
@@ -599,6 +830,8 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
             _inject_propagation_headers(headers, args, kwargs)
 
+            start_time = default_timer()
+
             try:
                 response = await self._transport.handle_async_request(
                     *args, **kwargs
@@ -606,10 +839,21 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
+            finally:
+                elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (httpx.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
                     _extract_response(response)
+                )
+
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    self._sem_conv_opt_in_mode,
                 )
 
                 if span.is_recording():
@@ -635,7 +879,33 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
+
                 raise exception.with_traceback(exception.__traceback__)
+
+            if self._duration_histogram_old is not None:
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.DEFAULT,
+                )
+                self._duration_histogram_old.record(
+                    max(round(elapsed_time * 1000), 0),
+                    attributes=duration_attrs_old,
+                )
+            if self._duration_histogram_new is not None:
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                )
+                self._duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -653,12 +923,13 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> typing.Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: typing.Any):
         """Instruments httpx Client and AsyncClient
 
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
+                ``meter_provider``: a MeterProvider, defaults to global
                 ``request_hook``: A ``httpx.Client`` hook that receives the span and request
                     that is called right after the span is created
                 ``response_hook``: A ``httpx.Client`` hook that receives the span, request,
@@ -667,6 +938,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         async_request_hook = kwargs.get("async_request_hook")
@@ -681,17 +953,43 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             if iscoroutinefunction(async_response_hook)
             else None
         )
+        excluded_urls = get_excluded_urls("HTTPX")
 
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
+        schema_url = _get_schema_url(sem_conv_opt_in_mode)
+
         tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
+
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url,
+        )
+        duration_histogram_old = None
+        if _report_old(sem_conv_opt_in_mode):
+            duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
+        duration_histogram_new = None
+        if _report_new(sem_conv_opt_in_mode):
+            duration_histogram_new = meter.create_histogram(
+                name=HTTP_CLIENT_REQUEST_DURATION,
+                unit="s",
+                description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
 
         wrap_function_wrapper(
             "httpx",
@@ -699,9 +997,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             partial(
                 self._handle_request_wrapper,
                 tracer=tracer,
+                duration_histogram_old=duration_histogram_old,
+                duration_histogram_new=duration_histogram_new,
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
         wrap_function_wrapper(
@@ -710,26 +1011,32 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             partial(
                 self._handle_async_request_wrapper,
                 tracer=tracer,
+                duration_histogram_old=duration_histogram_old,
+                duration_histogram_new=duration_histogram_new,
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 async_request_hook=async_request_hook,
                 async_response_hook=async_response_hook,
+                excluded_urls=excluded_urls,
             ),
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: typing.Any):
         unwrap(httpx.HTTPTransport, "handle_request")
         unwrap(httpx.AsyncHTTPTransport, "handle_async_request")
 
     @staticmethod
     def _handle_request_wrapper(  # pylint: disable=too-many-locals
-        wrapped,
-        instance,
-        args,
-        kwargs,
-        tracer,
-        sem_conv_opt_in_mode,
-        request_hook,
-        response_hook,
+        wrapped: typing.Callable[..., typing.Any],
+        instance: httpx.HTTPTransport,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
+        tracer: Tracer,
+        duration_histogram_old: Histogram,
+        duration_histogram_new: Histogram,
+        sem_conv_opt_in_mode: _StabilityMode,
+        request_hook: RequestHook,
+        response_hook: ResponseHook,
+        excluded_urls: ExcludeList | None,
     ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
@@ -737,12 +1044,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
+        metric_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
+            metric_attributes,
             url,
             method_original,
             sem_conv_opt_in_mode,
@@ -759,15 +1072,28 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
             _inject_propagation_headers(headers, args, kwargs)
 
+            start_time = default_timer()
+
             try:
                 response = wrapped(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
+            finally:
+                elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (httpx.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
                     _extract_response(response)
+                )
+
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
                 )
 
                 if span.is_recording():
@@ -790,20 +1116,48 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     span.set_attribute(
                         ERROR_TYPE, type(exception).__qualname__
                     )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
                 raise exception.with_traceback(exception.__traceback__)
+
+            if duration_histogram_old is not None:
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.DEFAULT,
+                )
+                duration_histogram_old.record(
+                    max(round(elapsed_time * 1000), 0),
+                    attributes=duration_attrs_old,
+                )
+            if duration_histogram_new is not None:
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                )
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
     @staticmethod
     async def _handle_async_request_wrapper(  # pylint: disable=too-many-locals
-        wrapped,
-        instance,
-        args,
-        kwargs,
-        tracer,
-        sem_conv_opt_in_mode,
-        async_request_hook,
-        async_response_hook,
+        wrapped: typing.Callable[..., typing.Awaitable[typing.Any]],
+        instance: httpx.AsyncHTTPTransport,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
+        tracer: Tracer,
+        duration_histogram_old: Histogram,
+        duration_histogram_new: Histogram,
+        sem_conv_opt_in_mode: _StabilityMode,
+        async_request_hook: AsyncRequestHook,
+        async_response_hook: AsyncResponseHook,
+        excluded_urls: ExcludeList | None,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
@@ -811,12 +1165,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return await wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
+        metric_attributes = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
+            metric_attributes,
             url,
             method_original,
             sem_conv_opt_in_mode,
@@ -833,15 +1193,28 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
             _inject_propagation_headers(headers, args, kwargs)
 
+            start_time = default_timer()
+
             try:
                 response = await wrapped(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
+            finally:
+                elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (httpx.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
                     _extract_response(response)
+                )
+
+                # Always apply response attributes to metrics
+                _apply_response_client_attributes_to_metrics(
+                    span,
+                    metric_attributes,
+                    status_code,
+                    http_version,
+                    sem_conv_opt_in_mode,
                 )
 
                 if span.is_recording():
@@ -867,25 +1240,46 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     )
                 raise exception.with_traceback(exception.__traceback__)
 
+            if duration_histogram_old is not None:
+                duration_attrs_old = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.DEFAULT,
+                )
+                duration_histogram_old.record(
+                    max(round(elapsed_time * 1000), 0),
+                    attributes=duration_attrs_old,
+                )
+            if duration_histogram_new is not None:
+                duration_attrs_new = _filter_semconv_duration_attrs(
+                    metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                )
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
+
         return response
 
+    # pylint: disable=too-many-branches,too-many-locals
     @classmethod
     def instrument_client(
         cls,
-        client: typing.Union[httpx.Client, httpx.AsyncClient],
-        tracer_provider: TracerProvider = None,
-        request_hook: typing.Union[
-            typing.Optional[RequestHook], typing.Optional[AsyncRequestHook]
-        ] = None,
-        response_hook: typing.Union[
-            typing.Optional[ResponseHook], typing.Optional[AsyncResponseHook]
-        ] = None,
+        client: httpx.Client | httpx.AsyncClient,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        request_hook: RequestHook | AsyncRequestHook | None = None,
+        response_hook: ResponseHook | AsyncResponseHook | None = None,
     ) -> None:
         """Instrument httpx Client or AsyncClient
 
         Args:
             client: The httpx Client or AsyncClient instance
             tracer_provider: A TracerProvider, defaults to global
+            meter_provider: A MeterProvider, defaults to global
             request_hook: A hook that receives the span and request that is called
                 right after the span is created
             response_hook: A hook that receives the span, request, and response
@@ -902,12 +1296,35 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
+        schema_url = _get_schema_url(sem_conv_opt_in_mode)
         tracer = get_tracer(
             __name__,
             instrumenting_library_version=__version__,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
+        meter = get_meter(
+            __name__,
+            __version__,
+            meter_provider,
+            schema_url,
+        )
+        duration_histogram_old = None
+        if _report_old(sem_conv_opt_in_mode):
+            duration_histogram_old = meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="measures the duration of the outbound HTTP request",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+            )
+        duration_histogram_new = None
+        if _report_new(sem_conv_opt_in_mode):
+            duration_histogram_new = meter.create_histogram(
+                name=HTTP_CLIENT_REQUEST_DURATION,
+                unit="s",
+                description="Duration of HTTP client requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
 
         if iscoroutinefunction(request_hook):
             async_request_hook = request_hook
@@ -923,6 +1340,8 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             # response_hook already set
             async_response_hook = None
 
+        excluded_urls = get_excluded_urls("HTTPX")
+
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -930,9 +1349,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 partial(
                     cls._handle_request_wrapper,
                     tracer=tracer,
+                    duration_histogram_old=duration_histogram_old,
+                    duration_histogram_new=duration_histogram_new,
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     request_hook=request_hook,
                     response_hook=response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -943,9 +1365,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         partial(
                             cls._handle_request_wrapper,
                             tracer=tracer,
+                            duration_histogram_old=duration_histogram_old,
+                            duration_histogram_new=duration_histogram_new,
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             request_hook=request_hook,
                             response_hook=response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
@@ -956,9 +1381,12 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 partial(
                     cls._handle_async_request_wrapper,
                     tracer=tracer,
+                    duration_histogram_old=duration_histogram_old,
+                    duration_histogram_new=duration_histogram_new,
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     async_request_hook=async_request_hook,
                     async_response_hook=async_response_hook,
+                    excluded_urls=excluded_urls,
                 ),
             )
             for transport in client._mounts.values():
@@ -969,17 +1397,18 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         partial(
                             cls._handle_async_request_wrapper,
                             tracer=tracer,
+                            duration_histogram_old=duration_histogram_old,
+                            duration_histogram_new=duration_histogram_new,
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             async_request_hook=async_request_hook,
                             async_response_hook=async_response_hook,
+                            excluded_urls=excluded_urls,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
-    def uninstrument_client(
-        client: typing.Union[httpx.Client, httpx.AsyncClient],
-    ):
+    def uninstrument_client(client: httpx.Client | httpx.AsyncClient) -> None:
         """Disables instrumentation for the given client instance
 
         Args:

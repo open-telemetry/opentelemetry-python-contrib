@@ -57,14 +57,12 @@ class TestPymongo(TestBase):
         # pylint: disable=protected-access
         span = command_tracer._pop_span(mock_event)
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(span.name, "database_name.command_name")
+        self.assertEqual(span.name, "database_name.find")
         self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
         self.assertEqual(
             span.attributes[SpanAttributes.DB_NAME], "database_name"
         )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "command_name"
-        )
+        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
         )
@@ -129,6 +127,7 @@ class TestPymongo(TestBase):
             failed_hook=self.failed_callback,
         )
         command_tracer.started(event=mock_event)
+        mock_event.mark_as_failed()
         command_tracer.failed(event=mock_event)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -139,7 +138,7 @@ class TestPymongo(TestBase):
             span.status.status_code,
             trace_api.StatusCode.ERROR,
         )
-        self.assertEqual(span.status.description, "failure")
+        self.assertEqual(span.status.description, "operation failed")
         self.assertIsNotNone(span.end_time)
         self.start_callback.assert_called_once()
         self.failed_callback.assert_called_once()
@@ -151,6 +150,7 @@ class TestPymongo(TestBase):
         command_tracer.started(event=first_mock_event)
         command_tracer.started(event=second_mock_event)
         command_tracer.succeeded(event=first_mock_event)
+        second_mock_event.mark_as_failed()
         command_tracer.failed(event=second_mock_event)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -181,7 +181,7 @@ class TestPymongo(TestBase):
 
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(span.name, "database_name.command_name")
+        self.assertEqual(span.name, "database_name.123")
 
     def test_no_op_tracer(self):
         mock_event = MockEvent({})
@@ -193,6 +193,127 @@ class TestPymongo(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def test_capture_statement_getmore(self):
+        command_attrs = {
+            "command_name": "getMore",
+            "collection": "test_collection",
+        }
+        mock_event = MockEvent(command_attrs)
+
+        command_tracer = CommandTracer(self.tracer, capture_statement=True)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            "getMore test_collection",
+        )
+
+    def test_capture_statement_aggregate(self):
+        pipeline = [
+            {"$match": {"status": "active"}},
+            {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        ]
+        command_attrs = {
+            "command_name": "aggregate",
+            "pipeline": pipeline,
+        }
+        command_tracer = CommandTracer(self.tracer, capture_statement=True)
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        expected_statement = f"aggregate {pipeline}"
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], expected_statement
+        )
+
+    def test_capture_statement_disabled_getmore(self):
+        command_attrs = {
+            "command_name": "getMore",
+            "collection": "test_collection",
+        }
+        command_tracer = CommandTracer(self.tracer, capture_statement=False)
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "getMore"
+        )
+
+    def test_capture_statement_disabled_aggregate(self):
+        pipeline = [{"$match": {"status": "active"}}]
+        command_attrs = {
+            "command_name": "aggregate",
+            "pipeline": pipeline,
+        }
+        command_tracer = CommandTracer(self.tracer, capture_statement=False)
+        mock_event = MockEvent(command_attrs)
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT], "aggregate"
+        )
+
+    def test_collection_name_attribute(self):
+        scenarios = [
+            (
+                {
+                    "command_name": "find",
+                    "find": "test_collection",
+                },
+                "test_collection",
+            ),
+            ({"command_name": "find"}, None),
+            ({"command_name": "find", "find": b"invalid"}, None),
+        ]
+        for command_attrs, expected in scenarios:
+            with self.subTest(command_attrs=command_attrs, expected=expected):
+                mock_event = MockEvent(command_attrs)
+
+                command_tracer = CommandTracer(
+                    self.tracer, capture_statement=True
+                )
+                command_tracer.started(event=mock_event)
+                command_tracer.succeeded(event=mock_event)
+
+                spans_list = self.memory_exporter.get_finished_spans()
+
+                self.assertEqual(len(spans_list), 1)
+                span = spans_list[0]
+
+                self.assertEqual(
+                    span.attributes[SpanAttributes.DB_STATEMENT], "find"
+                )
+
+                self.assertEqual(
+                    span.attributes.get(SpanAttributes.DB_MONGODB_COLLECTION),
+                    expected,
+                )
+                self.memory_exporter.clear()
 
 
 class MockCommand:
@@ -206,8 +327,19 @@ class MockCommand:
 class MockEvent:
     def __init__(self, command_attrs, connection_id=None, request_id=""):
         self.command = MockCommand(command_attrs)
+        self.command_name = self.command.get("command_name")
         self.connection_id = connection_id
         self.request_id = request_id
+        self.failure = None
+
+    def mark_as_failed(self):
+        # CommandFailedEvent.failure is type _DocumentOut, which pymongo defines as:
+        # ```
+        # _DocumentOut = Union[MutableMapping[str, Any], "RawBSONDocument"]
+        # ```
+        # we go with the former, but both provide a `.get(key, default)` method.
+        #
+        self.failure = {"errmsg": "operation failed"}
 
     def __getattr__(self, item):
         return item

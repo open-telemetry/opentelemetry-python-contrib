@@ -28,6 +28,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflict,
+    DependencyConflictError,
     get_dependency_conflicts,
 )
 
@@ -104,9 +105,17 @@ class BaseInstrumentor(ABC):
 
         # check if instrumentor has any missing or conflicting dependencies
         skip_dep_check = kwargs.pop("skip_dep_check", False)
+        raise_exception_on_conflict = kwargs.pop(
+            "raise_exception_on_conflict", False
+        )
         if not skip_dep_check:
             conflict = self._check_dependency_conflicts()
             if conflict:
+                # auto-instrumentation path: don't log conflict as error, instead
+                # let _load_instrumentors handle the exception
+                if raise_exception_on_conflict:
+                    raise DependencyConflictError(conflict)
+                # manual instrumentation path: log the conflict as error
                 _LOG.error(conflict)
                 return None
 

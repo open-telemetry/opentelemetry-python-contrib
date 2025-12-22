@@ -38,13 +38,17 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -150,9 +154,9 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -198,9 +202,9 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
                 HTTP_REQUEST_METHOD: "GET",
                 URL_FULL: self.URL,
                 HTTP_RESPONSE_STATUS_CODE: 200,
@@ -260,9 +264,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
@@ -310,9 +312,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
         self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
 
         self.assertIs(
@@ -337,8 +337,8 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
             },
         )
 
@@ -455,9 +455,9 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             dict(span.attributes),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: "http://mock/status/500",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_URL: "http://mock/status/500",
+                HTTP_STATUS_CODE: 500,
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -486,9 +486,9 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.assertEqual(
             dict(span.attributes),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: "http://mock/status/500",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_URL: "http://mock/status/500",
+                HTTP_STATUS_CODE: 500,
                 HTTP_REQUEST_METHOD: "GET",
                 URL_FULL: "http://mock/status/500",
                 HTTP_RESPONSE_STATUS_CODE: 500,
@@ -512,14 +512,17 @@ class URLLibIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         url = "http://username:password@mock/status/200"
 
         with self.assertRaises(Exception):
             self.perform_request(url)
 
         span = self.assert_span()
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200",
+        )
 
     def test_hooks(self):
         def request_hook(span, request_obj):

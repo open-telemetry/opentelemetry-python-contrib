@@ -20,6 +20,7 @@ from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
+    _BotocoreInstrumentorContext,
     _DynamoDbExtension,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -180,7 +181,9 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension(operation)
 
         extension.on_success(
-            span, {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}}
+            span,
+            {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}},
+            _BotocoreInstrumentorContext(logger=mock.Mock()),
         )
         self.assert_item_col_metrics(span)
 
@@ -290,7 +293,9 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension("DeleteItem")
 
         extension.on_success(
-            span, {"ConsumedCapacity": {"TableName": "table"}}
+            span,
+            {"ConsumedCapacity": {"TableName": "table"}},
+            _BotocoreInstrumentorContext(logger=mock.Mock()),
         )
         self.assert_consumed_capacity(span, "table")
 
@@ -434,7 +439,7 @@ class TestDynamoDbExtension(TestBase):
             Limit=42,
             Select="ALL_ATTRIBUTES",
             TotalSegments=17,
-            Segment=21,
+            Segment=16,
             ProjectionExpression="PE",
             ConsistentRead=True,
             ReturnConsumedCapacity="TOTAL",
@@ -443,14 +448,14 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("Scan")
         self.assert_table_names(span, self.default_table_name)
         self.assertEqual(
-            21, span.attributes[SpanAttributes.AWS_DYNAMODB_SEGMENT]
+            16, span.attributes[SpanAttributes.AWS_DYNAMODB_SEGMENT]
         )
         self.assertEqual(
             17, span.attributes[SpanAttributes.AWS_DYNAMODB_TOTAL_SEGMENTS]
         )
-        self.assertEqual(1, span.attributes[SpanAttributes.AWS_DYNAMODB_COUNT])
+        self.assertEqual(0, span.attributes[SpanAttributes.AWS_DYNAMODB_COUNT])
         self.assertEqual(
-            1, span.attributes[SpanAttributes.AWS_DYNAMODB_SCANNED_COUNT]
+            0, span.attributes[SpanAttributes.AWS_DYNAMODB_SCANNED_COUNT]
         )
         self.assert_attributes_to_get(span, "id", "idl")
         self.assert_consistent_read(span, True)

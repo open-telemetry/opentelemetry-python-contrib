@@ -33,7 +33,8 @@ Do not put sensitive information in Baggage.
 To repeat: a consequence of adding data to Baggage is that the keys and
 values will appear in all outgoing HTTP headers from the application.
 
-## Usage
+Usage
+-----
 
 Add the span processor when configuring the tracer provider.
 

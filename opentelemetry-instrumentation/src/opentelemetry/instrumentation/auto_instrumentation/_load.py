@@ -17,6 +17,7 @@ from logging import getLogger
 from os import environ
 
 from opentelemetry.instrumentation.dependencies import (
+    DependencyConflictError,
     get_dist_dependency_conflicts,
 )
 from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
@@ -33,6 +34,8 @@ from opentelemetry.util._importlib_metadata import (
 )
 
 _logger = getLogger(__name__)
+
+SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
 
 
 class _EntryPointDistFinder:
@@ -93,6 +96,9 @@ def _load_instrumentors(distro):
         entry_point.load()()
 
     for entry_point in entry_points(group="opentelemetry_instrumentor"):
+        if SKIPPED_INSTRUMENTATIONS_WILDCARD in package_to_exclude:
+            break
+
         if entry_point.name in package_to_exclude:
             _logger.debug(
                 "Instrumentation skipped for library %s", entry_point.name
@@ -113,6 +119,25 @@ def _load_instrumentors(distro):
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
+        except DependencyConflictError as exc:
+            # Dependency conflicts are generally caught from get_dist_dependency_conflicts
+            # returning a DependencyConflict. Keeping this error handling in case custom
+            # distro and instrumentor behavior raises a DependencyConflictError later.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
+            _logger.debug(
+                "Skipping instrumentation %s: %s",
+                entry_point.name,
+                exc.conflict,
+            )
+            continue
+        except ModuleNotFoundError as exc:
+            # ModuleNotFoundError is raised when the library is not installed
+            # and the instrumentation is not required to be loaded.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
+            _logger.debug(
+                "Skipping instrumentation %s: %s", entry_point.name, exc.msg
+            )
+            continue
         except ImportError:
             # in scenarios using the kubernetes operator to do autoinstrumentation some
             # instrumentors (usually requiring binary extensions) may fail to load

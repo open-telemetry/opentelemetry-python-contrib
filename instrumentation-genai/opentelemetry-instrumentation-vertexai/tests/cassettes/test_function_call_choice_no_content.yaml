@@ -1,0 +1,122 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '824'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "New Delhi"
+                      }
+                    },
+                    "thoughtSignature": "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"
+                  },
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "San Francisco"
+                      }
+                    }
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -1.5602271556854248
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 74,
+            "candidatesTokenCount": 16,
+            "totalTokenCount": 482,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 74
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 16
+              }
+            ],
+            "thoughtsTokenCount": 392
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:28.661450Z",
+          "responseId": "YJCkaMqvKPfQgLUPuoKz8QU"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '3317'
+    status:
+      code: 200
+      message: OK
+version: 1

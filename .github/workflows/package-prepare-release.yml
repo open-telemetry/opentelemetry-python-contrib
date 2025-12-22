@@ -9,9 +9,17 @@ on:
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
+        - opentelemetry-instrumentation-openai-agents-v2
+        - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-google-genai
+        - opentelemetry-util-genai
         description: 'Package to be released'
         required: true
 
+permissions:
+  contents: read
+
+run-name: "[Package][${{ inputs.package }}] Prepare release"
 jobs:
   prereqs:
     runs-on: ubuntu-latest
@@ -54,7 +62,7 @@ jobs:
 
           version=${version_dev%.dev}
 
-          version_file=$(find $path -type f -path "*version*.py")
+          version_file=$(find $path -type f -path "**/version.py")
           file_count=$(echo "$version_file" | wc -l)
 
           if [ "$file_count" -ne 1 ]; then
@@ -89,6 +97,9 @@ jobs:
   create-pull-request-against-release-branch:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
     steps:
       - uses: actions/checkout@v4
 
@@ -126,13 +137,19 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request against the release branch
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Prepare release for ${PACKAGE_NAME} v${VERSION}"
-          branch="opentelemetrybot/prepare-${RELEASE_BRANCH_NAME}"
+          branch="otelbot/prepare-${RELEASE_BRANCH_NAME}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
@@ -144,6 +161,9 @@ jobs:
   create-pull-request-against-main:
     runs-on: ubuntu-latest
     needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
     steps:
       - uses: actions/checkout@v4
 
@@ -178,14 +198,20 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token-main
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request against main
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token-main.outputs.token }}
         run: |
           message="Update ${PACKAGE_NAME} version to v${NEXT_VERSION}"
           body="Update \`${PACKAGE_NAME}\` version to v\`${NEXT_VERSION}\`."
-          branch="opentelemetrybot/update-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
+          branch="otelbot/update-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
