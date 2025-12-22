@@ -167,24 +167,23 @@ def get_genai_request_attributes(  # pylint: disable=too-many-branches
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
         )
-    if use_latest_semconvs:
-        if "seed" in generation_config:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-                generation_config.seed
+    if "seed" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+            generation_config.seed
+        )
+    if "candidate_count" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+            generation_config.candidate_count
+        )
+    if "response_mime_type" in generation_config:
+        if generation_config.response_mime_type == "text/plain":
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
+        elif generation_config.response_mime_type == "application/json":
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
+        else:
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                generation_config.response_mime_type
             )
-        if "candidate_count" in generation_config:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-                generation_config.candidate_count
-            )
-        if "response_mime_type" in generation_config:
-            if generation_config.response_mime_type == "text/plain":
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
-            elif generation_config.response_mime_type == "application/json":
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
-            else:
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-                    generation_config.response_mime_type
-                )
 
     return attributes
 
