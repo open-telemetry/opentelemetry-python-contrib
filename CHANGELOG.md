@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
 - `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
+- `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
+  ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
 
 ### Fixed
 
@@ -68,8 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
 - `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
   ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
-- `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
-  ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
 
 ### Fixed
 
