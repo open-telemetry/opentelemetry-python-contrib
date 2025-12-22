@@ -318,7 +318,7 @@ class TornadoInstrumentor(BaseInstrumentor):
                 __name__,
                 __version__,
                 meter_provider,
-                schema_url="https://opentelemetry.io/schemas/1.21.0",
+                schema_url=_get_schema_url(_StabilityMode.HTTP),
             )
 
         client_histograms = _create_client_histograms(
