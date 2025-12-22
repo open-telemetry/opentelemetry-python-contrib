@@ -11,11 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
-  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+### Added
+
+- `opentelemetry-instrumentation-aiohttp-client`: add typechecking for aiohttp-client instrumentation
+  ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
+
+### Fixed
+
+- `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
+  ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
+- `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
+  ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
+- `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
+  ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
+
+## Version 1.39.0/0.60b0 (2025-12-03)
 
 ### Added 
 
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
 - `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
   ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
 - `opentelemetry-instrumentation-httpx`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_HTTPX_EXCLUDED_URLS`
@@ -42,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-botocore`: bedrock: Add safety check for bedrock ConverseStream responses
+  ([#3990](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3990))
 - `opentelemetry-instrumentation-botocore`: bedrock: only decode JSON input buffer in Anthropic Claude streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
 - `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-aiohttp-server`: Fix readme links and text
