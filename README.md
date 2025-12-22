@@ -109,7 +109,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 We meet weekly on Thursday at 9AM PT. The meeting is subject to change depending on contributors' availability. Check the [OpenTelemetry community calendar](https://calendar.google.com/calendar/embed?src=c_2bf73e3b6b530da4babd444e72b76a6ad893a5c3f43cf40467abc7a9a897f977%40group.calendar.google.com) for specific dates and for the Zoom link.
 
-Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit). For edit access, get in touch on [GitHub Discussions](https://github.com/open-telemetry/opentelemetry-python/discussions).
+Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/18w8zOBm_mbety0OqlPwxc7dvnfu641EgmrO4AdJef0U/edit?tab=t.0).
 
 ### Maintainers
 
@@ -123,6 +123,7 @@ For more information about the maintainer role, see the [community repository](h
 
 - [Dylan Russell](https://github.com/dylanrussell), Google
 - [Emídio Neto](https://github.com/emdneto), PicPay
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
 - [Owais Lone](https://github.com/owais), Splunk
@@ -146,7 +147,6 @@ For more information about the emeritus role, see the [community repository](htt
 ### Emeritus Approvers
 
 - [Ashutosh Goel](https://github.com/ashu658)
-- [Héctor Hernández](https://github.com/hectorhdzg)
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN)
 - [Nikolay Sokolik](https://github.com/nikosokolik)
 - [Nikolay Sokolik](https://github.com/oxeye-nikolay)
