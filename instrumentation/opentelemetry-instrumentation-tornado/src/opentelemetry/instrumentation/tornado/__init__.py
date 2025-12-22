@@ -310,7 +310,7 @@ class TornadoInstrumentor(BaseInstrumentor):
                 __name__,
                 __version__,
                 meter_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(_StabilityMode.DEFAULT),
             )
 
         if _report_new(sem_conv_opt_in_mode):
