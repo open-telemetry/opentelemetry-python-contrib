@@ -123,6 +123,7 @@ For more information about the maintainer role, see the [community repository](h
 
 - [Dylan Russell](https://github.com/dylanrussell), Google
 - [Emídio Neto](https://github.com/emdneto), PicPay
+- [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
 - [Owais Lone](https://github.com/owais), Splunk
@@ -146,7 +147,6 @@ For more information about the emeritus role, see the [community repository](htt
 ### Emeritus Approvers
 
 - [Ashutosh Goel](https://github.com/ashu658)
-- [Héctor Hernández](https://github.com/hectorhdzg)
 - [Nathaniel Ruiz Nowell](https://github.com/NathanielRN)
 - [Nikolay Sokolik](https://github.com/nikosokolik)
 - [Nikolay Sokolik](https://github.com/oxeye-nikolay)
