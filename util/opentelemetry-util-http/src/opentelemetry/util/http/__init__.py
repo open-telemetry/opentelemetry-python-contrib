@@ -19,7 +19,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional, overload
+from typing import Callable, Iterable, overload
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -47,6 +47,12 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
 )
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
 )
 
 OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
@@ -251,6 +257,35 @@ def get_custom_headers(env_var: str) -> list[str]:
     return []
 
 
+def get_custom_header_attributes(
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
+) -> dict[str, list[str]]:
+    """Extract and sanitize HTTP headers for span attributes.
+
+    Args:
+        headers: The HTTP headers to process, either from a request or response.
+            Can be None if no headers are available.
+        captured_headers: List of header regexes to capture as span attributes.
+            If None or empty, no headers will be captured.
+        sensitive_headers: List of header regexes whose values should be sanitized
+            (redacted). If None, no sanitization is applied.
+        normalize_function: Function to normalize header names.
+
+    Returns:
+        Dictionary of normalized header attribute names to their values
+        as lists of strings.
+    """
+    if not headers or not captured_headers:
+        return {}
+    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
+    return sanitize.sanitize_header_values(
+        headers, captured_headers, normalize_function
+    )
+
+
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {
         key: req_attrs[key]
@@ -307,7 +342,24 @@ def redact_url(url: str) -> str:
     return url
 
 
-def detect_synthetic_user_agent(user_agent: Optional[str]) -> Optional[str]:
+def normalize_user_agent(
+    user_agent: str | bytes | bytearray | memoryview | None,
+) -> str | None:
+    """Convert user-agent header values into a usable string."""
+    # Different servers/frameworks surface headers as str, bytes, bytearray or memoryview;
+    # keep decoding logic centralized so instrumentation modules just call this helper.
+    if user_agent is None:
+        return None
+    if isinstance(user_agent, str):
+        return user_agent
+    if isinstance(user_agent, (bytes, bytearray)):
+        return user_agent.decode("latin-1")
+    if isinstance(user_agent, memoryview):
+        return user_agent.tobytes().decode("latin-1")
+    return str(user_agent)
+
+
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
     """
     Detect synthetic user agent type based on user agent string contents.
 

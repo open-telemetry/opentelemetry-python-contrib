@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix `AttributeError` when handling `LegacyAPIResponse` (from `with_raw_response`)
+  ([#4017](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4017))
+- Add support for chat completions choice count and stop sequences span attributes
+  ([#4028](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4028))
+- Fix crash with streaming `with_raw_response`
+  ([#4033](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4033))
+- Bump to 1.30.0 semconv schema: `gen_ai.request.seed` instead of `gen_ai.openai.request.seed`
+  ([#4036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4036))
+
 ## Version 2.2b0 (2025-11-25)
 
 - Fix service tier attribute names: use `GEN_AI_OPENAI_REQUEST_SERVICE_TIER` for request
