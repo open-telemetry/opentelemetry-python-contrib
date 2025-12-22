@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Support `suppress_instrumentation` contextmanager from `opentelemetry.instrumentation.utils`.
+
 ## Version 0.5b0 (2025-12-11)
 
 - Ensure log event is written and completion hook is called even when model call results in exception. Put new
