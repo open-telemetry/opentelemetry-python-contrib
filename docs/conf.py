@@ -112,7 +112,7 @@ extensions = [
     # Add a .nojekyll file to the generated HTML docs
     # https://help.github.com/en/articles/files-that-start-with-an-underscore-are-missing
     "sphinx.ext.githubpages",
-    # Support external links to different versions in the Github repo
+    # Support external links to different versions in the GitHub repo
     "sphinx.ext.extlinks",
 ]
 
@@ -198,7 +198,7 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-# Support external links to specific versions of the files in the Github repo
+# Support external links to specific versions of the files in the GitHub repo
 branch = os.environ.get("READTHEDOCS_VERSION")
 if branch is None or branch == "latest":
     branch = "main"

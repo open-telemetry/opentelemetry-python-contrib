@@ -18,7 +18,7 @@ DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(l
 _MODULE_DOC = """
 The OpenTelemetry ``logging`` integration automatically injects tracing context into log statements.
 
-The integration registers a custom log record factory with the the standard library logging module that automatically inject
+The integration registers a custom log record factory with the standard library logging module that automatically inject
 tracing context into log record objects. Optionally, the integration can also call ``logging.basicConfig()`` to set a logging
 format with placeholders for span ID, trace ID and service name.
 

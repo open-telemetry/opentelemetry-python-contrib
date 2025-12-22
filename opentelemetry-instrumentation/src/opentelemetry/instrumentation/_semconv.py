@@ -328,7 +328,7 @@ def _set_http_method(
     original = original.strip()
     normalized = normalized.strip()
     # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
-    # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
+    # Method is case-sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
     if original != normalized and _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, HTTP_REQUEST_METHOD_ORIGINAL, original)
 
