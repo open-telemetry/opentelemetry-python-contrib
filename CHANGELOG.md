@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added 
+### Added
 
 - `opentelemetry-instrumentation-requests`: add ability to capture custom headers
   ([#3987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3987))
