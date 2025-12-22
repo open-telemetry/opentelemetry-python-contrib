@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3943](#3943))
 - Add more Semconv attributes to LLMInvocation spans. 
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3862](#3862))
+- Limit the upload hook thread pool to 64 workers
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3944](#3944))
+- Add metrics to LLMInvocation traces
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891](#3891))
 
 ## Version 0.2b0 (2025-10-14)
 

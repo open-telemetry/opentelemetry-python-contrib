@@ -36,21 +36,15 @@ API
 ---
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
-request_hook (Callable) -
-a function with extra user-defined logic to be performed before querying mongodb
-this function signature is:  def request_hook(span: Span, event: CommandStartedEvent) -> None
-response_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a successful response
-this function signature is:  def response_hook(span: Span, event: CommandSucceededEvent) -> None
-failed_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a failed response
-this function signature is:  def failed_hook(span: Span, event: CommandFailedEvent) -> None
-capture_statement (bool) - an optional value to enable capturing the database statement that is being executed
+* tracer_provider (``TracerProvider``) - an optional tracer provider
+* request_hook (``Callable[[Span, CommandStartedEvent], None]``) - a function with extra user-defined logic to be performed before querying mongodb
+* response_hook (``Callable[[Span, CommandSucceededEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a successful response
+* failed_hook (``Callable[[Span, CommandFailedEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a failed response
+* capture_statement (``bool``) - an optional value to enable capturing the database statement that is being executed
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
     from pymongo import MongoClient
