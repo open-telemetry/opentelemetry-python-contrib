@@ -251,6 +251,7 @@ from opentelemetry.util.http import (
     get_excluded_urls,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
     parse_excluded_urls,
     redact_url,
     sanitize_method,
@@ -353,7 +354,8 @@ def _instrument(
 
         # Check for synthetic user agent type
         headers = get_or_create_headers()
-        user_agent = headers.get("User-Agent")
+        user_agent_value = headers.get("User-Agent")
+        user_agent = normalize_user_agent(user_agent_value)
         synthetic_type = detect_synthetic_user_agent(user_agent)
         if synthetic_type:
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type

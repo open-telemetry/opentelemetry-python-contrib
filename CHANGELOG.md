@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-requests`: add ability to capture custom headers
   ([#3987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3987))
+- `opentelemetry-instrumentation-aiohttp-client`: add typechecking for aiohttp-client instrumentation
+  ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
+- `opentelemetry-instrumentation-flask`: Add support for 3.1+ streaming responses
+  ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
+
+### Fixed
+
+- `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
+  ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
+- `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
+  ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
+- `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
+  ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
+- `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
+  ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 

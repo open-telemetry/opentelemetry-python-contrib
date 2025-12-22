@@ -19,7 +19,7 @@ from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, Optional, overload
+from typing import Callable, Iterable, overload
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -342,7 +342,24 @@ def redact_url(url: str) -> str:
     return url
 
 
-def detect_synthetic_user_agent(user_agent: Optional[str]) -> Optional[str]:
+def normalize_user_agent(
+    user_agent: str | bytes | bytearray | memoryview | None,
+) -> str | None:
+    """Convert user-agent header values into a usable string."""
+    # Different servers/frameworks surface headers as str, bytes, bytearray or memoryview;
+    # keep decoding logic centralized so instrumentation modules just call this helper.
+    if user_agent is None:
+        return None
+    if isinstance(user_agent, str):
+        return user_agent
+    if isinstance(user_agent, (bytes, bytearray)):
+        return user_agent.decode("latin-1")
+    if isinstance(user_agent, memoryview):
+        return user_agent.tobytes().decode("latin-1")
+    return str(user_agent)
+
+
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
     """
     Detect synthetic user agent type based on user agent string contents.
 
