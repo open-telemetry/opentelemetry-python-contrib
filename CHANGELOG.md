@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
 - `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
+- `opentelemetry-instrumentation-aws-lambda`: Added SQS traceparent support
+  ([#2766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2766))
 
 ### Fixed
 
@@ -462,8 +464,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2942))
 - `opentelemetry-instrumentation-click`: new instrumentation to trace click commands
   ([#2994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2994))
-- `opentelemetry-instrumentation-aws-lambda`: Added SQS traceparent support
-  ([#2766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2766))
 
 ### Fixed
 
