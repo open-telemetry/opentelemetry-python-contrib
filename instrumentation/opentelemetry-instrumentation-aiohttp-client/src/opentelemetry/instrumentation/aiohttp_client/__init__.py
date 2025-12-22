@@ -257,12 +257,12 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     get_custom_headers,
+    get_custom_header_attributes,
     get_excluded_urls,
     normalise_request_header_name,
     normalise_response_header_name,
     redact_url,
     sanitize_method,
-    get_custom_header_attributes,
 )
 
 if TYPE_CHECKING:
