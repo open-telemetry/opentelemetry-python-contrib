@@ -22,7 +22,6 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.types import AttributeValue
 
-
 _logger = logging.getLogger(__name__)
 
 

@@ -105,24 +105,34 @@ from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.botocore.extensions import (
-    _BOTOCORE_EXTENSIONS, _AIOBOTOCORE_EXTENSIONS,
+    _AIOBOTOCORE_EXTENSIONS,
+    _BOTOCORE_EXTENSIONS,
 )
-from opentelemetry.instrumentation.botocore.extensions.registry import ExtensionRegistry
+from opentelemetry.instrumentation.botocore.extensions.registry import (
+    ExtensionRegistry,
+)
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
-    _AwsSdkExtension,
     _BotocoreInstrumentorContext,
 )
-from opentelemetry.instrumentation.botocore.package import _instruments, _aiobotocore_instruments
-from opentelemetry.instrumentation.botocore.utils import get_server_attributes, _safe_invoke
-from opentelemetry.instrumentation.botocore.version import __version__
+from opentelemetry.instrumentation.botocore.package import (
+    _aiobotocore_instruments,
+    _instruments,
+)
+from opentelemetry.instrumentation.botocore.utils import (
+    _safe_invoke,
+    get_server_attributes,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     suppress_http_instrumentation,
     unwrap,
 )
-from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator, TRACE_HEADER_KEY
+from opentelemetry.propagators.aws.aws_xray_propagator import (
+    TRACE_HEADER_KEY,
+    AwsXRayPropagator,
+)
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
@@ -142,7 +152,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
         super().__init__()
         self.request_hook = None
         self.response_hook = None
-        self.extension_registry = None
+        self.extension_registry = ExtensionRegistry(
+            __name__, _BOTOCORE_EXTENSIONS, None, None, None
+        )
         self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -158,6 +170,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             self.propagator = propagator
 
         self.extension_registry = ExtensionRegistry(
+            __name__,
             _BOTOCORE_EXTENSIONS,
             kwargs.get("tracer_provider"),
             kwargs.get("logger_provider"),
@@ -186,7 +199,6 @@ class BotocoreInstrumentor(BaseInstrumentor):
     ):
         request = args[0]
         headers = request.headers
-
 
         # There may be situations where both Botocore and Aiobotocore are
         # instrumented at the same time. To avoid double-injection of headers,
@@ -226,8 +238,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         end_span_on_exit = extension.should_end_span_on_exit()
 
         tracer = self.extension_registry.get_tracer(extension)
-        meter = self.extension_registry.get_meter(extension)
-        metrics = self.extension_registry.get_metrics(extension, meter)
+        metrics = self.extension_registry.get_metrics(extension)
         instrumentor_ctx = _BotocoreInstrumentorContext(
             logger=self.extension_registry.get_logger(extension),
             metrics=metrics,
@@ -311,6 +322,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
             self.propagator = propagator
 
         self.extension_registry = ExtensionRegistry(
+            __name__,
             _AIOBOTOCORE_EXTENSIONS,
             kwargs.get("tracer_provider"),
             kwargs.get("logger_provider"),
@@ -378,8 +390,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         end_span_on_exit = extension.should_end_span_on_exit()
 
         tracer = self.extension_registry.get_tracer(extension)
-        meter = self.extension_registry.get_meter(extension)
-        metrics = self.extension_registry.get_metrics(extension, meter)
+        metrics = self.extension_registry.get_metrics(extension)
         instrumentor_ctx = _BotocoreInstrumentorContext(
             logger=self.extension_registry.get_logger(extension),
             metrics=metrics,
@@ -428,7 +439,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         )
 
     def _call_response_hook(
-            self, span: Span, call_context: _AwsSdkCallContext, result
+        self, span: Span, call_context: _AwsSdkCallContext, result
     ):
         if not callable(self.response_hook):
             return

@@ -13,16 +13,23 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING, Mapping, Callable
 import logging
+from typing import TYPE_CHECKING, Callable, Mapping, Optional
 
-from opentelemetry.instrumentation.botocore import __name__ as package_name, __version__, _safe_invoke
+from opentelemetry._logs import get_logger
+from opentelemetry.instrumentation.botocore.extensions import (
+    _AwsSdkCallContext,
+    _AwsSdkExtension,
+)
+from opentelemetry.instrumentation.botocore.utils import _safe_invoke
+from opentelemetry.instrumentation.botocore.version import __version__
+from opentelemetry.metrics import get_meter
+from opentelemetry.trace import get_tracer
 
 if TYPE_CHECKING:
-    from opentelemetry.trace import Tracer, TracerProvider, get_tracer
-    from opentelemetry.metrics import Meter, Instrument, MeterProvider, get_meter
-    from opentelemetry._logs import Logger, LoggerProvider, get_logger
-    from opentelemetry.instrumentation.botocore.extensions import _AwsSdkExtension, _AwsSdkCallContext
+    from opentelemetry._logs import Logger, LoggerProvider
+    from opentelemetry.metrics import Instrument, Meter, MeterProvider
+    from opentelemetry.trace import Tracer, TracerProvider
 
 
 _logger = logging.getLogger(__name__)
@@ -30,18 +37,22 @@ _logger = logging.getLogger(__name__)
 
 class ExtensionRegistry:
     """
-    Registry for AWS SDK extensions that manages extension lookup and 
+    Registry for AWS SDK extensions that manages extension lookup and
     associated OpenTelemetry instrumentation components (tracers, loggers, meters, metrics).
     """
 
     def __init__(
         self,
+        package_name: str,
         extensions: Mapping[str, Callable[[], type[_AwsSdkExtension]]],
         tracer_provider: Optional[TracerProvider] = None,
         logger_provider: Optional[LoggerProvider] = None,
         meter_provider: Optional[MeterProvider] = None,
     ):
-        self._extensions: Mapping[str, Callable[[], type[_AwsSdkExtension]]] = extensions
+        self._package_name = package_name
+        self._extensions: Mapping[
+            str, Callable[[], type[_AwsSdkExtension]]
+        ] = extensions
         self._tracer_provider: TracerProvider = tracer_provider
         self._logger_provider: LoggerProvider = logger_provider
         self._meter_provider: MeterProvider = meter_provider
@@ -50,7 +61,9 @@ class ExtensionRegistry:
         self._meters: dict[str, Meter] = {}
         self._metrics: dict[str, dict[str, Instrument]] = {}
 
-    def get_extension(self, call_context: _AwsSdkCallContext) -> _AwsSdkExtension:
+    def get_extension(
+        self, call_context: _AwsSdkCallContext
+    ) -> _AwsSdkExtension:
         """
         Get the appropriate extension for a given call context.
 
@@ -61,12 +74,14 @@ class ExtensionRegistry:
             The matching extension for the service/operation
         """
         try:
-            loader: Callable[[], type[_AwsSdkExtension]] = self._extensions.get(call_context.service)
+            loader: Callable[[], type[_AwsSdkExtension]] = (
+                self._extensions.get(call_context.service)
+            )
             if loader is None:
                 return _AwsSdkExtension(call_context)
             extension_cls = loader()
             return extension_cls(call_context)
-        except Exception as exc: # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             _logger.error("Error when loading extension: %s", exc)
             return _AwsSdkExtension(call_context)
 
@@ -96,8 +111,8 @@ class ExtensionRegistry:
             The instrumentation name string
         """
         if self.has_extension(extension._call_context):
-            return f"{package_name}.{extension._call_context.service}"
-        return package_name
+            return f"{self._package_name}.{extension._call_context.service}"
+        return self._package_name
 
     def get_tracer(self, extension: _AwsSdkExtension) -> Tracer:
         """

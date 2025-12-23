@@ -39,7 +39,7 @@ instruments = [
 
 [project.entry-points.opentelemetry_instrumentor]
 botocore = "opentelemetry.instrumentation.botocore:BotocoreInstrumentor"
-aiobotocore = "opentelemetry.instrumentation.botocore.aio:AiobotocoreInstrumentor"
+aiobotocore = "opentelemetry.instrumentation.botocore:AiobotocoreInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-botocore"
