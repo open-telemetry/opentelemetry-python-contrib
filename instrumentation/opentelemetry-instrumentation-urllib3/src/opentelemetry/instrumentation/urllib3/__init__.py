@@ -442,6 +442,7 @@ def _instrument(
     captured_response_headers: typing.Optional[list[str]] = None,
     sensitive_headers: typing.Optional[list[str]] = None,
 ):
+    # pylint: disable=too-many-locals
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
