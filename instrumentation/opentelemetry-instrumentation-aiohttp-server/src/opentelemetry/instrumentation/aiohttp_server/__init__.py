@@ -25,8 +25,14 @@ Usage
     from opentelemetry.instrumentation.aiohttp_server import (
         AioHttpServerInstrumentor
     )
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-    AioHttpServerInstrumentor().instrument()
+    # Optional: configure non-default TracerProvider, resource, sampler
+    resource = Resource(attributes={"service.name": "my-aiohttp-service"})
+    sampler = ParentBased(root=TraceIdRatioBased(rate=0.25))  # sample 25% of traces
+    AioHttpServerInstrumentor().instrument(tracer_provider=TracerProvider(resource=resource, sampler=sampler))
 
     async def hello(request):
         return web.Response(text="Hello, world")
@@ -387,73 +393,95 @@ class AiohttpGetter(Getter):
 getter = AiohttpGetter()
 
 
-@web.middleware
-async def middleware(request, handler):
-    """Middleware for aiohttp implementing tracing logic"""
-    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-        request.url.path
-    ):
-        return await handler(request)
-
-    span_name = get_default_span_name(request)
-
-    request_attrs = collect_request_attributes(request)
-    duration_attrs = _parse_duration_attrs(request_attrs)
-    active_requests_count_attrs = _parse_active_request_count_attrs(
-        request_attrs
+def create_aiohttp_middleware(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _tracer = (
+        tracer_provider.get_tracer(__name__, __version__)
+        if tracer_provider
+        else tracer
     )
 
-    duration_histogram = meter.create_histogram(
-        name=MetricInstruments.HTTP_SERVER_DURATION,
-        unit="ms",
-        description="Measures the duration of inbound HTTP requests.",
-    )
+    @web.middleware
+    async def _middleware(request, handler):
+        """Middleware for aiohttp implementing tracing logic"""
+        if (
+            not is_http_instrumentation_enabled()
+            or _excluded_urls.url_disabled(request.url.path)
+        ):
+            return await handler(request)
 
-    active_requests_counter = meter.create_up_down_counter(
-        name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-        unit="requests",
-        description="measures the number of concurrent HTTP requests those are currently in flight",
-    )
+        span_name = get_default_span_name(request)
 
-    with tracer.start_as_current_span(
-        span_name,
-        context=extract(request, getter=getter),
-        kind=trace.SpanKind.SERVER,
-    ) as span:
-        if span.is_recording():
-            request_headers_attributes = collect_request_headers_attributes(
-                request
-            )
-            request_attrs.update(request_headers_attributes)
-            span.set_attributes(request_attrs)
-        start = default_timer()
-        active_requests_counter.add(1, active_requests_count_attrs)
-        try:
-            resp = await handler(request)
-            set_status_code(span, resp.status)
+        request_attrs = collect_request_attributes(request)
+        duration_attrs = _parse_duration_attrs(request_attrs)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            request_attrs
+        )
+
+        duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_DURATION,
+            unit="ms",
+            description="Measures the duration of inbound HTTP requests.",
+        )
+
+        active_requests_counter = meter.create_up_down_counter(
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+            unit="requests",
+            description="measures the number of concurrent HTTP requests those are currently in flight",
+        )
+
+        with _tracer.start_as_current_span(
+            span_name,
+            context=extract(request, getter=getter),
+            kind=trace.SpanKind.SERVER,
+        ) as span:
             if span.is_recording():
-                response_headers_attributes = (
-                    collect_response_headers_attributes(resp)
+                request_headers_attributes = (
+                    collect_request_headers_attributes(request)
                 )
-                span.set_attributes(response_headers_attributes)
-        except web.HTTPException as ex:
-            set_status_code(span, ex.status_code)
-            raise
-        finally:
-            duration = max((default_timer() - start) * 1000, 0)
-            duration_histogram.record(duration, duration_attrs)
-            active_requests_counter.add(-1, active_requests_count_attrs)
-        return resp
+                request_attrs.update(request_headers_attributes)
+                span.set_attributes(request_attrs)
+            start = default_timer()
+            active_requests_counter.add(1, active_requests_count_attrs)
+            try:
+                resp = await handler(request)
+                set_status_code(span, resp.status)
+                if span.is_recording():
+                    response_headers_attributes = (
+                        collect_response_headers_attributes(resp)
+                    )
+                    span.set_attributes(response_headers_attributes)
+            except web.HTTPException as ex:
+                set_status_code(span, ex.status_code)
+                raise
+            finally:
+                duration = max((default_timer() - start) * 1000, 0)
+                duration_histogram.record(duration, duration_attrs)
+                active_requests_counter.add(-1, active_requests_count_attrs)
+            return resp
+
+    return _middleware
 
 
-class _InstrumentedApplication(web.Application):
-    """Insert tracing middleware"""
+middleware = create_aiohttp_middleware()  # for backwards compatibility
 
-    def __init__(self, *args, **kwargs):
-        middlewares = kwargs.pop("middlewares", [])
-        middlewares.insert(0, middleware)
-        kwargs["middlewares"] = middlewares
-        super().__init__(*args, **kwargs)
+
+def create_instrumented_application(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+
+    class _InstrumentedApplication(web.Application):
+        """Insert tracing middleware"""
+
+        def __init__(self, *args, **kwargs):
+            middlewares = kwargs.pop("middlewares", [])
+            middlewares.insert(0, _middleware)
+            kwargs["middlewares"] = middlewares
+            super().__init__(*args, **kwargs)
+
+    return _InstrumentedApplication
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
@@ -464,6 +492,7 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get("tracer_provider", None)
         # update global values at instrument time so we can test them
         global _excluded_urls  # pylint: disable=global-statement
         _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
@@ -475,6 +504,10 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
         meter = metrics.get_meter(__name__, __version__)
 
         self._original_app = web.Application
+
+        _InstrumentedApplication = create_instrumented_application(
+            tracer_provider=tracer_provider
+        )
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):
