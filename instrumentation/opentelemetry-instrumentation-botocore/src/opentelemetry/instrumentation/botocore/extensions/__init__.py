@@ -15,11 +15,6 @@
 import importlib
 import logging
 
-from opentelemetry.instrumentation.botocore.extensions.types import (
-    _AwsSdkCallContext,
-    _AwsSdkExtension,
-)
-
 _logger = logging.getLogger(__name__)
 
 
@@ -27,6 +22,7 @@ def _lazy_load(module, cls):
     def loader():
         imported_mod = importlib.import_module(module, __name__)
         return getattr(imported_mod, cls, None)
+
     return loader
 
 
