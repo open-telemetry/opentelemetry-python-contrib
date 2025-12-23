@@ -14,3 +14,4 @@
 
 
 _instruments = ("botocore ~= 1.0",)
+_aiobotocore_instruments = ("aiobotocore ~= 2.0",)

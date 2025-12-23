@@ -97,25 +97,24 @@ for example:
 """
 
 import logging
-from typing import Any, Callable, Collection, Dict, Optional, Tuple
+from typing import Any, Collection, Dict, Optional, Tuple
 
 from botocore.client import BaseClient
 from botocore.endpoint import Endpoint
 from botocore.exceptions import ClientError
 from wrapt import wrap_function_wrapper
 
-from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.botocore.extensions import (
-    _find_extension,
-    _has_extension,
+    _BOTOCORE_EXTENSIONS, _AIOBOTOCORE_EXTENSIONS,
 )
+from opentelemetry.instrumentation.botocore.extensions.registry import ExtensionRegistry
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
     _AwsSdkExtension,
     _BotocoreInstrumentorContext,
 )
-from opentelemetry.instrumentation.botocore.package import _instruments
-from opentelemetry.instrumentation.botocore.utils import get_server_attributes
+from opentelemetry.instrumentation.botocore.package import _instruments, _aiobotocore_instruments
+from opentelemetry.instrumentation.botocore.utils import get_server_attributes, _safe_invoke
 from opentelemetry.instrumentation.botocore.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import (
@@ -123,20 +122,11 @@ from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     unwrap,
 )
-from opentelemetry.metrics import Instrument, Meter, get_meter
-from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
+from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator, TRACE_HEADER_KEY
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
-from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_STATUS_CODE,
-)
-from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_METHOD,
-    RPC_SERVICE,
-    RPC_SYSTEM,
-)
-from opentelemetry.trace import get_tracer
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.span import Span
 
 logger = logging.getLogger(__name__)
@@ -152,6 +142,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         super().__init__()
         self.request_hook = None
         self.response_hook = None
+        self.extension_registry = None
         self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -159,16 +150,6 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         # pylint: disable=attribute-defined-outside-init
-
-        # tracers are lazy initialized per-extension in _get_tracer
-        self._tracers = {}
-        # loggers are lazy initialized per-extension in _get_logger
-        self._loggers = {}
-        # meters are lazy initialized per-extension in _get_meter
-        self._meters = {}
-        # metrics are lazy initialized per-extension in _get_metrics
-        self._metrics: Dict[str, Dict[str, Instrument]] = {}
-
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
 
@@ -176,9 +157,12 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if propagator is not None:
             self.propagator = propagator
 
-        self.tracer_provider = kwargs.get("tracer_provider")
-        self.logger_provider = kwargs.get("logger_provider")
-        self.meter_provider = kwargs.get("meter_provider")
+        self.extension_registry = ExtensionRegistry(
+            _BOTOCORE_EXTENSIONS,
+            kwargs.get("tracer_provider"),
+            kwargs.get("logger_provider"),
+            kwargs.get("meter_provider"),
+        )
 
         wrap_function_wrapper(
             "botocore.client",
@@ -192,82 +176,6 @@ class BotocoreInstrumentor(BaseInstrumentor):
             self._patched_endpoint_prepare_request,
         )
 
-    @staticmethod
-    def _get_instrumentation_name(extension: _AwsSdkExtension) -> str:
-        has_extension = _has_extension(extension._call_context)
-        return (
-            f"{__name__}.{extension._call_context.service}"
-            if has_extension
-            else __name__
-        )
-
-    def _get_tracer(self, extension: _AwsSdkExtension):
-        """This is a multiplexer in order to have a tracer per extension"""
-
-        instrumentation_name = self._get_instrumentation_name(extension)
-        tracer = self._tracers.get(instrumentation_name)
-        if tracer:
-            return tracer
-
-        schema_version = extension.tracer_schema_version()
-        self._tracers[instrumentation_name] = get_tracer(
-            instrumentation_name,
-            __version__,
-            self.tracer_provider,
-            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
-        )
-        return self._tracers[instrumentation_name]
-
-    def _get_logger(self, extension: _AwsSdkExtension):
-        """This is a multiplexer in order to have a logger per extension"""
-
-        instrumentation_name = self._get_instrumentation_name(extension)
-        instrumentation_logger = self._loggers.get(instrumentation_name)
-        if instrumentation_logger:
-            return instrumentation_logger
-
-        schema_version = extension.event_logger_schema_version()
-        self._loggers[instrumentation_name] = get_logger(
-            instrumentation_name,
-            "",
-            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
-            logger_provider=self.logger_provider,
-        )
-
-        return self._loggers[instrumentation_name]
-
-    def _get_meter(self, extension: _AwsSdkExtension):
-        """This is a multiplexer in order to have a meter per extension"""
-
-        instrumentation_name = self._get_instrumentation_name(extension)
-        meter = self._meters.get(instrumentation_name)
-        if meter:
-            return meter
-
-        schema_version = extension.meter_schema_version()
-        self._meters[instrumentation_name] = get_meter(
-            instrumentation_name,
-            "",
-            schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
-            meter_provider=self.meter_provider,
-        )
-
-        return self._meters[instrumentation_name]
-
-    def _get_metrics(
-        self, extension: _AwsSdkExtension, meter: Meter
-    ) -> Dict[str, Instrument]:
-        """This is a multiplexer for lazy initialization of metrics required by extensions"""
-        instrumentation_name = self._get_instrumentation_name(extension)
-        metrics = self._metrics.get(instrumentation_name)
-        if metrics is not None:
-            return metrics
-
-        self._metrics.setdefault(instrumentation_name, {})
-        metrics = self._metrics[instrumentation_name]
-        _safe_invoke(extension.setup_metrics, meter, metrics)
-        return metrics
-
     def _uninstrument(self, **kwargs):
         unwrap(BaseClient, "_make_api_call")
         unwrap(Endpoint, "prepare_request")
@@ -278,6 +186,14 @@ class BotocoreInstrumentor(BaseInstrumentor):
     ):
         request = args[0]
         headers = request.headers
+
+
+        # There may be situations where both Botocore and Aiobotocore are
+        # instrumented at the same time. To avoid double-injection of headers,
+        # we add a check to see if the header is already present. If it is,
+        # we skip injection.
+        if TRACE_HEADER_KEY in headers:
+            return wrapped(*args, **kwargs)
 
         # Only the x-ray header is propagated by AWS services. Using any
         # other propagator will lose the trace context.
@@ -294,14 +210,14 @@ class BotocoreInstrumentor(BaseInstrumentor):
         if call_context is None:
             return original_func(*args, **kwargs)
 
-        extension = _find_extension(call_context)
+        extension = self.extension_registry.get_extension(call_context)
         if not extension.should_trace_service_call():
             return original_func(*args, **kwargs)
 
         attributes = {
-            RPC_SYSTEM: "aws-api",
-            RPC_SERVICE: call_context.service_id,
-            RPC_METHOD: call_context.operation,
+            SpanAttributes.RPC_SYSTEM: "aws-api",
+            SpanAttributes.RPC_SERVICE: call_context.service_id,
+            SpanAttributes.RPC_METHOD: call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -309,11 +225,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
         _safe_invoke(extension.extract_attributes, attributes)
         end_span_on_exit = extension.should_end_span_on_exit()
 
-        tracer = self._get_tracer(extension)
-        meter = self._get_meter(extension)
-        metrics = self._get_metrics(extension, meter)
+        tracer = self.extension_registry.get_tracer(extension)
+        meter = self.extension_registry.get_meter(extension)
+        metrics = self.extension_registry.get_metrics(extension, meter)
         instrumentor_ctx = _BotocoreInstrumentorContext(
-            logger=self._get_logger(extension),
+            logger=self.extension_registry.get_logger(extension),
             metrics=metrics,
         )
         with tracer.start_as_current_span(
@@ -369,6 +285,158 @@ class BotocoreInstrumentor(BaseInstrumentor):
         )
 
 
+class AiobotocoreInstrumentor(BaseInstrumentor):
+    """An instrumentor for Aiobotocore.
+
+    See `BaseInstrumentor`
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.request_hook = None
+        self.response_hook = None
+        self.extension_registry = None
+        self.propagator = AwsXRayPropagator()
+
+    def instrumentation_dependencies(self) -> Collection[str]:
+        return _instruments + _aiobotocore_instruments
+
+    def _instrument(self, **kwargs):
+        # pylint: disable=attribute-defined-outside-init
+        self.request_hook = kwargs.get("request_hook")
+        self.response_hook = kwargs.get("response_hook")
+
+        propagator = kwargs.get("propagator")
+        if propagator is not None:
+            self.propagator = propagator
+
+        self.extension_registry = ExtensionRegistry(
+            _AIOBOTOCORE_EXTENSIONS,
+            kwargs.get("tracer_provider"),
+            kwargs.get("logger_provider"),
+            kwargs.get("meter_provider"),
+        )
+
+        wrap_function_wrapper(
+            "aiobotocore.client",
+            "AioBaseClient._make_api_call",
+            self._patched_api_call,
+        )
+
+        wrap_function_wrapper(
+            "botocore.endpoint",
+            "Endpoint.prepare_request",
+            self._patched_endpoint_prepare_request,
+        )
+
+    def _uninstrument(self, **kwargs):
+        unwrap("aiobotocore.client.AioBaseClient", "_make_api_call")
+        unwrap(Endpoint, "prepare_request")
+
+    # pylint: disable=unused-argument
+    def _patched_endpoint_prepare_request(
+        self, wrapped, instance, args, kwargs
+    ):
+        request = args[0]
+        headers = request.headers
+
+        # There may be situations where both Botocore and Aiobotocore are
+        # instrumented at the same time. To avoid double-injection of headers,
+        # we add a check to see if the header is already present. If it is,
+        # we skip injection.
+        if TRACE_HEADER_KEY in headers:
+            return wrapped(*args, **kwargs)
+
+        # Only the x-ray header is propagated by AWS services. Using any
+        # other propagator will lose the trace context.
+        self.propagator.inject(headers)
+
+        return wrapped(*args, **kwargs)
+
+    # pylint: disable=too-many-branches
+    async def _patched_api_call(self, original_func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await original_func(*args, **kwargs)
+
+        call_context = _determine_call_context(instance, args)
+        if call_context is None:
+            return await original_func(*args, **kwargs)
+
+        extension = self.extension_registry.get_extension(call_context)
+        if not extension.should_trace_service_call():
+            return await original_func(*args, **kwargs)
+
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: "aws-api",
+            SpanAttributes.RPC_SERVICE: call_context.service_id,
+            SpanAttributes.RPC_METHOD: call_context.operation,
+            CLOUD_REGION: call_context.region,
+            **get_server_attributes(call_context.endpoint_url),
+        }
+
+        _safe_invoke(extension.extract_attributes, attributes)
+        end_span_on_exit = extension.should_end_span_on_exit()
+
+        tracer = self.extension_registry.get_tracer(extension)
+        meter = self.extension_registry.get_meter(extension)
+        metrics = self.extension_registry.get_metrics(extension, meter)
+        instrumentor_ctx = _BotocoreInstrumentorContext(
+            logger=self.extension_registry.get_logger(extension),
+            metrics=metrics,
+        )
+        with tracer.start_as_current_span(
+            call_context.span_name,
+            kind=call_context.span_kind,
+            attributes=attributes,
+            # tracing streaming services require to close the span manually
+            # at a later time after the stream has been consumed
+            end_on_exit=end_span_on_exit,
+        ) as span:
+            _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
+            self._call_request_hook(span, call_context)
+
+            try:
+                with suppress_http_instrumentation():
+                    result = None
+                    try:
+                        result = await original_func(*args, **kwargs)
+                    except ClientError as error:
+                        result = getattr(error, "response", None)
+                        _apply_response_attributes(span, result)
+                        _safe_invoke(
+                            extension.on_error, span, error, instrumentor_ctx
+                        )
+                        raise
+                    _apply_response_attributes(span, result)
+                    _safe_invoke(
+                        extension.on_success, span, result, instrumentor_ctx
+                    )
+            finally:
+                _safe_invoke(extension.after_service_call, instrumentor_ctx)
+                self._call_response_hook(span, call_context, result)
+
+            return result
+
+    def _call_request_hook(self, span: Span, call_context: _AwsSdkCallContext):
+        if not callable(self.request_hook):
+            return
+        self.request_hook(
+            span,
+            call_context.service,
+            call_context.operation,
+            call_context.params,
+        )
+
+    def _call_response_hook(
+            self, span: Span, call_context: _AwsSdkCallContext, result
+    ):
+        if not callable(self.response_hook):
+            return
+        self.response_hook(
+            span, call_context.service, call_context.operation, result
+        )
+
+
 def _apply_response_attributes(span: Span, result):
     if result is None or not span.is_recording():
         return
@@ -397,7 +465,7 @@ def _apply_response_attributes(span: Span, result):
 
     status_code = metadata.get("HTTPStatusCode")
     if status_code is not None:
-        span.set_attribute(HTTP_STATUS_CODE, status_code)
+        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
 
 
 def _determine_call_context(
@@ -418,14 +486,3 @@ def _determine_call_context(
         # extracting essential attributes ('service' and 'operation') failed.
         logger.error("Error when initializing call context", exc_info=ex)
         return None
-
-
-def _safe_invoke(function: Callable, *args):
-    function_name = "<unknown>"
-    try:
-        function_name = function.__name__
-        function(*args)
-    except Exception as ex:  # pylint:disable=broad-except
-        logger.error(
-            "Error when invoking function '%s'", function_name, exc_info=ex
-        )
