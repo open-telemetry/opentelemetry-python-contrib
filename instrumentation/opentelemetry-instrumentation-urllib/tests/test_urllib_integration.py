@@ -15,7 +15,6 @@
 import abc
 import socket
 import urllib
-from typing import Sequence
 from unittest import mock
 from unittest.mock import patch
 from urllib import request
@@ -143,7 +142,7 @@ class URLLibIntegrationTestBase(abc.ABC):
     def perform_request(
         url: str,
         opener: OpenerDirector = None,
-        headers: Sequence[tuple[str, str]] | None = None,
+        headers: list[tuple[str, str]] | None = None,
     ):
         pass
 
@@ -905,7 +904,7 @@ class TestURLLibIntegration(URLLibIntegrationTestBase, TestBase):
     def perform_request(
         url: str,
         opener: OpenerDirector = None,
-        headers: Sequence[tuple[str, str]] | None = None,
+        headers: list[tuple[str, str]] | None = None,
     ):
         if not opener:
             opener = urllib.request.build_opener()
