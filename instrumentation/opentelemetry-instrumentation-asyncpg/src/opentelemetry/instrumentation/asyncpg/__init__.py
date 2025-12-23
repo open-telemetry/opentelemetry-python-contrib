@@ -178,18 +178,16 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         except IndexError:
             name = ""
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
-            if span.is_recording():
-                span_attributes = _hydrate_span_from_args(
-                    instance,
-                    args[0],
-                    args[1:] if self.capture_parameters else None,
-                )
-                for attribute, value in span_attributes.items():
-                    span.set_attribute(attribute, value)
+        # Hydrate attributes before span creation to enable filtering
+        span_attributes = _hydrate_span_from_args(
+            instance,
+            args[0],
+            args[1:] if self.capture_parameters else None,
+        )
 
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
@@ -217,20 +215,19 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         except IndexError:
             name = ""
 
+        # Hydrate attributes before span creation to enable filtering
+        span_attributes = _hydrate_span_from_args(
+            instance._connection,
+            instance._query,
+            instance._args if self.capture_parameters else None,
+        )
+
         stop = False
         with self._tracer.start_as_current_span(
             f"CURSOR: {name}",
             kind=SpanKind.CLIENT,
+            attributes=span_attributes,
         ) as span:
-            if span.is_recording():
-                span_attributes = _hydrate_span_from_args(
-                    instance._connection,
-                    instance._query,
-                    instance._args if self.capture_parameters else None,
-                )
-                for attribute, value in span_attributes.items():
-                    span.set_attribute(attribute, value)
-
             try:
                 result = await func(*args, **kwargs)
             except StopAsyncIteration:

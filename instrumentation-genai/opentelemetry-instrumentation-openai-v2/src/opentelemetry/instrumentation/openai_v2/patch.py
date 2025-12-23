@@ -701,3 +701,7 @@ class StreamWrapper:
         self.set_response_service_tier(chunk)
         self.build_streaming_response(chunk)
         self.set_usage(chunk)
+
+    def parse(self):
+        """Called when using with_raw_response with stream=True"""
+        return self
