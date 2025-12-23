@@ -50,7 +50,7 @@ def upload_completion_hook() -> CompletionHook:
         )
     except ImportError:
         _logger.exception(
-            "Failed to import `fsspec`. Falling back to `NoOpCompletionHook` which does nothing."
+            "Failed to import `fsspec`. Falling back to `NoOpCompletionHook`."
         )
         return _NoOpCompletionHook()
 
