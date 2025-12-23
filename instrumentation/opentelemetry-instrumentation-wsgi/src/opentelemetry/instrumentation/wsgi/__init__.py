@@ -667,6 +667,7 @@ class OpenTelemetryMiddleware:
         return _start_response
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
     ):
@@ -731,19 +732,24 @@ class OpenTelemetryMiddleware:
             raise
         finally:
             duration_s = default_timer() - start
+            active_metric_ctx = trace.set_span_in_context(span)
             if self.duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
                     req_attrs, _StabilityMode.DEFAULT
                 )
                 self.duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=active_metric_ctx,
                 )
             if self.duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
                     req_attrs, _StabilityMode.HTTP
                 )
                 self.duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=active_metric_ctx,
                 )
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 
