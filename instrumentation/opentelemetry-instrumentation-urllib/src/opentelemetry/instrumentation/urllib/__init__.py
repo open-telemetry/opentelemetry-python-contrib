@@ -77,6 +77,99 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-client-span>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.
+
+Regexes may be used, and all header names will be matched in a case-insensitive manner.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+
+
 API
 ---
 """
@@ -135,8 +228,15 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     ExcludeList,
+    get_custom_header_attributes,
+    get_custom_headers,
     get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
     parse_excluded_urls,
     redact_url,
     sanitize_method,
@@ -169,6 +269,9 @@ class URLLibInstrumentor(BaseInstrumentor):
                 ``response_hook``: An optional callback which is invoked right before the span is finished processing a response
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
+                ``captured_request_headers``: A comma-separated list of regexes to match against request headers to capture
+                ``captured_response_headers``: A comma-separated list of regexes to match against response headers to capture
+                ``sensitive_headers``: A comma-separated list of regexes to match against captured headers to be sanitized
         """
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -205,6 +308,24 @@ class URLLibInstrumentor(BaseInstrumentor):
                 else parse_excluded_urls(excluded_urls)
             ),
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+            captured_request_headers=kwargs.get(
+                "captured_request_headers",
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+                ),
+            ),
+            captured_response_headers=kwargs.get(
+                "captured_response_headers",
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+                ),
+            ),
+            sensitive_headers=kwargs.get(
+                "sensitive_headers",
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                ),
+            ),
         )
 
     def _uninstrument(self, **kwargs: Any):
@@ -223,6 +344,9 @@ def _instrument(
     response_hook: _ResponseHookT = None,
     excluded_urls: ExcludeList | None = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     """Enables tracing of all requests calls that go through
     :code:`urllib.Client._make_request`"""
@@ -275,6 +399,16 @@ def _instrument(
         )
         _set_http_url(labels, url, sem_conv_opt_in_mode)
 
+        labels.update(
+            get_custom_header_attributes(
+                # TODO: safe with multiple entries for the same header?
+                dict(request.header_items()),
+                captured_request_headers,
+                sensitive_headers,
+                normalise_request_header_name,
+            )
+        )
+
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=labels
         ) as span:
@@ -309,6 +443,16 @@ def _instrument(
                     _set_http_network_protocol_version(
                         labels, f"{ver_[:1]}.{ver_[:-1]}", sem_conv_opt_in_mode
                     )
+
+                if span.is_recording():
+                    response_headers_to_set = get_custom_header_attributes(
+                        result.headers,
+                        captured_response_headers,
+                        sensitive_headers,
+                        normalise_response_header_name,
+                    )
+                    for header, value in response_headers_to_set.items():
+                        span.set_attribute(header, value)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
