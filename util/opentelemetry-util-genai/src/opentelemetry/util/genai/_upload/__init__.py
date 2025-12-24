@@ -49,6 +49,9 @@ def upload_completion_hook() -> CompletionHook:
             UploadCompletionHook,
         )
     except ImportError:
+        _logger.exception(
+            "Failed to import `fsspec`. Falling back to `NoOpCompletionHook`."
+        )
         return _NoOpCompletionHook()
 
     environ_max_queue_size = environ.get(
