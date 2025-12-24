@@ -96,6 +96,24 @@ wheels = [
 ]
 
 [[package]]
+name = "aiobotocore"
+version = "2.23.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aioitertools" },
+    { name = "botocore" },
+    { name = "jmespath" },
+    { name = "multidict" },
+    { name = "python-dateutil" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/1d/babe191fa10a7ecda6c6832c08231536c60cc33b4cddfb3b72133505673e/aiobotocore-2.23.1.tar.gz", hash = "sha256:a59f2a78629b97d52f10936b79c73de64e481a8c44a62c1871f088df6c1afc4f", size = 115869, upload-time = "2025-07-17T21:51:57.006Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/d9/25a697a959a7149c93efa4d849421aa5f22bcb82350ac89b4284b0b88aa8/aiobotocore-2.23.1-py3-none-any.whl", hash = "sha256:d81c54d2eae2406ea9a473fea518fed580cf37bc4fc51ce43ba81546e5305114", size = 84219, upload-time = "2025-07-17T21:51:55.145Z" },
+]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -200,6 +218,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/45/71/250147cc232ea93cba34092c80a0dffa889e9ca0020b65c5913721473a12/aiohttp-3.11.18-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:a2fd04ae4971b914e54fe459dd7edbbd3f2ba875d69e057d5e3c8e8cac094935", size = 1565783, upload-time = "2025-04-21T09:43:01.184Z" },
     { url = "https://files.pythonhosted.org/packages/d0/22/1a949e69cb9654e67b45831f675d2bfa5627eb61c4c4707a209ba5863ef4/aiohttp-3.11.18-cp39-cp39-win32.whl", hash = "sha256:b2f317d1678002eee6fe85670039fb34a757972284614638f82b903a03feacdc", size = 418350, upload-time = "2025-04-21T09:43:04.357Z" },
     { url = "https://files.pythonhosted.org/packages/4f/ca/3f44aabf63be958ee8ee0cb4c7ad24ea58cc73b0a73919bac9a0b4b92410/aiohttp-3.11.18-cp39-cp39-win_amd64.whl", hash = "sha256:5e7007b8d1d09bce37b54111f593d173691c530b80f27c6493b928dabed9e6ef", size = 443178, upload-time = "2025-04-21T09:43:06.296Z" },
+]
+
+[[package]]
+name = "aioitertools"
+version = "0.13.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/3c/53c4a17a05fb9ea2313ee1777ff53f5e001aefd5cc85aa2f4c2d982e1e38/aioitertools-0.13.0.tar.gz", hash = "sha256:620bd241acc0bbb9ec819f1ab215866871b4bbd1f73836a55f799200ee86950c", size = 19322, upload-time = "2025-11-06T22:17:07.609Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/a1/510b0a7fadc6f43a6ce50152e69dbd86415240835868bb0bd9b5b88b1e06/aioitertools-0.13.0-py3-none-any.whl", hash = "sha256:0be0292b856f08dfac90e31f4739432f4cb6d7520ab9eb73e143f4f2fa5259be", size = 24182, upload-time = "2025-11-06T22:17:06.502Z" },
 ]
 
 [[package]]
@@ -500,7 +530,7 @@ wheels = [
 
 [[package]]
 name = "botocore"
-version = "1.38.21"
+version = "1.38.46"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
@@ -508,9 +538,9 @@ dependencies = [
     { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "urllib3", version = "2.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/4a/89f2beab6757c900b15aa301227c9447feff7d327ff0595a2b74406a388c/botocore-1.38.21.tar.gz", hash = "sha256:08d5e9c00e5cc9e0ae0e60570846011789dc7f1d4ea094b3f3e3f3ae1ff2063a", size = 13904318, upload-time = "2025-05-21T19:27:59.79Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/5f/d76870e4399fbfc12aa5c3bb36029edfc1a434392afc70a343c9d7d96e90/botocore-1.38.46.tar.gz", hash = "sha256:8798e5a418c27cf93195b077153644aea44cb171fcd56edc1ecebaa1e49e226e", size = 14074340, upload-time = "2025-06-27T20:18:06.646Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/bf/8e943894e0c9f898db63c6af4c590c153dff680bd02536777b0a543e94e5/botocore-1.38.21-py3-none-any.whl", hash = "sha256:567b4d338114174d0b41857002a4b1e8efb68f1654ed9f3ec6c34ebdef5e9eaf", size = 13564842, upload-time = "2025-05-21T19:27:53.955Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/00/dd90b7a0255587ba1c9754d32a221adb4a9022f181df3eef401b0b9fadfc/botocore-1.38.46-py3-none-any.whl", hash = "sha256:89ca782ffbf2e8769ca9c89234cfa5ca577f1987d07d913ee3c68c4776b1eb5b", size = 13736872, upload-time = "2025-06-27T20:18:00.901Z" },
 ]
 
 [[package]]
@@ -2981,19 +3011,21 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-instruments = [
+instruments-any = [
+    { name = "aiobotocore" },
     { name = "botocore" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "botocore", marker = "extra == 'instruments'", specifier = "~=1.0" },
+    { name = "aiobotocore", marker = "extra == 'instruments-any'", specifier = "~=2.0" },
+    { name = "botocore", marker = "extra == 'instruments-any'", specifier = "~=1.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
-provides-extras = ["instruments"]
+provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-cassandra"
@@ -4100,7 +4132,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-aws-lambda" },
     { name = "opentelemetry-instrumentation-boto", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-boto3sqs", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-botocore", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-botocore", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-cassandra", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-celery", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-click", extra = ["instruments"] },
@@ -4172,7 +4204,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aws-lambda", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-aws-lambda" },
     { name = "opentelemetry-instrumentation-boto", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto" },
     { name = "opentelemetry-instrumentation-boto3sqs", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" },
-    { name = "opentelemetry-instrumentation-botocore", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-botocore" },
+    { name = "opentelemetry-instrumentation-botocore", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-botocore" },
     { name = "opentelemetry-instrumentation-cassandra", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-cassandra" },
     { name = "opentelemetry-instrumentation-celery", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-click", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-click" },
