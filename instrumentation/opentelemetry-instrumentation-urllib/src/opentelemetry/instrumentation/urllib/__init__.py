@@ -354,7 +354,10 @@ def _instrument(
     @functools.wraps(opener_open)
     def instrumented_open(opener, fullurl, data=None, timeout=None):
         if isinstance(fullurl, str):
-            request_ = Request(fullurl, data)
+            # in case of multiple entries for the same header Opener.open sends the first value
+            request_ = Request(
+                fullurl, data, headers=dict(reversed(opener.addheaders))
+            )
         else:
             request_ = fullurl
 
@@ -397,10 +400,10 @@ def _instrument(
         )
         _set_http_url(labels, url, sem_conv_opt_in_mode)
 
+        headers = get_or_create_headers()
         labels.update(
             get_custom_header_attributes(
-                # TODO: safe with multiple entries for the same header?
-                dict(request.header_items()),
+                headers,
                 captured_request_headers,
                 sensitive_headers,
                 normalise_request_header_name,
@@ -414,7 +417,6 @@ def _instrument(
             if callable(request_hook):
                 request_hook(span, request)
 
-            headers = get_or_create_headers()
             inject(headers)
 
             with suppress_http_instrumentation():
@@ -443,14 +445,14 @@ def _instrument(
                     )
 
                 if span.is_recording():
-                    response_headers_to_set = get_custom_header_attributes(
-                        result.headers,
-                        captured_response_headers,
-                        sensitive_headers,
-                        normalise_response_header_name,
+                    span.set_attributes(
+                        get_custom_header_attributes(
+                            result.headers,
+                            captured_response_headers,
+                            sensitive_headers,
+                            normalise_response_header_name,
+                        )
                     )
-                    for header, value in response_headers_to_set.items():
-                        span.set_attribute(header, value)
 
             if exception is not None and _report_new(sem_conv_opt_in_mode):
                 span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
