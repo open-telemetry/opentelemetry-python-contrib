@@ -95,7 +95,8 @@ class TestAiobotocoreInstrumentor(TestBase):
     def _make_client(self, service: str):
         return self.session.create_client(service, region_name=self.region)
 
-    def _make_response_meta(self, request_id: str) -> dict[str, Any]:
+    @staticmethod
+    def _make_response_meta(request_id: str) -> dict[str, Any]:
         return {
             "RequestId": request_id,
             "RetryAttempts": 0,
