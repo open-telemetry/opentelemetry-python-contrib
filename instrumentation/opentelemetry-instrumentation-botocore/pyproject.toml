@@ -35,6 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 instruments = [
   "botocore ~= 1.0",
+  "aiobotocore ~= 2.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
