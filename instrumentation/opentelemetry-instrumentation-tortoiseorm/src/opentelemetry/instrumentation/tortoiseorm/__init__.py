@@ -95,7 +95,6 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             None
         """
         tracer_provider = kwargs.get("tracer_provider")
-        # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
