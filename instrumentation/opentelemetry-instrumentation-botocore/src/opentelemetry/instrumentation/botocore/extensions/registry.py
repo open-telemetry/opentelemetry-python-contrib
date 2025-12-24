@@ -17,7 +17,7 @@ import logging
 from typing import TYPE_CHECKING, Callable, Mapping, Optional
 
 from opentelemetry._logs import get_logger
-from opentelemetry.instrumentation.botocore.extensions import (
+from opentelemetry.instrumentation.botocore.extensions.types import (
     _AwsSdkCallContext,
     _AwsSdkExtension,
 )
