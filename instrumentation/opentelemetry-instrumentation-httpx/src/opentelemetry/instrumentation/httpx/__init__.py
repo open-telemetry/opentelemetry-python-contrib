@@ -776,10 +776,10 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             metric_attributes,
             url,
             method_original,
+            self._sem_conv_opt_in_mode,
             headers,
             self._captured_request_headers,
             self._sensitive_headers,
-            self._sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -823,10 +823,10 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                         span,
                         status_code,
                         http_version,
+                        self._sem_conv_opt_in_mode,
                         headers,
                         self._captured_response_headers,
                         self._sensitive_headers,
-                        self._sem_conv_opt_in_mode,
                     )
                 if callable(self._response_hook):
                     self._response_hook(
@@ -989,10 +989,10 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             metric_attributes,
             url,
             method_original,
+            self._sem_conv_opt_in_mode,
             headers,
             self._captured_request_headers,
             self._sensitive_headers,
-            self._sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -1038,10 +1038,10 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                         span,
                         status_code,
                         http_version,
+                        self._sem_conv_opt_in_mode,
                         headers,
                         self._captured_response_headers,
                         self._sensitive_headers,
-                        self._sem_conv_opt_in_mode,
                     )
 
                 if callable(self._response_hook):
@@ -1256,10 +1256,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             metric_attributes,
             url,
             method_original,
+            sem_conv_opt_in_mode,
             headers,
             captured_request_headers,
             sensitive_headers,
-            sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -1303,10 +1303,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         span,
                         status_code,
                         http_version,
+                        sem_conv_opt_in_mode,
                         headers,
                         captured_response_headers,
                         sensitive_headers,
-                        sem_conv_opt_in_mode,
                     )
 
                 if callable(response_hook):
@@ -1387,10 +1387,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             metric_attributes,
             url,
             method_original,
+            sem_conv_opt_in_mode,
             headers,
             captured_request_headers,
             sensitive_headers,
-            sem_conv_opt_in_mode,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -1434,10 +1434,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         span,
                         status_code,
                         http_version,
+                        sem_conv_opt_in_mode,
                         headers,
                         captured_response_headers,
                         sensitive_headers,
-                        sem_conv_opt_in_mode,
                     )
 
                 if callable(async_response_hook):
