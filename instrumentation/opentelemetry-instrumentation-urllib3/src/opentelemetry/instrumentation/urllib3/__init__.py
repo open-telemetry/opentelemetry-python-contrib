@@ -105,7 +105,7 @@ For example using the environment variable,
 
 will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
 
-Request header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+Request header names in urllib3 are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
 variable will capture the header named ``custom-header``.
 
 Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
@@ -139,7 +139,7 @@ For example using the environment variable,
 
 will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+Response header names in urllib3 are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
 variable will capture the header named ``custom-header``.
 
 Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
