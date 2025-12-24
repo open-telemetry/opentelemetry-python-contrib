@@ -116,8 +116,8 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.package import (
-    _aiobotocore_instruments,
-    _instruments,
+    _instruments_aiobotocore,
+    _instruments_botocore,
 )
 from opentelemetry.instrumentation.botocore.utils import (
     _safe_invoke,
@@ -136,7 +136,14 @@ from opentelemetry.propagators.aws.aws_xray_propagator import (
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.trace.span import Span
 
 logger = logging.getLogger(__name__)
@@ -158,7 +165,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
         self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        return _instruments_botocore
 
     def _instrument(self, **kwargs):
         # pylint: disable=attribute-defined-outside-init
@@ -227,9 +234,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
+            RPC_SYSTEM: "aws-api",
+            RPC_SERVICE: call_context.service_id,
+            RPC_METHOD: call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -310,7 +317,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments + _aiobotocore_instruments
+        return _instruments_aiobotocore
 
     def _instrument(self, **kwargs):
         # pylint: disable=attribute-defined-outside-init
@@ -379,9 +386,9 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
             return await original_func(*args, **kwargs)
 
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
+            RPC_SYSTEM: "aws-api",
+            RPC_SERVICE: call_context.service_id,
+            RPC_METHOD: call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -476,7 +483,7 @@ def _apply_response_attributes(span: Span, result):
 
     status_code = metadata.get("HTTPStatusCode")
     if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        span.set_attribute(HTTP_STATUS_CODE, status_code)
 
 
 def _determine_call_context(

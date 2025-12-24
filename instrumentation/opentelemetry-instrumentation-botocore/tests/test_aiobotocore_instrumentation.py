@@ -28,7 +28,23 @@ from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_STACKTRACE,
+    EXCEPTION_TYPE,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 _REQUEST_ID_REGEX_MATCH = r"[A-Za-z0-9]{52}"
@@ -53,14 +69,14 @@ class TestAiobotocoreInstrumentor(TestBase):
 
     def _default_span_attributes(self, service: str, operation: str):
         return {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: service,
-            SpanAttributes.RPC_METHOD: operation,
+            RPC_SYSTEM: "aws-api",
+            RPC_SERVICE: service,
+            RPC_METHOD: operation,
             CLOUD_REGION: self.region,
             "retry_attempts": 0,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.SERVER_ADDRESS: f"{service.lower()}.{self.region}.amazonaws.com",
-            SpanAttributes.SERVER_PORT: 443,
+            HTTP_STATUS_CODE: 200,
+            SERVER_ADDRESS: f"{service.lower()}.{self.region}.amazonaws.com",
+            SERVER_PORT: 443,
         }
 
     def assert_only_span(self):
@@ -95,7 +111,8 @@ class TestAiobotocoreInstrumentor(TestBase):
     def _make_client(self, service: str):
         return self.session.create_client(service, region_name=self.region)
 
-    def _make_response_meta(self, request_id: str) -> dict[str, Any]:
+    @staticmethod
+    def _make_response_meta(request_id: str) -> dict[str, Any]:
         return {
             "RequestId": request_id,
             "RetryAttempts": 0,
@@ -228,9 +245,9 @@ class TestAiobotocoreInstrumentor(TestBase):
         # Verify exception event was recorded
         self.assertEqual(1, len(span.events))
         event = span.events[0]
-        self.assertIn(SpanAttributes.EXCEPTION_STACKTRACE, event.attributes)
-        self.assertIn(SpanAttributes.EXCEPTION_TYPE, event.attributes)
-        self.assertIn(SpanAttributes.EXCEPTION_MESSAGE, event.attributes)
+        self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
+        self.assertIn(EXCEPTION_TYPE, event.attributes)
+        self.assertIn(EXCEPTION_MESSAGE, event.attributes)
 
     def test_suppress_instrumentation(self):
         """Test that instrumentation can be suppressed."""

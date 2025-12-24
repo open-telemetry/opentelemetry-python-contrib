@@ -33,7 +33,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
   "botocore ~= 1.0",
   "aiobotocore ~= 2.0",
 ]
