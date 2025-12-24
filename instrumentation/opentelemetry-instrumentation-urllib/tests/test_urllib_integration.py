@@ -895,7 +895,24 @@ class URLLibIntegrationTestBase(abc.ABC):
         )
         self.assertNotIn(
             "http.response.header.x_response_two",
-            span.attributes,
+            (span.attributes,),
+        )
+
+    def test_only_the_first_header_is_sent_with_duplicated_headers(self):
+        URLLibInstrumentor().uninstrument()
+        URLLibInstrumentor().instrument(
+            captured_request_headers=["X-foo"],
+        )
+        result = self.perform_request(
+            self.URL, headers=[("X-foo", "foo"), ("X-foo", "bar")]
+        )
+        self.assertEqual(result.read(), b"Hello!")
+
+        span = self.assert_span()
+
+        self.assertEqual(
+            span.attributes["http.request.header.x_foo"],
+            ("foo",),
         )
 
 
