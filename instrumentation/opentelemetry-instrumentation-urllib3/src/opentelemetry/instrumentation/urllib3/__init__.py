@@ -199,7 +199,7 @@ _URL_OPEN_ARG_TO_INDEX_MAPPING = {
 class URLLib3Instrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
-
+    _instrumented = False
     def _instrument(self, **kwargs):
         """Instruments the urllib3 module
 
@@ -214,6 +214,9 @@ class URLLib3Instrumentor(BaseInstrumentor):
                     list of regexes used to exclude URLs from tracking
         """
         # initialize semantic conventions opt-in if needed
+        if self._instrumented:
+            return
+        self._instrumented = True
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
