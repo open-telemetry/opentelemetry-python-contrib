@@ -533,12 +533,14 @@ def _instrument(
             )
 
             if span.is_recording():
-                span.set_attributes(get_custom_header_attributes(
-                    response.headers,
-                    captured_response_headers,
-                    sensitive_headers,
-                    normalise_response_header_name,
-                ))
+                span.set_attributes(
+                    get_custom_header_attributes(
+                        response.headers,
+                        captured_response_headers,
+                        sensitive_headers,
+                        normalise_response_header_name,
+                    )
+                )
 
             return response
 
