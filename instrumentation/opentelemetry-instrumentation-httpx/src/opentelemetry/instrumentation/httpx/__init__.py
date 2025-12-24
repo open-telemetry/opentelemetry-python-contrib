@@ -534,10 +534,10 @@ def _apply_request_client_attributes_to_span(
     metric_attributes: dict[str, typing.Any],
     url: str | httpx.URL,
     method_original: str,
-    headers: httpx.Headers | dict[str, list[str] | str] | None,
-    captured_headers: list[str] | None,
-    sensitive_headers: list[str] | None,
     semconv: _StabilityMode,
+    headers: httpx.Headers | dict[str, list[str] | str] | None = None,
+    captured_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
@@ -595,10 +595,10 @@ def _apply_response_client_attributes_to_span(
     span: Span,
     status_code: int,
     http_version: str,
-    headers: httpx.Headers | dict[str, list[str] | str] | None,
-    captured_headers: list[str] | None,
-    sensitive_headers: list[str] | None,
     semconv: _StabilityMode,
+    headers: httpx.Headers | dict[str, list[str] | str] | None = None,
+    captured_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     # http semconv transition: http.status_code -> http.response.status_code
     # TODO: use _set_status when it's stable for http clients
