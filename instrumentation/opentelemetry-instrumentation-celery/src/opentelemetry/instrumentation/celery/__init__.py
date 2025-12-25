@@ -66,6 +66,7 @@ from typing import Collection, Iterable
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import MESSAGING_MESSAGE_ID
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -76,7 +77,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 
 if VERSION >= (4, 0, 1):
@@ -240,7 +240,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         # apply some attributes here because most of the data is not available
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
+            span.set_attribute(MESSAGING_MESSAGE_ID, task_id)
             span.set_attribute(_TASK_NAME_KEY, task_name)
             utils.set_attributes_from_context(span, kwargs)
 
