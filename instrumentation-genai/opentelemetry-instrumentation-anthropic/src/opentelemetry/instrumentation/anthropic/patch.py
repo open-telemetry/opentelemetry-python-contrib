@@ -40,9 +40,11 @@ def messages_create(
         kwargs: dict[str, Any],
     ) -> Any:
         attributes = get_llm_request_attributes(kwargs, instance)
-        request_model = attributes.get(
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        ) or kwargs.get("model") or "unknown"
+        request_model = (
+            attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+            or kwargs.get("model")
+            or "unknown"
+        )
 
         invocation = LLMInvocation(
             request_model=request_model,
