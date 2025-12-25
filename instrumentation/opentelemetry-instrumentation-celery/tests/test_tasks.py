@@ -15,14 +15,17 @@
 import threading
 import time
 
-from opentelemetry.semconv.attributes.exception_attributes import EXCEPTION_STACKTRACE, EXCEPTION_TYPE, \
-    EXCEPTION_MESSAGE
-from opentelemetry.semconv.trace import SpanAttributes
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import baggage, context
 from opentelemetry.instrumentation.celery import CeleryInstrumentor, utils
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_STACKTRACE,
+    EXCEPTION_TYPE,
+)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
@@ -132,9 +135,7 @@ class TestCeleryInstrumentation(TestBase):
         self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
 
         # TODO: use plain assertEqual after 1.25 is released (https://github.com/open-telemetry/opentelemetry-python/pull/3837)
-        self.assertIn(
-            "CustomError", event.attributes[EXCEPTION_TYPE]
-        )
+        self.assertIn("CustomError", event.attributes[EXCEPTION_TYPE])
 
         self.assertEqual(
             event.attributes[EXCEPTION_MESSAGE],
