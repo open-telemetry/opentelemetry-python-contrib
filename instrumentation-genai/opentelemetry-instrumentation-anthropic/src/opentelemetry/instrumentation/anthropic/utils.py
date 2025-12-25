@@ -26,6 +26,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.util.types import AttributeValue
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
@@ -65,8 +66,29 @@ def set_server_address_and_port(
 
 def get_llm_request_attributes(
     kwargs: dict[str, Any], client_instance: Any
-) -> dict[str, Any]:
-    """Extract LLM request attributes from kwargs."""
+) -> dict[str, AttributeValue]:
+    """Extract LLM request attributes from kwargs.
+    
+    Returns a dictionary of OpenTelemetry semantic convention attributes for LLM requests.
+    The attributes follow the GenAI semantic conventions (gen_ai.*) and server semantic
+    conventions (server.*) as defined in the OpenTelemetry specification.
+    
+    GenAI attributes included:
+    - gen_ai.operation.name: The operation name (e.g., "chat")
+    - gen_ai.system: The GenAI system identifier (e.g., "anthropic")
+    - gen_ai.request.model: The model identifier
+    - gen_ai.request.max_tokens: Maximum tokens in the request
+    - gen_ai.request.temperature: Sampling temperature
+    - gen_ai.request.top_p: Top-p sampling parameter
+    - gen_ai.request.top_k: Top-k sampling parameter
+    - gen_ai.request.stop_sequences: Stop sequences for the request
+    
+    Server attributes included (if available):
+    - server.address: The server hostname
+    - server.port: The server port (if not default 443)
+    
+    Only non-None values are included in the returned dictionary.
+    """
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
