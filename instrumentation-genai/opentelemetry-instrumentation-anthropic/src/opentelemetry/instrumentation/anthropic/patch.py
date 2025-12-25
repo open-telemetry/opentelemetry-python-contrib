@@ -19,17 +19,16 @@ from typing import Any, Callable
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.trace import Span, SpanKind, Tracer
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.types import LLMInvocation
 
 from .utils import (
     get_llm_request_attributes,
-    handle_span_exception,
-    set_span_attribute,
 )
 
 
 def messages_create(
-    tracer: Tracer,
+    handler: TelemetryHandler,
     _capture_content: bool,
 ) -> Callable[..., Any]:
     """Wrap the `create` method of the `Messages` class to trace it."""
@@ -40,58 +39,33 @@ def messages_create(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Any:
-        span_attributes = {**get_llm_request_attributes(kwargs, instance)}
+        attributes = get_llm_request_attributes(kwargs, instance)
+        request_model = attributes.get(
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        ) or kwargs.get("model")
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
-        with tracer.start_as_current_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-            attributes=span_attributes,
-            end_on_exit=False,
-        ) as span:
-            try:
-                result = wrapped(*args, **kwargs)
+        invocation = LLMInvocation(
+            request_model=request_model,
+            provider="anthropic",
+            attributes=attributes,
+        )
 
-                if span.is_recording():
-                    _set_response_attributes(span, result)
+        with handler.llm(invocation) as invocation:
+            result = wrapped(*args, **kwargs)
 
-                span.end()
-                return result
+            if getattr(result, "model", None):
+                invocation.response_model_name = result.model
 
-            except Exception as error:
-                handle_span_exception(span, error)
-                raise
+            if getattr(result, "id", None):
+                invocation.response_id = result.id
+
+            if getattr(result, "stop_reason", None):
+                invocation.finish_reasons = [result.stop_reason]
+
+            if getattr(result, "usage", None):
+                invocation.input_tokens = result.usage.input_tokens
+                invocation.output_tokens = result.usage.output_tokens
+
+            return result
 
     return traced_method
-
-
-def _set_response_attributes(span: Span, result: Any) -> None:
-    """Set span attributes from the Anthropic response."""
-    if getattr(result, "model", None):
-        set_span_attribute(
-            span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
-        )
-
-    if getattr(result, "stop_reason", None):
-        # Anthropic uses stop_reason (single string), semantic convention expects array
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
-            [result.stop_reason],
-        )
-
-    if getattr(result, "id", None):
-        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
-
-    # Get the usage
-    if getattr(result, "usage", None):
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
-            result.usage.input_tokens,
-        )
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-            result.usage.output_tokens,
-        )

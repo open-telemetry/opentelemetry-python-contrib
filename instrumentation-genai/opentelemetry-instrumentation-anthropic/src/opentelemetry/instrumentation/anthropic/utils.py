@@ -26,11 +26,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
-from opentelemetry.trace import Span
-from opentelemetry.trace.status import Status, StatusCode
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
@@ -68,13 +63,6 @@ def set_server_address_and_port(
         attributes[ServerAttributes.SERVER_PORT] = port
 
 
-def set_span_attribute(span: Span, name: str, value: Any) -> None:
-    """Set a span attribute if the value is not None."""
-    if value is None:
-        return
-    span.set_attribute(name, value)
-
-
 def get_llm_request_attributes(
     kwargs: dict[str, Any], client_instance: Any
 ) -> dict[str, Any]:
@@ -96,13 +84,3 @@ def get_llm_request_attributes(
 
     # Filter out None values
     return {k: v for k, v in attributes.items() if v is not None}
-
-
-def handle_span_exception(span: Span, error: Exception) -> None:
-    """Handle an exception by setting span status and error attributes."""
-    span.set_status(Status(StatusCode.ERROR, str(error)))
-    if span.is_recording():
-        span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
-        )
-    span.end()
