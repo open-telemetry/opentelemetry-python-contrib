@@ -22,7 +22,6 @@ import pytest
 import yaml
 from anthropic import Anthropic
 
-from opentelemetry import trace
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.instrumentation.anthropic.utils import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
@@ -69,8 +68,7 @@ def tracer_provider(span_exporter):
     """Create and configure a tracer provider with in-memory export."""
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-    trace.set_tracer_provider(provider)
-    yield provider
+    return provider
 
 
 @pytest.fixture
