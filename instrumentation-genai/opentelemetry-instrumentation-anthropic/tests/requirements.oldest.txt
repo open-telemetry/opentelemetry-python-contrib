@@ -15,6 +15,7 @@
 # This variant of the requirements aims to test the system using
 # the oldest supported version of external dependencies.
 
+-e util/opentelemetry-util-genai
 anthropic==0.16.0
 httpx>=0.25.2,<0.28.0  # Pin to version compatible with anthropic 0.16.0 (proxies arg removed in 0.28)
 pytest==7.4.4
