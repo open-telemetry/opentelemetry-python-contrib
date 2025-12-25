@@ -25,6 +25,10 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
     KafkaContextGetter,
     KafkaContextSetter,
 )
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_SYSTEM,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
@@ -124,10 +128,10 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-10",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                    MESSAGING_MESSAGE_ID: "topic-10.0.0",
                 },
             },
             {"name": "recv", "attributes": {}},
@@ -136,10 +140,10 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 2,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-20",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                    MESSAGING_MESSAGE_ID: "topic-20.2.4",
                 },
             },
             {"name": "recv", "attributes": {}},
@@ -148,10 +152,10 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 1,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-30",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                    MESSAGING_MESSAGE_ID: "topic-30.1.3",
                 },
             },
             {"name": "recv", "attributes": {}},
@@ -191,7 +195,7 @@ class TestConfluentKafka(TestBase):
                 "name": "topic-1 process",
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
@@ -201,7 +205,7 @@ class TestConfluentKafka(TestBase):
                 "name": "topic-2 process",
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
@@ -211,7 +215,7 @@ class TestConfluentKafka(TestBase):
                 "name": "topic-3 process",
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
@@ -249,10 +253,10 @@ class TestConfluentKafka(TestBase):
                 "attributes": {
                     SpanAttributes.MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-a",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-a.0.0",
+                    MESSAGING_MESSAGE_ID: "topic-a.0.0",
                 },
             },
         ]
