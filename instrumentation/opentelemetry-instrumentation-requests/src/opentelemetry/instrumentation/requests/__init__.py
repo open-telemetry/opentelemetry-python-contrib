@@ -189,6 +189,7 @@ from timeit import default_timer
 from typing import Any, Callable, Collection, Optional
 from urllib.parse import urlparse
 
+from opentelemetry import trace
 from requests.models import PreparedRequest, Response
 from requests.sessions import Session
 from requests.structures import CaseInsensitiveDict
@@ -257,6 +258,7 @@ from opentelemetry.util.http import (
     sanitize_method,
 )
 from opentelemetry.util.http.httplib import set_ip_on_next_http_connection
+from opentelemetry.util.http.span import create_http_client_span, update_http_client_span
 
 _excluded_urls_from_env = get_excluded_urls("REQUESTS")
 
@@ -339,18 +341,10 @@ def _instrument(
         # See
         # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-client
         method = request.method
-        span_name = get_default_span_name(method)
 
         url = redact_url(request.url)
 
         span_attributes = {}
-        _set_http_method(
-            span_attributes,
-            method,
-            sanitize_method(method),
-            sem_conv_opt_in_mode,
-        )
-        _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
 
         # Check for synthetic user agent type
         headers = get_or_create_headers()
@@ -361,14 +355,6 @@ def _instrument(
             span_attributes[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
         if user_agent:
             span_attributes[USER_AGENT_ORIGINAL] = user_agent
-        span_attributes.update(
-            get_custom_header_attributes(
-                headers,
-                captured_request_headers,
-                sensitive_headers,
-                normalise_request_header_name,
-            )
-        )
 
         metric_labels = {}
         _set_http_method(
@@ -393,31 +379,32 @@ def _instrument(
                 _set_http_net_peer_name_client(
                     metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
                 )
-                if _report_new(sem_conv_opt_in_mode):
-                    _set_http_host_client(
-                        span_attributes,
-                        parsed_url.hostname,
-                        sem_conv_opt_in_mode,
-                    )
-                    # Use semconv library when available
-                    span_attributes[NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
                 _set_http_peer_port_client(
                     metric_labels, parsed_url.port, sem_conv_opt_in_mode
                 )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_peer_port_client(
-                        span_attributes, parsed_url.port, sem_conv_opt_in_mode
-                    )
                     # Use semconv library when available
                     span_attributes[NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
+        span = create_http_client_span(
+            request.method,
+            request.url,
+            tracer=tracer,
+            request_headers=headers,
+            captured_request_headers=captured_request_headers,
+            sensitive_headers=sensitive_headers,
+            attributes=span_attributes,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        )
+
         with (
-            tracer.start_as_current_span(
-                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
-            ) as span,
+            trace.use_span(
+                span,
+                end_on_exit=True
+            ),
             set_ip_on_next_http_connection(span),
         ):
             exception = None
@@ -439,7 +426,6 @@ def _instrument(
                     elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(result, Response):
-                span_attributes = {}
                 _set_http_status_code_attribute(
                     span,
                     result.status_code,
@@ -447,6 +433,7 @@ def _instrument(
                     sem_conv_opt_in_mode,
                 )
 
+                version_text = None
                 if result.raw is not None:
                     version = getattr(result.raw, "version", None)
                     if version:
@@ -455,23 +442,15 @@ def _instrument(
                         _set_http_network_protocol_version(
                             metric_labels, version_text, sem_conv_opt_in_mode
                         )
-                        if _report_new(sem_conv_opt_in_mode):
-                            _set_http_network_protocol_version(
-                                span_attributes,
-                                version_text,
-                                sem_conv_opt_in_mode,
-                            )
-                span_attributes.update(
-                    get_custom_header_attributes(
-                        result.headers,
-                        captured_response_headers,
-                        sensitive_headers,
-                        normalise_response_header_name,
-                    )
+                update_http_client_span(
+                    span,
+                    status_code=result.status_code,
+                    network_protocol_version=version_text,
+                    response_headers=result.headers,
+                    captured_response_headers=captured_response_headers,
+                    sensitive_headers=sensitive_headers,
+                    sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 )
-                for key, val in span_attributes.items():
-                    span.set_attribute(key, val)
-
                 if callable(response_hook):
                     response_hook(span, request, result)
 
