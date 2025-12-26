@@ -248,6 +248,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             span.instrumentation_scope.schema_url,
             "https://opentelemetry.io/schemas/1.21.0",
         )
+
         self.assertEqual(
             span.attributes,
             {
