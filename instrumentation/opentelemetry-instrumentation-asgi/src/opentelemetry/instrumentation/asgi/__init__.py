@@ -258,9 +258,6 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
-from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_SERVER_NAME,
-)
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
@@ -400,7 +397,11 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
+            _set_http_host_server(
+                result,
+                ",".join(http_host_value_list),
+                sem_conv_opt_in_mode,
+            )
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
         user_agent_raw = http_user_agent[0]
