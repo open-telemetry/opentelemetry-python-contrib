@@ -25,7 +25,6 @@ import os
 import pytest
 from anthropic import Anthropic
 
-from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -62,29 +61,21 @@ def test_integration_basic_message_create(
 
     span = spans[0]
     assert span.name == f"chat {model}"
-    assert (
-        GenAIAttributes.GEN_AI_OPERATION_NAME
-        in span.attributes
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "chat"
-    )
+    assert GenAIAttributes.GEN_AI_OPERATION_NAME in span.attributes
+    assert span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == "chat"
     assert (
         GenAIAttributes.GenAiSystemValues.ANTHROPIC.value
         == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
     )
+    assert model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+    assert ServerAttributes.SERVER_ADDRESS in span.attributes
     assert (
-        model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        span.attributes[ServerAttributes.SERVER_ADDRESS] == "api.anthropic.com"
     )
+    assert response.id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
     assert (
-        ServerAttributes.SERVER_ADDRESS in span.attributes
-    )
-    assert span.attributes[ServerAttributes.SERVER_ADDRESS] == "api.anthropic.com"
-    assert (
-        response.id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-    )
-    assert (
-        response.model == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
+        response.model
+        == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
     )
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
@@ -191,4 +182,3 @@ def test_integration_multiple_messages(
     assert span2.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID] == response2.id
     assert span1.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
     assert span2.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
-
