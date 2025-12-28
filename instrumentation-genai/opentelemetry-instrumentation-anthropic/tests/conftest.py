@@ -233,3 +233,25 @@ def fixture_vcr(vcr):
 def scrub_response_headers(response):
     """Scrub sensitive response headers."""
     return response
+
+
+def pytest_collection_modifyitems(config, items):
+    """Automatically skip integration tests if no real API key is available.
+
+    This hook runs after test collection but before test execution.
+    It checks for a valid ANTHROPIC_API_KEY and skips integration tests
+    if the key is missing or set to the test placeholder value.
+    """
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+
+    # Check if we have a real API key (not the test placeholder)
+    if not api_key or api_key == "test_anthropic_api_key":
+        skip_integration = pytest.mark.skip(
+            reason="ANTHROPIC_API_KEY not set or using test key - skipping integration tests. "
+                   "Set a real API key to run integration tests: export ANTHROPIC_API_KEY='your-key'"
+        )
+
+        for item in items:
+            # Skip any test marked with 'integration'
+            if "integration" in item.keywords:
+                item.add_marker(skip_integration)
