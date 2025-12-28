@@ -19,6 +19,7 @@ Run with: pytest tests/test_integration.py -m integration
 
 To skip integration tests: pytest -m "not integration"
 """
+# pylint: disable=redefined-outer-name
 
 import os
 
