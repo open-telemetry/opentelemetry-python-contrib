@@ -40,7 +40,7 @@ def messages_create(
         kwargs: dict[str, Any],
     ) -> Any:
         attributes = get_llm_request_attributes(kwargs, instance)
-        request_model = (
+        request_model = str(
             attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
             or kwargs.get("model")
             or "unknown"

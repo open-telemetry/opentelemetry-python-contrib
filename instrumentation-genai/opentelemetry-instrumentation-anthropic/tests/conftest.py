@@ -248,7 +248,7 @@ def pytest_collection_modifyitems(config, items):
     if not api_key or api_key == "test_anthropic_api_key":
         skip_integration = pytest.mark.skip(
             reason="ANTHROPIC_API_KEY not set or using test key - skipping integration tests. "
-                   "Set a real API key to run integration tests: export ANTHROPIC_API_KEY='your-key'"
+            "Set a real API key to run integration tests: export ANTHROPIC_API_KEY='your-key'"
         )
 
         for item in items:

@@ -68,11 +68,11 @@ def get_llm_request_attributes(
     kwargs: dict[str, Any], client_instance: Any
 ) -> dict[str, AttributeValue]:
     """Extract LLM request attributes from kwargs.
-    
+
     Returns a dictionary of OpenTelemetry semantic convention attributes for LLM requests.
     The attributes follow the GenAI semantic conventions (gen_ai.*) and server semantic
     conventions (server.*) as defined in the OpenTelemetry specification.
-    
+
     GenAI attributes included:
     - gen_ai.operation.name: The operation name (e.g., "chat")
     - gen_ai.system: The GenAI system identifier (e.g., "anthropic")
@@ -82,11 +82,11 @@ def get_llm_request_attributes(
     - gen_ai.request.top_p: Top-p sampling parameter
     - gen_ai.request.top_k: Top-k sampling parameter
     - gen_ai.request.stop_sequences: Stop sequences for the request
-    
+
     Server attributes included (if available):
     - server.address: The server hostname
     - server.port: The server port (if not default 443)
-    
+
     Only non-None values are included in the returned dictionary.
     """
     attributes = {
