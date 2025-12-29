@@ -17,6 +17,9 @@ from unittest.mock import Mock, patch
 from pyramid.config import Configurator
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
@@ -52,6 +55,9 @@ def expected_attributes(override_attributes):
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
+        # Reset semconv stability to ensure clean state
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
         config = Configurator()
         PyramidInstrumentor().instrument_config(config)
 
