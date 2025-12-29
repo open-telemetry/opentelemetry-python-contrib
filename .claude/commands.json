@@ -1,0 +1,13 @@
+{
+  "enhance-genai": {
+    "description": "Enhance or add a GenAI instrumentation package from OpenLLMetry",
+    "instructions": ".claude/skills/enhance-genai-instrumentation.md",
+    "arguments": [
+      {
+        "name": "package",
+        "description": "The package name to enhance (e.g., anthropic, chromadb, bedrock, cohere)",
+        "required": true
+      }
+    ]
+  }
+}

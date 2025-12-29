@@ -47,11 +47,103 @@ API
 ---
 """
 
-from typing import Any, Collection
+import logging
+from typing import Any, Callable, Collection, Optional
+
+from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
+from opentelemetry.instrumentation.anthropic.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
+
+logger = logging.getLogger(__name__)
+
+# Methods to wrap - sync
+WRAPPED_METHODS = [
+    {
+        "package": "anthropic.resources.messages",
+        "object": "Messages",
+        "method": "create",
+        "wrapper": "messages_create",
+    },
+    {
+        "package": "anthropic.resources.messages",
+        "object": "Messages",
+        "method": "stream",
+        "wrapper": "messages_stream",
+    },
+    # AsyncMessages.stream is a sync method returning async context manager
+    {
+        "package": "anthropic.resources.messages",
+        "object": "AsyncMessages",
+        "method": "stream",
+        "wrapper": "async_messages_stream",
+    },
+    # Beta API methods
+    {
+        "package": "anthropic.resources.beta.messages.messages",
+        "object": "Messages",
+        "method": "create",
+        "wrapper": "messages_create",
+    },
+    {
+        "package": "anthropic.resources.beta.messages.messages",
+        "object": "Messages",
+        "method": "stream",
+        "wrapper": "messages_stream",
+    },
+    # Bedrock SDK Beta methods
+    {
+        "package": "anthropic.lib.bedrock._beta_messages",
+        "object": "Messages",
+        "method": "create",
+        "wrapper": "messages_create",
+    },
+    {
+        "package": "anthropic.lib.bedrock._beta_messages",
+        "object": "Messages",
+        "method": "stream",
+        "wrapper": "messages_stream",
+    },
+]
+
+# Methods to wrap - async
+WRAPPED_AMETHODS = [
+    {
+        "package": "anthropic.resources.messages",
+        "object": "AsyncMessages",
+        "method": "create",
+        "wrapper": "async_messages_create",
+    },
+    # Beta API async methods
+    {
+        "package": "anthropic.resources.beta.messages.messages",
+        "object": "AsyncMessages",
+        "method": "create",
+        "wrapper": "async_messages_create",
+    },
+    {
+        "package": "anthropic.resources.beta.messages.messages",
+        "object": "AsyncMessages",
+        "method": "stream",
+        "wrapper": "async_messages_stream",
+    },
+    # Bedrock SDK Beta async methods
+    {
+        "package": "anthropic.lib.bedrock._beta_messages",
+        "object": "AsyncMessages",
+        "method": "create",
+        "wrapper": "async_messages_create",
+    },
+    {
+        "package": "anthropic.lib.bedrock._beta_messages",
+        "object": "AsyncMessages",
+        "method": "stream",
+        "wrapper": "async_messages_stream",
+    },
+]
 
 
 class AnthropicInstrumentor(BaseInstrumentor):
@@ -61,13 +153,17 @@ class AnthropicInstrumentor(BaseInstrumentor):
     optionally capture message content as events.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        exception_logger: Optional[Callable[[Exception], None]] = None,
+    ) -> None:
         super().__init__()
         self._tracer = None
-        self._logger = None
+        self._event_logger = None
         self._meter = None
+        self._instruments = None
+        self._exception_logger = exception_logger
 
-    # pylint: disable=no-self-use
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
@@ -80,10 +176,24 @@ class AnthropicInstrumentor(BaseInstrumentor):
                 - meter_provider: MeterProvider instance
                 - logger_provider: LoggerProvider instance
         """
-        # pylint: disable=import-outside-toplevel
-        from opentelemetry._logs import get_logger  # noqa: PLC0415
-        from opentelemetry.metrics import get_meter  # noqa: PLC0415
-        from opentelemetry.trace import get_tracer  # noqa: PLC0415
+        from opentelemetry._logs import get_logger
+        from opentelemetry.metrics import get_meter
+        from opentelemetry.trace import get_tracer
+
+        from opentelemetry.instrumentation.anthropic.instruments import (
+            Instruments,
+        )
+        from opentelemetry.instrumentation.anthropic.patch import (
+            async_messages_create_wrapper,
+            async_messages_stream_wrapper,
+            messages_create_wrapper,
+            messages_stream_wrapper,
+        )
+        from opentelemetry.instrumentation.anthropic.utils import Config
+
+        # Set exception logger
+        if self._exception_logger:
+            Config.exception_logger = self._exception_logger
 
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
@@ -93,15 +203,15 @@ class AnthropicInstrumentor(BaseInstrumentor):
         # Initialize tracer
         tracer = get_tracer(
             __name__,
-            "",
+            __version__,
             tracer_provider,
             schema_url=Schemas.V1_28_0.value,
         )
 
         # Initialize logger for events
-        logger = get_logger(
+        event_logger = get_logger(
             __name__,
-            "",
+            __version__,
             schema_url=Schemas.V1_28_0.value,
             logger_provider=logger_provider,
         )
@@ -109,21 +219,111 @@ class AnthropicInstrumentor(BaseInstrumentor):
         # Initialize meter for metrics
         meter = get_meter(
             __name__,
-            "",
+            __version__,
             meter_provider,
             schema_url=Schemas.V1_28_0.value,
         )
 
-        # Store for later use in _uninstrument
-        self._tracer = tracer
-        self._logger = logger
-        self._meter = meter
+        # Create instruments
+        instruments = Instruments(meter)
 
-        # Patching will be added in Ticket 3
+        # Store for later use
+        self._tracer = tracer
+        self._event_logger = event_logger
+        self._meter = meter
+        self._instruments = instruments
+
+        # Map wrapper names to functions
+        wrapper_map = {
+            "messages_create": messages_create_wrapper(
+                tracer, instruments, event_logger
+            ),
+            "messages_stream": messages_stream_wrapper(
+                tracer, instruments, event_logger
+            ),
+            "async_messages_create": async_messages_create_wrapper(
+                tracer, instruments, event_logger
+            ),
+            "async_messages_stream": async_messages_stream_wrapper(
+                tracer, instruments, event_logger
+            ),
+        }
+
+        # Wrap sync methods
+        for method_info in WRAPPED_METHODS:
+            wrap_package = method_info["package"]
+            wrap_object = method_info["object"]
+            wrap_method = method_info["method"]
+            wrapper_name = method_info["wrapper"]
+
+            try:
+                wrap_function_wrapper(
+                    wrap_package,
+                    f"{wrap_object}.{wrap_method}",
+                    wrapper_map[wrapper_name],
+                )
+                logger.debug(
+                    "Successfully wrapped %s.%s.%s",
+                    wrap_package,
+                    wrap_object,
+                    wrap_method,
+                )
+            except Exception as e:
+                logger.debug(
+                    "Failed to wrap %s.%s.%s: %s",
+                    wrap_package,
+                    wrap_object,
+                    wrap_method,
+                    e,
+                )
+
+        # Wrap async methods
+        for method_info in WRAPPED_AMETHODS:
+            wrap_package = method_info["package"]
+            wrap_object = method_info["object"]
+            wrap_method = method_info["method"]
+            wrapper_name = method_info["wrapper"]
+
+            try:
+                wrap_function_wrapper(
+                    wrap_package,
+                    f"{wrap_object}.{wrap_method}",
+                    wrapper_map[wrapper_name],
+                )
+                logger.debug(
+                    "Successfully wrapped %s.%s.%s",
+                    wrap_package,
+                    wrap_object,
+                    wrap_method,
+                )
+            except Exception as e:
+                logger.debug(
+                    "Failed to wrap %s.%s.%s: %s",
+                    wrap_package,
+                    wrap_object,
+                    wrap_method,
+                    e,
+                )
 
     def _uninstrument(self, **kwargs: Any) -> None:
         """Disable Anthropic instrumentation.
 
         This removes all patches applied during instrumentation.
         """
-        # Unpatching will be added in Ticket 3
+        for method_info in WRAPPED_METHODS:
+            wrap_package = method_info["package"]
+            wrap_object = method_info["object"]
+            wrap_method = method_info["method"]
+            try:
+                unwrap(f"{wrap_package}.{wrap_object}", wrap_method)
+            except Exception:
+                pass
+
+        for method_info in WRAPPED_AMETHODS:
+            wrap_package = method_info["package"]
+            wrap_object = method_info["object"]
+            wrap_method = method_info["method"]
+            try:
+                unwrap(f"{wrap_package}.{wrap_object}", wrap_method)
+            except Exception:
+                pass
