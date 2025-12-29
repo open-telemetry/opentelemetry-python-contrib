@@ -17,4 +17,4 @@
 #   This version should stay below "1.0" until the fundamentals
 #   in "TODOS.md" have been addressed. Please revisit the TODOs
 #   listed there before bumping to a stable version.
-__version__ = "0.5b0.dev"
+__version__ = "0.6b0.dev"

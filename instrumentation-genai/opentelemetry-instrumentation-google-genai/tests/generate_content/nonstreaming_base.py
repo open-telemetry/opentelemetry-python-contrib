@@ -17,7 +17,7 @@ import unittest
 from unittest.mock import patch
 
 import pytest
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, Part
 from pydantic import BaseModel, Field
 
 from opentelemetry.instrumentation._semconv import (
@@ -179,6 +179,57 @@ class NonStreamingTestCase(TestCase):
         event_record = self.otel.get_event_named("gen_ai.system.message")
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "foo")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text(self):
+        config = GenerateContentConfig(
+            system_instruction=["help", "me please."]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text_parts(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_text(text="help"),
+                Part.from_text(text="me please."),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_is_invalid(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_uri(file_uri="test.jpg"),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_does_not_have_event_named("gen_ai.system.message")
 
     @patch.dict(
         "os.environ",
