@@ -36,10 +36,19 @@ Usage
         ],
     )
 
+Configuration
+-------------
+
+The following configuration options are available:
+
+- ``enable_trace_context_propagation``: If True, inject W3C trace context
+  into OpenAI request headers. Default: False.
+
 API
 ---
 """
 
+import logging
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -61,10 +70,22 @@ from .patch import (
     embeddings_create,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class OpenAIInstrumentor(BaseInstrumentor):
-    def __init__(self):
+    """An instrumentor for OpenAI's client library.
+
+    Args:
+        enable_trace_context_propagation: If True, inject W3C trace context
+            into OpenAI request headers for end-to-end tracing.
+            Default: False.
+    """
+
+    def __init__(self, enable_trace_context_propagation: bool = False):
+        super().__init__()
         self._meter = None
+        self._enable_trace_context_propagation = enable_trace_context_propagation
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -79,7 +100,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             schema_url=Schemas.V1_30_0.value,
         )
         logger_provider = kwargs.get("logger_provider")
-        logger = get_logger(
+        event_logger = get_logger(
             __name__,
             "",
             schema_url=Schemas.V1_30_0.value,
@@ -94,12 +115,18 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         instruments = Instruments(self._meter)
+        capture_content = is_content_enabled()
 
+        # Chat Completions API
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                capture_content,
+                self._enable_trace_context_propagation,
             ),
         )
 
@@ -107,31 +134,139 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, logger, instruments, is_content_enabled()
+                tracer,
+                event_logger,
+                instruments,
+                capture_content,
+                self._enable_trace_context_propagation,
             ),
         )
 
-        # Add instrumentation for the embeddings API
+        # Embeddings API
         wrap_function_wrapper(
             module="openai.resources.embeddings",
             name="Embeddings.create",
-            wrapper=embeddings_create(
-                tracer, instruments, is_content_enabled()
-            ),
+            wrapper=embeddings_create(tracer, instruments, capture_content),
         )
 
         wrap_function_wrapper(
             module="openai.resources.embeddings",
             name="AsyncEmbeddings.create",
             wrapper=async_embeddings_create(
-                tracer, instruments, is_content_enabled()
+                tracer, instruments, capture_content
             ),
         )
 
-    def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        # Completions API (Legacy text completions)
+        self._wrap_completions_api(tracer, event_logger, instruments, capture_content)
 
+        # Images API
+        self._wrap_images_api(tracer, instruments, capture_content)
+
+        # Responses API
+        self._wrap_responses_api(tracer, event_logger, instruments, capture_content)
+
+    def _wrap_completions_api(self, tracer, event_logger, instruments, capture_content):
+        """Wrap the legacy Completions API."""
+        try:
+            from .completions_patch import (
+                async_completions_create,
+                completions_create,
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.completions",
+                name="Completions.create",
+                wrapper=completions_create(
+                    tracer, event_logger, instruments, capture_content
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.completions",
+                name="AsyncCompletions.create",
+                wrapper=async_completions_create(
+                    tracer, event_logger, instruments, capture_content
+                ),
+            )
+        except (ImportError, AttributeError) as e:
+            logger.debug("Could not wrap Completions API: %s", e)
+
+    def _wrap_images_api(self, tracer, instruments, capture_content):
+        """Wrap the Images API."""
+        try:
+            from .images_patch import async_images_generate, images_generate
+
+            wrap_function_wrapper(
+                module="openai.resources.images",
+                name="Images.generate",
+                wrapper=images_generate(tracer, instruments, capture_content),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.images",
+                name="AsyncImages.generate",
+                wrapper=async_images_generate(
+                    tracer, instruments, capture_content
+                ),
+            )
+        except (ImportError, AttributeError) as e:
+            logger.debug("Could not wrap Images API: %s", e)
+
+    def _wrap_responses_api(self, tracer, event_logger, instruments, capture_content):
+        """Wrap the Responses API."""
+        try:
+            from .responses_patch import (
+                async_responses_create,
+                responses_create,
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.responses",
+                name="Responses.create",
+                wrapper=responses_create(
+                    tracer, event_logger, instruments, capture_content
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.responses",
+                name="AsyncResponses.create",
+                wrapper=async_responses_create(
+                    tracer, event_logger, instruments, capture_content
+                ),
+            )
+        except (ImportError, AttributeError) as e:
+            logger.debug("Could not wrap Responses API: %s", e)
+
+    def _uninstrument(self, **kwargs):
+        import openai  # pylint: disable=import-outside-toplevel
+
+        # Chat Completions
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
+
+        # Embeddings
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+
+        # Completions (Legacy)
+        try:
+            unwrap(openai.resources.completions.Completions, "create")
+            unwrap(openai.resources.completions.AsyncCompletions, "create")
+        except (ImportError, AttributeError):
+            pass
+
+        # Images
+        try:
+            unwrap(openai.resources.images.Images, "generate")
+            unwrap(openai.resources.images.AsyncImages, "generate")
+        except (ImportError, AttributeError):
+            pass
+
+        # Responses
+        try:
+            unwrap(openai.resources.responses.Responses, "create")
+            unwrap(openai.resources.responses.AsyncResponses, "create")
+        except (ImportError, AttributeError):
+            pass

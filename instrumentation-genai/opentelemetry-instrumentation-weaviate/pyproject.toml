@@ -25,15 +25,18 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.30",
-  "opentelemetry-instrumentation ~= 0.51b0",
-  "opentelemetry-semantic-conventions ~= 0.51b0"
+  "opentelemetry-api ~= 1.37",
+  "opentelemetry-instrumentation ~= 0.58b0",
+  "opentelemetry-semantic-conventions ~= 0.58b0"
 ]
 
 [project.optional-dependencies]
 instruments = [
   "weaviate-client >= 3.0",
 ]
+
+[project.entry-points.opentelemetry_instrumentor]
+weaviate = "opentelemetry.instrumentation.weaviate:WeaviateInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-weaviate"

@@ -1,0 +1,54 @@
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - tracing-network
+
+  weaviate:
+    image: semitechnologies/weaviate:1.27.0
+    ports:
+      - "8080:8080"
+      - "50051:50051"  # gRPC
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+    networks:
+      - tracing-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  app:
+    build:
+      context: ../..
+      dockerfile: examples/tracing-weaviate-openai/Dockerfile
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEAVIATE_URL=http://weaviate:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_SERVICE_NAME=weaviate-openai-demo
+      - OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
+      - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
+    depends_on:
+      weaviate:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - tracing-network
+
+networks:
+  tracing-network:
+    driver: bridge

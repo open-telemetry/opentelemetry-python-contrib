@@ -31,12 +31,21 @@ from opentelemetry.trace.propagation import set_span_in_context
 
 from .instruments import Instruments
 from .utils import (
+    LLM_RESPONSE_CONTENT,
+    LLM_USAGE_CACHE_READ_INPUT_TOKENS,
+    LLM_USAGE_REASONING_TOKENS,
+    LLM_USAGE_TOTAL_TOKENS,
     choice_to_event,
     get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
     message_to_event,
+    propagate_trace_context,
+    set_request_content_on_span,
+    set_response_attributes,
+    set_response_content_on_span,
     set_span_attribute,
+    set_tools_attributes,
 )
 
 
@@ -45,19 +54,33 @@ def chat_completions_create(
     logger: Logger,
     instruments: Instruments,
     capture_content: bool,
+    enable_trace_context_propagation: bool = False,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        span_name = (
+            f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} "
+            f"{span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        )
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
+            # Set tool attributes on span
+            if span.is_recording():
+                set_tools_attributes(span, kwargs)
+                # Set request content on span
+                set_request_content_on_span(span, kwargs, capture_content)
+
+            # Propagate trace context if enabled
+            if enable_trace_context_propagation:
+                propagate_trace_context(span, kwargs)
+
             for message in kwargs.get("messages", []):
                 logger.emit(message_to_event(message, capture_content))
 
@@ -67,19 +90,28 @@ def chat_completions_create(
             try:
                 result = wrapped(*args, **kwargs)
                 if hasattr(result, "parse"):
-                    # result is of type LegacyAPIResponse, call parse to get the actual response
+                    # result is of type LegacyAPIResponse, call parse to get
+                    # the actual response
                     parsed_result = result.parse()
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        parsed_result, span, logger, capture_content
+                        parsed_result,
+                        span,
+                        logger,
+                        capture_content,
+                        instruments,
+                        span_attributes,
+                        start,
                     )
 
                 if span.is_recording():
                     _set_response_attributes(
                         span, parsed_result, logger, capture_content
                     )
+                    # Set response content on span
+                    set_response_content_on_span(span, parsed_result, capture_content)
                 for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
@@ -109,19 +141,33 @@ def async_chat_completions_create(
     logger: Logger,
     instruments: Instruments,
     capture_content: bool,
+    enable_trace_context_propagation: bool = False,
 ):
-    """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
+    """Wrap the `create` method of the `AsyncChatCompletion` class."""
 
     async def traced_method(wrapped, instance, args, kwargs):
         span_attributes = {**get_llm_request_attributes(kwargs, instance)}
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        span_name = (
+            f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} "
+            f"{span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        )
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
             end_on_exit=False,
         ) as span:
+            # Set tool attributes on span
+            if span.is_recording():
+                set_tools_attributes(span, kwargs)
+                # Set request content on span
+                set_request_content_on_span(span, kwargs, capture_content)
+
+            # Propagate trace context if enabled
+            if enable_trace_context_propagation:
+                propagate_trace_context(span, kwargs)
+
             for message in kwargs.get("messages", []):
                 logger.emit(message_to_event(message, capture_content))
 
@@ -131,19 +177,28 @@ def async_chat_completions_create(
             try:
                 result = await wrapped(*args, **kwargs)
                 if hasattr(result, "parse"):
-                    # result is of type LegacyAPIResponse, calling parse to get the actual response
+                    # result is of type LegacyAPIResponse, calling parse to
+                    # get the actual response
                     parsed_result = result.parse()
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
                     return StreamWrapper(
-                        parsed_result, span, logger, capture_content
+                        parsed_result,
+                        span,
+                        logger,
+                        capture_content,
+                        instruments,
+                        span_attributes,
+                        start,
                     )
 
                 if span.is_recording():
                     _set_response_attributes(
                         span, parsed_result, logger, capture_content
                     )
+                    # Set response content on span
+                    set_response_content_on_span(span, parsed_result, capture_content)
                 for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
@@ -190,6 +245,10 @@ def embeddings_create(
             attributes=span_attributes,
             end_on_exit=True,
         ) as span:
+            # Set input content on span
+            if span.is_recording():
+                set_request_content_on_span(span, kwargs, capture_content)
+
             start = default_timer()
             result = None
             error_type = None
@@ -245,6 +304,10 @@ def async_embeddings_create(
             attributes=span_attributes,
             end_on_exit=True,
         ) as span:
+            # Set input content on span
+            if span.is_recording():
+                set_request_content_on_span(span, kwargs, capture_content)
+
             start = default_timer()
             result = None
             error_type = None
@@ -280,7 +343,10 @@ def async_embeddings_create(
 
 def _get_embeddings_span_name(span_attributes):
     """Get span name for embeddings operations."""
-    return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+    return (
+        f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} "
+        f"{span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+    )
 
 
 def _record_metrics(
@@ -293,7 +359,10 @@ def _record_metrics(
 ):
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        GenAIAttributes.GEN_AI_SYSTEM: request_attributes.get(
+            GenAIAttributes.GEN_AI_SYSTEM,
+            GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        ),
         GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
             GenAIAttributes.GEN_AI_REQUEST_MODEL
         ],
@@ -339,21 +408,25 @@ def _record_metrics(
         # Always record input tokens
         input_attributes = {
             **common_attributes,
-            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+            GenAIAttributes.GEN_AI_TOKEN_TYPE: (
+                GenAIAttributes.GenAiTokenTypeValues.INPUT.value
+            ),
         }
         instruments.token_usage_histogram.record(
             result.usage.prompt_tokens,
             attributes=input_attributes,
         )
 
-        # For embeddings, don't record output tokens as all tokens are input tokens
+        # For embeddings, don't record output tokens as all tokens are input
         if (
             operation_name
             != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
         ):
             output_attributes = {
                 **common_attributes,
-                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: (
+                    GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value
+                ),
             }
             instruments.token_usage_histogram.record(
                 result.usage.completion_tokens, attributes=output_attributes
@@ -363,11 +436,11 @@ def _record_metrics(
 def _set_response_attributes(
     span, result, logger: Logger, capture_content: bool
 ):
-    if getattr(result, "model", None):
-        set_span_attribute(
-            span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
-        )
+    """Set response attributes on span for chat completions."""
+    # Use the common response attributes function
+    set_response_attributes(span, result)
 
+    # Set finish reasons for chat completions
     if getattr(result, "choices", None):
         finish_reasons = []
         for choice in result.choices:
@@ -377,29 +450,6 @@ def _set_response_attributes(
             span,
             GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
             finish_reasons,
-        )
-
-    if getattr(result, "id", None):
-        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, result.id)
-
-    if getattr(result, "service_tier", None):
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
-            result.service_tier,
-        )
-
-    # Get the usage
-    if getattr(result, "usage", None):
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
-            result.usage.prompt_tokens,
-        )
-        set_span_attribute(
-            span,
-            GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-            result.usage.completion_tokens,
         )
 
 
@@ -474,9 +524,12 @@ class StreamWrapper:
     response_id: Optional[str] = None
     response_model: Optional[str] = None
     service_tier: Optional[str] = None
+    system_fingerprint: Optional[str] = None
     finish_reasons: list = []
     prompt_tokens: Optional[int] = 0
     completion_tokens: Optional[int] = 0
+    cached_tokens: Optional[int] = 0
+    reasoning_tokens: Optional[int] = 0
 
     def __init__(
         self,
@@ -484,14 +537,23 @@ class StreamWrapper:
         span: Span,
         logger: Logger,
         capture_content: bool,
+        instruments: Optional[Instruments] = None,
+        span_attributes: Optional[dict] = None,
+        start_time: Optional[float] = None,
     ):
         self.stream = stream
         self.span = span
         self.choice_buffers = []
         self._span_started = False
         self.capture_content = capture_content
-
         self.logger = logger
+
+        # Streaming time tracking
+        self.instruments = instruments
+        self.span_attributes = span_attributes or {}
+        self.start_time = start_time or default_timer()
+        self.first_chunk_time: Optional[float] = None
+
         self.setup()
 
     def setup(self):
@@ -500,6 +562,42 @@ class StreamWrapper:
 
     def cleanup(self):
         if self._span_started:
+            end_time = default_timer()
+
+            # Record streaming time metrics
+            if self.instruments and self.first_chunk_time:
+                time_to_first_token = max(
+                    self.first_chunk_time - self.start_time, 0
+                )
+                time_to_generate = max(end_time - self.first_chunk_time, 0)
+
+                metric_attributes = {
+                    GenAIAttributes.GEN_AI_OPERATION_NAME: (
+                        GenAIAttributes.GenAiOperationNameValues.CHAT.value
+                    ),
+                    GenAIAttributes.GEN_AI_SYSTEM: self.span_attributes.get(
+                        GenAIAttributes.GEN_AI_SYSTEM,
+                        GenAIAttributes.GenAiSystemValues.OPENAI.value,
+                    ),
+                    GenAIAttributes.GEN_AI_REQUEST_MODEL: (
+                        self.span_attributes.get(
+                            GenAIAttributes.GEN_AI_REQUEST_MODEL
+                        )
+                    ),
+                }
+
+                if self.response_model:
+                    metric_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = (
+                        self.response_model
+                    )
+
+                self.instruments.streaming_time_to_first_token.record(
+                    time_to_first_token, attributes=metric_attributes
+                )
+                self.instruments.streaming_time_to_generate.record(
+                    time_to_generate, attributes=metric_attributes
+                )
+
             if self.span.is_recording():
                 if self.response_model:
                     set_span_attribute(
@@ -515,6 +613,13 @@ class StreamWrapper:
                         self.response_id,
                     )
 
+                if self.system_fingerprint:
+                    set_span_attribute(
+                        self.span,
+                        "gen_ai.openai.response.system_fingerprint",
+                        self.system_fingerprint,
+                    )
+
                 set_span_attribute(
                     self.span,
                     GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
@@ -525,6 +630,30 @@ class StreamWrapper:
                     GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
                     self.completion_tokens,
                 )
+
+                # Set total tokens
+                if self.prompt_tokens and self.completion_tokens:
+                    set_span_attribute(
+                        self.span,
+                        LLM_USAGE_TOTAL_TOKENS,
+                        self.prompt_tokens + self.completion_tokens,
+                    )
+
+                # Set cached tokens
+                if self.cached_tokens and self.cached_tokens > 0:
+                    set_span_attribute(
+                        self.span,
+                        LLM_USAGE_CACHE_READ_INPUT_TOKENS,
+                        self.cached_tokens,
+                    )
+
+                # Set reasoning tokens
+                if self.reasoning_tokens and self.reasoning_tokens > 0:
+                    set_span_attribute(
+                        self.span,
+                        LLM_USAGE_REASONING_TOKENS,
+                        self.reasoning_tokens,
+                    )
 
                 set_span_attribute(
                     self.span,
@@ -537,6 +666,25 @@ class StreamWrapper:
                     GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
                     self.finish_reasons,
                 )
+
+                # Set response content on span for streaming
+                if self.capture_content and self.choice_buffers:
+                    response_parts = []
+                    for choice in self.choice_buffers:
+                        if choice.text_content:
+                            response_parts.append("".join(choice.text_content))
+                        for tc in choice.tool_calls_buffers:
+                            if tc:
+                                args = "".join(tc.arguments)
+                                response_parts.append(
+                                    f"[Tool: {tc.function_name}({args})]"
+                                )
+                    if response_parts:
+                        set_span_attribute(
+                            self.span,
+                            LLM_RESPONSE_CONTENT,
+                            "\n---\n".join(response_parts),
+                        )
 
             for idx, choice in enumerate(self.choice_buffers):
                 message = {"role": "assistant"}
@@ -565,7 +713,9 @@ class StreamWrapper:
                 }
 
                 event_attributes = {
-                    GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+                    GenAIAttributes.GEN_AI_SYSTEM: (
+                        GenAIAttributes.GenAiSystemValues.OPENAI.value
+                    )
                 }
                 context = set_span_in_context(self.span, get_current())
                 self.logger.emit(
@@ -661,6 +811,13 @@ class StreamWrapper:
         if getattr(chunk, "service_tier", None):
             self.service_tier = chunk.service_tier
 
+    def set_system_fingerprint(self, chunk):
+        if self.system_fingerprint:
+            return
+
+        if getattr(chunk, "system_fingerprint", None):
+            self.system_fingerprint = chunk.system_fingerprint
+
     def build_streaming_response(self, chunk):
         if getattr(chunk, "choices", None) is None:
             return
@@ -691,14 +848,40 @@ class StreamWrapper:
                     )
 
     def set_usage(self, chunk):
-        if getattr(chunk, "usage", None):
-            self.completion_tokens = chunk.usage.completion_tokens
-            self.prompt_tokens = chunk.usage.prompt_tokens
+        usage = getattr(chunk, "usage", None)
+        if usage:
+            self.completion_tokens = getattr(
+                usage, "completion_tokens", self.completion_tokens
+            )
+            self.prompt_tokens = getattr(
+                usage, "prompt_tokens", self.prompt_tokens
+            )
+
+            # Get cached tokens from prompt_tokens_details
+            prompt_tokens_details = getattr(usage, "prompt_tokens_details", None)
+            if prompt_tokens_details:
+                self.cached_tokens = getattr(
+                    prompt_tokens_details, "cached_tokens", 0
+                ) or 0
+
+            # Get reasoning tokens from completion_tokens_details
+            completion_tokens_details = getattr(
+                usage, "completion_tokens_details", None
+            )
+            if completion_tokens_details:
+                self.reasoning_tokens = getattr(
+                    completion_tokens_details, "reasoning_tokens", 0
+                ) or 0
 
     def process_chunk(self, chunk):
+        # Track time to first token
+        if self.first_chunk_time is None:
+            self.first_chunk_time = default_timer()
+
         self.set_response_id(chunk)
         self.set_response_model(chunk)
         self.set_response_service_tier(chunk)
+        self.set_system_fingerprint(chunk)
         self.build_streaming_response(chunk)
         self.set_usage(chunk)
 
