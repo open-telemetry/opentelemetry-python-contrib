@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
 - `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
+- Refactor unit tests to allow for population of the random trace id flag in the `traceparent` header
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
