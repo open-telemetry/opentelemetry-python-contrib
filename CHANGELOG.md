@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
 - `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
+- `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
+  ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
@@ -122,8 +124,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
 - `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
   ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
-- `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable 
-  ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
 
 ### Added
 

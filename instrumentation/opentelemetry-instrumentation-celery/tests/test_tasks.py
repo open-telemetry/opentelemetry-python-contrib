@@ -29,7 +29,13 @@ from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
-from .celery_test_tasks import app, task_add, task_raises, task_returns_baggage
+from .celery_test_tasks import (
+    CustomError,
+    app,
+    task_add,
+    task_raises,
+    task_returns_baggage,
+)
 
 
 class TestCeleryInstrumentation(TestBase):
@@ -134,8 +140,10 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
 
-        # TODO: use plain assertEqual after 1.25 is released (https://github.com/open-telemetry/opentelemetry-python/pull/3837)
-        self.assertIn("CustomError", event.attributes[EXCEPTION_TYPE])
+        self.assertEqual(
+            f"{CustomError.__module__}.{CustomError.__qualname__}",
+            event.attributes[EXCEPTION_TYPE],
+        )
 
         self.assertEqual(
             event.attributes[EXCEPTION_MESSAGE],
