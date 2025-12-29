@@ -27,6 +27,7 @@ from opentelemetry.instrumentation.confluent_kafka.utils import (
 )
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
 )
 from opentelemetry.semconv.trace import (
@@ -126,7 +127,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-10 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-10",
@@ -138,7 +139,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-20 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 2,
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-20",
@@ -150,7 +151,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-30 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 1,
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-30",
@@ -194,7 +195,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-1 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
@@ -204,7 +205,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-2 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
@@ -214,7 +215,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-3 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
@@ -251,7 +252,7 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-a process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
                     MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-a",
