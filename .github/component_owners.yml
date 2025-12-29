@@ -49,15 +49,12 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
     - nagkumar91
-<<<<<<< HEAD
     - gyliu513
 
   instrumentation-genai/opentelemetry-instrumentation-openai-v2:
     - alizenhom
     - karthikscale3
     - lmolkova
-=======
 
   instrumentation-genai/opentelemetry-instrumentation-anthropic:
     - vasantteja
->>>>>>> main
