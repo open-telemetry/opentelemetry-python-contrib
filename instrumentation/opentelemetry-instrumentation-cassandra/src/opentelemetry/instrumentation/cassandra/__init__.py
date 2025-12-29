@@ -52,7 +52,9 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
 
 
 def _instrument(tracer_provider, include_db_statement=False):
@@ -76,7 +78,7 @@ def _instrument(tracer_provider, include_db_statement=False):
                 span.set_attribute(DB_NAME, instance.keyspace)
                 span.set_attribute(DB_SYSTEM, "cassandra")
                 span.set_attribute(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     instance.cluster.contact_points,
                 )
 
