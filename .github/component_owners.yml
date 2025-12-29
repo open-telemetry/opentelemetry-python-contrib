@@ -33,8 +33,11 @@ components:
     - jj22ee
 
   util/opentelemetry-util-genai:
+    - Cirilla-zmh
     - DylanRussell
+    - gyliu513
     - keith-decker
+    - nirga
     - lmolkova
 
   instrumentation-genai/opentelemetry-instrumentation-langchain:
@@ -43,6 +46,9 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
     - nagkumar91
+    - gyliu513
 
   instrumentation-genai/opentelemetry-instrumentation-openai-v2:
+    - alizenhom
+    - karthikscale3
     - lmolkova
