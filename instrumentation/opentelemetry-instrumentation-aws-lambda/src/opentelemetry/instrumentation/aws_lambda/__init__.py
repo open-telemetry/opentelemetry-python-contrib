@@ -73,7 +73,7 @@ import logging
 import os
 import time
 from importlib import import_module
-from typing import Any, Callable, Collection
+from typing import Any, Callable, Collection, List, Mapping, Optional
 from urllib.parse import urlencode
 
 from wrapt import wrap_function_wrapper
@@ -86,6 +86,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
+from opentelemetry.propagators.textmap import CarrierT, Getter
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_ACCOUNT_ID,
     CLOUD_RESOURCE_ID,
@@ -124,6 +125,20 @@ OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
 )
 
 
+class LambdaSqsGetter(Getter[CarrierT]):
+    def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
+        msg_attr = carrier.get(key)
+        if not isinstance(msg_attr, Mapping):
+            return None
+        value = msg_attr.get("stringValue")
+        if value is None:
+            return None
+        return [value]
+
+    def keys(self, carrier: CarrierT) -> List[str]:
+        return list(carrier.keys())
+
+
 def _default_event_context_extractor(lambda_event: Any) -> Context:
     """Default way of extracting the context from the Lambda Event.
 
@@ -137,21 +152,30 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
 
     Args:
-        lambda_event: user-defined, so it could be anything, but this
-            method counts on it being a map with a 'headers' key
+        lambda_event: user-defined, so it could be anything, this method
+            will extract the context from the 'headers' key or the
+            'messageAttributes' key if the record count is 1
     Returns:
         A Context with configuration found in the event.
     """
-    headers = None
     try:
-        headers = lambda_event["headers"]
-    except (TypeError, KeyError):
+        headers = lambda_event.get("headers")
+        if headers and isinstance(headers, dict):
+            return get_global_textmap().extract(headers)
+
+        records = lambda_event.get("Records")
+        if records and isinstance(records, list) and len(records) == 1:
+            message_attributes = records[0]["messageAttributes"]
+            if message_attributes and isinstance(message_attributes, dict):
+                return get_global_textmap().extract(
+                    message_attributes, getter=LambdaSqsGetter()
+                )
+    except (TypeError, KeyError, AttributeError):
         logger.debug(
             "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
         )
-    if not isinstance(headers, dict):
-        headers = {}
-    return get_global_textmap().extract(headers)
+
+    return get_global_textmap().extract({})
 
 
 def _determine_parent_context(

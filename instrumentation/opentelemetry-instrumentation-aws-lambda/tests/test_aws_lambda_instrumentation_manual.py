@@ -318,6 +318,27 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
                 expected_baggage=MOCK_W3C_BAGGAGE_VALUE,
                 propagators="tracecontext,baggage",
             ),
+            TestCase(
+                name="sqs_single_record",
+                custom_extractor=None,
+                context={
+                    "Records": [
+                        {
+                            "messageAttributes": {
+                                TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME: {
+                                    "stringValue": MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                                    "stringListValues": [],
+                                    "binaryListValues": [],
+                                    "dataType": "String",
+                                }
+                            }
+                        }
+                    ]
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+            ),
         ]
         for test in tests:
             with self.subTest(test_name=test.name):
