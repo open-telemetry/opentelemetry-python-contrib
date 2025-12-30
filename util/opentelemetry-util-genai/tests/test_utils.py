@@ -33,6 +33,8 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
+)
+from opentelemetry.semconv.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv.schemas import Schemas
@@ -224,9 +226,7 @@ class TestTelemetryHandler(unittest.TestCase):
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
-            invocation.metric_attributes = {
-                "should not be on span": "value"
-            }
+            invocation.metric_attributes = {"should not be on span": "value"}
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "chat test-model")

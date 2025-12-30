@@ -22,6 +22,8 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
+)
+from opentelemetry.semconv.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import (
@@ -68,7 +70,9 @@ def _apply_common_span_attributes(
             ServerAttributes.SERVER_ADDRESS, invocation.server_address
         )
     if invocation.server_port:
-        span.set_attribute(ServerAttributes.SERVER_PORT, invocation.server_port)
+        span.set_attribute(
+            ServerAttributes.SERVER_PORT, invocation.server_port
+        )
 
     _apply_response_attributes(span, invocation)
 

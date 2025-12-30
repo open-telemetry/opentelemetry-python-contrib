@@ -84,8 +84,9 @@ class TelemetryHandlerMetricsTest(TestCase):
             places=3,
         )
 
-
-    def test_stop_llm_records_duration_and_tokens_with_additional_attributes(self) -> None:
+    def test_stop_llm_records_duration_and_tokens_with_additional_attributes(
+        self,
+    ) -> None:
         handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
@@ -114,16 +115,11 @@ class TelemetryHandlerMetricsTest(TestCase):
             self.assertEqual(
                 point.attributes["server.address"], "custom.server.com"
             )
-            self.assertEqual(
-                point.attributes["server.port"], 42
-            )
+            self.assertEqual(point.attributes["server.port"], 42)
             self.assertEqual(
                 point.attributes["custom.attribute"], "custom_value"
             )
-            self.assertIsNone(
-                point.attributes.get("should not be on metrics")
-            )
-
+            self.assertIsNone(point.attributes.get("should not be on metrics"))
 
     def test_fail_llm_records_error_and_available_tokens(self) -> None:
         handler = TelemetryHandler(

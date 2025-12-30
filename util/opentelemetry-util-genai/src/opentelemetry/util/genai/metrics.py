@@ -11,8 +11,10 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    server_attributes as ServerAttributes,
     error_attributes as ErrorAttributes,
+)
+from opentelemetry.semconv.attributes import (
+    server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.genai.instruments import (
@@ -69,7 +71,9 @@ class InvocationMetricsRecorder:
                 invocation.response_model_name
             )
         if invocation.server_address:
-            attributes[ServerAttributes.SERVER_ADDRESS] = invocation.server_address
+            attributes[ServerAttributes.SERVER_ADDRESS] = (
+                invocation.server_address
+            )
         if invocation.server_port:
             attributes[ServerAttributes.SERVER_PORT] = invocation.server_port
         if invocation.metric_attributes:
