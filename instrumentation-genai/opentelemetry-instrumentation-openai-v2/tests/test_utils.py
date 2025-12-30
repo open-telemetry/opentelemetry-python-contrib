@@ -29,6 +29,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
 USER_ONLY_EXPECTED_INPUT_MESSAGES = [
     {
