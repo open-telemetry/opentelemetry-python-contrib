@@ -6,10 +6,11 @@ from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
     MESSAGING_SYSTEM,
+    MESSAGING_OPERATION,
+    MessagingOperationTypeValues,
 )
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
-    MessagingOperationValues,
     SpanAttributes,
 )
 from opentelemetry.trace import Link, SpanKind
@@ -119,7 +120,7 @@ def _enrich_span(
     topic,
     partition: Optional[int] = None,
     offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[MessagingOperationTypeValues] = None,
 ):
     if not span.is_recording():
         return
@@ -136,7 +137,7 @@ def _enrich_span(
     )
 
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(MESSAGING_OPERATION, operation.value)
     else:
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
 
