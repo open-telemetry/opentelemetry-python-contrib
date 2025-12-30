@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
 - `opentelemetry-instrumentation-confluent-kafka`: Replace SpanAttributes with semconv constants where applicable
   ([#4057](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4057))
+- `opentelemetry-instrumentation-cassandra`: Replace SpanAttributes with semconv constants for DB attributes
+  ([#4055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4055))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
