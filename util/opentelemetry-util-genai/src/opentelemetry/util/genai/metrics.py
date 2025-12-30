@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import timeit
-from numbers import Number
 from typing import Dict, Optional
 
 from opentelemetry.metrics import Histogram, Meter
@@ -31,6 +30,15 @@ class InvocationMetricsRecorder:
     def __init__(self, meter: Meter):
         self._duration_histogram: Histogram = create_duration_histogram(meter)
         self._token_histogram: Histogram = create_token_histogram(meter)
+
+    @staticmethod
+    def _calculate_duration_seconds(invocation: LLMInvocation) -> Optional[float]:
+        """Calculate duration from invocation monotonic start time."""
+        if invocation.monotonic_start_s is not None:
+            return max(
+                timeit.default_timer() - invocation.monotonic_start_s, 0.0
+            )
+        return None
 
     def record(
         self,
@@ -74,27 +82,17 @@ class InvocationMetricsRecorder:
             attributes[ServerAttributes.SERVER_ADDRESS] = (
                 invocation.server_address
             )
-        if invocation.server_port:
+        if invocation.server_port is not None:
             attributes[ServerAttributes.SERVER_PORT] = invocation.server_port
         if invocation.metric_attributes:
             attributes.update(invocation.metric_attributes)
-
-        # Calculate duration from span timing or invocation monotonic start
-        duration_seconds: Optional[float] = None
-        if invocation.monotonic_start_s is not None:
-            duration_seconds = max(
-                timeit.default_timer() - invocation.monotonic_start_s, 0.0
-            )
 
         span_context = set_span_in_context(span)
         if error_type:
             attributes[ErrorAttributes.ERROR_TYPE] = error_type
 
-        if (
-            duration_seconds is not None
-            and isinstance(duration_seconds, Number)
-            and duration_seconds >= 0
-        ):
+        duration_seconds = self._calculate_duration_seconds(invocation)
+        if duration_seconds is not None:
             self._duration_histogram.record(
                 duration_seconds,
                 attributes=attributes,
