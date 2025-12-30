@@ -26,7 +26,11 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.util.genai.utils import is_experimental_mode
 
-from .test_utils import assert_all_attributes, assert_embedding_attributes
+from .test_utils import (
+    DEFAULT_EMBEDDING_MODEL,
+    assert_all_attributes,
+    assert_embedding_attributes,
+)
 
 
 @pytest.mark.asyncio
@@ -40,12 +44,11 @@ async def test_async_embeddings_no_content(
     """Test creating embeddings asynchronously with content capture disabled"""
 
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for async embeddings"
 
     with vcr.use_cassette("test_async_embeddings_no_content.yaml"):
         response = await async_openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
         )
 
@@ -53,7 +56,10 @@ async def test_async_embeddings_no_content(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # No logs should be emitted when content capture is disabled
@@ -72,13 +78,12 @@ async def test_async_embeddings_with_dimensions(
     """Test creating embeddings asynchronously with custom dimensions"""
 
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for async embeddings with dimensions"
     dimensions = 512  # Using a smaller dimension than default
 
     with vcr.use_cassette("test_async_embeddings_with_dimensions.yaml"):
         response = await async_openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
             dimensions=dimensions,
         )
@@ -87,7 +92,10 @@ async def test_async_embeddings_with_dimensions(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify dimensions attribute is set correctly
@@ -110,7 +118,7 @@ async def test_async_embeddings_with_batch_input(
     """Test creating embeddings asynchronously with batch input"""
 
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
+
     input_texts = [
         "This is the first test string for async embeddings",
         "This is the second test string for async embeddings",
@@ -119,7 +127,7 @@ async def test_async_embeddings_with_batch_input(
 
     with vcr.use_cassette("test_async_embeddings_with_batch_input.yaml"):
         response = await async_openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_texts,
         )
 
@@ -127,7 +135,10 @@ async def test_async_embeddings_with_batch_input(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify results contain the same number of embeddings as input texts
@@ -174,12 +185,11 @@ async def test_async_embeddings_token_metrics(
 ):
     """Test that token usage metrics are correctly recorded for async embeddings"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for async embeddings token metrics"
 
     with vcr.use_cassette("test_async_embeddings_token_metrics.yaml"):
         response = await async_openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
         )
 
@@ -187,7 +197,10 @@ async def test_async_embeddings_token_metrics(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify metrics
@@ -233,13 +246,12 @@ async def test_async_embeddings_with_encoding_format(
 ):
     """Test creating embeddings with different encoding format"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for embeddings with encoding format"
     encoding_format = "base64"
 
     with vcr.use_cassette("test_async_embeddings_with_encoding_format.yaml"):
         response = await async_openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
             encoding_format=encoding_format,
         )
@@ -248,7 +260,10 @@ async def test_async_embeddings_with_encoding_format(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify encoding_format attribute is set correctly

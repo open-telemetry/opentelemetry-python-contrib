@@ -882,55 +882,61 @@ class StreamWrapperNew(BaseStreamWrapper):
         self.invocation = invocation
         self.choice_buffers = []
 
-    def cleanup(self, error: Optional[Error] = None):
-        if self._started:
-            self.invocation.response_model_name = self.response_model
-            self.invocation.response_id = self.response_id
-            self.invocation.input_tokens = self.prompt_tokens
-            self.invocation.output_tokens = self.completion_tokens
-            self.invocation.finish_reasons = self.finish_reasons
-            if self.service_tier:
-                self.invocation.attributes.update(
-                    {
-                        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
-                    },
+    def _set_output_messages(self):
+        if not self.capture_content:  # optimization
+            return
+        output_messages = []
+        for choice in self.choice_buffers:
+            message = OutputMessage(
+                role="assistant",
+                finish_reason=choice.finish_reason or "error",
+                parts=[],
+            )
+            if choice.text_content:
+                message.parts.append(
+                    Text(content="".join(choice.text_content))
                 )
-
-            if self.capture_content:  # optimization
-                output_messages = []
-                for choice in self.choice_buffers:
-                    message = OutputMessage(
-                        role="assistant",
-                        finish_reason=choice.finish_reason or "error",
-                        parts=[],
+            if choice.tool_calls_buffers:
+                tool_calls = []
+                for tool_call in choice.tool_calls_buffers:
+                    arguments = None
+                    arguments_str = "".join(tool_call.arguments)
+                    if arguments_str:
+                        try:
+                            arguments = json.loads(arguments_str)
+                        except json.JSONDecodeError:
+                            arguments = arguments_str
+                    tool_call_part = ToolCall(
+                        name=tool_call.function_name,
+                        id=tool_call.tool_call_id,
+                        arguments=arguments,
                     )
-                    if choice.text_content:
-                        message.parts.append(
-                            Text(content="".join(choice.text_content))
-                        )
-                    if choice.tool_calls_buffers:
-                        tool_calls = []
-                        for tool_call in choice.tool_calls_buffers:
-                            arguments = None
-                            arguments_str = "".join(tool_call.arguments)
-                            if arguments_str:
-                                try:
-                                    arguments = json.loads(arguments_str)
-                                except json.JSONDecodeError:
-                                    arguments = arguments_str
-                            tool_call_part = ToolCall(
-                                name=tool_call.function_name,
-                                id=tool_call.tool_call_id,
-                                arguments=arguments,
-                            )
-                            tool_calls.append(tool_call_part)
-                        message.parts.extend(tool_calls)
-                    output_messages.append(message)
+                    tool_calls.append(tool_call_part)
+                message.parts.extend(tool_calls)
+            output_messages.append(message)
 
-                self.invocation.output_messages = output_messages
+        self.invocation.output_messages = output_messages
 
-            if error:
-                self.handler.fail_llm(self.invocation, error)
-            else:
-                self.handler.stop_llm(self.invocation)
-            self._started = False
+    def cleanup(self, error: Optional[Error] = None):
+        if not self._started:
+            return
+
+        self.invocation.response_model_name = self.response_model
+        self.invocation.response_id = self.response_id
+        self.invocation.input_tokens = self.prompt_tokens
+        self.invocation.output_tokens = self.completion_tokens
+        self.invocation.finish_reasons = self.finish_reasons
+        if self.service_tier:
+            self.invocation.attributes.update(
+                {
+                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
+                },
+            )
+
+        self._set_output_messages()
+
+        if error:
+            self.handler.fail_llm(self.invocation, error)
+        else:
+            self.handler.stop_llm(self.invocation)
+        self._started = False

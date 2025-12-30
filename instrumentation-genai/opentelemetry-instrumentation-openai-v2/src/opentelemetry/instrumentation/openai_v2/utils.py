@@ -325,6 +325,8 @@ def create_chat_invocation(
     client_instance,
     capture_content: bool,
 ) -> LLMInvocation:
+    # pylint: disable=too-many-branches
+
     llm_invocation = LLMInvocation(request_model=kwargs.get("model", ""))
     llm_invocation.provider = (
         GenAIAttributes.GenAiProviderNameValues.OPENAI.value
