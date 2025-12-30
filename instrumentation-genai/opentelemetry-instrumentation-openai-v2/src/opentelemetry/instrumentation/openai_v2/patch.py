@@ -774,89 +774,88 @@ class StreamWrapper(BaseStreamWrapper):
         self.logger = logger
 
     def cleanup(self, error: Optional[Error] = None):
-        if self._started:
-            if self.span.is_recording():
-                if self.response_model:
-                    set_span_attribute(
-                        self.span,
-                        GenAIAttributes.GEN_AI_RESPONSE_MODEL,
-                        self.response_model,
-                    )
-
-                if self.response_id:
-                    set_span_attribute(
-                        self.span,
-                        GenAIAttributes.GEN_AI_RESPONSE_ID,
-                        self.response_id,
-                    )
-
+        if not self._started:
+            return
+        if self.span.is_recording():
+            if self.response_model:
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
-                    self.prompt_tokens,
+                    GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+                    self.response_model,
                 )
+
+            if self.response_id:
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-                    self.completion_tokens,
+                    GenAIAttributes.GEN_AI_RESPONSE_ID,
+                    self.response_id,
                 )
-                if self.service_tier:
-                    set_span_attribute(
-                        self.span,
-                        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
-                        self.service_tier,
-                    )
 
+            set_span_attribute(
+                self.span,
+                GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                self.prompt_tokens,
+            )
+            set_span_attribute(
+                self.span,
+                GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                self.completion_tokens,
+            )
+            if self.service_tier:
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    self.finish_reasons,
+                    GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+                    self.service_tier,
                 )
 
-            for idx, choice in enumerate(self.choice_buffers):
-                message = {"role": "assistant"}
-                if self.capture_content and choice.text_content:
-                    message["content"] = "".join(choice.text_content)
-                if choice.tool_calls_buffers:
-                    tool_calls = []
-                    for tool_call in choice.tool_calls_buffers:
-                        function = {"name": tool_call.function_name}
-                        if self.capture_content:
-                            function["arguments"] = "".join(
-                                tool_call.arguments
-                            )
-                        tool_call_dict = {
-                            "id": tool_call.tool_call_id,
-                            "type": "function",
-                            "function": function,
-                        }
-                        tool_calls.append(tool_call_dict)
-                    message["tool_calls"] = tool_calls
+            set_span_attribute(
+                self.span,
+                GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                self.finish_reasons,
+            )
 
-                body = {
-                    "index": idx,
-                    "finish_reason": choice.finish_reason or "error",
-                    "message": message,
-                }
+        for idx, choice in enumerate(self.choice_buffers):
+            message = {"role": "assistant"}
+            if self.capture_content and choice.text_content:
+                message["content"] = "".join(choice.text_content)
+            if choice.tool_calls_buffers:
+                tool_calls = []
+                for tool_call in choice.tool_calls_buffers:
+                    function = {"name": tool_call.function_name}
+                    if self.capture_content:
+                        function["arguments"] = "".join(tool_call.arguments)
+                    tool_call_dict = {
+                        "id": tool_call.tool_call_id,
+                        "type": "function",
+                        "function": function,
+                    }
+                    tool_calls.append(tool_call_dict)
+                message["tool_calls"] = tool_calls
 
-                event_attributes = {
-                    GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-                }
-                context = set_span_in_context(self.span, get_current())
-                self.logger.emit(
-                    LogRecord(
-                        event_name="gen_ai.choice",
-                        attributes=event_attributes,
-                        body=body,
-                        context=context,
-                    )
+            body = {
+                "index": idx,
+                "finish_reason": choice.finish_reason or "error",
+                "message": message,
+            }
+
+            event_attributes = {
+                GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+            }
+            context = set_span_in_context(self.span, get_current())
+            self.logger.emit(
+                LogRecord(
+                    event_name="gen_ai.choice",
+                    attributes=event_attributes,
+                    body=body,
+                    context=context,
                 )
+            )
 
-            if error:
-                handle_span_exception(self.span, error)
-            else:
-                self.span.end()
-            self._started = False
+        if error:
+            handle_span_exception(self.span, error)
+        else:
+            self.span.end()
+        self._started = False
 
 
 class StreamWrapperNew(BaseStreamWrapper):
