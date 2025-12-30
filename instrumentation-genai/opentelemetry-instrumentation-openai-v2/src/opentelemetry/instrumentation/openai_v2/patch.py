@@ -23,6 +23,8 @@ from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -30,20 +32,28 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
-from opentelemetry.util.genai.types import ContentCapturingMode, LLMInvocation, Error, OutputMessage, Text, ToolCall
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    Error,
+    LLMInvocation,
+    OutputMessage,
+    Text,
+    ToolCall,
+)
 
 from .instruments import Instruments
 from .utils import (
+    _prepare_output_messages,
     choice_to_event,
-    get_llm_request_attributes,
     create_chat_invocation,
+    get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
     message_to_event,
     set_span_attribute,
-    _prepare_output_messages
 )
+
 
 def chat_completions_create_v_old(
     tracer: Tracer,
@@ -54,7 +64,9 @@ def chat_completions_create_v_old(
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
+        span_attributes = {
+            **get_llm_request_attributes(kwargs, instance, False)
+        }
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
@@ -82,9 +94,7 @@ def chat_completions_create_v_old(
                     )
 
                 if span.is_recording():
-                    _set_response_attributes(
-                        span, parsed_result
-                    )
+                    _set_response_attributes(span, parsed_result)
                 for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
@@ -116,8 +126,13 @@ def chat_completions_create_v_new(
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+
     def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(create_chat_invocation(kwargs, instance, capture_content=capture_content))
+        chat_invocation = handler.start_llm(
+            create_chat_invocation(
+                kwargs, instance, capture_content=capture_content
+            )
+        )
 
         try:
             result = wrapped(*args, **kwargs)
@@ -131,14 +146,19 @@ def chat_completions_create_v_new(
                     parsed_result, handler, chat_invocation, capture_content
                 )
 
-            _set_response_properties(chat_invocation, parsed_result, capture_content)
+            _set_response_properties(
+                chat_invocation, parsed_result, capture_content
+            )
             handler.stop_llm(chat_invocation)
             return result
         except Exception as error:
-            handler.fail_llm(chat_invocation, Error(type=type(error), message=str(error)))
+            handler.fail_llm(
+                chat_invocation, Error(type=type(error), message=str(error))
+            )
             raise
 
     return traced_method
+
 
 def async_chat_completions_create_v_old(
     tracer: Tracer,
@@ -149,7 +169,9 @@ def async_chat_completions_create_v_old(
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
+        span_attributes = {
+            **get_llm_request_attributes(kwargs, instance, False)
+        }
 
         span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         with tracer.start_as_current_span(
@@ -177,9 +199,7 @@ def async_chat_completions_create_v_old(
                     )
 
                 if span.is_recording():
-                    _set_response_attributes(
-                        span, parsed_result
-                    )
+                    _set_response_attributes(span, parsed_result)
                 for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
@@ -203,14 +223,20 @@ def async_chat_completions_create_v_old(
 
     return traced_method
 
+
 def async_chat_completions_create_v_new(
     handler: TelemetryHandler,
     content_capturing_mode: ContentCapturingMode,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
     capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+
     async def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(create_chat_invocation(kwargs, instance, capture_content=capture_content))
+        chat_invocation = handler.start_llm(
+            create_chat_invocation(
+                kwargs, instance, capture_content=capture_content
+            )
+        )
 
         try:
             result = await wrapped(*args, **kwargs)
@@ -224,12 +250,16 @@ def async_chat_completions_create_v_new(
                     parsed_result, handler, chat_invocation, capture_content
                 )
 
-            _set_response_properties(chat_invocation, parsed_result, capture_content)
+            _set_response_properties(
+                chat_invocation, parsed_result, capture_content
+            )
             handler.stop_llm(chat_invocation)
             return result
 
         except Exception as error:
-            handler.fail_llm(chat_invocation, Error(type=type(error), message=str(error)))
+            handler.fail_llm(
+                chat_invocation, Error(type=type(error), message=str(error))
+            )
             raise
 
     return traced_method
@@ -265,9 +295,7 @@ def embeddings_create(
                 result = wrapped(*args, **kwargs)
 
                 if span.is_recording():
-                    _set_embeddings_response_attributes(
-                        span, result
-                    )
+                    _set_embeddings_response_attributes(span, result)
 
                 return result
 
@@ -320,9 +348,7 @@ def async_embeddings_create(
                 result = await wrapped(*args, **kwargs)
 
                 if span.is_recording():
-                    _set_embeddings_response_attributes(
-                        span, result
-                    )
+                    _set_embeddings_response_attributes(span, result)
 
                 return result
 
@@ -383,9 +409,9 @@ def _record_metrics(
         ] = result.service_tier
 
     if result and getattr(result, "system_fingerprint", None):
-        common_attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT] = (
-            result.system_fingerprint
-        )
+        common_attributes[
+            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT
+        ] = result.system_fingerprint
 
     if ServerAttributes.SERVER_ADDRESS in request_attributes:
         common_attributes[ServerAttributes.SERVER_ADDRESS] = (
@@ -427,9 +453,7 @@ def _record_metrics(
             )
 
 
-def _set_response_attributes(
-    span, result
-):
+def _set_response_attributes(span, result):
     if getattr(result, "model", None):
         set_span_attribute(
             span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
@@ -484,16 +508,18 @@ def _set_response_properties(
         chat_invocation.finish_reasons = finish_reasons
 
         if capture_content:  # optimization
-            chat_invocation.output_messages = _prepare_output_messages(result.choices)
-
+            chat_invocation.output_messages = _prepare_output_messages(
+                result.choices
+            )
 
     if getattr(result, "id", None):
         chat_invocation.response_id = result.id
 
     if getattr(result, "service_tier", None):
         chat_invocation.attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER:
-            result.service_tier},
+            {
+                OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier
+            },
         )
 
     if getattr(result, "usage", None):
@@ -502,8 +528,9 @@ def _set_response_properties(
 
     if getattr(result, "system_fingerprint", None):
         chat_invocation.attributes.update(
-            {OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT:
-            result.system_fingerprint},
+            {
+                OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint
+            },
         )
 
     return chat_invocation
@@ -571,6 +598,7 @@ class ChoiceBuffer:
         self.tool_calls_buffers[idx].append_arguments(
             tool_call.function.arguments
         )
+
 
 class BaseStreamWrapper:
     response_id: Optional[str] = None
@@ -863,16 +891,23 @@ class StreamWrapperNew(BaseStreamWrapper):
             self.invocation.finish_reasons = self.finish_reasons
             if self.service_tier:
                 self.invocation.attributes.update(
-                    {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER:
-                    self.service_tier},
+                    {
+                        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
+                    },
                 )
 
             if self.capture_content:  # optimization
                 output_messages = []
                 for choice in self.choice_buffers:
-                    message = OutputMessage(role="assistant", finish_reason=choice.finish_reason or "error", parts=[])
+                    message = OutputMessage(
+                        role="assistant",
+                        finish_reason=choice.finish_reason or "error",
+                        parts=[],
+                    )
                     if choice.text_content:
-                        message.parts.append(Text(content="".join(choice.text_content)))
+                        message.parts.append(
+                            Text(content="".join(choice.text_content))
+                        )
                     if choice.tool_calls_buffers:
                         tool_calls = []
                         for tool_call in choice.tool_calls_buffers:
@@ -883,7 +918,11 @@ class StreamWrapperNew(BaseStreamWrapper):
                                     arguments = json.loads(arguments_str)
                                 except json.JSONDecodeError:
                                     arguments = arguments_str
-                            tool_call_part = ToolCall(name=tool_call.function_name, id=tool_call.tool_call_id, arguments=arguments)
+                            tool_call_part = ToolCall(
+                                name=tool_call.function_name,
+                                id=tool_call.tool_call_id,
+                                arguments=arguments,
+                            )
                             tool_calls.append(tool_call_part)
                         message.parts.extend(tool_calls)
                     output_messages.append(message)

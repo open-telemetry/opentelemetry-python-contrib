@@ -27,7 +27,6 @@ try:
 except ImportError:
     not_given = NOT_GIVEN
 
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -38,9 +37,10 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import assert_all_attributes, assert_embedding_attributes
-from opentelemetry.util.genai.utils import is_experimental_mode
+
 
 def test_embeddings_no_content(
     span_exporter, log_exporter, openai_client, instrument_no_content, vcr
@@ -59,7 +59,9 @@ def test_embeddings_no_content(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # No logs should be emitted when content capture is disabled
     logs = log_exporter.get_finished_logs()
@@ -85,7 +87,9 @@ def test_embeddings_with_dimensions(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled,response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify dimensions attribute is set correctly
     assert (
@@ -143,7 +147,9 @@ def test_embeddings_with_batch_input(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify results contain the same number of embeddings as input texts
     assert len(response.data) == len(input_texts)
@@ -168,7 +174,9 @@ def test_embeddings_with_encoding_format(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify encoding_format attribute is set correctly
     assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
@@ -183,7 +191,7 @@ def test_embeddings_with_not_given_values(
     openai_client,
     instrument_no_content,
     not_given_value,
-    vcr
+    vcr,
 ):
     """Test creating embeddings with NOT_GIVEN and not_given values"""
     latest_experimental_enabled = is_experimental_mode()
@@ -200,7 +208,9 @@ def test_embeddings_with_not_given_values(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     assert "gen_ai.request.dimensions" not in spans[0].attributes
 
@@ -279,7 +289,12 @@ def test_embeddings_model_not_found(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_all_attributes(spans[0], model_name, latest_experimental_enabled, operation_name="embeddings")
+    assert_all_attributes(
+        spans[0],
+        model_name,
+        latest_experimental_enabled,
+        operation_name="embeddings",
+    )
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
     # Verify metrics
@@ -322,7 +337,9 @@ def test_embeddings_token_metrics(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify metrics
     metrics = metric_reader.get_metrics_data().resource_metrics

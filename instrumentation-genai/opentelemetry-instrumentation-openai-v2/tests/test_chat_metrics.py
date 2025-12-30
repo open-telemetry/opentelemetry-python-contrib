@@ -1,7 +1,10 @@
 import pytest
+from tests.test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -9,7 +12,6 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.util.genai.utils import is_experimental_mode
-from tests.test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 
 _DURATION_BUCKETS = (
     0.01,
@@ -93,11 +95,14 @@ def assert_all_metric_attributes(data_point, latest_experimental_enabled):
     if not latest_experimental_enabled:
         assert system_fingerprint_attr_key in data_point.attributes
         assert (
-            data_point.attributes[system_fingerprint_attr_key] == "fp_0ba0d124f1"
+            data_point.attributes[system_fingerprint_attr_key]
+            == "fp_0ba0d124f1"
         )
         assert request_service_tier_attr_key not in data_point.attributes
         assert response_service_tier_attr_key in data_point.attributes
-        assert data_point.attributes[response_service_tier_attr_key] == "default"
+        assert (
+            data_point.attributes[response_service_tier_attr_key] == "default"
+        )
     assert (
         data_point.attributes[ServerAttributes.SERVER_ADDRESS]
         == "api.openai.com"
@@ -158,7 +163,9 @@ def test_chat_completion_metrics(
 
     assert input_token_usage.explicit_bounds == _TOKEN_USAGE_BUCKETS
     assert input_token_usage.bucket_counts[2] == 1
-    assert_all_metric_attributes(input_token_usage, latest_experimental_enabled)
+    assert_all_metric_attributes(
+        input_token_usage, latest_experimental_enabled
+    )
 
     output_token_usage = next(
         (
@@ -173,7 +180,9 @@ def test_chat_completion_metrics(
     assert output_token_usage.sum == 5
     # assert against buckets [1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864]
     assert output_token_usage.bucket_counts[2] == 1
-    assert_all_metric_attributes(output_token_usage, latest_experimental_enabled)
+    assert_all_metric_attributes(
+        output_token_usage, latest_experimental_enabled
+    )
 
 
 @pytest.mark.asyncio()
@@ -202,7 +211,9 @@ async def test_async_chat_completion_metrics(
     )
     assert duration_metric is not None
     assert duration_metric.data.data_points[0].sum > 0
-    assert_all_metric_attributes(duration_metric.data.data_points[0],   latest_experimental_enabled)
+    assert_all_metric_attributes(
+        duration_metric.data.data_points[0], latest_experimental_enabled
+    )
 
     token_usage_metric = next(
         (
@@ -226,7 +237,9 @@ async def test_async_chat_completion_metrics(
 
     assert input_token_usage is not None
     assert input_token_usage.sum == 12
-    assert_all_metric_attributes(input_token_usage, latest_experimental_enabled)
+    assert_all_metric_attributes(
+        input_token_usage, latest_experimental_enabled
+    )
 
     output_token_usage = next(
         (
@@ -240,4 +253,6 @@ async def test_async_chat_completion_metrics(
 
     assert output_token_usage is not None
     assert output_token_usage.sum == 12
-    assert_all_metric_attributes(output_token_usage, latest_experimental_enabled)
+    assert_all_metric_attributes(
+        output_token_usage, latest_experimental_enabled
+    )

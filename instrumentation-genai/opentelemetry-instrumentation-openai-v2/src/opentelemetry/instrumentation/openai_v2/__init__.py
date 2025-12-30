@@ -52,20 +52,25 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
-from opentelemetry.util.genai.handler import get_telemetry_handler, TelemetryHandler
+from opentelemetry.util.genai.handler import (
+    TelemetryHandler,
+    get_telemetry_handler,
+)
 from opentelemetry.util.genai.types import ContentCapturingMode
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+    is_experimental_mode,
+)
 
 from .instruments import Instruments
 from .patch import (
     async_chat_completions_create_v_new,
     async_chat_completions_create_v_old,
     async_embeddings_create,
-    chat_completions_create_v_old,
     chat_completions_create_v_new,
+    chat_completions_create_v_old,
     embeddings_create,
 )
-
-from opentelemetry.util.genai.utils import is_experimental_mode, get_content_capturing_mode
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -80,7 +85,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         latest_experimental_enabled = is_experimental_mode()
         tracer_provider = kwargs.get("tracer_provider")
-        schema_url = Schemas.V1_37_0.value if latest_experimental_enabled else Schemas.V1_30_0.value
+        schema_url = (
+            Schemas.V1_37_0.value
+            if latest_experimental_enabled
+            else Schemas.V1_30_0.value
+        )
         tracer = get_tracer(
             __name__,
             "",
@@ -104,7 +113,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         instruments = Instruments(self._meter)
 
-        content_mode = get_content_capturing_mode() if latest_experimental_enabled else ContentCapturingMode.NO_CONTENT
+        content_mode = (
+            get_content_capturing_mode()
+            if latest_experimental_enabled
+            else ContentCapturingMode.NO_CONTENT
+        )
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
@@ -113,19 +126,21 @@ class OpenAIInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
-            wrapper=
-                chat_completions_create_v_new(handler, content_mode) if latest_experimental_enabled else
-                chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled()),
+            wrapper=chat_completions_create_v_new(handler, content_mode)
+            if latest_experimental_enabled
+            else chat_completions_create_v_old(
+                tracer, logger, instruments, is_content_enabled()
+            ),
         )
 
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
-            wrapper=
-              async_chat_completions_create_v_new(handler, content_mode) if latest_experimental_enabled else
-              async_chat_completions_create_v_old(
-                  tracer, logger, instruments, is_content_enabled()
-              ),
+            wrapper=async_chat_completions_create_v_new(handler, content_mode)
+            if latest_experimental_enabled
+            else async_chat_completions_create_v_old(
+                tracer, logger, instruments, is_content_enabled()
+            ),
         )
 
         # Add instrumentation for the embeddings API

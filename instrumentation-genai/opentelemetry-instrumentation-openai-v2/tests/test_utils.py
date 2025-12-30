@@ -20,6 +20,8 @@ from typing import Any, Optional
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -67,12 +69,14 @@ WEATHER_TOOL_EXPECTED_INPUT_MESSAGES = [
     },
 ]
 
+
 def _assert_optional_attribute(span, attribute_name, expected_value):
     """Helper to assert optional span attributes."""
     if expected_value is not None:
         assert expected_value == span.attributes[attribute_name]
     else:
         assert attribute_name not in span.attributes
+
 
 def assert_all_attributes(
     span: ReadableSpan,
@@ -105,14 +109,21 @@ def assert_all_attributes(
         == span.attributes[provider_name_attr_name]
     )
     assert (
-        request_model
-        == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     )
 
-    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model)
-    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id)
-    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens)
-    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens)
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+    )
+    _assert_optional_attribute(
+        span, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+    )
 
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
     if server_port != 443 and server_port > 0:

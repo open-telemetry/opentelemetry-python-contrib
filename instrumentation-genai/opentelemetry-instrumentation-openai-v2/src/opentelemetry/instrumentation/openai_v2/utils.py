@@ -25,6 +25,8 @@ from openai import NotGiven
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -34,7 +36,14 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.genai.types import InputMessage, OutputMessage, Text, ToolCall, ToolCallResponse, LLMInvocation
+from opentelemetry.util.genai.types import (
+    InputMessage,
+    LLMInvocation,
+    OutputMessage,
+    Text,
+    ToolCall,
+    ToolCallResponse,
+)
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
@@ -256,20 +265,22 @@ def get_llm_request_attributes(
                 stop_sequences
             )
 
-        request_response_format_attr_key = GenAIAttributes.GEN_AI_OUTPUT_TYPE if latest_experimental_enabled else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        request_response_format_attr_key = (
+            GenAIAttributes.GEN_AI_OUTPUT_TYPE
+            if latest_experimental_enabled
+            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        )
         if (response_format := kwargs.get("response_format")) is not None:
             # response_format may be string or object with a string in the `type` key
             if isinstance(response_format, Mapping):
                 if (
                     response_format_type := response_format.get("type")
                 ) is not None:
-                    attributes[
-                        request_response_format_attr_key
-                    ] = response_format_type
+                    attributes[request_response_format_attr_key] = (
+                        response_format_type
+                    )
             else:
-                attributes[
-                    request_response_format_attr_key
-                ] = response_format
+                attributes[request_response_format_attr_key] = response_format
 
         # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
         service_tier = kwargs.get("service_tier")
@@ -278,7 +289,11 @@ def get_llm_request_attributes(
             if isinstance(extra_body, Mapping):
                 service_tier = extra_body.get("service_tier")
 
-        request_service_tier_attr_key = OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER if latest_experimental_enabled else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+        request_service_tier_attr_key = (
+            OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
+            if latest_experimental_enabled
+            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+        )
         attributes[request_service_tier_attr_key] = (
             service_tier if service_tier != "auto" else None
         )
@@ -311,19 +326,21 @@ def create_chat_invocation(
     capture_content: bool,
 ) -> LLMInvocation:
     llm_invocation = LLMInvocation(request_model=kwargs.get("model", ""))
-    llm_invocation.provider = GenAIAttributes.GenAiProviderNameValues.OPENAI.value
+    llm_invocation.provider = (
+        GenAIAttributes.GenAiProviderNameValues.OPENAI.value
+    )
     llm_invocation.temperature = get_value(kwargs.get("temperature"))
     llm_invocation.top_p = get_value(kwargs.get("p") or kwargs.get("top_p"))
     llm_invocation.max_tokens = get_value(kwargs.get("max_tokens"))
     llm_invocation.presence_penalty = get_value(kwargs.get("presence_penalty"))
-    llm_invocation.frequency_penalty = get_value(kwargs.get("frequency_penalty"))
+    llm_invocation.frequency_penalty = get_value(
+        kwargs.get("frequency_penalty")
+    )
     llm_invocation.seed = get_value(kwargs.get("seed"))
     if (stop_sequences := get_value(kwargs.get("stop"))) is not None:
         if isinstance(stop_sequences, str):
             stop_sequences = [stop_sequences]
-        llm_invocation.stop_sequences = (
-            stop_sequences
-        )
+        llm_invocation.stop_sequences = stop_sequences
 
     attributes = {}
     set_server_address_and_port(client_instance, attributes)
@@ -335,15 +352,17 @@ def create_chat_invocation(
                 choice_count
             )
 
-    if (response_format := get_value(kwargs.get("response_format"))) is not None:
+    if (
+        response_format := get_value(kwargs.get("response_format"))
+    ) is not None:
         # response_format may be string or object with a string in the `type` key
         if isinstance(response_format, Mapping):
             if (
                 response_format_type := get_value(response_format.get("type"))
             ) is not None:
-                attributes[
-                    GenAIAttributes.GEN_AI_OUTPUT_TYPE
-                ] = response_format_type
+                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                    response_format_type
+                )
         else:
             attributes[
                 GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
@@ -382,11 +401,13 @@ def handle_span_exception(span, error):
         )
     span.end()
 
+
 def _is_text_part(content: Any) -> bool:
     return isinstance(content, str) or (
         isinstance(content, Iterable)
         and all(isinstance(part, str) for part in content)
     )
+
 
 def _prepare_input_messages(messages) -> List[InputMessage]:
     chat_messages = []
@@ -416,6 +437,7 @@ def _prepare_input_messages(messages) -> List[InputMessage]:
                 chat_message.parts.append(Text(content=str(content)))
     return chat_messages
 
+
 def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
     parts = []
     for tool_call in tool_calls:
@@ -436,6 +458,7 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
         # TODO: support custom
         parts.append(ToolCall(id=call_id, name=func_name, arguments=arguments))
     return parts
+
 
 def _prepare_output_messages(choices) -> List[OutputMessage]:
     output_messages = []
