@@ -10,6 +10,10 @@ from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import (
+    server_attributes as ServerAttributes,
+    error_attributes as ErrorAttributes,
+)
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
@@ -64,6 +68,12 @@ class InvocationMetricsRecorder:
             attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
                 invocation.response_model_name
             )
+        if invocation.server_address:
+            attributes[ServerAttributes.SERVER_ADDRESS] = invocation.server_address
+        if invocation.server_port:
+            attributes[ServerAttributes.SERVER_PORT] = invocation.server_port
+        if invocation.metric_attributes:
+            attributes.update(invocation.metric_attributes)
 
         # Calculate duration from span timing or invocation monotonic start
         duration_seconds: Optional[float] = None
@@ -74,7 +84,7 @@ class InvocationMetricsRecorder:
 
         span_context = set_span_in_context(span)
         if error_type:
-            attributes["error.type"] = error_type
+            attributes[ErrorAttributes.ERROR_TYPE] = error_type
 
         if (
             duration_seconds is not None

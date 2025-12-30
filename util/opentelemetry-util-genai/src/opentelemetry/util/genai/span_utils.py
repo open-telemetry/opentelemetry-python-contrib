@@ -22,6 +22,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
+    server_attributes as ServerAttributes,
 )
 from opentelemetry.trace import (
     Span,
@@ -61,6 +62,13 @@ def _apply_common_span_attributes(
     if invocation.provider is not None:
         # TODO: clean provider name to match GenAiProviderNameValues?
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, invocation.provider)
+
+    if invocation.server_address:
+        span.set_attribute(
+            ServerAttributes.SERVER_ADDRESS, invocation.server_address
+        )
+    if invocation.server_port:
+        span.set_attribute(ServerAttributes.SERVER_PORT, invocation.server_port)
 
     _apply_response_attributes(span, invocation)
 

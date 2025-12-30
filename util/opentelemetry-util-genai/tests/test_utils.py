@@ -33,6 +33,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
+    server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
@@ -107,6 +108,7 @@ def _assert_span_attributes(
 ) -> None:
     for key, value in expected_values.items():
         assert span_attrs.get(key) == value
+    assert len(span_attrs) >= len(expected_values)
 
 
 def _get_messages_from_attr(
@@ -215,11 +217,16 @@ class TestTelemetryHandler(unittest.TestCase):
                 "response_id": "response-id",
                 "input_tokens": 321,
                 "output_tokens": 654,
+                "server_address": "custom.server.com",
+                "server_port": 42,
             }.items():
                 setattr(invocation, attr, value)
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
+            invocation.metric_attributes = {
+                "should not be on span": "value"
+            }
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "chat test-model")
@@ -240,6 +247,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "response-id",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 321,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 654,
+                ServerAttributes.SERVER_ADDRESS: "custom.server.com",
+                ServerAttributes.SERVER_PORT: 42,
                 "extra": "info",
                 "custom_attr": "value",
             },
