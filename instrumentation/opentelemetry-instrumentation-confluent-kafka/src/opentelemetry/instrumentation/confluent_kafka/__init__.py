@@ -110,7 +110,7 @@ from confluent_kafka import Consumer, Producer
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import MessagingOperationTypeValues
 from opentelemetry.trace import Tracer
 
 from .package import _instruments
@@ -363,7 +363,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationValues.RECEIVE,
+                operation=MessagingOperationTypeValues.RECEIVE,
             )  # Replace
             propagate.inject(
                 headers,
@@ -387,7 +387,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.topic(),
                     record.partition(),
                     record.offset(),
-                    operation=MessagingOperationValues.PROCESS,
+                    operation=MessagingOperationTypeValues.PROCESS,
                 )
         instance._current_context_token = context.attach(
             trace.set_span_in_context(instance._current_consume_span)
@@ -409,7 +409,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 _enrich_span(
                     instance._current_consume_span,
                     records[0].topic(),
-                    operation=MessagingOperationValues.PROCESS,
+                    operation=MessagingOperationTypeValues.PROCESS,
                 )
 
         instance._current_context_token = context.attach(
