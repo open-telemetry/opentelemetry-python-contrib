@@ -39,7 +39,11 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.util.genai.utils import is_experimental_mode
 
-from .test_utils import assert_all_attributes, assert_embedding_attributes
+from .test_utils import (
+    DEFAULT_EMBEDDING_MODEL,
+    assert_all_attributes,
+    assert_embedding_attributes,
+)
 
 
 def test_embeddings_no_content(
@@ -47,12 +51,11 @@ def test_embeddings_no_content(
 ):
     """Test creating embeddings with content capture disabled"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for embeddings"
 
     with vcr.use_cassette("test_embeddings_no_content.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
         )
 
@@ -60,7 +63,10 @@ def test_embeddings_no_content(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # No logs should be emitted when content capture is disabled
@@ -73,13 +79,12 @@ def test_embeddings_with_dimensions(
 ):
     """Test creating embeddings with custom dimensions parameter"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for embeddings with dimensions"
     dimensions = 512  # Using a smaller dimension than default
 
     with vcr.use_cassette("test_embeddings_with_dimensions.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
             dimensions=dimensions,
         )
@@ -88,7 +93,10 @@ def test_embeddings_with_dimensions(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify dimensions attribute is set correctly
@@ -131,7 +139,7 @@ def test_embeddings_with_batch_input(
 ):
     """Test creating embeddings with batch input (list of strings)"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
+
     input_texts = [
         "This is the first test string for embeddings",
         "This is the second test string for embeddings",
@@ -140,7 +148,7 @@ def test_embeddings_with_batch_input(
 
     with vcr.use_cassette("test_embeddings_with_batch_input.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_texts,
         )
 
@@ -148,7 +156,10 @@ def test_embeddings_with_batch_input(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify results contain the same number of embeddings as input texts
@@ -160,13 +171,12 @@ def test_embeddings_with_encoding_format(
 ):
     """Test creating embeddings with different encoding format"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for embeddings with encoding format"
     encoding_format = "base64"
 
     with vcr.use_cassette("test_embeddings_with_encoding_format.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
             encoding_format=encoding_format,
         )
@@ -175,7 +185,10 @@ def test_embeddings_with_encoding_format(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify encoding_format attribute is set correctly
@@ -195,12 +208,12 @@ def test_embeddings_with_not_given_values(
 ):
     """Test creating embeddings with NOT_GIVEN and not_given values"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
+
     input_text = "This is a test for embeddings with encoding format"
 
     with vcr.use_cassette("test_embeddings_with_not_given_values.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
             dimensions=not_given_value,
         )
@@ -209,7 +222,10 @@ def test_embeddings_with_not_given_values(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     assert "gen_ai.request.dimensions" not in spans[0].attributes
@@ -220,7 +236,6 @@ def test_embeddings_bad_endpoint(
 ):
     """Test error handling for bad endpoint"""
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
     input_text = "This is a test for embeddings with bad endpoint"
 
     client = OpenAI(base_url="http://localhost:4242")
@@ -228,7 +243,7 @@ def test_embeddings_bad_endpoint(
     with vcr.use_cassette("test_embeddings_bad_endpoint.yaml"):
         with pytest.raises(APIConnectionError):
             client.embeddings.create(
-                model=model_name,
+                model=DEFAULT_EMBEDDING_MODEL,
                 input=input_text,
                 timeout=0.1,
             )
@@ -238,7 +253,7 @@ def test_embeddings_bad_endpoint(
     assert len(spans) == 1
     assert_all_attributes(
         spans[0],
-        model_name,
+        DEFAULT_EMBEDDING_MODEL,
         latest_experimental_enabled,
         operation_name="embeddings",
         server_address="localhost",
@@ -324,13 +339,14 @@ def test_embeddings_token_metrics(
     span_exporter, metric_reader, openai_client, instrument_no_content, vcr
 ):
     """Test that token usage metrics are correctly recorded"""
+
     latest_experimental_enabled = is_experimental_mode()
-    model_name = "text-embedding-3-small"
+
     input_text = "This is a test for embeddings token metrics"
 
     with vcr.use_cassette("test_embeddings_token_metrics.yaml"):
         response = openai_client.embeddings.create(
-            model=model_name,
+            model=DEFAULT_EMBEDDING_MODEL,
             input=input_text,
         )
 
@@ -338,7 +354,10 @@ def test_embeddings_token_metrics(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_embedding_attributes(
-        spans[0], model_name, latest_experimental_enabled, response
+        spans[0],
+        DEFAULT_EMBEDDING_MODEL,
+        latest_experimental_enabled,
+        response,
     )
 
     # Verify metrics

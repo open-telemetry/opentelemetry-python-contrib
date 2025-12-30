@@ -54,7 +54,6 @@ from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.genai.handler import (
     TelemetryHandler,
-    get_telemetry_handler,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 from opentelemetry.util.genai.utils import (

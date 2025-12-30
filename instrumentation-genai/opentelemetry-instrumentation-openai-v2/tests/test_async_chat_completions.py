@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-locals
 
+# pylint: disable=too-many-locals,too-many-lines
 
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, NotFoundError
@@ -519,6 +519,8 @@ async def chat_completion_tool_call(
     expect_content,
     latest_experimental_enabled,
 ):
+    # pylint: disable=too-many-statements
+
     messages_value = WEATHER_TOOL_PROMPT.copy()
     response_0 = await async_openai_client.chat.completions.create(
         messages=messages_value,

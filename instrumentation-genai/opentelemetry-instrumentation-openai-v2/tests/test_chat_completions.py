@@ -648,6 +648,8 @@ def chat_completion_tool_call(
     expect_content,
     latest_experimental_enabled,
 ):
+    # pylint: disable=too-many-statements
+
     messages_value = WEATHER_TOOL_PROMPT.copy()
 
     response_0 = openai_client.chat.completions.create(
