@@ -5,8 +5,8 @@ from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
-    MESSAGING_SYSTEM,
     MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
     MessagingOperationTypeValues,
 )
 from opentelemetry.semconv.trace import (
