@@ -110,7 +110,9 @@ from confluent_kafka import Consumer, Producer
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.messaging_attributes import MessagingOperationTypeValues
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MessagingOperationTypeValues,
+)
 from opentelemetry.trace import Tracer
 
 from .package import _instruments
