@@ -31,3 +31,4 @@ opentelemetry-sdk==1.37  # when updating, also update in pyproject.toml
 opentelemetry-semantic-conventions==0.58b0  # when updating, also update in pyproject.toml
 
 -e instrumentation-genai/opentelemetry-instrumentation-openai-v2
+-e util/opentelemetry-util-genai

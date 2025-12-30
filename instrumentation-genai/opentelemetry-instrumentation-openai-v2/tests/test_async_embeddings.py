@@ -17,7 +17,6 @@
 import pytest
 from openai import AsyncOpenAI, NotFoundError
 
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -25,14 +24,18 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
+from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import assert_all_attributes, assert_embedding_attributes
-from opentelemetry.util.genai.utils import is_experimental_mode
 
 
 @pytest.mark.asyncio
 async def test_async_embeddings_no_content(
-    span_exporter, log_exporter, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
     """Test creating embeddings asynchronously with content capture disabled"""
 
@@ -49,7 +52,9 @@ async def test_async_embeddings_no_content(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # No logs should be emitted when content capture is disabled
     logs = log_exporter.get_finished_logs()
@@ -58,7 +63,11 @@ async def test_async_embeddings_no_content(
 
 @pytest.mark.asyncio
 async def test_async_embeddings_with_dimensions(
-    span_exporter, metric_reader, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    metric_reader,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
     """Test creating embeddings asynchronously with custom dimensions"""
 
@@ -77,7 +86,9 @@ async def test_async_embeddings_with_dimensions(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify dimensions attribute is set correctly
     assert (
@@ -90,7 +101,11 @@ async def test_async_embeddings_with_dimensions(
 
 @pytest.mark.asyncio
 async def test_async_embeddings_with_batch_input(
-    span_exporter, metric_reader, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    metric_reader,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     """Test creating embeddings asynchronously with batch input"""
 
@@ -111,7 +126,9 @@ async def test_async_embeddings_with_batch_input(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify results contain the same number of embeddings as input texts
     assert len(response.data) == len(input_texts)
@@ -137,14 +154,23 @@ async def test_async_embeddings_error_handling(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_all_attributes(spans[0], model_name, latest_experimental_enabled, operation_name="embeddings")
+    assert_all_attributes(
+        spans[0],
+        model_name,
+        latest_experimental_enabled,
+        operation_name="embeddings",
+    )
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
 
 @pytest.mark.asyncio
 @pytest.mark.vcr()
 async def test_async_embeddings_token_metrics(
-    span_exporter, metric_reader, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    metric_reader,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
     """Test that token usage metrics are correctly recorded for async embeddings"""
     latest_experimental_enabled = is_experimental_mode()
@@ -160,7 +186,9 @@ async def test_async_embeddings_token_metrics(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name, latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify metrics
     metrics = metric_reader.get_metrics_data().resource_metrics
@@ -197,7 +225,11 @@ async def test_async_embeddings_token_metrics(
 
 @pytest.mark.asyncio
 async def test_async_embeddings_with_encoding_format(
-    span_exporter, metric_reader, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    metric_reader,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
     """Test creating embeddings with different encoding format"""
     latest_experimental_enabled = is_experimental_mode()
@@ -215,10 +247,11 @@ async def test_async_embeddings_with_encoding_format(
     # Verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-    assert_embedding_attributes(spans[0], model_name,  latest_experimental_enabled, response)
+    assert_embedding_attributes(
+        spans[0], model_name, latest_experimental_enabled, response
+    )
 
     # Verify encoding_format attribute is set correctly
     assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
         encoding_format,
     )
-

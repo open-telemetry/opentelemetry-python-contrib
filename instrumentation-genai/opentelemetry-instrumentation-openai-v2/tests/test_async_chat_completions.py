@@ -22,6 +22,8 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -36,15 +38,20 @@ from .test_utils import (
     WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
     WEATHER_TOOL_PROMPT,
     assert_all_attributes,
+    assert_message_in_logs,
     assert_messages_attribute,
     format_simple_expected_output_message,
-    assert_message_in_logs,
-    get_current_weather_tool_definition
+    get_current_weather_tool_definition,
 )
+
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_with_content(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
     with vcr.use_cassette("test_async_chat_completion_with_content.yaml"):
@@ -91,12 +98,18 @@ async def test_async_chat_completion_with_content(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_no_content(
-    span_exporter, log_exporter, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
     with vcr.use_cassette("test_async_chat_completion_no_content.yaml"):
@@ -130,7 +143,9 @@ async def test_async_chat_completion_no_content(
             "finish_reason": "stop",
             "message": {"role": "assistant"},
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
@@ -149,7 +164,10 @@ async def test_async_chat_completion_bad_endpoint(
 
     spans = span_exporter.get_finished_spans()
     assert_all_attributes(
-        spans[0], DEFAULT_MODEL, latest_experimental_enabled, server_address="localhost"
+        spans[0],
+        DEFAULT_MODEL,
+        latest_experimental_enabled,
+        server_address="localhost",
     )
     assert 4242 == spans[0].attributes[ServerAttributes.SERVER_PORT]
     assert (
@@ -173,7 +191,9 @@ async def test_async_chat_completion_404(
 
     spans = span_exporter.get_finished_spans()
 
-    assert_all_attributes(spans[0], llm_model_value, latest_experimental_enabled)
+    assert_all_attributes(
+        spans[0], llm_model_value, latest_experimental_enabled
+    )
     assert "NotFoundError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
 
@@ -212,24 +232,28 @@ async def test_async_chat_completion_extra_params(
         spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.5
     )
     assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == 50
-    request_service_tier_attr_key = OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER if latest_experimental_enabled else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
-    assert (
-        spans[0].attributes[request_service_tier_attr_key]
-        == "default"
+    request_service_tier_attr_key = (
+        OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
     )
+    assert spans[0].attributes[request_service_tier_attr_key] == "default"
 
-    output_type_attr_key = GenAIAttributes.GEN_AI_OUTPUT_TYPE if latest_experimental_enabled else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-    assert (
-        spans[0].attributes[
-            output_type_attr_key
-        ]
-        == "text"
+    output_type_attr_key = (
+        GenAIAttributes.GEN_AI_OUTPUT_TYPE
+        if latest_experimental_enabled
+        else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
     )
+    assert spans[0].attributes[output_type_attr_key] == "text"
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_multiple_choices(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
 
@@ -295,7 +319,9 @@ async def test_async_chat_completion_multiple_choices(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event_0, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event_0, spans[0]
+        )
 
         choice_event_1 = {
             "index": 1,
@@ -305,21 +331,25 @@ async def test_async_chat_completion_multiple_choices(
                 "content": response.choices[1].message.content,
             },
         }
-        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event_1, spans[0])
+        assert_message_in_logs(
+            logs[2], "gen_ai.choice", choice_event_1, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_with_raw_response(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
 
     with vcr.use_cassette("test_async_chat_completion_with_raw_response.yaml"):
-        response = (
-            await async_openai_client.chat.completions.with_raw_response.create(
-                messages=USER_ONLY_PROMPT,
-                model=DEFAULT_MODEL,
-            )
+        response = await async_openai_client.chat.completions.with_raw_response.create(
+            messages=USER_ONLY_PROMPT,
+            model=DEFAULT_MODEL,
         )
     response = response.parse()
     spans = span_exporter.get_finished_spans()
@@ -361,23 +391,29 @@ async def test_async_chat_completion_with_raw_response(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_chat_completion_with_raw_response_streaming(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
 
-    with vcr.use_cassette("test_chat_completion_with_raw_response_streaming.yaml"):
-        raw_response = (
-            await async_openai_client.chat.completions.with_raw_response.create(
-                messages=USER_ONLY_PROMPT,
-                model=DEFAULT_MODEL,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
+    with vcr.use_cassette(
+        "test_chat_completion_with_raw_response_streaming.yaml"
+    ):
+        raw_response = await async_openai_client.chat.completions.with_raw_response.create(
+            messages=USER_ONLY_PROMPT,
+            model=DEFAULT_MODEL,
+            stream=True,
+            stream_options={"include_usage": True},
         )
     response = raw_response.parse()
 
@@ -413,9 +449,7 @@ async def test_chat_completion_with_raw_response_streaming(
         )
         assert_messages_attribute(
             spans[0].attributes["gen_ai.output.messages"],
-            format_simple_expected_output_message(
-                message_content
-            ),
+            format_simple_expected_output_message(message_content),
         )
     else:
         assert len(logs) == 2
@@ -433,30 +467,57 @@ async def test_chat_completion_with_raw_response_streaming(
                 "content": message_content,
             },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_tool_calls_with_content(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
-    with vcr.use_cassette("test_async_chat_completion_tool_calls_with_content.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_tool_calls_with_content.yaml"
+    ):
         await chat_completion_tool_call(
-            span_exporter, log_exporter, async_openai_client, True, is_experimental_mode()
+            span_exporter,
+            log_exporter,
+            async_openai_client,
+            True,
+            is_experimental_mode(),
         )
+
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_tool_calls_no_content(
-    span_exporter, log_exporter, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
-    with vcr.use_cassette("test_async_chat_completion_tool_calls_no_content.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_tool_calls_no_content.yaml"
+    ):
         await chat_completion_tool_call(
-            span_exporter, log_exporter, async_openai_client, False, is_experimental_mode()
+            span_exporter,
+            log_exporter,
+            async_openai_client,
+            False,
+            is_experimental_mode(),
         )
 
 
 async def chat_completion_tool_call(
-    span_exporter, log_exporter, async_openai_client, expect_content, latest_experimental_enabled
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    expect_content,
+    latest_experimental_enabled,
 ):
     messages_value = WEATHER_TOOL_PROMPT.copy()
     response_0 = await async_openai_client.chat.completions.create(
@@ -619,14 +680,18 @@ async def chat_completion_tool_call(
 
         # call one
         system_message = (
-            {"content": messages_value[0]["content"]} if expect_content else None
+            {"content": messages_value[0]["content"]}
+            if expect_content
+            else None
         )
         assert_message_in_logs(
             logs[0], "gen_ai.system.message", system_message, spans[0]
         )
 
         user_message = (
-            {"content": messages_value[1]["content"]} if expect_content else None
+            {"content": messages_value[1]["content"]}
+            if expect_content
+            else None
         )
         assert_message_in_logs(
             logs[1], "gen_ai.user.message", user_message, spans[0]
@@ -665,18 +730,24 @@ async def chat_completion_tool_call(
                 ],
             },
         }
-        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[2], "gen_ai.choice", choice_event, spans[0]
+        )
 
         # call two
         system_message = (
-            {"content": messages_value[0]["content"]} if expect_content else None
+            {"content": messages_value[0]["content"]}
+            if expect_content
+            else None
         )
         assert_message_in_logs(
             logs[3], "gen_ai.system.message", system_message, spans[1]
         )
 
         user_message = (
-            {"content": messages_value[1]["content"]} if expect_content else None
+            {"content": messages_value[1]["content"]}
+            if expect_content
+            else None
         )
         assert_message_in_logs(
             logs[4], "gen_ai.user.message", user_message, spans[1]
@@ -684,8 +755,12 @@ async def chat_completion_tool_call(
 
         assistant_tool_call = {"tool_calls": messages_value[2]["tool_calls"]}
         if not expect_content:
-            assistant_tool_call["tool_calls"][0]["function"]["arguments"] = None
-            assistant_tool_call["tool_calls"][1]["function"]["arguments"] = None
+            assistant_tool_call["tool_calls"][0]["function"]["arguments"] = (
+                None
+            )
+            assistant_tool_call["tool_calls"][1]["function"]["arguments"] = (
+                None
+            )
 
         assert_message_in_logs(
             logs[5], "gen_ai.assistant.message", assistant_tool_call, spans[1]
@@ -693,7 +768,9 @@ async def chat_completion_tool_call(
 
         tool_message_0 = {
             "id": tool_call_result_0["tool_call_id"],
-            "content": tool_call_result_0["content"] if expect_content else None,
+            "content": tool_call_result_0["content"]
+            if expect_content
+            else None,
         }
 
         assert_message_in_logs(
@@ -702,7 +779,9 @@ async def chat_completion_tool_call(
 
         tool_message_1 = {
             "id": tool_call_result_1["tool_call_id"],
-            "content": tool_call_result_1["content"] if expect_content else None,
+            "content": tool_call_result_1["content"]
+            if expect_content
+            else None,
         }
 
         assert_message_in_logs(
@@ -725,7 +804,11 @@ async def chat_completion_tool_call(
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_streaming(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
     llm_model_value = "gpt-4"
@@ -785,14 +868,23 @@ async def test_async_chat_completion_streaming(
         choice_event = {
             "index": 0,
             "finish_reason": "stop",
-            "message": {"role": "assistant", "content": response_stream_result},
+            "message": {
+                "role": "assistant",
+                "content": response_stream_result,
+            },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_streaming_not_complete(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
 
@@ -806,7 +898,9 @@ async def test_async_chat_completion_streaming_not_complete(
     response_stream_id = None
     response_stream_result = ""
 
-    with vcr.use_cassette("test_async_chat_completion_streaming_not_complete.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_streaming_not_complete.yaml"
+    ):
         response = await async_openai_client.chat.completions.create(**kwargs)
         idx = 0
         async for chunk in response:
@@ -825,7 +919,11 @@ async def test_async_chat_completion_streaming_not_complete(
         response.close()
     spans = span_exporter.get_finished_spans()
     assert_all_attributes(
-        spans[0], DEFAULT_MODEL, latest_experimental_enabled, response_stream_id, response_stream_model
+        spans[0],
+        DEFAULT_MODEL,
+        latest_experimental_enabled,
+        response_stream_id,
+        response_stream_model,
     )
 
     logs = log_exporter.get_finished_logs()
@@ -851,19 +949,30 @@ async def test_async_chat_completion_streaming_not_complete(
         choice_event = {
             "index": 0,
             "finish_reason": "error",
-            "message": {"role": "assistant", "content": response_stream_result},
+            "message": {
+                "role": "assistant",
+                "content": response_stream_result,
+            },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_multiple_choices_streaming(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
     messages_value = WEATHER_TOOL_PROMPT.copy()
 
-    with vcr.use_cassette("test_async_chat_completion_multiple_choices_streaming.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_multiple_choices_streaming.yaml"
+    ):
         response_0 = await async_openai_client.chat.completions.create(
             messages=messages_value,
             model=DEFAULT_MODEL,
@@ -959,7 +1068,9 @@ async def test_async_chat_completion_multiple_choices_streaming(
                 "content": "".join(response_stream_result[0]),
             },
         }
-        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event_0, spans[0])
+        assert_message_in_logs(
+            logs[2], "gen_ai.choice", choice_event_0, spans[0]
+        )
 
         choice_event_1 = {
             "index": 1,
@@ -969,27 +1080,49 @@ async def test_async_chat_completion_multiple_choices_streaming(
                 "content": "".join(response_stream_result[1]),
             },
         }
-        assert_message_in_logs(logs[3], "gen_ai.choice", choice_event_1, spans[0])
+        assert_message_in_logs(
+            logs[3], "gen_ai.choice", choice_event_1, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_multiple_tools_streaming_with_content(
-    span_exporter, log_exporter, async_openai_client, instrument_with_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
 ):
-    with vcr.use_cassette("test_async_chat_completion_multiple_tools_streaming_with_content.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_multiple_tools_streaming_with_content.yaml"
+    ):
         await async_chat_completion_multiple_tools_streaming(
-            span_exporter, log_exporter, async_openai_client, True, is_experimental_mode()
+            span_exporter,
+            log_exporter,
+            async_openai_client,
+            True,
+            is_experimental_mode(),
         )
 
 
 @pytest.mark.asyncio()
 async def test_async_chat_completion_multiple_tools_streaming_no_content(
-    span_exporter, log_exporter, async_openai_client, instrument_no_content, vcr
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    instrument_no_content,
+    vcr,
 ):
-    with vcr.use_cassette("test_async_chat_completion_multiple_tools_streaming_no_content.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_multiple_tools_streaming_no_content.yaml"
+    ):
         await async_chat_completion_multiple_tools_streaming(
-            span_exporter, log_exporter, async_openai_client, False, is_experimental_mode()
-    )
+            span_exporter,
+            log_exporter,
+            async_openai_client,
+            False,
+            is_experimental_mode(),
+        )
 
 
 @pytest.mark.asyncio()
@@ -998,7 +1131,7 @@ async def test_async_chat_completion_streaming_unsampled(
     log_exporter,
     async_openai_client,
     instrument_with_content_unsampled,
-    vcr
+    vcr,
 ):
     latest_experimental_enabled = is_experimental_mode()
 
@@ -1010,7 +1143,9 @@ async def test_async_chat_completion_streaming_unsampled(
     }
 
     response_stream_result = ""
-    with vcr.use_cassette("test_async_chat_completion_streaming_unsampled.yaml"):
+    with vcr.use_cassette(
+        "test_async_chat_completion_streaming_unsampled.yaml"
+    ):
         response = await async_openai_client.chat.completions.create(**kwargs)
         async for chunk in response:
             if chunk.choices:
@@ -1024,12 +1159,17 @@ async def test_async_chat_completion_streaming_unsampled(
         assert len(logs) == 2
 
         user_message = {"content": "Say this is a test"}
-        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, None)
+        assert_message_in_logs(
+            logs[0], "gen_ai.user.message", user_message, None
+        )
 
         choice_event = {
             "index": 0,
             "finish_reason": "stop",
-            "message": {"role": "assistant", "content": response_stream_result},
+            "message": {
+                "role": "assistant",
+                "content": response_stream_result,
+            },
         }
         assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, None)
 
@@ -1043,7 +1183,11 @@ async def test_async_chat_completion_streaming_unsampled(
 
 
 async def async_chat_completion_multiple_tools_streaming(
-    span_exporter, log_exporter, async_openai_client, expect_content, latest_experimental_enabled
+    span_exporter,
+    log_exporter,
+    async_openai_client,
+    expect_content,
+    latest_experimental_enabled,
 ):
     messages_value = WEATHER_TOOL_PROMPT.copy()
 
@@ -1131,14 +1275,18 @@ async def async_chat_completion_multiple_tools_streaming(
         assert len(logs) == 3
 
         system_message = (
-            {"content": messages_value[0]["content"]} if expect_content else None
+            {"content": messages_value[0]["content"]}
+            if expect_content
+            else None
         )
         assert_message_in_logs(
             logs[0], "gen_ai.system.message", system_message, spans[0]
         )
 
         user_message = (
-            {"content": "What's the weather in Seattle and San Francisco today?"}
+            {
+                "content": "What's the weather in Seattle and San Francisco today?"
+            }
             if expect_content
             else None
         )
@@ -1179,5 +1327,6 @@ async def async_chat_completion_multiple_tools_streaming(
                 ],
             },
         }
-        assert_message_in_logs(logs[2], "gen_ai.choice", choice_event, spans[0])
-
+        assert_message_in_logs(
+            logs[2], "gen_ai.choice", choice_event, spans[0]
+        )

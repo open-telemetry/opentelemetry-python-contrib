@@ -7,14 +7,14 @@ import pytest
 import yaml
 from openai import AsyncOpenAI, OpenAI
 
-from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
-from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
-)
-from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
 
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
@@ -115,15 +115,21 @@ def vcr_config():
         "before_record_response": scrub_response_headers,
     }
 
-@pytest.fixture(scope="function", params=[(True, "span_only"), (False, "True")])
+
+@pytest.fixture(
+    scope="function", params=[(True, "span_only"), (False, "True")]
+)
 def content_mode(request):
     # returns tuple: (latest_experimental_enabled: bool, content_mode: str)
     # we don't test (True, "event_only"), (True, "span_and_event") because it's util's
     # responsibility
     return request.param
 
+
 @pytest.fixture(scope="function")
-def instrument_no_content(tracer_provider, logger_provider, meter_provider, content_mode):
+def instrument_no_content(
+    tracer_provider, logger_provider, meter_provider, content_mode
+):
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, _ = content_mode
     os.environ.update(
@@ -148,13 +154,17 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider, cont
 
 
 @pytest.fixture(scope="function")
-def instrument_with_content(tracer_provider, logger_provider, meter_provider, content_mode):
+def instrument_with_content(
+    tracer_provider, logger_provider, meter_provider, content_mode
+):
     _OpenTelemetrySemanticConventionStability._initialized = False
 
     latest_experimental_enabled, content_mode_value = content_mode
 
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value}
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
+        }
     )
 
     os.environ.update(
@@ -185,7 +195,9 @@ def instrument_with_content_unsampled(
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, content_mode_value = content_mode
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value}
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
+        }
     )
 
     os.environ.update(
