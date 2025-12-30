@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
 - `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
+- `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
+  ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
 - `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
   ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
 
