@@ -15,11 +15,6 @@
 import importlib
 import logging
 
-from opentelemetry.instrumentation.botocore.extensions.types import (
-    _AwsSdkCallContext,
-    _AwsSdkExtension,
-)
-
 _logger = logging.getLogger(__name__)
 
 
@@ -31,7 +26,7 @@ def _lazy_load(module, cls):
     return loader
 
 
-_KNOWN_EXTENSIONS = {
+_BOTOCORE_EXTENSIONS = {
     "bedrock-runtime": _lazy_load(".bedrock", "_BedrockRuntimeExtension"),
     "dynamodb": _lazy_load(".dynamodb", "_DynamoDbExtension"),
     "lambda": _lazy_load(".lmbd", "_LambdaExtension"),
@@ -43,19 +38,13 @@ _KNOWN_EXTENSIONS = {
     "sqs": _lazy_load(".sqs", "_SqsExtension"),
 }
 
-
-def _has_extension(call_context: _AwsSdkCallContext) -> bool:
-    return call_context.service in _KNOWN_EXTENSIONS
-
-
-def _find_extension(call_context: _AwsSdkCallContext) -> _AwsSdkExtension:
-    try:
-        loader = _KNOWN_EXTENSIONS.get(call_context.service)
-        if loader is None:
-            return _AwsSdkExtension(call_context)
-
-        extension_cls = loader()
-        return extension_cls(call_context)
-    except Exception as ex:  # pylint: disable=broad-except
-        _logger.error("Error when loading extension: %s", ex)
-        return _AwsSdkExtension(call_context)
+_AIOBOTOCORE_EXTENSIONS = {
+    "dynamodb": _lazy_load(".dynamodb", "_DynamoDbExtension"),
+    "lambda": _lazy_load(".lmbd", "_LambdaExtension"),
+    "secretsmanager": _lazy_load(
+        ".secretsmanager", "_SecretsManagerExtension"
+    ),
+    "stepfunctions": _lazy_load(".sfns", "_StepFunctionsExtension"),
+    "sns": _lazy_load(".sns", "_SnsExtension"),
+    "sqs": _lazy_load(".sqs", "_SqsExtension"),
+}
