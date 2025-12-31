@@ -165,3 +165,89 @@ GenAI instrumentations in `instrumentation-genai/` MUST follow OpenTelemetry Gen
 ### Reference Implementation
 
 See `opentelemetry-instrumentation-openai-v2` for the canonical example of proper semantic convention usage.
+
+## AI Agent Framework Instrumentations
+
+The following AI agent framework instrumentations are available in `instrumentation-genai/`:
+
+### Available Frameworks
+
+| Package | Framework | Min Version | Entry Point |
+|---------|-----------|-------------|-------------|
+| `opentelemetry-instrumentation-crewai` | CrewAI | 0.70.0 | `CrewAIInstrumentor` |
+| `opentelemetry-instrumentation-haystack` | Haystack | 2.0.0 | `HaystackInstrumentor` |
+| `opentelemetry-instrumentation-agno` | Agno | 1.0.0 | `AgnoInstrumentor` |
+| `opentelemetry-instrumentation-llamaindex` | LlamaIndex | 0.10.0 | `LlamaIndexInstrumentor` |
+| `opentelemetry-instrumentation-langchain` | LangChain | 0.1.0 | `LangChainInstrumentor` |
+| `opentelemetry-instrumentation-langgraph` | LangGraph | 0.2.0 | `LangGraphInstrumentor` |
+
+### Framework-Specific Implementation Details
+
+#### CrewAI
+- **Instrumented methods**: `Crew.kickoff`, `Agent.execute_task`, `Task.execute_sync`, `LLM.call`
+- **Span hierarchy**: `crewai.workflow` → `{agent_role}.agent` → `{task_desc}.task` → `{model}.llm`
+- **Attributes**: `gen_ai.crewai.crew.*`, `gen_ai.crewai.agent.*`, `gen_ai.crewai.task.*`
+
+#### Haystack
+- **Instrumented methods**: `Pipeline.run`, `OpenAIGenerator.run`, `OpenAIChatGenerator.run`
+- **Span hierarchy**: `haystack_pipeline.workflow` → `haystack.openai.{completion|chat}`
+- **Attributes**: `gen_ai.haystack.entity.*`, `gen_ai.haystack.pipeline.*`
+
+#### Agno
+- **Instrumented methods**: `Agent.run/arun`, `Team.run/arun`, `FunctionCall.execute/aexecute`
+- **Span hierarchy**: `{team_name}.team` → `{agent_name}.agent` → `{tool_name}.tool`
+- **Attributes**: `gen_ai.agno.agent.*`, `gen_ai.agno.team.*`, `gen_ai.agno.tool.*`
+- **Features**: Full async support, streaming response handling
+
+#### LlamaIndex
+- **Architecture**: Uses LlamaIndex's native dispatcher pattern (0.10.20+)
+- **Components**: `OpenTelemetrySpanHandler`, `OpenTelemetryEventHandler`
+- **Instrumented operations**: Retrievers, synthesizers, embeddings, agents, tools, query pipelines
+- **Attributes**: `gen_ai.llamaindex.entity.*`, `gen_ai.llamaindex.retriever.*`, `gen_ai.llamaindex.embedding.*`
+
+### Attribute Conversion Reference (OpenLLMetry → OTel)
+
+When porting from OpenLLMetry, use these conversions:
+
+| OpenLLMetry Attribute | OTel Standard Attribute |
+|-----------------------|-------------------------|
+| `traceloop.span.kind` | `gen_ai.operation.name` |
+| `traceloop.entity.name` | `gen_ai.{framework}.entity.name` |
+| `traceloop.entity.input` | `gen_ai.{framework}.entity.input` |
+| `traceloop.entity.output` | `gen_ai.{framework}.entity.output` |
+| `traceloop.workflow.name` | `gen_ai.{framework}.workflow.name` |
+| `TRACELOOP_TRACE_CONTENT` | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` |
+
+### Standard Package Structure for Agent Frameworks
+
+```
+instrumentation-genai/opentelemetry-instrumentation-{framework}/
+├── src/opentelemetry/instrumentation/{framework}/
+│   ├── __init__.py      # Main {Framework}Instrumentor class
+│   ├── version.py       # __version__ = "0.1b0"
+│   ├── package.py       # _instruments = ("{framework} >= X.X.X",)
+│   ├── patch.py         # Wrapper functions using wrapt
+│   ├── utils.py         # Helpers (should_capture_content, safe_json_dumps)
+│   └── streaming.py     # Stream wrappers (if applicable)
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   └── test_{framework}.py
+├── pyproject.toml       # Entry points under [project.entry-points.opentelemetry_instrumentor]
+└── README.rst
+```
+
+### Common Utility Functions
+
+All agent framework instrumentations should implement these utilities in `utils.py`:
+
+```python
+def should_capture_content() -> bool:
+    """Check if content capture is enabled via OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT."""
+
+def safe_json_dumps(obj: Any) -> Optional[str]:
+    """Safely serialize objects to JSON, handling non-serializable types."""
+
+def get_operation_name(method_name: str) -> str:
+    """Map method names to gen_ai.operation.name values (workflow, task, agent, execute_tool, embeddings)."""
+```
