@@ -10,10 +10,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
-from opentelemetry.semconv.attributes import (
-    server_attributes as ServerAttributes,
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.genai.instruments import (
@@ -31,15 +29,6 @@ class InvocationMetricsRecorder:
         self._duration_histogram: Histogram = create_duration_histogram(meter)
         self._token_histogram: Histogram = create_token_histogram(meter)
 
-    @staticmethod
-    def _calculate_duration_seconds(invocation: LLMInvocation) -> Optional[float]:
-        """Calculate duration from invocation monotonic start time."""
-        if invocation.monotonic_start_s is not None:
-            return max(
-                timeit.default_timer() - invocation.monotonic_start_s, 0.0
-            )
-        return None
-
     def record(
         self,
         span: Optional[Span],
@@ -48,6 +37,9 @@ class InvocationMetricsRecorder:
         error_type: Optional[str] = None,
     ) -> None:
         """Record duration and token metrics for an invocation if possible."""
+
+        # pylint: disable=too-many-branches
+
         if span is None:
             return
 
@@ -79,19 +71,25 @@ class InvocationMetricsRecorder:
                 invocation.response_model_name
             )
         if invocation.server_address:
-            attributes[ServerAttributes.SERVER_ADDRESS] = (
+            attributes[server_attributes.SERVER_ADDRESS] = (
                 invocation.server_address
             )
         if invocation.server_port is not None:
-            attributes[ServerAttributes.SERVER_PORT] = invocation.server_port
+            attributes[server_attributes.SERVER_PORT] = invocation.server_port
         if invocation.metric_attributes:
             attributes.update(invocation.metric_attributes)
 
         span_context = set_span_in_context(span)
         if error_type:
-            attributes[ErrorAttributes.ERROR_TYPE] = error_type
+            attributes[error_attributes.ERROR_TYPE] = error_type
 
-        duration_seconds = self._calculate_duration_seconds(invocation)
+        # Calculate duration from span timing or invocation monotonic start
+        duration_seconds: Optional[float] = None
+        if invocation.monotonic_start_s is not None:
+            duration_seconds = max(
+                timeit.default_timer() - invocation.monotonic_start_s, 0.0
+            )
+
         if duration_seconds is not None:
             self._duration_histogram.record(
                 duration_seconds,

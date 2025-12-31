@@ -32,10 +32,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
-from opentelemetry.semconv.attributes import (
-    server_attributes as ServerAttributes,
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
@@ -245,8 +243,6 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
                 GenAI.GEN_AI_REQUEST_MODEL: "test-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
-                ServerAttributes.SERVER_ADDRESS: "custom.server.com",
-                ServerAttributes.SERVER_PORT: 42,
                 GenAI.GEN_AI_INPUT_MESSAGES: "*",
                 GenAI.GEN_AI_OUTPUT_MESSAGES: "*",
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
@@ -257,6 +253,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "response-id",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 321,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 654,
+                server_attributes.SERVER_ADDRESS: "custom.server.com",
+                server_attributes.SERVER_PORT: 42,
                 "extra": "info",
                 "custom_attr": "value",
             },
@@ -486,7 +484,6 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
                 GenAI.GEN_AI_REQUEST_MODEL: "test-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
-                ErrorAttributes.ERROR_TYPE: BoomError.__qualname__,
                 GenAI.GEN_AI_REQUEST_MAX_TOKENS: 128,
                 GenAI.GEN_AI_REQUEST_SEED: 123,
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("error",),
@@ -494,5 +491,6 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "error-response",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 11,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 22,
+                error_attributes.ERROR_TYPE: BoomError.__qualname__,
             },
         )
