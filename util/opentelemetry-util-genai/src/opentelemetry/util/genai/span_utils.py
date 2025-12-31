@@ -21,7 +21,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.trace import (
     Span,
@@ -61,6 +62,15 @@ def _apply_common_span_attributes(
     if invocation.provider is not None:
         # TODO: clean provider name to match GenAiProviderNameValues?
         span.set_attribute(GenAI.GEN_AI_PROVIDER_NAME, invocation.provider)
+
+    if invocation.server_address:
+        span.set_attribute(
+            server_attributes.SERVER_ADDRESS, invocation.server_address
+        )
+    if invocation.server_port:
+        span.set_attribute(
+            server_attributes.SERVER_PORT, invocation.server_port
+        )
 
     _apply_response_attributes(span, invocation)
 
@@ -104,7 +114,9 @@ def _apply_error_attributes(span: Span, error: Error) -> None:
     """Apply status and error attributes common to error() paths."""
     span.set_status(Status(StatusCode.ERROR, error.message))
     if span.is_recording():
-        span.set_attribute(ErrorAttributes.ERROR_TYPE, error.type.__qualname__)
+        span.set_attribute(
+            error_attributes.ERROR_TYPE, error.type.__qualname__
+        )
 
 
 def _apply_request_attributes(span: Span, invocation: LLMInvocation) -> None:

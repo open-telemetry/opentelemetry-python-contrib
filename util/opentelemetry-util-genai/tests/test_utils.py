@@ -32,7 +32,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
@@ -106,7 +107,13 @@ def _assert_span_attributes(
     span_attrs: Mapping[str, Any], expected_values: Mapping[str, Any]
 ) -> None:
     for key, value in expected_values.items():
-        assert span_attrs.get(key) == value
+        if value == "*":
+            assert key in span_attrs
+        else:
+            assert span_attrs.get(key) == value
+    assert len(span_attrs) == len(expected_values), (
+        f"Actual {span_attrs} are different than expected {expected_values}"
+    )
 
 
 def _get_messages_from_attr(
@@ -215,11 +222,14 @@ class TestTelemetryHandler(unittest.TestCase):
                 "response_id": "response-id",
                 "input_tokens": 321,
                 "output_tokens": 654,
+                "server_address": "custom.server.com",
+                "server_port": 42,
             }.items():
                 setattr(invocation, attr, value)
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
+            invocation.metric_attributes = {"should not be on span": "value"}
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "chat test-model")
@@ -231,7 +241,10 @@ class TestTelemetryHandler(unittest.TestCase):
             span_attrs,
             {
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "test-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: "*",
+                GenAI.GEN_AI_OUTPUT_MESSAGES: "*",
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
                 GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
                 GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
@@ -240,6 +253,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "response-id",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 321,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 654,
+                server_attributes.SERVER_ADDRESS: "custom.server.com",
+                server_attributes.SERVER_PORT: 42,
                 "extra": "info",
                 "custom_attr": "value",
             },
@@ -286,6 +301,12 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             attrs,
             {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: "*",
+                GenAI.GEN_AI_OUTPUT_MESSAGES: "*",
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
                 "manual": True,
                 "extra_manual": "yes",
             },
@@ -312,6 +333,9 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             attrs,
             {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "model-without-output",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("length",),
                 GenAI.GEN_AI_RESPONSE_MODEL: "alt-model",
                 GenAI.GEN_AI_RESPONSE_ID: "resp-001",
@@ -457,7 +481,9 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             span_attrs,
             {
-                ErrorAttributes.ERROR_TYPE: BoomError.__qualname__,
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "test-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_REQUEST_MAX_TOKENS: 128,
                 GenAI.GEN_AI_REQUEST_SEED: 123,
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("error",),
@@ -465,5 +491,6 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "error-response",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 11,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 22,
+                error_attributes.ERROR_TYPE: BoomError.__qualname__,
             },
         )
