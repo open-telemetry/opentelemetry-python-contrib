@@ -166,6 +166,104 @@ GenAI instrumentations in `instrumentation-genai/` MUST follow OpenTelemetry Gen
 
 See `opentelemetry-instrumentation-openai-v2` for the canonical example of proper semantic convention usage.
 
+## Vector Database Instrumentation Standards
+
+Vector database instrumentations in `instrumentation-genai/` follow specific patterns distinct from LLM instrumentations.
+
+### Implemented Vector Database Packages
+
+| Package | Client Library | Methods Instrumented |
+|---------|---------------|---------------------|
+| `opentelemetry-instrumentation-chromadb` | `chromadb >= 0.3.0` | add, get, peek, query, modify, update, upsert, delete |
+| `opentelemetry-instrumentation-weaviate` | `weaviate-client >= 4.4.0` | collections, queries, batch operations |
+| `opentelemetry-instrumentation-lancedb` | `lancedb >= 0.9.0` | add, search, delete |
+| `opentelemetry-instrumentation-marqo` | `marqo >= 3.5.1` | add_documents, search, delete_documents |
+| `opentelemetry-instrumentation-pinecone` | `pinecone-client >= 2.2.2, <6` | query, upsert, delete (Index + GRPCIndex) |
+| `opentelemetry-instrumentation-milvus` | `pymilvus >= 2.4.1` | create_collection, insert, upsert, delete, search, get, query, hybrid_search |
+| `opentelemetry-instrumentation-qdrant` | `qdrant-client >= 1.7` | 23+ methods (sync + async clients) |
+
+### Semantic Conventions for Vector DBs
+
+1. **Use `db.{vendor}.*` namespace** for vector database attributes:
+   - `db.chromadb.query.n_results`
+   - `db.pinecone.query.top_k`
+   - `db.milvus.search.collection_name`
+   - `db.qdrant.upsert.points_count`
+
+2. **Standard span attributes**:
+   - `db.system` = vendor name (e.g., "chromadb", "pinecone", "milvus")
+   - `db.operation` = method name
+
+3. **Event naming**:
+   - `db.query.result` - Query result events
+   - `db.search.result` - Search result events
+   - `db.query.embeddings` - Query embedding events
+
+### Vector DB Package Structure
+
+```
+instrumentation-genai/opentelemetry-instrumentation-{name}/
+├── src/opentelemetry/instrumentation/{name}/
+│   ├── __init__.py      # Main Instrumentor class (extends BaseInstrumentor)
+│   ├── version.py       # Version "2.0b0.dev"
+│   ├── package.py       # _instruments tuple
+│   ├── utils.py         # dont_throw decorator, Config class, utilities
+│   ├── wrapper.py       # Sync wrapper functions
+│   ├── async_wrapper.py # Async wrapper functions (if applicable)
+│   ├── semconv.py       # Local semantic conventions (db.{vendor}.*)
+│   └── instruments.py   # Metrics definitions (if applicable)
+├── tests/
+│   └── __init__.py
+├── pyproject.toml       # Hatchling build, entry points
+└── README.rst
+```
+
+### Key Patterns
+
+1. **Wrapper pattern**: Use `create_wrapper()` function that returns a closure
+2. **Suppression**: Check `_SUPPRESS_INSTRUMENTATION_KEY` before tracing
+3. **Error isolation**: Use `@dont_throw` decorator on attribute setters
+4. **Metrics**: Enable via `OTEL_INSTRUMENTATION_GENAI_METRICS_ENABLED` env var
+5. **Schema URL**: Use `Schemas.V1_28_0.value` for tracer creation
+
+### Example Wrapper Implementation
+
+```python
+def create_wrapper(tracer: Tracer, method_name: str, span_name: str) -> Callable:
+    def wrapper(wrapped, instance, args, kwargs):
+        if context_api.get_value(_SUPPRESS_INSTRUMENTATION_KEY):
+            return wrapped(*args, **kwargs)
+
+        with tracer.start_as_current_span(
+            span_name,
+            kind=SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: "vendor_name",
+                SpanAttributes.DB_OPERATION: method_name,
+            },
+        ) as span:
+            # Set method-specific attributes
+            _set_attributes(span, kwargs)
+
+            result = wrapped(*args, **kwargs)
+            return result
+
+    return wrapper
+```
+
+### Porting from OpenLLMetry
+
+When porting vector DB instrumentations from OpenLLMetry:
+
+| OpenLLMetry | instrumentation-genai |
+|-------------|----------------------|
+| Poetry (`pyproject.toml`) | Hatchling |
+| `opentelemetry-semantic-conventions-ai` | Local `semconv.py` |
+| `TRACELOOP_METRICS_ENABLED` | `OTEL_INSTRUMENTATION_GENAI_METRICS_ENABLED` |
+| `SpanAttributes.VECTOR_DB_VENDOR` | `SpanAttributes.DB_SYSTEM` |
+| JSON method configs | Python `methods.py` module |
+| Traceloop license headers | OpenTelemetry Authors headers |
+
 ## AI Agent Framework Instrumentations
 
 The following AI agent framework instrumentations are available in `instrumentation-genai/`:
