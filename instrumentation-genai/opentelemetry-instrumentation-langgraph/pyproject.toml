@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-langchain"
+name = "opentelemetry-instrumentation-langgraph"
 dynamic = ["version"]
-description = "OpenTelemetry Official Langchain instrumentation"
+description = "OpenTelemetry Official LangGraph instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,33 +18,31 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "opentelemetry-api >= 1.31.0",
+  "opentelemetry-api ~= 1.31",
   "opentelemetry-instrumentation ~= 0.57b0",
-  "opentelemetry-semantic-conventions ~= 0.57b0"
+  "opentelemetry-semantic-conventions ~= 0.57b0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "langchain >= 0.3.21",
   "langgraph >= 0.2.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
-langchain = "opentelemetry.instrumentation.langchain:LangChainInstrumentor"
+langgraph = "opentelemetry.instrumentation.langgraph:LangGraphInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-langchain"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-langgraph"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/instrumentation/langchain/version.py"
+path = "src/opentelemetry/instrumentation/langgraph/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -54,4 +52,3 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
-

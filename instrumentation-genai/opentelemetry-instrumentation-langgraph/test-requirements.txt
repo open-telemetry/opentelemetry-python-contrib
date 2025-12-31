@@ -1,0 +1,6 @@
+# Test dependencies for opentelemetry-instrumentation-langgraph
+pytest
+pytest-asyncio
+langgraph >= 0.2.0
+opentelemetry-sdk
+opentelemetry-test-utils

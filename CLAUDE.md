@@ -134,3 +134,34 @@ Packages must be built in dependency order (defined in `eachdist.ini`):
 - **Stable packages**: version 1.40.0.dev
 - **Pre-release packages**: version 0.61b0.dev
 - GenAI instrumentations and some AWS/Azure packages have separate release cycles (excluded from main release)
+
+## GenAI Instrumentation Semantic Conventions
+
+GenAI instrumentations in `instrumentation-genai/` MUST follow OpenTelemetry GenAI semantic conventions strictly.
+
+### Required Practices
+
+1. **Use `gen_ai.*` namespace** for all custom attributes:
+   - Standard attributes: Use `opentelemetry.semconv._incubating.attributes.gen_ai_attributes`
+   - Package-specific attributes: Use `gen_ai.{package_name}.*` (e.g., `gen_ai.langchain.entity.name`, `gen_ai.langgraph.graph.name`)
+
+2. **NEVER use third-party attribute namespaces** like `traceloop.*`, `langsmith.*`, etc.
+   - These are vendor-specific and not part of OTel standards
+   - If porting from OpenLLMetry or similar, replace all such attributes
+
+3. **Environment variables** must use standard OTel naming:
+   - Content capture: `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` (default: `false`)
+   - NOT: `TRACELOOP_TRACE_CONTENT` or other vendor-specific names
+
+4. **Metric names** must follow `gen_ai.*` pattern:
+   - `gen_ai.client.operation.duration`
+   - `gen_ai.client.token.usage`
+   - `gen_ai.{package}.workflow.duration` for package-specific metrics
+
+5. **Operation names** use `gen_ai.operation.name` attribute with values:
+   - Standard: `chat`, `text_completion`, `embeddings`
+   - Extended: `workflow`, `task`, `execute_tool`, `agent`, `create_agent`
+
+### Reference Implementation
+
+See `opentelemetry-instrumentation-openai-v2` for the canonical example of proper semantic convention usage.
