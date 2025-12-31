@@ -9,6 +9,7 @@ OpenTelemetry aiohttp client Integration
 This library allows tracing HTTP requests made by the
 `aiohttp client <https://docs.aiohttp.org/en/stable/client.html>`_ library.
 
+
 Installation
 ------------
 
