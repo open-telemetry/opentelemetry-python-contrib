@@ -55,6 +55,11 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.vertexai.high_level_patch import (
+    LEGACY_CHAT_SESSION_METHODS,
+    TEXT_GENERATION_METHODS,
+    HighLevelMethodWrappers,
+)
 from opentelemetry.instrumentation.vertexai.package import _instruments
 from opentelemetry.instrumentation.vertexai.patch import MethodWrappers
 from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
@@ -98,6 +103,67 @@ def _methods_to_wrap(
             client_class.generate_content.__name__,  # type: ignore[reportUnknownMemberType]
             method_wrappers.agenerate_content,
         )
+
+
+def _high_level_methods_to_wrap(
+    high_level_wrappers: HighLevelMethodWrappers,
+):
+    """Yield high-level API methods to wrap (TextGenerationModel, legacy ChatSession)."""
+    # pylint: disable=import-outside-toplevel
+    import importlib  # noqa: PLC0415
+    import logging  # noqa: PLC0415
+
+    logger = logging.getLogger(__name__)
+
+    # Map method names to wrapper functions
+    wrapper_map = {
+        ("TextGenerationModel", "predict", False, False): high_level_wrappers.predict,
+        ("TextGenerationModel", "predict_async", True, False): high_level_wrappers.apredict,
+        ("TextGenerationModel", "predict_streaming", False, True): high_level_wrappers.predict_streaming,
+        ("TextGenerationModel", "predict_streaming_async", True, True): high_level_wrappers.apredict_streaming,
+        ("ChatSession", "send_message", False, False): high_level_wrappers.send_message,
+        ("ChatSession", "send_message_streaming", False, True): high_level_wrappers.send_message_streaming,
+    }
+
+    all_methods = TEXT_GENERATION_METHODS + LEGACY_CHAT_SESSION_METHODS
+
+    for method_info in all_methods:
+        package = method_info["package"]
+        obj_name = method_info["object"]
+        method_name = method_info["method"]
+        is_async = method_info["is_async"]
+        is_streaming = method_info.get("is_streaming", False)
+
+        try:
+            module = importlib.import_module(package)
+            obj_class = getattr(module, obj_name, None)
+            if obj_class is None:
+                logger.debug(
+                    "Could not find %s.%s for instrumentation",
+                    package,
+                    obj_name,
+                )
+                continue
+
+            wrapper_key = (obj_name, method_name, is_async, is_streaming)
+            wrapper = wrapper_map.get(wrapper_key)
+            if wrapper is None:
+                logger.debug(
+                    "No wrapper found for %s.%s",
+                    obj_name,
+                    method_name,
+                )
+                continue
+
+            yield (obj_class, method_name, wrapper)
+
+        except ImportError:
+            # Module not available, skip silently
+            logger.debug(
+                "Could not import %s for instrumentation",
+                package,
+            )
+            continue
 
 
 class VertexAIInstrumentor(BaseInstrumentor):
@@ -147,6 +213,12 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode,
                 completion_hook,
             )
+            high_level_wrappers = HighLevelMethodWrappers(
+                tracer,
+                logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
         elif sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
             # Type checker now knows it's the other literal
             method_wrappers = MethodWrappers(
@@ -156,8 +228,16 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode,
                 completion_hook,
             )
+            high_level_wrappers = HighLevelMethodWrappers(
+                tracer,
+                logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+            )
         else:
             raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
+
+        # Wrap low-level PredictionServiceClient methods
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):
@@ -167,6 +247,17 @@ class VertexAIInstrumentor(BaseInstrumentor):
                 wrapper=wrapper,
             )
             self._methods_to_unwrap.append((client_class, method_name))
+
+        # Wrap high-level TextGenerationModel and legacy ChatSession methods
+        for obj_class, method_name, wrapper in _high_level_methods_to_wrap(
+            high_level_wrappers
+        ):
+            wrap_function_wrapper(
+                obj_class,
+                name=method_name,
+                wrapper=wrapper,
+            )
+            self._methods_to_unwrap.append((obj_class, method_name))
 
     def _uninstrument(self, **kwargs: Any) -> None:
         for client_class, method_name in self._methods_to_unwrap:

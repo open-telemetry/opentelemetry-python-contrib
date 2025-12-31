@@ -1,0 +1,30 @@
+interactions:
+- request:
+    body: null
+    headers:
+      metadata-flavor:
+      - Google
+    method: GET
+    uri: http://169.254.169.254
+  response:
+    body:
+      string: |-
+        1.0
+        2007-01-19
+        2007-03-01
+        2007-08-29
+        2007-10-10
+        2007-12-15
+        2008-02-01
+        2008-09-01
+        2009-04-04
+        latest
+    headers:
+      content-length:
+      - '98'
+      content-type:
+      - text/plain; charset=UTF-8
+    status:
+      code: 200
+      message: OK
+version: 1
