@@ -614,10 +614,13 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
 
         response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
 
-        assert response["headers"].keys() == {
-            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME,
-            TRACE_HEADER_KEY
-        }
+        self.assertEqual(
+            response["headers"].keys(),
+            {
+                TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME,
+                TRACE_HEADER_KEY
+            }
+        )
 
 
     def test_api_gateway_http_api_proxy_event_sets_attributes(self):
