@@ -88,9 +88,9 @@ class TestAgentRunWrapper:
     def test_agent_run_wrapper(self, tracer_provider, span_exporter):
         """Test agent run wrapper creates correct span."""
         from opentelemetry.instrumentation.agno.patch import AgentRunWrapper
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = AgentRunWrapper(tracer)
 
         # Create mock agent instance
@@ -128,9 +128,9 @@ class TestTeamRunWrapper:
     def test_team_run_wrapper(self, tracer_provider, span_exporter):
         """Test team run wrapper creates correct span."""
         from opentelemetry.instrumentation.agno.patch import TeamRunWrapper
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = TeamRunWrapper(tracer)
 
         # Create mock team instance
@@ -165,9 +165,9 @@ class TestFunctionCallWrapper:
     def test_function_call_wrapper(self, tracer_provider, span_exporter):
         """Test function call wrapper creates correct span."""
         from opentelemetry.instrumentation.agno.patch import FunctionCallExecuteWrapper
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = FunctionCallExecuteWrapper(tracer)
 
         # Create mock function call instance

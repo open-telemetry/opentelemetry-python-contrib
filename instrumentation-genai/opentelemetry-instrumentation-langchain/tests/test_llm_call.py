@@ -1,10 +1,21 @@
 from typing import Optional
 
 import pytest
-from langchain_core.messages import HumanMessage, SystemMessage
+
+try:
+    from langchain_core.messages import HumanMessage, SystemMessage
+    HAS_LANGCHAIN = True
+except ImportError:
+    HAS_LANGCHAIN = False
+    HumanMessage = None  # type: ignore
+    SystemMessage = None  # type: ignore
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+
+pytestmark = pytest.mark.skipif(
+    not HAS_LANGCHAIN, reason="langchain not installed"
+)
 
 
 # span_exporter, start_instrumentation, chat_openai_gpt_3_5_turbo_model are coming from fixtures defined in conftest.py

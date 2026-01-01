@@ -3,14 +3,29 @@
 import json
 import os
 
-import boto3
 import pytest
 import yaml
-from langchain_aws import ChatBedrock
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
 
-from opentelemetry.instrumentation.langchain import LangChainInstrumentor
+try:
+    import boto3
+    from langchain_aws import ChatBedrock
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import ChatOpenAI
+    HAS_LANGCHAIN_DEPS = True
+except ImportError:
+    HAS_LANGCHAIN_DEPS = False
+    boto3 = None  # type: ignore
+    ChatBedrock = None  # type: ignore
+    ChatGoogleGenerativeAI = None  # type: ignore
+    ChatOpenAI = None  # type: ignore
+
+try:
+    from opentelemetry.instrumentation.langchain import LangChainInstrumentor
+    HAS_LANGCHAIN = True
+except ImportError:
+    HAS_LANGCHAIN = False
+    LangChainInstrumentor = None  # type: ignore
+
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -20,6 +35,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 
 @pytest.fixture(scope="function", name="chat_openai_gpt_3_5_turbo_model")
 def fixture_chat_openai_gpt_3_5_turbo_model():
+    if not HAS_LANGCHAIN_DEPS:
+        pytest.skip("langchain dependencies not installed")
     llm = ChatOpenAI(
         model="gpt-3.5-turbo",
         temperature=0.1,
@@ -35,6 +52,8 @@ def fixture_chat_openai_gpt_3_5_turbo_model():
 
 @pytest.fixture(scope="function", name="us_amazon_nova_lite_v1_0")
 def fixture_us_amazon_nova_lite_v1_0():
+    if not HAS_LANGCHAIN_DEPS:
+        pytest.skip("langchain dependencies not installed")
     llm_model_value = "us.amazon.nova-lite-v1:0"
     llm = ChatBedrock(
         model_id=llm_model_value,
@@ -54,6 +73,8 @@ def fixture_us_amazon_nova_lite_v1_0():
 
 @pytest.fixture(scope="function", name="gemini")
 def fixture_gemini():
+    if not HAS_LANGCHAIN_DEPS:
+        pytest.skip("langchain dependencies not installed")
     llm_model_value = "gemini-2.5-pro"
     llm = ChatGoogleGenerativeAI(model=llm_model_value, api_key="test_key")
     yield llm
@@ -76,6 +97,8 @@ def fixture_tracer_provider(span_exporter):
 def start_instrumentation(
     tracer_provider,
 ):
+    if not HAS_LANGCHAIN:
+        pytest.skip("langchain not installed")
     instrumentor = LangChainInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,

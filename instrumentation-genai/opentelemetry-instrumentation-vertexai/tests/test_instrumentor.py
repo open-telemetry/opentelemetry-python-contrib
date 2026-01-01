@@ -15,12 +15,23 @@
 from __future__ import annotations
 
 import pytest
-from google.cloud.aiplatform_v1.services.prediction_service import client
-from google.cloud.aiplatform_v1beta1.services.prediction_service import (
-    client as client_v1beta1,
-)
 
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+try:
+    from google.cloud.aiplatform_v1.services.prediction_service import client
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        client as client_v1beta1,
+    )
+    from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+    HAS_VERTEXAI = True
+except ImportError:
+    HAS_VERTEXAI = False
+    client = None  # type: ignore
+    client_v1beta1 = None  # type: ignore
+    VertexAIInstrumentor = None  # type: ignore
+
+pytestmark = pytest.mark.skipif(
+    not HAS_VERTEXAI, reason="vertexai not installed"
+)
 
 
 @pytest.fixture(

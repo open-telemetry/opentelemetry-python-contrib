@@ -15,29 +15,60 @@ from typing import (
 )
 
 import pytest
-import vertexai
 import yaml
-from google.auth.aio.credentials import (
-    AnonymousCredentials as AsyncAnonymousCredentials,
-)
-from google.auth.credentials import AnonymousCredentials
-from google.cloud.aiplatform.initializer import _set_async_rest_credentials
 from typing_extensions import Concatenate, ParamSpec
-from vcr import VCR
-from vcr.record_mode import RecordMode
-from vcr.request import Request
-from vertexai.generative_models import (
-    GenerativeModel,
-)
 
-from opentelemetry.instrumentation._semconv import (
-    OTEL_SEMCONV_STABILITY_OPT_IN,
-    _OpenTelemetrySemanticConventionStability,
-)
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.instrumentation.vertexai.utils import (
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
-)
+try:
+    import vertexai
+    from google.auth.aio.credentials import (
+        AnonymousCredentials as AsyncAnonymousCredentials,
+    )
+    from google.auth.credentials import AnonymousCredentials
+    from google.cloud.aiplatform.initializer import _set_async_rest_credentials
+    from vcr import VCR
+    from vcr.record_mode import RecordMode
+    from vcr.request import Request
+    from vertexai.generative_models import (
+        GenerativeModel,
+    )
+    from opentelemetry.instrumentation._semconv import (
+        OTEL_SEMCONV_STABILITY_OPT_IN,
+        _OpenTelemetrySemanticConventionStability,
+    )
+    from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+    from opentelemetry.instrumentation.vertexai.utils import (
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    )
+    HAS_VERTEXAI = True
+except ImportError:
+    HAS_VERTEXAI = False
+    vertexai = None  # type: ignore
+    VCR = None  # type: ignore
+    RecordMode = None  # type: ignore
+    Request = None  # type: ignore
+    GenerativeModel = None  # type: ignore
+    AnonymousCredentials = None  # type: ignore
+    AsyncAnonymousCredentials = None  # type: ignore
+    _set_async_rest_credentials = None  # type: ignore
+    OTEL_SEMCONV_STABILITY_OPT_IN = None  # type: ignore
+    _OpenTelemetrySemanticConventionStability = None  # type: ignore
+    VertexAIInstrumentor = None  # type: ignore
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = None  # type: ignore
+
+# Skip all tests in this directory if vertexai is not installed
+collect_ignore = []
+if not HAS_VERTEXAI:
+    collect_ignore = [
+        "test_chat_completions.py",
+        "test_chat_completions_experimental.py",
+        "test_function_calling.py",
+        "test_function_calling_experimental.py",
+        "test_instrumentor.py",
+        "test_text_generation.py",
+        "test_utils.py",
+        "shared_test_utils.py",
+    ]
+
 from opentelemetry.sdk._logs import LoggerProvider
 
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
@@ -110,7 +141,9 @@ def fixture_meter_provider(metric_reader):
 
 
 @pytest.fixture(autouse=True)
-def vertexai_init(vcr: VCR) -> None:
+def vertexai_init(vcr) -> None:
+    if not HAS_VERTEXAI:
+        pytest.skip("vertexai not installed")
     # When not recording (in CI), don't do any auth. That prevents trying to read application
     # default credentials from the filesystem or metadata server and oauth token exchange. This
     # is not the interesting part of our instrumentation to test.
@@ -361,47 +394,48 @@ _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
 
-def _copy_signature(
-    func_type: Callable[_P, _R],
-) -> Callable[
-    [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
-]:
-    return lambda func: func
+if HAS_VERTEXAI:
+    def _copy_signature(
+        func_type: Callable[_P, _R],
+    ) -> Callable[
+        [Callable[..., Any]], Callable[Concatenate[GenerativeModel, _P], _R]
+    ]:
+        return lambda func: func
 
 
-# Type annotation for fixture to make LSP work properly
-class GenerateContentFixture(Protocol):
-    @_copy_signature(GenerativeModel.generate_content)
-    def __call__(self): ...
+    # Type annotation for fixture to make LSP work properly
+    class GenerateContentFixture(Protocol):
+        @_copy_signature(GenerativeModel.generate_content)
+        def __call__(self): ...
 
 
-@pytest.fixture(
-    name="generate_content",
-    params=(
-        pytest.param(False, id="sync"),
-        pytest.param(True, id="async"),
-    ),
-)
-def fixture_generate_content(
-    request: pytest.FixtureRequest,
-    vcr: VCR,
-) -> Generator[GenerateContentFixture, None, None]:
-    """This fixture parameterizes tests that use it to test calling both
-    GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
-    """
-    is_async: bool = request.param
+    @pytest.fixture(
+        name="generate_content",
+        params=(
+            pytest.param(False, id="sync"),
+            pytest.param(True, id="async"),
+        ),
+    )
+    def fixture_generate_content(
+        request: pytest.FixtureRequest,
+        vcr: VCR,
+    ) -> Generator[GenerateContentFixture, None, None]:
+        """This fixture parameterizes tests that use it to test calling both
+        GenerativeModel.generate_content() and GenerativeModel.generate_content_async().
+        """
+        is_async: bool = request.param
 
-    if is_async:
-        # See
-        # https://github.com/googleapis/python-aiplatform/blob/cb0e5fedbf45cb0531c0b8611fb7fabdd1f57e56/google/cloud/aiplatform/initializer.py#L717-L729
-        _set_async_rest_credentials(credentials=AsyncAnonymousCredentials())
-
-    def wrapper(model: GenerativeModel, *args, **kwargs) -> None:
         if is_async:
-            return asyncio.run(model.generate_content_async(*args, **kwargs))
-        return model.generate_content(*args, **kwargs)
+            # See
+            # https://github.com/googleapis/python-aiplatform/blob/cb0e5fedbf45cb0531c0b8611fb7fabdd1f57e56/google/cloud/aiplatform/initializer.py#L717-L729
+            _set_async_rest_credentials(credentials=AsyncAnonymousCredentials())
 
-    with vcr.use_cassette(
-        request.node.originalname, allow_playback_repeats=True
-    ):
-        yield wrapper
+        def wrapper(model: GenerativeModel, *args, **kwargs) -> None:
+            if is_async:
+                return asyncio.run(model.generate_content_async(*args, **kwargs))
+            return model.generate_content(*args, **kwargs)
+
+        with vcr.use_cassette(
+            request.node.originalname, allow_playback_repeats=True
+        ):
+            yield wrapper

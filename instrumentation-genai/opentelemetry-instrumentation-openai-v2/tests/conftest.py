@@ -231,12 +231,6 @@ class PrettyPrintJSONBody:
         return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def fixture_vcr(vcr):
-    vcr.register_serializer("yaml", PrettyPrintJSONBody)
-    return vcr
-
-
 def scrub_response_headers(response):
     """
     This scrubs sensitive response headers. Note they are case-sensitive!

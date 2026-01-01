@@ -17,7 +17,13 @@
 from typing import TypedDict
 
 import pytest
-from langgraph.graph import END, START, StateGraph
+
+try:
+    from langgraph.graph import END, START, StateGraph
+    HAS_LANGGRAPH = True
+except ImportError:
+    HAS_LANGGRAPH = False
+    StateGraph = None  # type: ignore
 
 from opentelemetry.instrumentation.langgraph.patch import (
     LANGGRAPH_GRAPH_NAME,
@@ -25,6 +31,10 @@ from opentelemetry.instrumentation.langgraph.patch import (
     LANGGRAPH_STREAM_MODE,
 )
 from opentelemetry.trace import StatusCode
+
+pytestmark = pytest.mark.skipif(
+    not HAS_LANGGRAPH, reason="langgraph not installed"
+)
 
 
 class SimpleState(TypedDict):

@@ -116,9 +116,9 @@ class TestPipelineWrapper:
     def test_wrap_pipeline(self, tracer_provider, span_exporter):
         """Test pipeline wrapper creates correct span."""
         from opentelemetry.instrumentation.haystack.patch import wrap_pipeline
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
 
         # Create the wrapper
         to_wrap = {"package": "haystack.core.pipeline.pipeline", "object": "Pipeline"}
@@ -150,9 +150,9 @@ class TestOpenAIGeneratorWrapper:
     def test_wrap_openai_chat_generator(self, tracer_provider, span_exporter):
         """Test OpenAI chat generator wrapper creates correct span."""
         from opentelemetry.instrumentation.haystack.patch import wrap_openai_generator
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
 
         # Create the wrapper
         to_wrap = {
@@ -188,9 +188,9 @@ class TestOpenAIGeneratorWrapper:
     def test_wrap_openai_completion_generator(self, tracer_provider, span_exporter):
         """Test OpenAI completion generator wrapper creates correct span."""
         from opentelemetry.instrumentation.haystack.patch import wrap_openai_generator
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
 
         # Create the wrapper
         to_wrap = {

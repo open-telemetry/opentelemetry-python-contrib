@@ -113,9 +113,9 @@ class TestPatchFunctions:
         from opentelemetry.instrumentation.crewai.patch import (
             create_kickoff_wrapper,
         )
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = create_kickoff_wrapper(tracer)
 
         # Create mock crew instance
@@ -146,9 +146,9 @@ class TestPatchFunctions:
         from opentelemetry.instrumentation.crewai.patch import (
             create_agent_execute_task_wrapper,
         )
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = create_agent_execute_task_wrapper(tracer)
 
         # Create mock agent instance
@@ -184,9 +184,9 @@ class TestPatchFunctions:
         from opentelemetry.instrumentation.crewai.patch import (
             create_task_execute_wrapper,
         )
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = create_task_execute_wrapper(tracer)
 
         # Create mock task instance
@@ -219,9 +219,9 @@ class TestPatchFunctions:
         from opentelemetry.instrumentation.crewai.patch import (
             create_llm_call_wrapper,
         )
-        from opentelemetry.trace import get_tracer
 
-        tracer = get_tracer(__name__)
+        # Use tracer_provider directly to avoid global provider caching issues
+        tracer = tracer_provider.get_tracer(__name__)
         wrapper = create_llm_call_wrapper(tracer)
 
         # Create mock LLM instance

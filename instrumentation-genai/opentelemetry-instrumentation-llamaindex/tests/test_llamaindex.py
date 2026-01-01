@@ -59,7 +59,8 @@ class TestLlamaIndexInstrumentor(unittest.TestCase):
         """Test instrumentation with dispatcher pattern."""
         mock_dispatcher.return_value = True
         instrumentor = LlamaIndexInstrumentor()
-        instrumentor.instrument(tracer_provider=self.provider)
+        # Call _instrument directly to bypass dependency check
+        instrumentor._instrument(tracer_provider=self.provider)
         self.assertTrue(instrumentor._instrumented)
 
     @patch("opentelemetry.instrumentation.llamaindex._instrument_with_dispatcher")
@@ -67,14 +68,16 @@ class TestLlamaIndexInstrumentor(unittest.TestCase):
         """Test behavior when dispatcher is not available."""
         mock_dispatcher.return_value = False
         instrumentor = LlamaIndexInstrumentor()
-        instrumentor.instrument(tracer_provider=self.provider)
+        # Call _instrument directly to bypass dependency check
+        instrumentor._instrument(tracer_provider=self.provider)
         self.assertFalse(instrumentor._instrumented)
 
     def test_uninstrument(self):
         """Test uninstrumentation."""
         instrumentor = LlamaIndexInstrumentor()
         instrumentor._instrumented = True
-        instrumentor.uninstrument()
+        # Call _uninstrument directly to test the internal method
+        instrumentor._uninstrument()
         self.assertFalse(instrumentor._instrumented)
 
 

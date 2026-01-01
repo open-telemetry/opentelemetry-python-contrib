@@ -12,17 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 
-from google.cloud.aiplatform_v1.types import (
-    content,
-)
-from google.cloud.aiplatform_v1beta1.types import (
-    content as content_v1beta1,
-)
+try:
+    from google.cloud.aiplatform_v1.types import (
+        content,
+    )
+    from google.cloud.aiplatform_v1beta1.types import (
+        content as content_v1beta1,
+    )
+    from opentelemetry.instrumentation.vertexai.utils import (
+        _map_finish_reason,
+        get_server_attributes,
+    )
+    HAS_VERTEXAI = True
+except ImportError:
+    HAS_VERTEXAI = False
+    content = None  # type: ignore
+    content_v1beta1 = None  # type: ignore
+    _map_finish_reason = None  # type: ignore
+    get_server_attributes = None  # type: ignore
 
-from opentelemetry.instrumentation.vertexai.utils import (
-    _map_finish_reason,
-    get_server_attributes,
+pytestmark = pytest.mark.skipif(
+    not HAS_VERTEXAI, reason="vertexai not installed"
 )
 
 

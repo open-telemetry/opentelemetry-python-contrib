@@ -110,3 +110,46 @@ def safe_json_serialize(obj: Any) -> str:
         return json.dumps(obj, cls=LlamaIndexJSONEncoder, default=str)
     except (TypeError, ValueError):
         return str(obj)
+
+
+def safe_json_dumps(obj: Any) -> str | None:
+    """Safely serialize an object to JSON string, returns None for None input.
+
+    Args:
+        obj: The object to serialize.
+
+    Returns:
+        JSON string representation, None if input is None, or str(obj) if serialization fails.
+    """
+    if obj is None:
+        return None
+    try:
+        return json.dumps(obj, cls=LlamaIndexJSONEncoder, default=str)
+    except (TypeError, ValueError):
+        return str(obj)
+
+
+def get_operation_name(span_kind: str) -> str:
+    """Get the GenAI operation name from a span kind.
+
+    Args:
+        span_kind: The LlamaIndex span kind.
+
+    Returns:
+        The corresponding GenAI operation name.
+    """
+    # Map LlamaIndex span kinds to GenAI operation names
+    operation_map = {
+        "retrieve": "task",
+        "synthesize": "task",
+        "get_query_embedding": "embeddings",
+        "get_text_embedding": "embeddings",
+        "get_text_embedding_batch": "embeddings",
+        "chat": "agent",
+        "stream_chat": "agent",
+        "complete": "chat",
+        "stream_complete": "chat",
+        "run": "workflow",
+        "query": "task",
+    }
+    return operation_map.get(span_kind, "task")

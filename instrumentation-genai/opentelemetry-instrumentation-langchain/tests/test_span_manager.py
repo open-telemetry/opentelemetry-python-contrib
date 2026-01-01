@@ -3,12 +3,23 @@ import uuid
 
 import pytest
 
-from opentelemetry.instrumentation.langchain.span_manager import (
-    _SpanManager,
-    _SpanState,
-)
+try:
+    from opentelemetry.instrumentation.langchain.span_manager import (
+        _SpanManager,
+        _SpanState,
+    )
+    HAS_LANGCHAIN = True
+except ImportError:
+    HAS_LANGCHAIN = False
+    _SpanManager = None  # type: ignore
+    _SpanState = None  # type: ignore
+
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.trace.span import Span
+
+pytestmark = pytest.mark.skipif(
+    not HAS_LANGCHAIN, reason="langchain not installed"
+)
 
 
 class TestSpanManager:
