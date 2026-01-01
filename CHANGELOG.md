@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
+- `opentelemetry-instrumentation-aws-lambda` Inject trace headers in AWS Lambda responses ([#4075](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4075))
 
 ### Added
 
