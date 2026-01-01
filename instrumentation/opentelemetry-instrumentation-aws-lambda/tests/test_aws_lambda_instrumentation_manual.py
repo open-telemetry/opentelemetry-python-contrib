@@ -30,9 +30,9 @@ from opentelemetry.instrumentation.aws_lambda import (
 )
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
+    TRACE_HEADER_KEY,
     TRACE_ID_FIRST_PART_LENGTH,
     TRACE_ID_VERSION,
-    TRACE_HEADER_KEY,
 )
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_ACCOUNT_ID,
@@ -618,10 +618,9 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
             response["headers"].keys(),
             {
                 TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME,
-                TRACE_HEADER_KEY
-            }
+                TRACE_HEADER_KEY,
+            },
         )
-
 
     def test_api_gateway_http_api_proxy_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()
