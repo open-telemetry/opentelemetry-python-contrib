@@ -21,6 +21,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
+pytest.importorskip("together", reason="together not installed")
+
 
 @pytest.fixture
 def mock_together_response():

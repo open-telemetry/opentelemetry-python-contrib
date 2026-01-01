@@ -21,6 +21,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
+pytest.importorskip("cohere", reason="cohere not installed")
+
 
 @pytest.fixture
 def mock_cohere_response():

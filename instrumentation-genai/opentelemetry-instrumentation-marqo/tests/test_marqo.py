@@ -17,6 +17,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
+pytest.importorskip("marqo", reason="marqo not installed")
+
 
 @pytest.fixture
 def mock_marqo_client():

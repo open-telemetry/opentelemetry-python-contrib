@@ -17,15 +17,15 @@
 import os
 
 import pytest
-from opentelemetry import trace
-from opentelemetry.instrumentation.weaviate import WeaviateInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 
-pytest_plugins = []
+# Skip all tests if weaviate is not installed
+try:
+    import weaviate  # noqa: F401
+
+    WEAVIATE_AVAILABLE = True
+except ImportError:
+    WEAVIATE_AVAILABLE = False
+    collect_ignore_glob = ["test_*.py"]
 
 
 def pytest_addoption(parser):
@@ -45,35 +45,43 @@ def pytest_runtest_setup(item):
         pytest.skip("need --with_grpc option to run this test")
 
 
-@pytest.fixture(scope="session")
-def exporter():
-    exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
-
-    provider = TracerProvider()
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
-
-    WeaviateInstrumentor().instrument()
-
-    return exporter
-
-
-@pytest.fixture(autouse=True)
-def clear_exporter(exporter):
-    exporter.clear()
-
-
-@pytest.fixture(autouse=True)
-def environment():
-    os.environ.setdefault("WEAVIATE_API_KEY", "test-api-key")
-    os.environ.setdefault(
-        "WEAVIATE_CLUSTER_URL", "https://test-cluster.weaviate.network"
+if WEAVIATE_AVAILABLE:
+    from opentelemetry import trace
+    from opentelemetry.instrumentation.weaviate import WeaviateInstrumentor
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+        InMemorySpanExporter,
     )
 
+    pytest_plugins = []
 
-@pytest.fixture(scope="module")
-def vcr_config():
-    return {
-        "filter_headers": ["authorization", "x-openai-api-key"],
-    }
+    @pytest.fixture(scope="session")
+    def exporter():
+        exporter = InMemorySpanExporter()
+        processor = SimpleSpanProcessor(exporter)
+
+        provider = TracerProvider()
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+
+        WeaviateInstrumentor().instrument()
+
+        return exporter
+
+    @pytest.fixture(autouse=True)
+    def clear_exporter(exporter):
+        exporter.clear()
+
+    @pytest.fixture(autouse=True)
+    def environment():
+        os.environ.setdefault("WEAVIATE_API_KEY", "test-api-key")
+        os.environ.setdefault(
+            "WEAVIATE_CLUSTER_URL", "https://test-cluster.weaviate.network"
+        )
+
+    @pytest.fixture(scope="module")
+    def vcr_config():
+        return {
+            "filter_headers": ["authorization", "x-openai-api-key"],
+        }

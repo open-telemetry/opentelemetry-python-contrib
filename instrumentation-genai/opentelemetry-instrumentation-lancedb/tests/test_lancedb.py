@@ -16,8 +16,11 @@
 
 import tempfile
 
-import lancedb
 import pytest
+
+pytest.importorskip("lancedb", reason="lancedb not installed")
+
+import lancedb
 from opentelemetry.instrumentation.lancedb.semconv import LanceDBAttributes
 from opentelemetry.trace import SpanKind
 

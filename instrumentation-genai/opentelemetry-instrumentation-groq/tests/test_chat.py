@@ -17,6 +17,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Skip all tests if groq is not installed
+pytest.importorskip("groq", reason="groq not installed")
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )

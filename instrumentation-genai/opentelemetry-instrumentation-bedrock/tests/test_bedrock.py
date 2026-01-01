@@ -23,6 +23,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
+pytest.importorskip("boto3", reason="boto3 not installed")
+
 
 @pytest.fixture
 def mock_invoke_model_response():

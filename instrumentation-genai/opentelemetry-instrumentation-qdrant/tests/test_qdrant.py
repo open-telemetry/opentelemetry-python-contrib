@@ -15,6 +15,9 @@
 """Tests for Qdrant instrumentation."""
 
 import pytest
+
+pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
+
 from opentelemetry.instrumentation.qdrant.semconv import QdrantAttributes
 from opentelemetry.trace import SpanKind
 from qdrant_client import QdrantClient, models

@@ -22,6 +22,8 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
+pytest.importorskip("replicate", reason="replicate not installed")
+
 
 @pytest.fixture
 def mock_replicate_client():

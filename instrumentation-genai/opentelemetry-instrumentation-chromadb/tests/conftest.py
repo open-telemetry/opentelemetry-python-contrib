@@ -15,31 +15,41 @@
 """Unit tests configuration module."""
 
 import pytest
-from opentelemetry import trace
-from opentelemetry.instrumentation.chromadb import ChromaInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 
-pytest_plugins = []
+# Skip all tests if chromadb is not installed
+try:
+    import chromadb  # noqa: F401
 
-
-@pytest.fixture(scope="session")
-def exporter():
-    exporter = InMemorySpanExporter()
-    processor = SimpleSpanProcessor(exporter)
-
-    provider = TracerProvider()
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
-
-    ChromaInstrumentor().instrument()
-
-    return exporter
+    CHROMADB_AVAILABLE = True
+except ImportError:
+    CHROMADB_AVAILABLE = False
+    collect_ignore_glob = ["test_*.py"]
 
 
-@pytest.fixture(autouse=True)
-def clear_exporter(exporter):
-    exporter.clear()
+if CHROMADB_AVAILABLE:
+    from opentelemetry import trace
+    from opentelemetry.instrumentation.chromadb import ChromaInstrumentor
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+        InMemorySpanExporter,
+    )
+
+    pytest_plugins = []
+
+    @pytest.fixture(scope="session")
+    def exporter():
+        exporter = InMemorySpanExporter()
+        processor = SimpleSpanProcessor(exporter)
+
+        provider = TracerProvider()
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+
+        ChromaInstrumentor().instrument()
+
+        return exporter
+
+    @pytest.fixture(autouse=True)
+    def clear_exporter(exporter):
+        exporter.clear()

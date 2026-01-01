@@ -17,8 +17,11 @@
 import json
 import tempfile
 
-import chromadb
 import pytest
+
+pytest.importorskip("chromadb", reason="chromadb not installed")
+
+import chromadb
 from opentelemetry.instrumentation.chromadb.semconv import (
     ChromaDBAttributes,
     EventAttributes,

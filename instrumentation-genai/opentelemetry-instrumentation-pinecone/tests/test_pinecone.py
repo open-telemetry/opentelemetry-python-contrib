@@ -18,6 +18,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("pinecone", reason="pinecone not installed")
+
 
 @pytest.fixture
 def mock_pinecone_client():

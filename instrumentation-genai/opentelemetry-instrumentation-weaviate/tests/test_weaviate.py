@@ -19,6 +19,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("weaviate", reason="weaviate not installed")
+
 
 ARTICLE_SCHEMA = {
     "class": "Article",

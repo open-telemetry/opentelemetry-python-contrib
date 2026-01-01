@@ -19,8 +19,11 @@ import random
 import sys
 import tempfile
 
-import pymilvus
 import pytest
+
+pytest.importorskip("pymilvus", reason="pymilvus not installed")
+
+import pymilvus
 
 # Skip all tests on non-Linux platforms as milvus-lite is only available on Linux
 pytestmark = pytest.mark.skipif(
