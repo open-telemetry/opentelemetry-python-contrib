@@ -383,6 +383,9 @@ def _instrument(
                             HTTP_STATUS_CODE,
                             result.get("statusCode"),
                         )
+                        get_global_textmap().inject(
+                            result.setdefault("headers", {}),
+                        )
         finally:
             if token:
                 context_api.detach(token)
