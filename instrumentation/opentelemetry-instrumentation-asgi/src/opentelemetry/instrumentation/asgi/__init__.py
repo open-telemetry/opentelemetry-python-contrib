@@ -258,6 +258,10 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_SERVER_NAME,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
@@ -270,7 +274,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -397,9 +400,7 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-                http_host_value_list
-            )
+            result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
         user_agent_raw = http_user_agent[0]
@@ -825,7 +826,7 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.DEFAULT
                 )
                 if target:
-                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                    duration_attrs_old[HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
