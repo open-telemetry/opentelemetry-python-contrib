@@ -35,7 +35,6 @@ from .utils import MockSocket, _str
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
-   
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,

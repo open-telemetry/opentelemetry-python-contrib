@@ -182,10 +182,8 @@ def _get_address_attributes(instance):
 
 class PymemcacheInstrumentor(BaseInstrumentor):
     """An instrumentor for pymemcache See `BaseInstrumentor`"""
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
-
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
@@ -201,7 +199,6 @@ class PymemcacheInstrumentor(BaseInstrumentor):
                 f"Client.{cmd}",
                 _wrap_cmd(tracer, cmd),
             )
-
     def _uninstrument(self, **kwargs):
         for command in COMMANDS:
             unwrap(pymemcache.client.base.Client, f"{command}")
