@@ -29,8 +29,11 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.pyramid.version import __version__
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.semconv.metrics import MetricInstruments
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import get_excluded_urls
 
@@ -107,9 +110,7 @@ def _before_traversal(event):
     if span.is_recording():
         attributes = otel_wsgi.collect_request_attributes(request_environ)
         if request.matched_route:
-            attributes[SpanAttributes.HTTP_ROUTE] = (
-                request.matched_route.pattern
-            )
+            attributes[HTTP_ROUTE] = request.matched_route.pattern
         for key, value in attributes.items():
             span.set_attribute(key, value)
         if span.kind == trace.SpanKind.SERVER:
@@ -206,7 +207,7 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[SpanAttributes.HTTP_STATUS_CODE] = (
+                duration_attrs[HTTP_STATUS_CODE] = (
                     otel_wsgi._parse_status_code(status)
                 )
             duration_histogram.record(duration, duration_attrs)
