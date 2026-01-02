@@ -47,11 +47,17 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
-
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 logger = logging.getLogger(__name__)
-
+NET_TRANSPORT = "network.transport"
 
 COMMANDS = [
     "set",
@@ -115,7 +121,7 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
                     vals = _get_query_string(args[0])
 
                 query = f"{cmd}{' ' if vals else ''}{vals}"
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
 
                 _set_connection_attributes(span, instance)
         except Exception as ex:  # pylint: disable=broad-except
@@ -153,22 +159,22 @@ def _get_query_string(arg):
 def _get_address_attributes(instance):
     """Attempt to get host and port from Client instance."""
     address_attributes = {}
-    address_attributes[SpanAttributes.DB_SYSTEM] = "memcached"
+    address_attributes[DB_SYSTEM] = "memcached"
 
     # client.base.Client contains server attribute which is either a host/port tuple, or unix socket path string
     # https://github.com/pinterest/pymemcache/blob/f02ddf73a28c09256589b8afbb3ee50f1171cac7/pymemcache/client/base.py#L228
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
-            address_attributes[SpanAttributes.NET_PEER_NAME] = host
-            address_attributes[SpanAttributes.NET_PEER_PORT] = port
-            address_attributes[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.IP_TCP.value
+            address_attributes[NET_PEER_NAME] = host
+            address_attributes[NET_PEER_PORT] = port
+            address_attributes[NET_TRANSPORT] = (
+                "tcp"
             )
         elif isinstance(instance.server, str):
-            address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
-            address_attributes[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.OTHER.value
+            address_attributes[NET_PEER_NAME] = instance.server
+            address_attributes[NET_TRANSPORT] = (
+                "other"
             )
 
     return address_attributes
