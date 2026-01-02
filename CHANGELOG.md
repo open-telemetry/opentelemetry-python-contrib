@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4068))
 - `opentelemetry-instrumentation-mysqlclient`: Replace SpanAttributes with semconv constants
   ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
+- `opentelemetry-instrumentation-pymongo`: Replace SpanAttributes with semconv constants
+  ([#4077](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4077))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
