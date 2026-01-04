@@ -28,14 +28,14 @@ RUN pip install \
 COPY . /otel-contrib
 
 # Install local instrumentation packages (they will use already-installed dependencies)
-# OpenAI instrumentation
-RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/opentelemetry-instrumentation-openai-v2
+# OpenAI instrumentation (llm-clients)
+RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/llm-clients/opentelemetry-instrumentation-openai-v2
 
-# LangChain instrumentation
-RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/opentelemetry-instrumentation-langchain
+# # LangChain instrumentation (frameworks)
+# RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/frameworks/opentelemetry-instrumentation-langchain
 
-# LangGraph instrumentation
-RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/opentelemetry-instrumentation-langgraph
+# LangGraph instrumentation (frameworks)
+RUN pip install --no-deps -e /otel-contrib/instrumentation-genai/frameworks/opentelemetry-instrumentation-langgraph
 
 # Set working directory to app
 WORKDIR /app

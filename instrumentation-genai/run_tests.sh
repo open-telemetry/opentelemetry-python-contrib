@@ -71,11 +71,35 @@ run_tox_test() {
     fi
 }
 
+find_package_dir() {
+    local package=$1
+    local package_name="opentelemetry-instrumentation-${package}"
+
+    # Search in category subdirectories
+    for category in llm-clients frameworks vector-dbs protocols; do
+        local dir="$SCRIPT_DIR/$category/$package_name"
+        if [ -d "$dir" ]; then
+            echo "$dir"
+            return 0
+        fi
+    done
+
+    # Fallback: direct subdirectory (old structure)
+    local dir="$SCRIPT_DIR/$package_name"
+    if [ -d "$dir" ]; then
+        echo "$dir"
+        return 0
+    fi
+
+    return 1
+}
+
 run_standalone_test() {
     local package=$1
-    local package_dir="$SCRIPT_DIR/opentelemetry-instrumentation-${package}"
+    local package_dir
+    package_dir=$(find_package_dir "$package")
 
-    if [ ! -d "$package_dir" ]; then
+    if [ -z "$package_dir" ] || [ ! -d "$package_dir" ]; then
         log_skip "$package (directory not found)"
         SKIPPED_LIST="${SKIPPED_LIST}${package} (not found)\n"
         SKIPPED=$((SKIPPED + 1))

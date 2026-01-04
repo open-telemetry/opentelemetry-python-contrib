@@ -16,14 +16,17 @@ services:
       context: ../..
       dockerfile: examples/tracing-langchain-openai/Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5000" 
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OPENAI_MODEL=gpt-5-nano
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=langchain-openai-demo
-      - OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
       - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
+      # Per-package capture mode configuration
+      - OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MODE=metadata
+      - OTEL_INSTRUMENTATION_LANGGRAPH_CAPTURE_MODE=all
     depends_on:
       jaeger:
         condition: service_started

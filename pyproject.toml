@@ -143,7 +143,10 @@ opentelemetry-instrumentation-openai-v2 = { workspace = true }
 [tool.uv.workspace]
 members = [
   "instrumentation/*",
-  "instrumentation-genai/*",
+  "instrumentation-genai/llm-clients/*",
+  "instrumentation-genai/frameworks/*",
+  "instrumentation-genai/vector-dbs/*",
+  "instrumentation-genai/protocols/*",
   "exporter/*",
   "opentelemetry-instrumentation",
   "propagator/*",

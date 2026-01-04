@@ -1,136 +1,78 @@
 """
-OpenTelemetry Tracing Demo with LangChain, LangGraph, and OpenAI
+OpenTelemetry Tracing Demo with LangChain Reflexion Pattern
 
-This example demonstrates how OpenTelemetry auto-instrumentation traces:
-- Flask HTTP requests (creates root span for unified traces)
-- LangChain operations (LLM calls, chains, tools)
-- LangGraph workflow executions
-- OpenAI API calls (chat completions)
+This example demonstrates OpenTelemetry instrumentation for the Reflexion
+pattern - an architecture where an agent reflects on its responses, critiques
+them, and iteratively improves with additional research.
 
-The application uses Flask to provide a unified trace context:
-1. GET /demo - Runs the full demo with agent and workflow
-2. GET /agent - Runs just the ReAct agent with tools
-3. All operations are automatically traced under the Flask request span
+The Reflexion pattern (Shinn et al.) enables:
+1. Initial answer generation with self-reflection
+2. Self-critique to identify gaps and improvements
+3. Research via search queries to gather more information
+4. Iterative revision with citations
 
-All operations are automatically traced and can be viewed in Jaeger.
-This is a ZERO-CODE instrumentation example - no OpenTelemetry imports needed!
+All operations are traced and can be viewed in Jaeger.
 """
 
+# Explicitly instrument LangGraph BEFORE importing it
+# This ensures all hooks are in place before module loading
+from opentelemetry.instrumentation.langgraph import LangGraphInstrumentor
+LangGraphInstrumentor().instrument()
+
+import datetime
+import json
 import os
-import random
 from typing import Annotated
 
 from flask import Flask, jsonify
-from langchain_core.messages import HumanMessage
-from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.output_parsers.openai_tools import PydanticToolsParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-
-# Import create_react_agent - try new location first (LangGraph 1.0+), fall back to old
-try:
-    from langchain.agents import create_agent as create_react_agent
-except ImportError:
-    from langgraph.prebuilt import create_react_agent
+from pydantic import BaseModel, Field, ValidationError
 from typing_extensions import TypedDict
 
 app = Flask(__name__)
 
 
 # ============================================================================
-# Custom Tools
+# Reflexion Pattern Models
 # ============================================================================
 
 
-@tool
-def get_weather(city: str) -> str:
-    """Get the current weather for a city.
+class Reflection(BaseModel):
+    """Self-critique of an answer."""
 
-    Args:
-        city: The name of the city to get weather for.
-
-    Returns:
-        A string describing the current weather conditions.
-    """
-    # Mock weather data
-    weather_conditions = [
-        ("sunny", 72, 45),
-        ("cloudy", 65, 60),
-        ("rainy", 58, 85),
-        ("partly cloudy", 68, 55),
-        ("windy", 62, 40),
-    ]
-    condition, temp, humidity = random.choice(weather_conditions)
-    return f"The weather in {city} is {condition} with a temperature of {temp}F and {humidity}% humidity."
+    missing: str = Field(description="Critique of what is missing from the answer.")
+    superfluous: str = Field(description="Critique of what is superfluous in the answer.")
 
 
-@tool
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression.
+class AnswerQuestion(BaseModel):
+    """Answer the question with self-reflection and search queries for improvement."""
 
-    Args:
-        expression: A mathematical expression to evaluate (e.g., "2 + 2", "10 * 5").
-
-    Returns:
-        The result of the calculation as a string.
-    """
-    try:
-        # Only allow safe mathematical operations
-        allowed_chars = set("0123456789+-*/(). ")
-        if not all(c in allowed_chars for c in expression):
-            return "Error: Invalid characters in expression. Only numbers and +-*/() are allowed."
-
-        result = eval(expression)  # Safe because we validated input
-        return f"The result of {expression} is {result}"
-    except Exception as e:
-        return f"Error calculating '{expression}': {str(e)}"
+    answer: str = Field(description="~250 word detailed answer to the question.")
+    reflection: Reflection = Field(description="Your reflection on the initial answer.")
+    search_queries: list[str] = Field(
+        description="1-3 search queries for researching improvements to address the critique."
+    )
 
 
-@tool
-def search_knowledge_base(query: str) -> str:
-    """Search the knowledge base for information.
+class ReviseAnswer(AnswerQuestion):
+    """Revise your original answer with citations from research."""
 
-    Args:
-        query: The search query to look up.
-
-    Returns:
-        Information found in the knowledge base.
-    """
-    # Mock knowledge base
-    knowledge = {
-        "python": "Python is a high-level, interpreted programming language known for its simplicity and readability. It was created by Guido van Rossum and first released in 1991.",
-        "opentelemetry": "OpenTelemetry is an observability framework for cloud-native software. It provides a collection of tools, APIs, and SDKs for instrumenting, generating, collecting, and exporting telemetry data.",
-        "langchain": "LangChain is a framework for developing applications powered by language models. It provides tools for prompt management, chains, agents, and memory.",
-        "langgraph": "LangGraph is a library for building stateful, multi-actor applications with LLMs. It extends LangChain to enable cyclic computational graphs.",
-    }
-
-    query_lower = query.lower()
-    for key, value in knowledge.items():
-        if key in query_lower:
-            return value
-
-    return f"No specific information found for '{query}'. Try searching for: python, opentelemetry, langchain, or langgraph."
+    references: list[str] = Field(
+        description="Citations motivating your updated answer."
+    )
 
 
-# List of all tools
-tools = [get_weather, calculate, search_knowledge_base]
-
-
-# ============================================================================
-# LangGraph Workflow State
-# ============================================================================
-
-
-class WorkflowState(TypedDict):
-    """State for the LangGraph workflow."""
+class ReflexionState(TypedDict):
+    """State for the Reflexion workflow."""
 
     messages: Annotated[list, add_messages]
-    query_metadata: dict  # preprocessor output (intent, entities, complexity)
-    quality_score: float  # evaluator score (0-1)
-    retry_count: int  # refinement attempts
-    processing_steps: list  # track which nodes were visited
-    final_answer: str
 
 
 # ============================================================================
@@ -144,378 +86,275 @@ def get_llm():
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable is required")
 
-    model = os.getenv("OPENAI_MODEL", "gpt-5.2-nano")
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     return ChatOpenAI(model=model, temperature=0)
 
 
-def create_agent_executor():
-    """Create a ReAct agent with tools."""
-    llm = get_llm()
-    return create_react_agent(llm, tools)
+# ============================================================================
+# Reflexion Pattern Components
+# ============================================================================
 
 
-def create_workflow():
-    """Create a complex LangGraph workflow with multiple nodes for trace testing.
+class ResponderWithRetries:
+    """A responder that retries on validation errors for structured output."""
 
-    Workflow structure:
-    START → preprocessor → agent → (conditional) → tools → agent (loop)
-                                        ↓
-                                   evaluator → (conditional) → refiner → agent
-                                        ↓
-                                   formatter → END
+    def __init__(self, runnable, validator):
+        self.runnable = runnable
+        self.validator = validator
+
+    def respond(self, state: dict):
+        """Generate a response, retrying up to 3 times on validation errors."""
+        response = []
+        for attempt in range(3):
+            response = self.runnable.invoke(
+                {"messages": state["messages"]}, {"tags": [f"attempt:{attempt}"]}
+            )
+            try:
+                self.validator.invoke(response)
+                return {"messages": response}
+            except ValidationError as e:
+                state["messages"] = state["messages"] + [
+                    response,
+                    ToolMessage(
+                        content=f"{repr(e)}\n\nPay close attention to the function schema.\n\n"
+                        + self.validator.schema_json()
+                        + " Respond by fixing all validation errors.",
+                        tool_call_id=response.tool_calls[0]["id"],
+                    ),
+                ]
+        return {"messages": response}
+
+
+def run_mock_search(search_queries: list[str]) -> list[list[dict]]:
+    """Mock search function returning pre-defined results for demo purposes.
+
+    In a real application, this would call a search API like Tavily or Google.
     """
-    llm = get_llm()
-
-    # Build workflow
-    workflow = StateGraph(WorkflowState)
-
-    def preprocessor_node(state: WorkflowState) -> WorkflowState:
-        """Analyze and enrich the input query with metadata."""
-        messages = state.get("messages", [])
-        if not messages:
-            return {
-                "query_metadata": {"intent": "unknown", "entities": [], "complexity": 0},
-                "processing_steps": ["preprocessor"],
-                "retry_count": 0,
-                "quality_score": 0.0,
-            }
-
-        # Get the user's query
-        user_message = messages[-1]
-        query = user_message.content if hasattr(user_message, "content") else str(user_message)
-        query_lower = query.lower()
-
-        # Detect intent and entities
-        intents = []
-        entities = []
-
-        if any(word in query_lower for word in ["weather", "temperature", "forecast"]):
-            intents.append("weather")
-            # Extract city names (simple heuristic)
-            for city in ["paris", "tokyo", "london", "new york", "berlin"]:
-                if city in query_lower:
-                    entities.append({"type": "city", "value": city.title()})
-
-        if any(word in query_lower for word in ["calculate", "math", "+", "-", "*", "/"]):
-            intents.append("calculation")
-
-        if any(word in query_lower for word in ["what is", "tell me about", "explain", "search"]):
-            intents.append("research")
-            for topic in ["python", "opentelemetry", "langchain", "langgraph"]:
-                if topic in query_lower:
-                    entities.append({"type": "topic", "value": topic})
-
-        # Calculate complexity score
-        complexity = min(1.0, len(intents) * 0.3 + len(entities) * 0.2)
-
-        return {
-            "query_metadata": {
-                "intent": intents if intents else ["general"],
-                "entities": entities,
-                "complexity": complexity,
-                "original_query": query,
+    mock_results = {
+        "climate": [
+            {
+                "title": "IPCC Climate Report 2023",
+                "url": "https://www.ipcc.ch/report/ar6/",
+                "content": "The Intergovernmental Panel on Climate Change reports that limiting warming to 1.5°C requires rapid, deep and sustained greenhouse gas emissions reductions. Global net zero CO2 emissions need to be achieved by 2050.",
             },
-            "processing_steps": ["preprocessor"],
-            "retry_count": 0,
-            "quality_score": 0.0,
-        }
-
-    def agent_node(state: WorkflowState) -> WorkflowState:
-        """Run the agent to process messages with tool binding."""
-        llm_with_tools = llm.bind_tools(tools)
-        response = llm_with_tools.invoke(state["messages"])
-
-        # Track processing step
-        steps = state.get("processing_steps", [])
-        steps = list(steps) + ["agent"]
-
-        return {
-            "messages": [response],
-            "processing_steps": steps,
-        }
-
-    def tool_node(state: WorkflowState) -> WorkflowState:
-        """Execute tools based on agent's tool calls."""
-        tool_node_executor = ToolNode(tools)
-        result = tool_node_executor.invoke(state)
-
-        # Track processing step
-        steps = state.get("processing_steps", [])
-        steps = list(steps) + ["tools"]
-
-        return {
-            **result,
-            "processing_steps": steps,
-        }
-
-    def evaluator_node(state: WorkflowState) -> WorkflowState:
-        """Assess response quality and completeness using LLM."""
-        messages = state.get("messages", [])
-        if not messages:
-            return {"quality_score": 0.0, "processing_steps": state.get("processing_steps", []) + ["evaluator"]}
-
-        last_message = messages[-1]
-        response_content = last_message.content if hasattr(last_message, "content") else str(last_message)
-        query_metadata = state.get("query_metadata", {})
-        original_query = query_metadata.get("original_query", "")
-
-        # Use LLM to evaluate response quality
-        eval_prompt = f"""Evaluate the quality of this response on a scale of 0.0 to 1.0.
-
-Original Query: {original_query}
-Response: {response_content}
-
-Consider:
-- Completeness: Does it answer all parts of the query?
-- Accuracy: Is the information correct?
-- Clarity: Is the response clear and well-structured?
-
-Respond with ONLY a number between 0.0 and 1.0, nothing else."""
-
-        eval_response = llm.invoke([HumanMessage(content=eval_prompt)])
-        eval_content = eval_response.content if hasattr(eval_response, "content") else str(eval_response)
-
-        # Parse the quality score
-        try:
-            quality_score = float(eval_content.strip())
-            quality_score = max(0.0, min(1.0, quality_score))
-        except ValueError:
-            # Default to moderate quality if parsing fails
-            quality_score = 0.75
-
-        steps = state.get("processing_steps", [])
-        steps = list(steps) + ["evaluator"]
-
-        return {
-            "quality_score": quality_score,
-            "processing_steps": steps,
-        }
-
-    def refiner_node(state: WorkflowState) -> WorkflowState:
-        """Improve low-quality responses with additional context."""
-        messages = state.get("messages", [])
-        query_metadata = state.get("query_metadata", {})
-        quality_score = state.get("quality_score", 0.0)
-        retry_count = state.get("retry_count", 0)
-
-        last_message = messages[-1] if messages else None
-        response_content = ""
-        if last_message:
-            response_content = last_message.content if hasattr(last_message, "content") else str(last_message)
-
-        original_query = query_metadata.get("original_query", "")
-
-        # Create refinement prompt
-        refine_prompt = f"""The previous response scored {quality_score:.2f} on quality.
-Please improve this response to better answer the original query.
-
-Original Query: {original_query}
-Previous Response: {response_content}
-
-Provide a more complete, accurate, and clear response. Focus on:
-- Addressing all parts of the query
-- Being more specific and detailed
-- Ensuring accuracy of information"""
-
-        refinement_message = HumanMessage(content=refine_prompt)
-
-        steps = state.get("processing_steps", [])
-        steps = list(steps) + ["refiner"]
-
-        return {
-            "messages": [refinement_message],
-            "retry_count": retry_count + 1,
-            "processing_steps": steps,
-        }
-
-    def formatter_node(state: WorkflowState) -> WorkflowState:
-        """Format the final output with metadata."""
-        messages = state.get("messages", [])
-        query_metadata = state.get("query_metadata", {})
-        quality_score = state.get("quality_score", 0.0)
-        processing_steps = state.get("processing_steps", [])
-        retry_count = state.get("retry_count", 0)
-
-        last_message = messages[-1] if messages else None
-        content = ""
-        if last_message:
-            content = last_message.content if hasattr(last_message, "content") else str(last_message)
-
-        # Add processing metadata to final answer
-        final_answer = f"""{content}
-
----
-[Workflow Metadata]
-- Quality Score: {quality_score:.2f}
-- Retry Count: {retry_count}
-- Processing Steps: {' → '.join(processing_steps + ['formatter'])}
-- Detected Intents: {', '.join(query_metadata.get('intent', ['unknown']))}"""
-
-        steps = list(processing_steps) + ["formatter"]
-
-        return {
-            "final_answer": final_answer,
-            "processing_steps": steps,
-        }
-
-    def should_use_tools(state: WorkflowState) -> str:
-        """Determine if we should use tools or proceed to evaluation."""
-        messages = state.get("messages", [])
-        if not messages:
-            return "evaluate"
-
-        last_message = messages[-1]
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            return "tools"
-        return "evaluate"
-
-    def should_refine(state: WorkflowState) -> str:
-        """Determine if response needs refinement or can be formatted."""
-        quality_score = state.get("quality_score", 0.0)
-        retry_count = state.get("retry_count", 0)
-
-        # Refine if quality is below threshold and we haven't exceeded retries
-        if quality_score < 0.7 and retry_count < 2:
-            return "refine"
-        return "format"
-
-    # Add nodes
-    workflow.add_node("preprocessor", preprocessor_node)
-    workflow.add_node("agent", agent_node)
-    workflow.add_node("tools", tool_node)
-    workflow.add_node("evaluator", evaluator_node)
-    workflow.add_node("refiner", refiner_node)
-    workflow.add_node("formatter", formatter_node)
-
-    # Add edges
-    workflow.add_edge(START, "preprocessor")
-    workflow.add_edge("preprocessor", "agent")
-    workflow.add_conditional_edges(
-        "agent", should_use_tools, {"tools": "tools", "evaluate": "evaluator"}
-    )
-    workflow.add_edge("tools", "agent")
-    workflow.add_conditional_edges(
-        "evaluator", should_refine, {"refine": "refiner", "format": "formatter"}
-    )
-    workflow.add_edge("refiner", "agent")
-    workflow.add_edge("formatter", END)
-
-    return workflow.compile()
-
-
-# ============================================================================
-# Demo Functions
-# ============================================================================
-
-
-def run_agent_demo(query: str) -> dict:
-    """Run the ReAct agent with a query."""
-    print(f"\n{'='*60}")
-    print(f"Running Agent Demo")
-    print(f"Query: {query}")
-    print(f"{'='*60}")
-
-    agent = create_agent_executor()
-
-    result = agent.invoke({"messages": [HumanMessage(content=query)]})
-
-    final_message = result["messages"][-1]
-    answer = final_message.content if hasattr(final_message, "content") else str(final_message)
-
-    print(f"\nAgent Response: {answer}")
-
-    return {
-        "query": query,
-        "answer": answer,
-        "num_messages": len(result["messages"]),
+            {
+                "title": "Climate Action Strategies",
+                "url": "https://www.un.org/climatechange",
+                "content": "Key strategies include transitioning to renewable energy, improving energy efficiency, protecting and restoring ecosystems, sustainable agriculture, and carbon capture technologies.",
+            },
+        ],
+        "renewable": [
+            {
+                "title": "Renewable Energy Statistics 2023",
+                "url": "https://www.irena.org/statistics",
+                "content": "Solar and wind power capacity grew by 295 GW in 2022, a 12% increase. Renewables now account for 30% of global electricity generation.",
+            },
+        ],
+        "carbon": [
+            {
+                "title": "Carbon Capture Technology",
+                "url": "https://www.energy.gov/carbon-capture",
+                "content": "Carbon capture and storage (CCS) can reduce emissions from power plants by up to 90%. Direct air capture technologies are also advancing rapidly.",
+            },
+        ],
+        "policy": [
+            {
+                "title": "Climate Policy Framework",
+                "url": "https://www.wri.org/climate-policy",
+                "content": "Effective climate policies include carbon pricing, renewable portfolio standards, building codes, and investment in clean technology R&D.",
+            },
+        ],
+        "default": [
+            {
+                "title": "General Research Result",
+                "url": "https://example.com/research",
+                "content": "This is a mock search result for demonstration purposes. In production, this would return real search results from a search API.",
+            },
+        ],
     }
 
-
-def run_workflow_demo(query: str) -> dict:
-    """Run the LangGraph workflow with a query."""
-    print(f"\n{'='*60}")
-    print(f"Running Workflow Demo (Enhanced)")
-    print(f"Query: {query}")
-    print(f"{'='*60}")
-
-    workflow = create_workflow()
-
-    initial_state: WorkflowState = {
-        "messages": [HumanMessage(content=query)],
-        "query_metadata": {},
-        "quality_score": 0.0,
-        "retry_count": 0,
-        "processing_steps": [],
-        "final_answer": "",
-    }
-
-    result = workflow.invoke(initial_state)
-
-    print(f"\nWorkflow Response: {result['final_answer']}")
-    print(f"Quality Score: {result.get('quality_score', 'N/A')}")
-    print(f"Processing Steps: {' → '.join(result.get('processing_steps', []))}")
-    print(f"Retry Count: {result.get('retry_count', 0)}")
-
-    return {
-        "query": query,
-        "answer": result["final_answer"],
-        "quality_score": result.get("quality_score", 0.0),
-        "retry_count": result.get("retry_count", 0),
-        "processing_steps": result.get("processing_steps", []),
-        "num_messages": len(result["messages"]),
-    }
-
-
-def run_full_demo() -> dict:
-    """Run the complete demo showing all features."""
-    print(f"\n{'='*60}")
-    print("OpenTelemetry Tracing Demo: LangChain + LangGraph + OpenAI")
-    print(f"{'='*60}")
-    print("\nAll operations are being traced automatically!")
-    print("View traces in Jaeger UI: http://localhost:16686")
-    print(f"{'='*60}")
-
-    results = {"status": "success", "steps": []}
-
-    # Demo 1: Simple agent with weather tool
-    print("\n--- Demo 1: Weather Query ---")
-    weather_result = run_agent_demo(
-        "Use the get_weather tool to check the weather in Paris and Tokyo."
-    )
-    results["weather_query"] = weather_result
-    results["steps"].append("Weather query completed")
-
-    # Demo 2: Agent with calculation
-    print("\n--- Demo 2: Calculation Query ---")
-    calc_result = run_agent_demo(
-        "Use the calculate tool to compute 25 * 4 + 100 / 2"
-    )
-    results["calculation_query"] = calc_result
-    results["steps"].append("Calculation query completed")
-
-    # Demo 3: Agent with knowledge base search
-    print("\n--- Demo 3: Knowledge Base Query ---")
-    kb_result = run_agent_demo(
-        "Use the search_knowledge_base tool to find information about OpenTelemetry and LangChain"
-    )
-    results["knowledge_query"] = kb_result
-    results["steps"].append("Knowledge base query completed")
-
-    # Demo 4: Complex multi-tool query via workflow
-    print("\n--- Demo 4: Multi-Tool Workflow ---")
-    workflow_result = run_workflow_demo(
-        "Use the get_weather tool for New York weather, the calculate tool for 15 * 8, and search_knowledge_base for Python info."
-    )
-    results["workflow_query"] = workflow_result
-    results["steps"].append("Multi-tool workflow completed")
-
-    print(f"\n{'='*60}")
-    print("Demo completed successfully!")
-    print("Check Jaeger UI at http://localhost:16686 to view traces")
-    print("Look for service: langchain-openai-demo")
-    print(f"{'='*60}")
+    results = []
+    for query in search_queries:
+        query_lower = query.lower()
+        found = False
+        for keyword, result_list in mock_results.items():
+            if keyword in query_lower:
+                results.append(result_list)
+                found = True
+                break
+        if not found:
+            results.append(mock_results["default"])
 
     return results
+
+
+def create_reflexion_workflow():
+    """Create a Reflexion workflow for self-critique and iterative improvement.
+
+    The Reflexion pattern (Shinn et al.) enables an agent to:
+    1. Generate an initial answer with self-reflection
+    2. Research improvements based on critique
+    3. Revise the answer with citations
+
+    Workflow structure:
+    START → draft → execute_tools → revise → (loop back or END)
+    """
+    llm = get_llm()
+    max_iterations = 5
+
+    # Create the actor prompt template
+    actor_prompt_template = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """You are an expert researcher.
+Current time: {time}
+
+1. {first_instruction}
+2. Reflect and critique your answer. Be severe to maximize improvement.
+3. Recommend search queries to research information and improve your answer.""",
+            ),
+            MessagesPlaceholder(variable_name="messages"),
+            (
+                "user",
+                "\n\n<system>Reflect on the user's original question and the"
+                " actions taken thus far. Respond using the {function_name} function.</reminder>",
+            ),
+        ]
+    ).partial(
+        time=lambda: datetime.datetime.now().isoformat(),
+    )
+
+    # Initial answer chain
+    initial_answer_chain = actor_prompt_template.partial(
+        first_instruction="Provide a detailed ~250 word answer.",
+        function_name=AnswerQuestion.__name__,
+    ) | llm.bind_tools(tools=[AnswerQuestion])
+
+    validator = PydanticToolsParser(tools=[AnswerQuestion])
+    first_responder = ResponderWithRetries(
+        runnable=initial_answer_chain, validator=validator
+    )
+
+    # Revision chain
+    revise_instructions = """Revise your previous answer using the new information.
+    - You should use the previous critique to add important information to your answer.
+        - You MUST include numerical citations in your revised answer to ensure it can be verified.
+        - Add a "References" section to the bottom of your answer (which does not count towards the word limit). In form of:
+            - [1] https://example.com
+            - [2] https://example.com
+    - You should use the previous critique to remove superfluous information from your answer and make SURE it is not more than 250 words.
+"""
+
+    revision_chain = actor_prompt_template.partial(
+        first_instruction=revise_instructions,
+        function_name=ReviseAnswer.__name__,
+    ) | llm.bind_tools(tools=[ReviseAnswer])
+
+    revision_validator = PydanticToolsParser(tools=[ReviseAnswer])
+    revisor = ResponderWithRetries(runnable=revision_chain, validator=revision_validator)
+
+    # Create tool node for running search queries
+    def run_queries(search_queries: list[str], **kwargs):
+        """Run the generated search queries."""
+        return run_mock_search(search_queries)
+
+    tool_node = ToolNode(
+        [
+            StructuredTool.from_function(run_queries, name=AnswerQuestion.__name__),
+            StructuredTool.from_function(run_queries, name=ReviseAnswer.__name__),
+        ]
+    )
+
+    # Build the workflow
+    builder = StateGraph(ReflexionState)
+    builder.add_node("draft", first_responder.respond)
+    builder.add_node("execute_tools", tool_node)
+    builder.add_node("revise", revisor.respond)
+
+    # Add edges
+    builder.add_edge("draft", "execute_tools")
+    builder.add_edge("execute_tools", "revise")
+
+    def _get_num_iterations(state: ReflexionState) -> int:
+        """Count the number of iterations (AI + tool message pairs)."""
+        i = 0
+        for m in state["messages"][::-1]:
+            if hasattr(m, "type") and m.type not in {"tool", "ai"}:
+                break
+            i += 1
+        return i
+
+    def event_loop(state: ReflexionState) -> str:
+        """Determine whether to continue iterating or end."""
+        num_iterations = _get_num_iterations(state)
+        if num_iterations > max_iterations:
+            return END
+        return "execute_tools"
+
+    builder.add_conditional_edges("revise", event_loop, ["execute_tools", END])
+    builder.add_edge(START, "draft")
+
+    return builder.compile()
+
+
+# ============================================================================
+# Demo Function
+# ============================================================================
+
+
+def run_reflexion_demo(query: str) -> dict:
+    """Run the Reflexion workflow with self-critique and iterative improvement.
+
+    The Reflexion pattern demonstrates:
+    1. Initial draft with self-reflection
+    2. Mock research based on critique
+    3. Revised answer with citations
+    4. Multiple iteration cycles for improvement
+    """
+    print(f"\n{'='*60}")
+    print("Running Reflexion Demo (Self-Critique & Improvement)")
+    print(f"Query: {query}")
+    print(f"{'='*60}")
+
+    workflow = create_reflexion_workflow()
+
+    initial_state: ReflexionState = {
+        "messages": [HumanMessage(content=query)],
+    }
+
+    # Stream the workflow to see each step
+    events = list(workflow.stream(initial_state, stream_mode="values"))
+
+    # Get the final result
+    final_result = events[-1] if events else {"messages": []}
+    messages = final_result.get("messages", [])
+
+    # Extract the final answer from the last AI message with tool calls
+    final_answer = ""
+    for msg in reversed(messages):
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_call = msg.tool_calls[0]
+            if "answer" in tool_call.get("args", {}):
+                final_answer = tool_call["args"]["answer"]
+                if "references" in tool_call.get("args", {}):
+                    references = tool_call["args"]["references"]
+                    if references:
+                        final_answer += "\n\nReferences:\n" + "\n".join(
+                            f"[{i+1}] {ref}" for i, ref in enumerate(references)
+                        )
+                break
+
+    print(f"\nReflexion Response: {final_answer[:500]}..." if len(final_answer) > 500 else f"\nReflexion Response: {final_answer}")
+    print(f"Total Messages: {len(messages)}")
+    print(f"Iterations: {len(events)}")
+
+    return {
+        "query": query,
+        "answer": final_answer,
+        "num_messages": len(messages),
+        "num_iterations": len(events),
+    }
 
 
 # ============================================================================
@@ -527,47 +366,37 @@ def run_full_demo() -> dict:
 def index():
     """Home page with links to demos."""
     return """
-    <h1>OpenTelemetry Tracing Demo</h1>
+    <h1>OpenTelemetry Tracing Demo - Reflexion Pattern</h1>
     <p>LangChain + LangGraph + OpenAI auto-instrumentation</p>
     <ul>
-        <li><a href="/demo">Run Full Demo</a> - Execute all demo scenarios</li>
-        <li><a href="/agent">Run Agent Demo</a> - Run just the ReAct agent</li>
-        <li><a href="/workflow">Run Workflow Demo</a> - Run the LangGraph workflow</li>
+        <li><a href="/reflexion">Run Reflexion Demo</a> - Self-critique and iterative improvement</li>
         <li><a href="http://localhost:16686" target="_blank">Jaeger UI</a> - View traces</li>
     </ul>
     <p>All operations are automatically traced with OpenTelemetry!</p>
-    <h2>Features Demonstrated:</h2>
+    <h2>Reflexion Pattern Features:</h2>
     <ul>
-        <li><b>LangChain</b>: LLM calls, tool execution, ReAct agent</li>
-        <li><b>LangGraph</b>: Stateful workflow with conditional routing</li>
-        <li><b>OpenAI</b>: Chat completions with tool use</li>
-        <li><b>Tools</b>: Weather lookup, calculator, knowledge base search</li>
+        <li><b>Draft</b>: Initial answer generation with self-reflection</li>
+        <li><b>Critique</b>: Identifies missing and superfluous content</li>
+        <li><b>Research</b>: Generates search queries to improve answer</li>
+        <li><b>Revise</b>: Updates answer with citations from research</li>
+        <li><b>Iterate</b>: Loops until quality is satisfactory</li>
     </ul>
     """
 
 
-@app.route("/demo")
-def demo():
-    """Run the full demo and return results as JSON."""
-    results = run_full_demo()
-    return jsonify(results)
+@app.route("/reflexion")
+def reflexion():
+    """Run the Reflexion demo - self-critique and iterative improvement.
 
-
-@app.route("/agent")
-def agent():
-    """Run a single agent query."""
-    # Use explicit tool-requiring queries to ensure tools get called
-    query = "Use the get_weather tool to check the weather in London, then use the calculate tool to compute 100 + 200"
-    result = run_agent_demo(query)
-    return jsonify(result)
-
-
-@app.route("/workflow")
-def workflow():
-    """Run a single workflow query."""
-    # Use explicit tool-requiring queries to ensure tools get called
-    query = "Use the get_weather tool to check weather in Berlin, then use search_knowledge_base tool to find information about LangGraph."
-    result = run_workflow_demo(query)
+    This demonstrates the Reflexion pattern from Shinn et al., where an agent:
+    1. Generates an initial answer with self-reflection
+    2. Critiques its own response
+    3. Researches improvements based on the critique
+    4. Revises the answer with citations
+    5. Iterates until quality is satisfactory
+    """
+    query = "How should we handle the climate crisis?"
+    result = run_reflexion_demo(query)
     return jsonify(result)
 
 
@@ -585,11 +414,11 @@ def health():
 def main():
     """Main function to run the Flask app."""
     print(f"{'='*60}")
-    print("OpenTelemetry Tracing Demo Server")
+    print("OpenTelemetry Tracing Demo Server - Reflexion Pattern")
     print("LangChain + LangGraph + OpenAI")
     print(f"{'='*60}")
     print("\nStarting Flask server...")
-    print("Visit http://localhost:5000/demo to run the demo")
+    print("Visit http://localhost:5000/reflexion to run the demo")
     print("View traces in Jaeger UI: http://localhost:16686")
     print(f"{'='*60}")
 
