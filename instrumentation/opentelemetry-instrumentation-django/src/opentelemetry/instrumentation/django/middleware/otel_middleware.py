@@ -82,16 +82,6 @@ except ImportError:
 DJANGO_3_0 = django_version >= (3, 0)
 
 
-class MiddlewareMixin:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        self.process_request(request)
-        response = self.get_response(request)
-        return self.process_response(request, response)
-
-
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
 else:
@@ -125,7 +115,7 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -154,6 +144,14 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        self.process_request(request)
+        response = self.get_response(request)
+        return self.process_response(request, response)
 
     @staticmethod
     def _get_span_name(request):
