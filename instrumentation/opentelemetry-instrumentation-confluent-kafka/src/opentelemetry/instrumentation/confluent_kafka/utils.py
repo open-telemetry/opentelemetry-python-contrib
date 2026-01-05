@@ -3,9 +3,14 @@ from typing import List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
-    MessagingOperationValues,
     SpanAttributes,
 )
 from opentelemetry.trace import Link, SpanKind
@@ -115,12 +120,12 @@ def _enrich_span(
     topic,
     partition: Optional[int] = None,
     offset: Optional[int] = None,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[MessagingOperationTypeValues] = None,
 ):
     if not span.is_recording():
         return
 
-    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
+    span.set_attribute(MESSAGING_SYSTEM, "kafka")
     span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
 
     if partition is not None:
@@ -132,7 +137,7 @@ def _enrich_span(
     )
 
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(MESSAGING_OPERATION, operation.value)
     else:
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
 
@@ -140,7 +145,7 @@ def _enrich_span(
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
     if partition is not None and offset is not None and topic:
         span.set_attribute(
-            SpanAttributes.MESSAGING_MESSAGE_ID,
+            MESSAGING_MESSAGE_ID,
             f"{topic}.{partition}.{offset}",
         )
 
