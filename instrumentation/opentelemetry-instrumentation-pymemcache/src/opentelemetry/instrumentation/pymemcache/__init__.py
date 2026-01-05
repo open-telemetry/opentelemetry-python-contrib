@@ -47,6 +47,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.trace import NetTransportValues
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
@@ -55,9 +56,9 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
+    NET_TRANSPORT,
 )
 logger = logging.getLogger(__name__)
-NET_TRANSPORT = "network.transport"
 
 COMMANDS = [
     "set",
@@ -169,12 +170,12 @@ def _get_address_attributes(instance):
             address_attributes[NET_PEER_NAME] = host
             address_attributes[NET_PEER_PORT] = port
             address_attributes[NET_TRANSPORT] = (
-                "tcp"
+                NetTransportValues.IP_TCP.value
             )
         elif isinstance(instance.server, str):
             address_attributes[NET_PEER_NAME] = instance.server
             address_attributes[NET_TRANSPORT] = (
-                "other"
+                NetTransportValues.OTHER.value
             )
 
     return address_attributes
