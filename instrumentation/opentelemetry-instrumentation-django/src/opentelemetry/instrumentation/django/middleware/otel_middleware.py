@@ -79,30 +79,18 @@ try:
 except ImportError:
     from django.urls import Resolver404, resolve
 
-DJANGO_2_0 = django_version >= (2, 0)
 DJANGO_3_0 = django_version >= (3, 0)
 
-if DJANGO_2_0:
-    # Since Django 2.0, only `settings.MIDDLEWARE` is supported, so new-style
-    # middlewares can be used.
-    class MiddlewareMixin:
-        def __init__(self, get_response):
-            self.get_response = get_response
 
-        def __call__(self, request):
-            self.process_request(request)
-            response = self.get_response(request)
-            return self.process_response(request, response)
+class MiddlewareMixin:
+    def __init__(self, get_response):
+        self.get_response = get_response
 
-else:
-    # Django versions 1.x can use `settings.MIDDLEWARE_CLASSES` and expect
-    # old-style middlewares, which are created by inheriting from
-    # `deprecation.MiddlewareMixin` since its creation in Django 1.10 and 1.11,
-    # or from `object` for older versions.
-    try:
-        from django.utils.deprecation import MiddlewareMixin
-    except ImportError:
-        MiddlewareMixin = object
+    def __call__(self, request):
+        self.process_request(request)
+        response = self.get_response(request)
+        return self.process_response(request, response)
+
 
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
