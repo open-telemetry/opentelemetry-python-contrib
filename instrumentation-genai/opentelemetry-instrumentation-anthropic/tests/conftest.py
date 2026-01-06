@@ -233,5 +233,3 @@ def fixture_vcr(vcr):
 def scrub_response_headers(response):
     """Scrub sensitive response headers."""
     return response
-
-
