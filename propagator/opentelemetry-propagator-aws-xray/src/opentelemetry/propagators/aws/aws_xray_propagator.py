@@ -144,12 +144,18 @@ class AwsXRayPropagator(TextMapPropagator):
         if sampled:
             options |= trace.TraceFlags.SAMPLED
 
+        current_span = trace.get_current_span(context=context)
+        if current_span and current_span.get_span_context():
+            tracestate = current_span.get_span_context().trace_state
+        else:
+            tracestate = trace.TraceState()
+
         span_context = trace.SpanContext(
             trace_id=trace_id,
             span_id=span_id,
             is_remote=True,
             trace_flags=trace.TraceFlags(options),
-            trace_state=trace.TraceState(),
+            trace_state=tracestate,
         )
 
         if not span_context.is_valid:
