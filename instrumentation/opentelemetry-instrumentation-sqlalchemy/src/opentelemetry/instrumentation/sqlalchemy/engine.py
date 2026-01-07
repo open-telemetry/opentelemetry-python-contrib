@@ -62,6 +62,7 @@ def _wrap_create_async_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    commenter_for_nonrecording_spans=False,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -79,6 +80,7 @@ def _wrap_create_async_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            commenter_for_nonrecording_spans,
         )
         return engine
 
@@ -91,6 +93,7 @@ def _wrap_create_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    commenter_for_nonrecording_spans=False,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -107,6 +110,7 @@ def _wrap_create_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            commenter_for_nonrecording_spans,
         )
         return engine
 
@@ -142,6 +146,7 @@ class EngineTracer:
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
+        commenter_for_nonrecording_spans=False,
     ):
         self.tracer = tracer
         self.connections_usage = connections_usage
@@ -149,6 +154,9 @@ class EngineTracer:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.commenter_for_nonrecording_spans = (
+            commenter_for_nonrecording_spans
+        )
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -299,35 +307,37 @@ class EngineTracer:
             kind=trace.SpanKind.CLIENT,
         )
         with trace.use_span(span, end_on_exit=False):
-            if span.is_recording():
-                if self.enable_commenter:
-                    commenter_data = self._get_commenter_data(conn)
+            should_comment = self.enable_commenter and (
+                span.is_recording() or self.commenter_for_nonrecording_spans
+            )
 
+            if should_comment:
+                commenter_data = self._get_commenter_data(conn)
+                statement = str(statement)
+
+                if span.is_recording():
                     if self.enable_attribute_commenter:
-                        # just to handle type safety
-                        statement = str(statement)
-
-                        # sqlcomment is added to executed query and db.statement span attribute
+                        # sqlcomment in both executed query and db.statement
                         statement = _add_sql_comment(
                             statement, **commenter_data
                         )
                         self._set_db_client_span_attributes(
                             span, statement, attrs
                         )
-
                     else:
-                        # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
+                        # sqlcomment only in executed query, not in db.statement
                         self._set_db_client_span_attributes(
                             span, statement, attrs
                         )
                         statement = _add_sql_comment(
                             statement, **commenter_data
                         )
-
                 else:
-                    # no sqlcomment anywhere
-                    self._set_db_client_span_attributes(span, statement, attrs)
+                    # Non-recording span - just add comment for context propagation
+                    statement = _add_sql_comment(statement, **commenter_data)
+            elif span.is_recording():
+                # No sqlcomment, but still set attributes for recording spans
+                self._set_db_client_span_attributes(span, statement, attrs)
 
         context._otel_span = span
 

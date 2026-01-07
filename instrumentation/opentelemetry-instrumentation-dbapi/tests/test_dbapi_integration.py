@@ -23,6 +23,8 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 from opentelemetry.semconv._incubating.attributes import net_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
@@ -1179,6 +1181,68 @@ class TestDBApiIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_commenter_for_nonrecording_spans_disabled_by_default(self):
+        """Test that SQLCommenter does not add comments to non-recording spans by default."""
+        # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
+        non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            tracer_provider=non_recording_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        # Without commenter_for_nonrecording_spans, no SQL comment should be added
+        self.assertEqual(cursor.query, "Select 1;")
+
+    def test_commenter_for_nonrecording_spans_enabled(self):
+        """Test that SQLCommenter adds comments to non-recording spans when enabled."""
+        # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
+        non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            tracer_provider=non_recording_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+            commenter_for_nonrecording_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        # With commenter_for_nonrecording_spans=True, SQL comment should be added
+        self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
 
 
 # pylint: disable=unused-argument
