@@ -54,12 +54,12 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
+    DbSystemValues,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
-from opentelemetry.semconv.trace import DbSystemValues
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
