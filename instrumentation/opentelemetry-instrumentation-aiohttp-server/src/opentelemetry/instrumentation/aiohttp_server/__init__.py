@@ -25,8 +25,14 @@ Usage
     from opentelemetry.instrumentation.aiohttp_server import (
         AioHttpServerInstrumentor
     )
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-    AioHttpServerInstrumentor().instrument()
+    # Optional: configure non-default TracerProvider, resource, sampler
+    resource = Resource(attributes={"service.name": "my-aiohttp-service"})
+    sampler = ParentBased(root=TraceIdRatioBased(rate=0.25))  # sample 25% of traces
+    AioHttpServerInstrumentor().instrument(tracer_provider=TracerProvider(resource=resource, sampler=sampler))
 
     async def hello(request):
         return web.Response(text="Hello, world")
@@ -35,11 +41,123 @@ Usage
     app.add_routes([web.get('/', hello)])
 
     web.run_app(app)
+
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>, <value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>, <value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
+matched in a case-insensitive manner.
+
+For example,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+API
+---
 """
+
+from __future__ import annotations
 
 import urllib
 from timeit import default_timer
-from typing import Dict, List, Tuple, Union
 
 from aiohttp import web
 from multidict import CIMultiDictProxy
@@ -72,7 +190,17 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls, redact_url
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    SanitizeValue,
+    get_custom_headers,
+    get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
+    redact_url,
+)
 
 _duration_attrs = [
     HTTP_METHOD,
@@ -94,9 +222,9 @@ _active_requests_count_attrs = [
     HTTP_SERVER_NAME,
 ]
 
-tracer = trace.get_tracer(__name__)
-meter = metrics.get_meter(__name__, __version__)
-_excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+tracer = None
+meter = None
+_excluded_urls = None
 
 
 def _parse_duration_attrs(req_attrs):
@@ -115,15 +243,15 @@ def _parse_active_request_count_attrs(req_attrs):
     return active_requests_count_attrs
 
 
-def get_default_span_details(request: web.Request) -> Tuple[str, dict]:
+def get_default_span_name(request: web.Request) -> str:
     """Default implementation for get_default_span_details
     Args:
         request: the request object itself.
     Returns:
-        a tuple of the span name, and any attributes to attach to the span.
+        The span name.
     """
     span_name = request.path.strip() or f"HTTP {request.method}"
-    return span_name, {}
+    return span_name
 
 
 def _get_view_func(request: web.Request) -> str:
@@ -139,7 +267,7 @@ def _get_view_func(request: web.Request) -> str:
         return "unknown"
 
 
-def collect_request_attributes(request: web.Request) -> Dict:
+def collect_request_attributes(request: web.Request) -> dict:
     """Collects HTTP request attributes from the ASGI scope and returns a
     dictionary to be used as span creation attributes."""
 
@@ -184,6 +312,42 @@ def collect_request_attributes(request: web.Request) -> Dict:
     return result
 
 
+def collect_request_headers_attributes(
+    request: web.Request,
+) -> dict[str, list[str]]:
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    return sanitize.sanitize_header_values(
+        request.headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+        ),
+        normalise_request_header_name,
+    )
+
+
+def collect_response_headers_attributes(
+    response: web.Response,
+) -> dict[str, list[str]]:
+    sanitize = SanitizeValue(
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+    )
+
+    return sanitize.sanitize_header_values(
+        response.headers,
+        get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
+        ),
+        normalise_response_header_name,
+    )
+
+
 def set_status_code(span, status_code: int) -> None:
     """Adds HTTP response attributes to span using the status_code argument."""
 
@@ -206,7 +370,7 @@ def set_status_code(span, status_code: int) -> None:
 class AiohttpGetter(Getter):
     """Extract current trace from headers"""
 
-    def get(self, carrier, key: str) -> Union[List, None]:
+    def get(self, carrier, key: str) -> list | None:
         """Getter implementation to retrieve an HTTP header value from the ASGI
         scope.
 
@@ -222,70 +386,102 @@ class AiohttpGetter(Getter):
             return None
         return headers.getall(key, None)
 
-    def keys(self, carrier: Dict) -> List:
+    def keys(self, carrier: dict) -> list:
         return list(carrier.keys())
 
 
 getter = AiohttpGetter()
 
 
-@web.middleware
-async def middleware(request, handler):
-    """Middleware for aiohttp implementing tracing logic"""
-    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-        request.url.path
-    ):
-        return await handler(request)
-
-    span_name, additional_attributes = get_default_span_details(request)
-
-    req_attrs = collect_request_attributes(request)
-    duration_attrs = _parse_duration_attrs(req_attrs)
-    active_requests_count_attrs = _parse_active_request_count_attrs(req_attrs)
-
-    duration_histogram = meter.create_histogram(
-        name=MetricInstruments.HTTP_SERVER_DURATION,
-        unit="ms",
-        description="Measures the duration of inbound HTTP requests.",
+def create_aiohttp_middleware(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _tracer = (
+        tracer_provider.get_tracer(__name__, __version__)
+        if tracer_provider
+        else tracer
     )
 
-    active_requests_counter = meter.create_up_down_counter(
-        name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-        unit="requests",
-        description="measures the number of concurrent HTTP requests those are currently in flight",
-    )
+    @web.middleware
+    async def _middleware(request, handler):
+        """Middleware for aiohttp implementing tracing logic"""
+        if (
+            not is_http_instrumentation_enabled()
+            or _excluded_urls.url_disabled(request.url.path)
+        ):
+            return await handler(request)
 
-    with tracer.start_as_current_span(
-        span_name,
-        context=extract(request, getter=getter),
-        kind=trace.SpanKind.SERVER,
-    ) as span:
-        attributes = collect_request_attributes(request)
-        attributes.update(additional_attributes)
-        span.set_attributes(attributes)
-        start = default_timer()
-        active_requests_counter.add(1, active_requests_count_attrs)
-        try:
-            resp = await handler(request)
-            set_status_code(span, resp.status)
-        except web.HTTPException as ex:
-            set_status_code(span, ex.status_code)
-            raise
-        finally:
-            duration = max((default_timer() - start) * 1000, 0)
-            duration_histogram.record(duration, duration_attrs)
-            active_requests_counter.add(-1, active_requests_count_attrs)
-        return resp
+        span_name = get_default_span_name(request)
+
+        request_attrs = collect_request_attributes(request)
+        duration_attrs = _parse_duration_attrs(request_attrs)
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            request_attrs
+        )
+
+        duration_histogram = meter.create_histogram(
+            name=MetricInstruments.HTTP_SERVER_DURATION,
+            unit="ms",
+            description="Measures the duration of inbound HTTP requests.",
+        )
+
+        active_requests_counter = meter.create_up_down_counter(
+            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+            unit="requests",
+            description="measures the number of concurrent HTTP requests those are currently in flight",
+        )
+
+        with _tracer.start_as_current_span(
+            span_name,
+            context=extract(request, getter=getter),
+            kind=trace.SpanKind.SERVER,
+        ) as span:
+            if span.is_recording():
+                request_headers_attributes = (
+                    collect_request_headers_attributes(request)
+                )
+                request_attrs.update(request_headers_attributes)
+                span.set_attributes(request_attrs)
+            start = default_timer()
+            active_requests_counter.add(1, active_requests_count_attrs)
+            try:
+                resp = await handler(request)
+                set_status_code(span, resp.status)
+                if span.is_recording():
+                    response_headers_attributes = (
+                        collect_response_headers_attributes(resp)
+                    )
+                    span.set_attributes(response_headers_attributes)
+            except web.HTTPException as ex:
+                set_status_code(span, ex.status_code)
+                raise
+            finally:
+                duration = max((default_timer() - start) * 1000, 0)
+                duration_histogram.record(duration, duration_attrs)
+                active_requests_counter.add(-1, active_requests_count_attrs)
+            return resp
+
+    return _middleware
 
 
-class _InstrumentedApplication(web.Application):
-    """Insert tracing middleware"""
+middleware = create_aiohttp_middleware()  # for backwards compatibility
 
-    def __init__(self, *args, **kwargs):
-        middlewares = kwargs.pop("middlewares", [])
-        middlewares.insert(0, middleware)
-        kwargs["middlewares"] = middlewares
-        super().__init__(*args, **kwargs)
+
+def create_instrumented_application(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+
+    class _InstrumentedApplication(web.Application):
+        """Insert tracing middleware"""
+
+        def __init__(self, *args, **kwargs):
+            middlewares = kwargs.pop("middlewares", [])
+            middlewares.insert(0, _middleware)
+            kwargs["middlewares"] = middlewares
+            super().__init__(*args, **kwargs)
+
+    return _InstrumentedApplication
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
@@ -296,7 +492,22 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
     """
 
     def _instrument(self, **kwargs):
+        tracer_provider = kwargs.get("tracer_provider", None)
+        # update global values at instrument time so we can test them
+        global _excluded_urls  # pylint: disable=global-statement
+        _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
+
+        global tracer  # pylint: disable=global-statement
+        tracer = trace.get_tracer(__name__)
+
+        global meter  # pylint: disable=global-statement
+        meter = metrics.get_meter(__name__, __version__)
+
         self._original_app = web.Application
+
+        _InstrumentedApplication = create_instrumented_application(
+            tracer_provider=tracer_provider
+        )
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):

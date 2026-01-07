@@ -24,7 +24,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
-from os import environ
 from time import time
 from typing import Any, Callable, Final, Literal
 from uuid import uuid4
@@ -36,9 +35,6 @@ from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
-from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
-)
 from opentelemetry.util.genai.utils import gen_ai_json_dump
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
@@ -52,6 +48,9 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
 )
 
 _MESSAGE_INDEX_KEY = "index"
+_DEFAULT_MAX_QUEUE_SIZE = 20
+_DEFAULT_FORMAT = "json"
+
 
 Format = Literal["json", "jsonl"]
 _FORMATS: tuple[Format, ...] = ("json", "jsonl")
@@ -105,36 +104,28 @@ class UploadCompletionHook(CompletionHook):
         self,
         *,
         base_path: str,
-        max_size: int = 20,
-        upload_format: Format | None = None,
+        max_queue_size: int = _DEFAULT_MAX_QUEUE_SIZE,
+        upload_format: Format = _DEFAULT_FORMAT,
         lru_cache_max_size: int = 1024,
     ) -> None:
-        self._max_size = max_size
+        self._max_queue_size = max_queue_size
         self._fs, base_path = fsspec.url_to_fs(base_path)
         self._base_path = self._fs.unstrip_protocol(base_path)
         self.lru_dict: OrderedDict[str, bool] = OrderedDict()
         self.lru_cache_max_size = lru_cache_max_size
 
-        if upload_format not in _FORMATS + (None,):
+        if upload_format not in _FORMATS:
             raise ValueError(
                 f"Invalid {upload_format=}. Must be one of {_FORMATS}"
             )
-
-        if upload_format is None:
-            environ_format = environ.get(
-                OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT, "json"
-            ).lower()
-            if environ_format not in _FORMATS:
-                upload_format = "json"
-            else:
-                upload_format = environ_format
-
-        self._format: Final[Literal["json", "jsonl"]] = upload_format
+        self._format = upload_format
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
-        self._executor = ThreadPoolExecutor(max_workers=max_size)
-        self._semaphore = threading.BoundedSemaphore(max_size)
+        self._executor = ThreadPoolExecutor(
+            max_workers=min(self._max_queue_size, 64)
+        )
+        self._semaphore = threading.BoundedSemaphore(self._max_queue_size)
 
     def _submit_all(self, upload_data: UploadData) -> None:
         def done(future: Future[None]) -> None:
@@ -149,6 +140,9 @@ class UploadCompletionHook(CompletionHook):
             path,
             contents_hashed_to_filename,
         ), json_encodeable in upload_data.items():
+            if contents_hashed_to_filename and path in self.lru_dict:
+                self.lru_dict.move_to_end(path)
+                continue
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
@@ -323,7 +317,7 @@ class UploadCompletionHook(CompletionHook):
 
         # Wait for all tasks to finish to flush the queue
         with ExitStack() as stack:
-            for _ in range(self._max_size):
+            for _ in range(self._max_queue_size):
                 remaining = deadline - time()
                 if not self._semaphore.acquire(timeout=remaining):  # pylint: disable=consider-using-with
                     # Couldn't finish flushing all uploads before timeout

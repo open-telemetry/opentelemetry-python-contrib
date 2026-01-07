@@ -45,7 +45,7 @@ For example,
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 Request attributes
-********************
+******************
 To extract attributes from Django's request object and use them as span attributes, set the environment variable
 ``OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS`` to a comma delimited list of request attribute names.
 
@@ -57,10 +57,10 @@ For example,
 
 will extract the ``path_info`` and ``content_type`` attributes from every traced request and add them as span attributes.
 
-Django Request object reference: https://docs.djangoproject.com/en/3.1/ref/request-response/#attributes
+* `Django Request object reference <https://docs.djangoproject.com/en/5.2/ref/request-response/#attributes>`_
 
 Request and Response hooks
-***************************
+**************************
 This instrumentation supports request and response hooks. These are functions that get called
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
@@ -77,13 +77,81 @@ The hooks can be configured as follows:
 
     DjangoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
-Django Request object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httprequest-objects
-Django Response object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httpresponse-objects
+* `Django Request object <https://docs.djangoproject.com/en/5.2/ref/request-response/#httprequest-objects>`_
+* `Django Response object <https://docs.djangoproject.com/en/5.2/ref/request-response/#httpresponse-objects>`_
+
+Adding attributes from middleware context
+#########################################
+In many Django applications, certain request attributes become available only *after*
+specific middlewares have executed. For example:
+
+- ``django.contrib.auth.middleware.AuthenticationMiddleware`` populates ``request.user``
+- ``django.contrib.sites.middleware.CurrentSiteMiddleware`` populates ``request.site``
+
+Because the OpenTelemetry instrumentation creates the span **before** Django middlewares run,
+these attributes are **not yet available** in the ``request_hook`` stage.
+
+Therefore, such attributes should be safely attached in the **response_hook**, which executes
+after Django finishes processing the request (and after all middlewares have completed).
+
+Example: Attaching the authenticated user and current site to the span:
+
+.. code:: python
+
+    def response_hook(span, request, response):
+        # Attach user information if available
+        if request.user.is_authenticated:
+            span.set_attribute("enduser.id", request.user.pk)
+            span.set_attribute("enduser.username", request.user.get_username())
+
+        # Attach current site (if provided by CurrentSiteMiddleware)
+        if hasattr(request, "site"):
+            span.set_attribute("site.id", getattr(request.site, "pk", None))
+            span.set_attribute("site.domain", getattr(request.site, "domain", None))
+
+    DjangoInstrumentor().instrument(response_hook=response_hook)
+
+This ensures that middleware-dependent context (like user or site information) is properly
+recorded once Django’s middleware stack has finished execution.
+
+Custom Django middleware can also attach arbitrary data to the ``request`` object,
+which can later be included as span attributes in the ``response_hook``.
+
+* `Django middleware reference <https://docs.djangoproject.com/en/5.2/topics/http/middleware/>`_
+
+Best practices
+##############
+- Use **response_hook** (not request_hook) when accessing attributes added by Django middlewares.
+- Common middleware-provided attributes include:
+
+  - ``request.user`` (AuthenticationMiddleware)
+  - ``request.site`` (CurrentSiteMiddleware)
+
+- Avoid adding large or sensitive data (e.g., passwords, session tokens, PII) to spans.
+- Use **namespaced attribute keys**, e.g., ``enduser.*``, ``site.*``, or ``custom.*``, for clarity.
+- Hooks should execute quickly — avoid blocking or long-running operations.
+- Hooks can be safely combined with OpenTelemetry **Context propagation** or **Baggage**
+  for consistent tracing across services.
+
+* `OpenTelemetry semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>`_
+
+Middleware execution order
+##########################
+In Django’s request lifecycle, the OpenTelemetry `request_hook` is executed before
+the first middleware runs. Therefore:
+
+- At `request_hook` time → only the bare `HttpRequest` object is available.
+- After middlewares → `request.user`, `request.site` etc. become available.
+- At `response_hook` time → all middlewares (including authentication and site middlewares)
+  have already run, making it the correct place to attach these attributes.
+
+Developers who need to trace attributes from middlewares should always use `response_hook`
+to ensure complete and accurate span data.
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -170,10 +238,18 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
-SQLCOMMENTER
-*****************************************
-You can optionally configure Django instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
+SQLCommenter
+************
+You can optionally enable sqlcommenter which enriches the query with contextual
+information. Queries made after setting up trace integration with sqlcommenter
+enabled will have configurable key-value pairs appended to them, e.g.
+``Users().objects.all()`` will result in
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This
+supports context propagation between database client and server when database log
+records are enabled. For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
 
@@ -181,53 +257,42 @@ the query with contextual information.
 
     DjangoInstrumentor().instrument(is_sql_commentor_enabled=True)
 
+Warning:
+    Duplicate sqlcomments may be appended to the sqlquery log if DjangoInstrumentor
+    sqlcommenter is enabled in addition to sqlcommenter for an active instrumentation
+    of a database driver or object-relational mapper (ORM) in the same database client
+    stack. For example, if psycopg2 driver is used and Psycopg2Instrumentor has
+    sqlcommenter enabled, then both DjangoInstrumentor and Psycopg2Instrumentor will
+    append comments to the query statement.
 
-For example,
-::
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+variables in Django ``settings.py``. When sqlcommenter is enabled, all
+available KVs/tags are calculated by default, i.e. ``True`` for each. The
+``settings.py`` values support *opting out* of specific KVs.
 
-   Invoking Users().objects.all() will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*metrics=value*/;"
+Available settings.py commenter options
+#######################################
 
+We can configure the tags to be appended to the sqlquery log by adding below variables to
+``settings.py``, e.g. ``SQLCOMMENTER_WITH_FRAMEWORK = False``
 
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding below variables to the settings.py
-
-SQLCOMMENTER_WITH_FRAMEWORK = True(Default) or False
-
-For example,
-::
-Enabling this flag will add django framework and it's version which is /*framework='django%3A2.2.3*/
-
-SQLCOMMENTER_WITH_CONTROLLER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add controller name that handles the request /*controller='index'*/
-
-SQLCOMMENTER_WITH_ROUTE = True(Default) or False
-
-For example,
-::
-Enabling this flag will add url path that handles the request /*route='polls/'*/
-
-SQLCOMMENTER_WITH_APP_NAME = True(Default) or False
-
-For example,
-::
-Enabling this flag will add app name that handles the request /*app_name='polls'*/
-
-SQLCOMMENTER_WITH_OPENTELEMETRY = True(Default) or False
-
-For example,
-::
-Enabling this flag will add opentelemetry traceparent /*traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'*/
-
-SQLCOMMENTER_WITH_DB_DRIVER = True(Default) or False
-
-For example,
-::
-Enabling this flag will add name of the db driver /*db_driver='django.db.backends.postgresql'*/
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``settings.py`` variable            | Description                                               | Example                                                                   |
++=====================================+===========================================================+===========================================================================+
+| ``SQLCOMMENTER_WITH_FRAMEWORK``     | Django framework name with version (URL encoded).         | ``framework='django%%%%3A4.2.0'``                                         |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_CONTROLLER``    | Django controller/view name that handles the request.     | ``controller='index'``                                                    |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_ROUTE``         | URL path pattern that handles the request.                | ``route='polls/'``                                                        |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_APP_NAME``      | Django app name that handles the request.                 | ``app_name='polls'``                                                      |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_OPENTELEMETRY`` | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'`` |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.                      | ``db_driver='django.db.backends.postgresql'``                             |
++-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
 API
 ---

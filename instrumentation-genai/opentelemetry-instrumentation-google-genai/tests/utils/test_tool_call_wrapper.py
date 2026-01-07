@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import os
 import unittest
 from unittest.mock import patch
 
@@ -21,8 +22,6 @@ from google.genai import types as genai_types
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-    _StabilityMode,
 )
 from opentelemetry.instrumentation.google_genai import (
     otel_wrapper,
@@ -44,6 +43,12 @@ class TestCase(unittest.TestCase):
             get_logger_provider(),
             get_meter_provider(),
         )
+        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
+            "true"
+        )
+        os.environ["OTEL_SEMCONV_STABILITY_OPT_IN"] = "default"
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
 
     @property
     def otel(self):
@@ -169,10 +174,6 @@ class TestCase(unittest.TestCase):
             "An example tool call function.",
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_int_arg(self):
         def somefunction(arg=None):
             pass
@@ -191,10 +192,6 @@ class TestCase(unittest.TestCase):
             span.attributes["code.function.parameters.arg.value"], 12345
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_string_arg(self):
         def somefunction(arg=None):
             pass
@@ -214,10 +211,6 @@ class TestCase(unittest.TestCase):
             "a string value",
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_dict_arg(self):
         def somefunction(arg=None):
             pass
@@ -237,10 +230,6 @@ class TestCase(unittest.TestCase):
             '{"key": "value"}',
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_primitive_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -262,10 +251,6 @@ class TestCase(unittest.TestCase):
             [1, 2, 3],
         )
 
-    @patch.dict(
-        "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
-    )
     def test_handles_heterogenous_list_arg(self):
         def somefunction(arg=None):
             pass
@@ -290,24 +275,19 @@ class TestCase(unittest.TestCase):
             pass
 
         for mode in ContentCapturingMode:
-            patched_environ = patch.dict(
-                "os.environ",
-                {
-                    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
-                    "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
-                },
-            )
-            patched_otel_mapping = patch.dict(
-                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
-                {
-                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-                },
-            )
-            with self.subTest(
-                f"mode: {mode}", patched_environ=patched_environ
-            ):
+            with self.subTest(f"mode: {mode}"):
                 self.setUp()
-                with patched_environ, patched_otel_mapping:
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": mode.name,
+                        "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+                    },
+                ):
+                    _OpenTelemetrySemanticConventionStability._initialized = (
+                        False
+                    )
+                    _OpenTelemetrySemanticConventionStability._initialize()
                     wrapped_somefunction = self.wrap(somefunction)
                     wrapped_somefunction(12345)
 
@@ -328,4 +308,4 @@ class TestCase(unittest.TestCase):
                             "code.function.parameters.arg.value",
                             span.attributes,
                         )
-                self.tearDown()
+                    self.tearDown()

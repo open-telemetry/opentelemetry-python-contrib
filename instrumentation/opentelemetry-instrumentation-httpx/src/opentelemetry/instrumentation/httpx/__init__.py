@@ -199,6 +199,115 @@ Or if you are using the transport classes directly:
         response_hook=async_response_hook
     )
 
+
+Configuration
+-------------
+
+Exclude lists
+*************
+To exclude certain URLs from tracking, set the environment variable ``OTEL_PYTHON_HTTPX_EXCLUDED_URLS``
+(or ``OTEL_PYTHON_EXCLUDED_URLS`` to cover all instrumentations) to a string of comma delimited regexes that match the
+URLs.
+
+For example,
+
+::
+
+    export OTEL_PYTHON_HTTPX_EXCLUDED_URLS="client/.*/info,healthcheck"
+
+will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
+
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-client-span>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in HttpX are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in HttpX are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.
+
+Regexes may be used, and all header names will be matched in a case-insensitive manner.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
@@ -207,8 +316,9 @@ from __future__ import annotations
 
 import logging
 import typing
-from asyncio import iscoroutinefunction
+from collections import defaultdict
 from functools import partial
+from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
@@ -259,7 +369,19 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import SpanKind, Tracer, TracerProvider, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import StatusCode
-from opentelemetry.util.http import redact_url, sanitize_method
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    ExcludeList,
+    get_custom_header_attributes,
+    get_custom_headers,
+    get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
+    redact_url,
+    sanitize_method,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -304,7 +426,7 @@ def _extract_parameters(
     args: tuple[typing.Any, ...], kwargs: dict[str, typing.Any]
 ) -> tuple[
     bytes,
-    httpx.URL,
+    httpx.URL | tuple[bytes, bytes, int | None, bytes],
     httpx.Headers | None,
     httpx.SyncByteStream | httpx.AsyncByteStream | None,
     dict[str, typing.Any],
@@ -330,6 +452,22 @@ def _extract_parameters(
     return method, url, headers, stream, extensions
 
 
+def _normalize_url(
+    url: httpx.URL | tuple[bytes, bytes, int | None, bytes],
+) -> str:
+    if isinstance(url, tuple):
+        scheme, host, port, path = [
+            part.decode() if isinstance(part, bytes) else part for part in url
+        ]
+        return (
+            f"{scheme}://{host}:{port}{path}"
+            if port
+            else f"{scheme}://{host}{path}"
+        )
+
+    return str(url)
+
+
 def _inject_propagation_headers(headers, args, kwargs):
     _headers = _prepare_headers(headers)
     inject(_headers)
@@ -338,6 +476,32 @@ def _inject_propagation_headers(headers, args, kwargs):
         request.headers = _headers
     else:
         kwargs["headers"] = _headers.raw
+
+
+def _normalize_headers(
+    headers: httpx.Headers
+    | dict[str, list[str] | str]
+    | list[tuple[bytes, bytes]]
+    | None,
+) -> dict[str, list[str]]:
+    normalized_headers: defaultdict[str, list[str]] = defaultdict(list)
+    if isinstance(headers, httpx.Headers):
+        for key in headers.keys():
+            normalized_headers[key.lower()].extend(
+                headers.get_list(key, split_commas=True)
+            )
+    elif isinstance(headers, dict):
+        for key, value in headers.items():
+            if isinstance(value, list):
+                normalized_headers[key.lower()].extend(value)
+            else:
+                normalized_headers[key.lower()].append(value)
+    elif isinstance(headers, list):
+        for key, value in headers:
+            normalized_headers[key.decode("latin-1").lower()].append(
+                value.decode("latin-1")
+            )
+    return dict(normalized_headers)
 
 
 def _extract_response(
@@ -371,6 +535,9 @@ def _apply_request_client_attributes_to_span(
     url: str | httpx.URL,
     method_original: str,
     semconv: _StabilityMode,
+    headers: httpx.Headers | dict[str, list[str] | str] | None = None,
+    captured_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     url = httpx.URL(url)
     # http semconv transition: http.method -> http.request.method
@@ -390,6 +557,15 @@ def _apply_request_client_attributes_to_span(
         method_original,
         sanitize_method(method_original),
         semconv,
+    )
+
+    span_attributes.update(
+        get_custom_header_attributes(
+            _normalize_headers(headers),
+            captured_headers,
+            sensitive_headers,
+            normalise_request_header_name,
+        )
     )
 
     if _report_old(semconv):
@@ -420,6 +596,9 @@ def _apply_response_client_attributes_to_span(
     status_code: int,
     http_version: str,
     semconv: _StabilityMode,
+    headers: httpx.Headers | dict[str, list[str] | str] | None = None,
+    captured_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     # http semconv transition: http.status_code -> http.response.status_code
     # TODO: use _set_status when it's stable for http clients
@@ -431,6 +610,15 @@ def _apply_response_client_attributes_to_span(
     )
     http_status_code = http_status_to_status_code(status_code)
     span.set_status(http_status_code)
+
+    span.set_attributes(
+        get_custom_header_attributes(
+            _normalize_headers(headers),
+            captured_headers,
+            sensitive_headers,
+            normalise_response_header_name,
+        )
+    )
 
     if http_status_code == StatusCode.ERROR and _report_new(semconv):
         # http semconv transition: new error.type
@@ -533,6 +721,16 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             )
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
+        self._captured_request_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        self._captured_response_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        self._sensitive_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
     def __enter__(self) -> SyncOpenTelemetryTransport:
         self._transport.__enter__()
@@ -562,6 +760,12 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return self._transport.handle_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -573,6 +777,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             url,
             method_original,
             self._sem_conv_opt_in_mode,
+            headers,
+            self._captured_request_headers,
+            self._sensitive_headers,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -617,6 +824,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
+                        headers,
+                        self._captured_response_headers,
+                        self._sensitive_headers,
                     )
                 if callable(self._response_hook):
                     self._response_hook(
@@ -726,6 +936,16 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
 
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._excluded_urls = get_excluded_urls("HTTPX")
+        self._captured_request_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        self._captured_response_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        self._sensitive_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
     async def __aenter__(self) -> "AsyncOpenTelemetryTransport":
         await self._transport.__aenter__()
@@ -753,6 +973,12 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
+            return await self._transport.handle_async_request(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -764,6 +990,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             url,
             method_original,
             self._sem_conv_opt_in_mode,
+            headers,
+            self._captured_request_headers,
+            self._sensitive_headers,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -810,6 +1039,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                         status_code,
                         http_version,
                         self._sem_conv_opt_in_mode,
+                        headers,
+                        self._captured_response_headers,
+                        self._sensitive_headers,
                     )
 
                 if callable(self._response_hook):
@@ -870,6 +1102,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> typing.Collection[str]:
         return _instruments
 
+    # pylint: disable=too-many-locals
     def _instrument(self, **kwargs: typing.Any):
         """Instruments httpx Client and AsyncClient
 
@@ -899,6 +1132,16 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             async_response_hook
             if iscoroutinefunction(async_response_hook)
             else None
+        )
+        excluded_urls = get_excluded_urls("HTTPX")
+        captured_request_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        captured_response_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        sensitive_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
         )
 
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -948,6 +1191,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 request_hook=request_hook,
                 response_hook=response_hook,
+                excluded_urls=excluded_urls,
+                captured_request_headers=captured_request_headers,
+                captured_response_headers=captured_response_headers,
+                sensitive_headers=sensitive_headers,
             ),
         )
         wrap_function_wrapper(
@@ -961,6 +1208,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                 sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                 async_request_hook=async_request_hook,
                 async_response_hook=async_response_hook,
+                excluded_urls=excluded_urls,
+                captured_request_headers=captured_request_headers,
+                captured_response_headers=captured_response_headers,
+                sensitive_headers=sensitive_headers,
             ),
         )
 
@@ -980,6 +1231,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         request_hook: RequestHook,
         response_hook: ResponseHook,
+        excluded_urls: ExcludeList | None,
+        captured_request_headers: list[str] | None = None,
+        captured_response_headers: list[str] | None = None,
+        sensitive_headers: list[str] | None = None,
     ):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
@@ -987,6 +1242,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -998,6 +1257,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             url,
             method_original,
             sem_conv_opt_in_mode,
+            headers,
+            captured_request_headers,
+            sensitive_headers,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -1042,7 +1304,11 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,
+                        headers,
+                        captured_response_headers,
+                        sensitive_headers,
                     )
+
                 if callable(response_hook):
                     response_hook(
                         span,
@@ -1096,6 +1362,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         sem_conv_opt_in_mode: _StabilityMode,
         async_request_hook: AsyncRequestHook,
         async_response_hook: AsyncResponseHook,
+        excluded_urls: ExcludeList | None,
+        captured_request_headers: typing.Optional[list[str]] = None,
+        captured_response_headers: typing.Optional[list[str]] = None,
+        sensitive_headers: typing.Optional[list[str]] = None,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
@@ -1103,6 +1373,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         method, url, headers, stream, extensions = _extract_parameters(
             args, kwargs
         )
+
+        if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
+            return await wrapped(*args, **kwargs)
+
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
         span_attributes = {}
@@ -1114,6 +1388,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             url,
             method_original,
             sem_conv_opt_in_mode,
+            headers,
+            captured_request_headers,
+            sensitive_headers,
         )
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
@@ -1158,6 +1435,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                         status_code,
                         http_version,
                         sem_conv_opt_in_mode,
+                        headers,
+                        captured_response_headers,
+                        sensitive_headers,
                     )
 
                 if callable(async_response_hook):
@@ -1198,7 +1478,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
 
         return response
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
     @classmethod
     def instrument_client(
         cls,
@@ -1274,6 +1554,17 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             # response_hook already set
             async_response_hook = None
 
+        excluded_urls = get_excluded_urls("HTTPX")
+        captured_request_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        captured_response_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        sensitive_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
+
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -1286,6 +1577,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     request_hook=request_hook,
                     response_hook=response_hook,
+                    excluded_urls=excluded_urls,
+                    captured_request_headers=captured_request_headers,
+                    captured_response_headers=captured_response_headers,
+                    sensitive_headers=sensitive_headers,
                 ),
             )
             for transport in client._mounts.values():
@@ -1301,6 +1596,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             request_hook=request_hook,
                             response_hook=response_hook,
+                            excluded_urls=excluded_urls,
+                            captured_request_headers=captured_request_headers,
+                            captured_response_headers=captured_response_headers,
+                            sensitive_headers=sensitive_headers,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True
@@ -1316,6 +1615,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                     async_request_hook=async_request_hook,
                     async_response_hook=async_response_hook,
+                    excluded_urls=excluded_urls,
+                    captured_request_headers=captured_request_headers,
+                    captured_response_headers=captured_response_headers,
+                    sensitive_headers=sensitive_headers,
                 ),
             )
             for transport in client._mounts.values():
@@ -1331,6 +1634,10 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
                             async_request_hook=async_request_hook,
                             async_response_hook=async_response_hook,
+                            excluded_urls=excluded_urls,
+                            captured_request_headers=captured_request_headers,
+                            captured_response_headers=captured_response_headers,
+                            sensitive_headers=sensitive_headers,
                         ),
                     )
             client._is_instrumented_by_opentelemetry = True

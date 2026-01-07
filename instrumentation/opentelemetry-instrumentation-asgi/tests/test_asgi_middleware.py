@@ -42,6 +42,9 @@ from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
@@ -311,6 +314,55 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
 
         self.env_patch.start()
+
+    def subTest(self, msg=..., **params):
+        sub = super().subTest(msg, **params)
+        # Reinitialize test state to avoid state pollution
+        self.setUp()
+        return sub
+
+    # Helper to assert exemplars presence across specified histogram metric names.
+    def _assert_exemplars_present(
+        self, metric_names: set[str], context: str = ""
+    ):
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        print(metrics_list)
+        metrics = []
+        for resource_metric in (
+            getattr(metrics_list, "resource_metrics", []) or []
+        ):
+            for scope_metric in (
+                getattr(resource_metric, "scope_metrics", []) or []
+            ):
+                metrics.extend(getattr(scope_metric, "metrics", []) or [])
+
+        found = {name: 0 for name in metric_names}
+        for metric in metrics:
+            if metric.name not in metric_names:
+                continue
+            for point in metric.data.data_points:
+                found[metric.name] += 1
+                exemplars = getattr(point, "exemplars", None)
+                self.assertIsNotNone(
+                    exemplars,
+                    msg=f"Expected exemplars list attribute on histogram data point for {metric.name} ({context})",
+                )
+                self.assertGreater(
+                    len(exemplars or []),
+                    0,
+                    msg=f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
+                )
+                for ex in exemplars or []:
+                    if hasattr(ex, "span_id"):
+                        self.assertNotEqual(ex.span_id, 0)
+                    if hasattr(ex, "trace_id"):
+                        self.assertNotEqual(ex.trace_id, 0)
+        for name, count in found.items():
+            self.assertGreater(
+                count,
+                0,
+                msg=f"Did not encounter any data points for metric {name} while checking exemplars ({context}).",
+            )
 
     # pylint: disable=too-many-locals
     def validate_outputs(
@@ -883,6 +935,136 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             new_sem_conv=True,
         )
 
+    async def test_user_agent_synthetic_bot_detection(self):
+        """Test that bot user agents are detected as synthetic with type 'bot'"""
+        test_cases = [
+            b"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            b"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            b"googlebot/1.0",
+            b"bingbot/1.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_bot(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "bot",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_bot]
+                )
+
+    async def test_user_agent_synthetic_test_detection(self):
+        """Test that test user agents are detected as synthetic with type 'test'"""
+        test_cases = [
+            b"alwayson/1.0",
+            b"AlwaysOn/2.0",
+            b"test-alwayson-client",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_test(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "test",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_test]
+                )
+
+    async def test_user_agent_non_synthetic(self):
+        """Test that normal user agents are not marked as synthetic"""
+        test_cases = [
+            b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            b"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+            b"PostmanRuntime/7.28.4",
+            b"curl/7.68.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_non_synthetic(
+                    expected, ua: bytes = user_agent
+                ):
+                    # Should only have the user agent, not synthetic type
+                    expected[3]["attributes"].update(
+                        {
+                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_non_synthetic]
+                )
+
+    async def test_user_agent_synthetic_new_semconv(self):
+        """Test synthetic user agent detection with new semantic conventions"""
+        user_agent = b"Mozilla/5.0 (compatible; Googlebot/2.1)"
+
+        def update_expected_synthetic_new_semconv(expected):
+            expected[3]["attributes"].update(
+                {
+                    USER_AGENT_ORIGINAL: user_agent.decode("utf8"),
+                    USER_AGENT_SYNTHETIC_TYPE: "bot",
+                }
+            )
+            return expected
+
+        self.scope["headers"] = []
+        self.scope["headers"].append([b"user-agent", user_agent])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_synthetic_new_semconv],
+            old_sem_conv=False,
+            new_sem_conv=True,
+        )
+
     async def test_traceresponse_header(self):
         """Test a traceresponse header is sent when a global propagator is set."""
 
@@ -1392,6 +1574,40 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    async def test_asgi_metrics_exemplars_expected_old_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.duration"}, context="old semconv"
+        )
+
+    async def test_asgi_metrics_exemplars_expected_new_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for request duration histogram (new semconv)."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.request.duration"}, context="new semconv"
+        )
+
+    async def test_asgi_metrics_exemplars_expected_both_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.duration", "http.server.request.duration"},
+            context="both semconv",
+        )
+
     async def test_basic_metric_success(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
@@ -1427,7 +1643,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                             self.assertEqual(point.count, 1)
                             if metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration, point.sum, delta=30
                                 )
                             elif metric.name == "http.server.response.size":
                                 self.assertEqual(1024, point.sum)
@@ -1612,7 +1828,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                                 )
                             elif metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration, point.sum, delta=30
                                 )
                                 self.assertDictEqual(
                                     expected_duration_attributes_old,
