@@ -962,7 +962,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         """Observer callback for garbage collection"""
         for index, stat in enumerate(gc.get_stats()):
             self._runtime_gc_collections_labels[CPYTHON_GC_GENERATION] = index
-            # TODO: remove this after a few releases after 1.40.0
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_collections_labels["generation"] = str(index)
             yield Observation(
                 stat["collections"], self._runtime_gc_collections_labels.copy()
@@ -976,7 +976,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._runtime_gc_collected_objects_labels[
                 CPYTHON_GC_GENERATION
             ] = index
-            # TODO: remove this after a few releases after 1.40.0
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_collected_objects_labels["generation"] = str(
                 index
             )
@@ -993,7 +993,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             self._runtime_gc_uncollectable_objects_labels[
                 CPYTHON_GC_GENERATION
             ] = index
-            # TODO: remove this after a few releases after 1.40.0
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_uncollectable_objects_labels["generation"] = str(
                 index
             )
