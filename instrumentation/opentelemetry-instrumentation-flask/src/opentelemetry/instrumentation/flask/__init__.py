@@ -290,6 +290,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.metrics.http.server import (
     create_http_server_active_requests,
 )
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
@@ -301,8 +302,6 @@ from opentelemetry.util.http import (
 )
 
 _logger = getLogger(__name__)
-_HTTP_SERVER_DURATION_OLD = "http.server.duration"
-
 # Global constants for Flask 3.1+ streaming context cleanup
 _IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
     flask.__version__
@@ -683,7 +682,7 @@ class _InstrumentedFlask(flask.Flask):
         duration_histogram_old = None
         if _report_old(_InstrumentedFlask._sem_conv_opt_in_mode):
             duration_histogram_old = meter.create_histogram(
-                name=_HTTP_SERVER_DURATION_OLD,
+                name=MetricInstruments.HTTP_SERVER_DURATION,
                 unit="ms",
                 description="Measures the duration of inbound HTTP requests.",
             )
@@ -813,7 +812,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             duration_histogram_old = None
             if _report_old(sem_conv_opt_in_mode):
                 duration_histogram_old = meter.create_histogram(
-                    name=_HTTP_SERVER_DURATION_OLD,
+                    name=MetricInstruments.HTTP_SERVER_DURATION,
                     unit="ms",
                     description="Measures the duration of inbound HTTP requests.",
                 )
