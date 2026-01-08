@@ -83,56 +83,28 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         if request_model == "unknown":
             return
 
-        # TODO: uncomment and modify following after PR #3862 is merged
-        # if params is not None:
-        #     top_p = params.get("top_p")
-        #     if top_p is not None:
-        #         span.set_attribute(GenAI.GEN_AI_REQUEST_TOP_P, top_p)
-        #     frequency_penalty = params.get("frequency_penalty")
-        #     if frequency_penalty is not None:
-        #         span.set_attribute(
-        #             GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, frequency_penalty
-        #         )
-        #     presence_penalty = params.get("presence_penalty")
-        #     if presence_penalty is not None:
-        #         span.set_attribute(
-        #             GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, presence_penalty
-        #         )
-        #     stop_sequences = params.get("stop")
-        #     if stop_sequences is not None:
-        #         span.set_attribute(
-        #             GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences
-        #         )
-        #     seed = params.get("seed")
-        #     if seed is not None:
-        #         span.set_attribute(GenAI.GEN_AI_REQUEST_SEED, seed)
-        #     # ChatOpenAI
-        #     temperature = params.get("temperature")
-        #     if temperature is not None:
-        #         span.set_attribute(
-        #             GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
-        #         )
-        #     # ChatOpenAI
-        #     max_tokens = params.get("max_completion_tokens")
-        #     if max_tokens is not None:
-        #         span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
-        #
+        if params is not None:
+            top_p = params.get("top_p")
+            frequency_penalty = params.get("frequency_penalty")
+            presence_penalty = params.get("presence_penalty")
+            stop_sequences = params.get("stop")
+            seed = params.get("seed")
+
+            # ChatOpenAI
+            temperature = params.get("temperature")
+
+            # ChatOpenAI
+            max_tokens = params.get("max_completion_tokens")
+
         provider = "unknown"
         if metadata is not None:
             provider = metadata.get("ls_provider")
 
-        # TODO: uncomment and modify following after PR #3862 is merged
+            # ChatBedrock
+            temperature = metadata.get("ls_temperature")
 
-        #     # ChatBedrock
-        #     temperature = metadata.get("ls_temperature")
-        #     if temperature is not None:
-        #         span.set_attribute(
-        #             GenAI.GEN_AI_REQUEST_TEMPERATURE, temperature
-        #         )
-        #     # ChatBedrock
-        #     max_tokens = metadata.get("ls_max_tokens")
-        #     if max_tokens is not None:
-        #         span.set_attribute(GenAI.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+            # ChatBedrock
+            max_tokens = metadata.get("ls_max_tokens")
 
         input_messages: list[InputMessage] = []
         for sub_messages in messages:  # type: ignore[reportUnknownVariableType]
@@ -146,6 +118,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             request_model=request_model,
             input_messages=input_messages,
             provider=provider,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            stop_sequences=stop_sequences,
+            seed=seed,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
         llm_invocation = self._telemetry_handler.start_llm(
             invocation=llm_invocation
@@ -243,7 +222,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
-        invocation = self._telemetry_handler.stop_llm(invocation=invocation)
+        invocation = self._telemetry_handler.stop_llm(invocation=llm_invocation)
         if not invocation.span.is_recording():  # type: ignore[reportOptionalMemberAccess]
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
