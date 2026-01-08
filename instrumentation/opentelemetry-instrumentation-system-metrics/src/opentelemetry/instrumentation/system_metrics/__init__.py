@@ -112,6 +112,9 @@ from opentelemetry.instrumentation.system_metrics.environment_variables import (
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
+from opentelemetry.semconv._incubating.attributes.cpython_attributes import (
+    CPYTHON_GC_GENERATION,
+)
 from opentelemetry.semconv._incubating.metrics.process_metrics import (
     create_process_cpu_utilization,
 )
@@ -958,6 +961,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collections_labels[CPYTHON_GC_GENERATION] = index
+            # TODO: remove this after a few releases after 1.40.0
             self._runtime_gc_collections_labels["generation"] = str(index)
             yield Observation(
                 stat["collections"], self._runtime_gc_collections_labels.copy()
@@ -968,6 +973,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection collected objects"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collected_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this after a few releases after 1.40.0
             self._runtime_gc_collected_objects_labels["generation"] = str(
                 index
             )
@@ -981,6 +990,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection uncollectable objects"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_uncollectable_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this after a few releases after 1.40.0
             self._runtime_gc_uncollectable_objects_labels["generation"] = str(
                 index
             )
