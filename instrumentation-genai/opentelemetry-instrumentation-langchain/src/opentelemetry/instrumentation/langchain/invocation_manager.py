@@ -32,7 +32,7 @@ class _InvocationManager:
         self,
     ) -> None:
         # Map from run_id -> _InvocationState, to keep track of invocations and parent/child relationships
-        # TODO: Use weak references or a TTL cache to avoid memory leaks in long-running processes. See #3735
+        # TODO: TTL cache to avoid memory leaks in long-running processes.
         self._invocations: Dict[UUID, _InvocationState] = {}
 
     def add_invocation_state(
@@ -41,21 +41,21 @@ class _InvocationManager:
         parent_run_id: Optional[UUID],
         invocation: GenAIInvocation,
     ):
+        invocation_state = _InvocationState(invocation=invocation)
+        self._invocations[run_id] = invocation_state
+
         if parent_run_id is not None and parent_run_id in self._invocations:
             parent_invocation_state = self._invocations[parent_run_id]
             parent_invocation_state.children.append(run_id)
-
-        invocation_state = _InvocationState(invocation=invocation)
-        self._invocations[run_id] = invocation_state
 
     def get_invocation(self, run_id: UUID) -> Optional[GenAIInvocation]:
         invocation_state = self._invocations.get(run_id)
         return invocation_state.invocation if invocation_state else None
 
     def delete_invocation_state(self, run_id: UUID) -> None:
-        invocation_state = self._invocations[run_id]
-        for child_id in invocation_state.children:
-            child_invocation_state = self._invocations.get(child_id)
-            if child_invocation_state:
-                del self._invocations[child_id]
-        del self._invocations[run_id]
+        invocation_state = self._invocations.get(run_id)
+        if not invocation_state:
+            return
+        for child_id in list(invocation_state.children):
+            self._invocations.pop(child_id, None)
+        self._invocations.pop(run_id, None)
