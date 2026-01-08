@@ -287,7 +287,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_ROUTE,
     HTTP_TARGET,
 )
-from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv._incubating.metrics.http.server import (
+    create_http_server_active_requests,
+)
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
@@ -680,7 +682,7 @@ class _InstrumentedFlask(flask.Flask):
         duration_histogram_old = None
         if _report_old(_InstrumentedFlask._sem_conv_opt_in_mode):
             duration_histogram_old = meter.create_histogram(
-                name=MetricInstruments.HTTP_SERVER_DURATION,
+                name="http.server.duration",
                 unit="ms",
                 description="Measures the duration of inbound HTTP requests.",
             )
@@ -692,11 +694,7 @@ class _InstrumentedFlask(flask.Flask):
                 description="Duration of HTTP server requests.",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        active_requests_counter = meter.create_up_down_counter(
-            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
-        )
+        active_requests_counter = create_http_server_active_requests(meter)
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app,
@@ -814,7 +812,7 @@ class FlaskInstrumentor(BaseInstrumentor):
             duration_histogram_old = None
             if _report_old(sem_conv_opt_in_mode):
                 duration_histogram_old = meter.create_histogram(
-                    name=MetricInstruments.HTTP_SERVER_DURATION,
+                    name="http.server.duration",
                     unit="ms",
                     description="Measures the duration of inbound HTTP requests.",
                 )
@@ -826,11 +824,7 @@ class FlaskInstrumentor(BaseInstrumentor):
                     description="Duration of HTTP server requests.",
                     explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
-            active_requests_counter = meter.create_up_down_counter(
-                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-                unit="{request}",
-                description="Number of active HTTP server requests.",
-            )
+            active_requests_counter = create_http_server_active_requests(meter)
 
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(
