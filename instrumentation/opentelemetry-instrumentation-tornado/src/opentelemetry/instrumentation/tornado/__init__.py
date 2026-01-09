@@ -154,6 +154,7 @@ API
 ---
 """
 
+import urllib
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -789,8 +790,8 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
     if otel_handler_state.get("exclude_request"):
         return
     start_time = otel_handler_state.get(_START_TIME, None) or default_timer()
-    elapsed_time_ms = round((default_timer() - start_time) * 1000)
     elapsed_time_s = default_timer() - start_time
+    elapsed_time_ms = round(elapsed_time_s * 1000)
 
     response_size = int(handler._headers.get("Content-Length", 0))
     status_code = handler.get_status()
@@ -849,9 +850,7 @@ def _create_active_requests_attributes_old(request):
         HTTP_FLAVOR: request.version,
         HTTP_HOST: request.host,
     }
-    # Add target (path) for active requests
-    if request.path:
-        metric_attributes[HTTP_TARGET] = request.path
+    metric_attributes[HTTP_TARGET] = request.path
     return metric_attributes
 
 
@@ -881,13 +880,10 @@ def _create_metric_attributes_new(handler):
     # Add URL path if available
     if handler.request.path:
         # Parse query from path if present
-        path = handler.request.path
-        if "?" in path:
-            path_part, query_part = path.split("?", 1)
-            metric_attributes[URL_PATH] = path_part
-            if query_part:
-                metric_attributes[URL_QUERY] = query_part
-        else:
-            metric_attributes[URL_PATH] = path
+        parsed = urllib.parse.urlparse(handler.request.path)
+        if parsed.path:
+            metric_attributes[URL_PATH] = parsed.path
+        if parsed.query:
+            metric_attributes[URL_QUERY] = parsed.query
 
     return metric_attributes
