@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
 - `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
   ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
+- `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
+  ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
 
 ### Fixed
 
@@ -90,8 +92,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
 - `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
   ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
-- `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
-  ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
 
 ### Fixed
 
