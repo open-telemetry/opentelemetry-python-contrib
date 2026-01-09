@@ -118,7 +118,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -258,6 +258,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
@@ -271,9 +274,11 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
     redact_url,
     sanitize_method,
 )
@@ -387,9 +392,7 @@ def collect_request_attributes(
             result, remote_host, sem_conv_opt_in_mode
         )
 
-    user_agent = environ.get("HTTP_USER_AGENT")
-    if user_agent is not None and len(user_agent) > 0:
-        _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
+    _apply_user_agent_attributes(result, environ, sem_conv_opt_in_mode)
 
     flavor = environ.get("SERVER_PROTOCOL", "")
     if flavor.upper().startswith(_HTTP_VERSION_PREFIX):
@@ -400,10 +403,30 @@ def collect_request_attributes(
     return result
 
 
+def _apply_user_agent_attributes(
+    result: dict[str, str | None],
+    environ: WSGIEnvironment,
+    sem_conv_opt_in_mode: _StabilityMode,
+):
+    user_agent_raw = environ.get("HTTP_USER_AGENT")
+    if not user_agent_raw:
+        return
+
+    user_agent = normalize_user_agent(user_agent_raw)
+    if not user_agent:
+        return
+
+    _set_http_user_agent(result, user_agent, sem_conv_opt_in_mode)
+    synthetic_type = detect_synthetic_user_agent(user_agent)
+    if synthetic_type:
+        result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
+
+
 def collect_custom_request_headers_attributes(environ: WSGIEnvironment):
     """Returns custom HTTP request headers which are configured by the user
     from the PEP3333-conforming WSGI environ to be used as span creation attributes as described
-    in the specification https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    in the semantic conventions https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span.
+    See also https://peps.python.org/pep-3333/
     """
 
     sanitize = SanitizeValue(
@@ -430,8 +453,8 @@ def collect_custom_response_headers_attributes(
     response_headers: list[tuple[str, str]],
 ):
     """Returns custom HTTP response headers which are configured by the user from the
-    PEP3333-conforming WSGI environ as described in the specification
-    https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    PEP3333-conforming WSGI environ as described in the semantic conventions
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
 
     sanitize = SanitizeValue(
@@ -644,6 +667,7 @@ class OpenTelemetryMiddleware:
         return _start_response
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
     ):
@@ -708,19 +732,24 @@ class OpenTelemetryMiddleware:
             raise
         finally:
             duration_s = default_timer() - start
+            active_metric_ctx = trace.set_span_in_context(span)
             if self.duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
                     req_attrs, _StabilityMode.DEFAULT
                 )
                 self.duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=active_metric_ctx,
                 )
             if self.duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
                     req_attrs, _StabilityMode.HTTP
                 )
                 self.duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=active_metric_ctx,
                 )
             self.active_requests_counter.add(-1, active_requests_count_attrs)
 

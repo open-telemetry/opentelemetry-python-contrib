@@ -1,4 +1,4 @@
-import asyncio
+import inspect
 import typing
 from collections.abc import Coroutine
 
@@ -197,7 +197,7 @@ class _ContextManager(Coroutine):
 
     async def __aexit__(self, exc_type, exc, t_b):
         try:
-            if asyncio.iscoroutinefunction(self._obj.close):
+            if inspect.iscoroutinefunction(self._obj.close):
                 await self._obj.close()
             else:
                 self._obj.close()

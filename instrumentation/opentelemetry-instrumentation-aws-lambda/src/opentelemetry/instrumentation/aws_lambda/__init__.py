@@ -326,7 +326,7 @@ def _instrument(
                 if span.is_recording():
                     lambda_context = args[1]
                     # NOTE: The specs mention an exception here, allowing the
-                    # `SpanAttributes.CLOUD_RESOURCE_ID` attribute to be set as a span
+                    # `CLOUD_RESOURCE_ID` attribute to be set as a span
                     # attribute instead of a resource attribute.
                     #
                     # See more:
@@ -460,6 +460,8 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             )
             return
         # pylint: disable=attribute-defined-outside-init
+        # Convert slash-delimited paths to dot-delimited for valid Python imports
+        lambda_handler = lambda_handler.replace("/", ".")
         (
             self._wrapped_module_name,
             self._wrapped_function_name,

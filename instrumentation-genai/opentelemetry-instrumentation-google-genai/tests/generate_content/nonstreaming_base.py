@@ -16,9 +16,10 @@ import json
 import unittest
 from unittest.mock import patch
 
-from google.genai.types import GenerateContentConfig
+import pytest
+from google.genai.types import GenerateContentConfig, Part
+from pydantic import BaseModel, Field
 
-from opentelemetry._events import Event
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -30,6 +31,12 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
+
+# pylint: disable=too-many-public-methods
+
+
+class ExampleResponseSchema(BaseModel):
+    name: str = Field(description="A Destination's Name")
 
 
 class NonStreamingTestCase(TestCase):
@@ -92,6 +99,40 @@ class NonStreamingTestCase(TestCase):
             span.attributes["gen_ai.operation.name"], "generate_content"
         )
 
+    def test_span_and_event_still_written_when_response_is_exception(self):
+        self.configure_exception(ValueError("Uh oh!"))
+        patched_environ = patch.dict(
+            "os.environ",
+            {
+                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "SPAN_AND_EVENT",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+            },
+        )
+        with patched_environ:
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            with pytest.raises(ValueError):
+                self.generate_content(
+                    model="gemini-2.0-flash", contents="Does this work?"
+                )
+            self.otel.assert_has_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            span = self.otel.get_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            self.otel.assert_has_event_named(
+                "gen_ai.client.inference.operation.details"
+            )
+            event = self.otel.get_event_named(
+                "gen_ai.client.inference.operation.details"
+            )
+            assert (
+                span.attributes["error.type"]
+                == event.attributes["error.type"]
+                == "ValueError"
+            )
+
     def test_generated_span_has_correct_function_name(self):
         self.configure_valid_response(text="Yep, it works!")
         self.generate_content(
@@ -138,6 +179,57 @@ class NonStreamingTestCase(TestCase):
         event_record = self.otel.get_event_named("gen_ai.system.message")
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "foo")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text(self):
+        config = GenerateContentConfig(
+            system_instruction=["help", "me please."]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text_parts(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_text(text="help"),
+                Part.from_text(text="me please."),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_is_invalid(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_uri(file_uri="test.jpg"),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_does_not_have_event_named("gen_ai.system.message")
 
     @patch.dict(
         "os.environ",
@@ -215,6 +307,12 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "<elided>")
 
+    @patch.dict(
+        "os.environ",
+        {
+            "OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "gcp.gen_ai.operation.config.response_schema"
+        },
+    )
     def test_new_semconv_record_completion_as_log(self):
         for mode in ContentCapturingMode:
             patched_environ = patch.dict(
@@ -243,7 +341,8 @@ class NonStreamingTestCase(TestCase):
                         model="gemini-2.0-flash",
                         contents=content,
                         config=GenerateContentConfig(
-                            system_instruction=sys_instr
+                            system_instruction=sys_instr,
+                            response_schema=ExampleResponseSchema,
                         ),
                     )
                     self.otel.assert_has_event_named(
@@ -251,6 +350,12 @@ class NonStreamingTestCase(TestCase):
                     )
                     event = self.otel.get_event_named(
                         "gen_ai.client.inference.operation.details"
+                    )
+                    assert (
+                        event.attributes[
+                            "gcp.gen_ai.operation.config.response_schema"
+                        ]
+                        == "<class 'tests.generate_content.nonstreaming_base.ExampleResponseSchema'>"
                     )
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,
@@ -269,7 +374,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes,
                         )
                     else:
-                        attrs = {
+                        expected_event_attributes = {
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
                                 {
                                     "role": "user",
@@ -291,15 +396,11 @@ class NonStreamingTestCase(TestCase):
                                 {"content": sys_instr, "type": "text"},
                             ),
                         }
-                        expected_event = Event(
-                            "gen_ai.client.inference.operation.details",
-                            attributes=attrs,
-                        )
                         self.assertEqual(
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
                         )
@@ -307,7 +408,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
                         )
@@ -315,7 +416,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
@@ -346,7 +447,8 @@ class NonStreamingTestCase(TestCase):
                         model="gemini-2.0-flash",
                         contents="Some input",
                         config=GenerateContentConfig(
-                            system_instruction="System instruction"
+                            system_instruction="System instruction",
+                            response_schema=ExampleResponseSchema,
                         ),
                     )
                     span = self.otel.get_span_named(

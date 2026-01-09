@@ -52,6 +52,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -291,6 +294,41 @@ class TestWsgiApplication(WsgiTestBase):
                 expected_attributes[HTTP_REQUEST_METHOD] = http_method
         self.assertEqual(span_list[0].attributes, expected_attributes)
 
+    # Helper modeled after ASGI test suite to assert presence of exemplars on histogram metrics
+    def _assert_exemplars_present(self, metric_names, context=""):
+        metrics_data = self.memory_metrics_reader.get_metrics_data()
+        self.assertTrue(
+            len(metrics_data.resource_metrics) > 0,
+            f"No resource metrics collected while checking exemplars ({context})",
+        )
+        checked = set()
+        for resource_metric in metrics_data.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name not in metric_names:
+                        continue
+                    checked.add(metric.name)
+                    # Expect exactly one datapoint per histogram metric in these tests
+                    data_points = list(metric.data.data_points)
+                    self.assertGreater(
+                        len(data_points),
+                        0,
+                        f"No data points for {metric.name} while checking exemplars ({context})",
+                    )
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertGreater(
+                                len(point.exemplars),
+                                0,
+                                f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
+                            )
+        # Ensure we actually saw all targeted metrics
+        self.assertSetEqual(
+            set(metric_names),
+            checked,
+            f"Did not observe all targeted metrics when asserting exemplars ({context}). Expected {metric_names} got {checked}",
+        )
+
     def test_basic_wsgi_call(self):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
@@ -415,6 +453,42 @@ class TestWsgiApplication(WsgiTestBase):
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def test_wsgi_metrics_exemplars_expected_old_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for duration histogram (old semconv)."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        # generate several requests to increase chance of exemplar sampling
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            # exhaust response iterable
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.duration"}, context="old semconv"
+        )
+
+    def test_wsgi_metrics_exemplars_expected_new_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for request duration histogram (new semconv)."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.request.duration"}, context="new semconv"
+        )
+
+    def test_wsgi_metrics_exemplars_expected_both_semconv(self):  # type: ignore[func-returns-value]
+        """Failing test asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        for _ in range(5):
+            response = app(self.environ, self.start_response)
+            for _ in response:
+                pass
+        self._assert_exemplars_present(
+            {"http.server.duration", "http.server.request.duration"},
+            context="both semconv",
+        )
+
     def test_wsgi_metrics_new_semconv(self):
         # pylint: disable=too-many-nested-blocks
         app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
@@ -527,6 +601,7 @@ class TestWsgiApplication(WsgiTestBase):
         self.validate_response(response, span_name=method)
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiAttributes(unittest.TestCase):
     def setUp(self):
         self.environ = {}
@@ -790,6 +865,90 @@ class TestWsgiAttributes(unittest.TestCase):
             ).items(),
             expected_new.items(),
         )
+
+    def test_http_user_agent_bytes_like_attribute(self):
+        self.environ["HTTP_USER_AGENT"] = b"AlwaysOn-Monitor/1.0"
+        attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+        self.assertEqual(attributes[HTTP_USER_AGENT], "AlwaysOn-Monitor/1.0")
+        self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "test")
+
+    def test_http_user_agent_synthetic_bot_detection(self):
+        """Test that bot user agents are detected as synthetic with type 'bot'"""
+        test_cases = [
+            "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            "googlebot/1.0",
+            "bingbot/1.0",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have both the original user agent and synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+                self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "bot")
+
+    def test_http_user_agent_synthetic_test_detection(self):
+        """Test that test user agents are detected as synthetic with type 'test'"""
+        test_cases = [
+            "alwayson/1.0",
+            "AlwaysOn/2.0",
+            "test-alwayson-client",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have both the original user agent and synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+                self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "test")
+
+    def test_http_user_agent_non_synthetic(self):
+        """Test that normal user agents are not marked as synthetic"""
+        test_cases = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+            "PostmanRuntime/7.28.4",
+            "curl/7.68.0",
+        ]
+
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                self.environ["HTTP_USER_AGENT"] = user_agent
+                attributes = otel_wsgi.collect_request_attributes(self.environ)
+
+                # Should have the original user agent but no synthetic type
+                self.assertIn(HTTP_USER_AGENT, attributes)
+                self.assertEqual(attributes[HTTP_USER_AGENT], user_agent)
+                self.assertNotIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+
+    def test_http_user_agent_synthetic_new_semconv(self):
+        """Test synthetic user agent detection with new semantic conventions"""
+        self.environ["HTTP_USER_AGENT"] = (
+            "Mozilla/5.0 (compatible; Googlebot/2.1)"
+        )
+        attributes = otel_wsgi.collect_request_attributes(
+            self.environ,
+            _StabilityMode.HTTP,
+        )
+
+        # Should have both the new semconv user agent and synthetic type
+        self.assertIn(USER_AGENT_ORIGINAL, attributes)
+        self.assertEqual(
+            attributes[USER_AGENT_ORIGINAL],
+            "Mozilla/5.0 (compatible; Googlebot/2.1)",
+        )
+        self.assertIn(USER_AGENT_SYNTHETIC_TYPE, attributes)
+        self.assertEqual(attributes[USER_AGENT_SYNTHETIC_TYPE], "bot")
 
     def test_response_attributes(self):
         otel_wsgi.add_response_attributes(self.span, "404 Not Found", {})

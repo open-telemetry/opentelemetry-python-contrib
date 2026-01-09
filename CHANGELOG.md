@@ -11,15 +11,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added 
+### Added
 
-- `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
-  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
+- `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
+- `opentelemetry-instrumentation-wsgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
+- `opentelemetry-instrumentation-aiohttp-client`: add ability to capture custom headers
+  ([#3988](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3988))
+- `opentelemetry-instrumentation-requests`: add ability to capture custom headers
+  ([#3987](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3987))
+- `opentelemetry-instrumentation-aiohttp-client`: add typechecking for aiohttp-client instrumentation
+  ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
+- `opentelemetry-instrumentation-flask`: Add support for 3.1+ streaming responses
+  ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
+- `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
+  ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
+- `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
+  ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
+- `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
+  ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
 
 ### Fixed
 
-- `opentelemetry-instrumentation-botocore`: Handle dict input in _decode_tool_use for Bedrock streaming
+- `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
+  ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
+- `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
+  ([#3945](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3945))
+- `opentelemetry-util-http`, `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: normalize byte-valued user-agent headers before detecting synthetic sources so attributes are recorded reliably.
+  ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
+- `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
+  ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
+- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable 
+  ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
+- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
+  ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
+- `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
+  ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
+- `opentelemetry-instrumentation-confluent-kafka`: Replace SpanAttributes with semconv constants where applicable
+  ([#4057](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4057))
+- `opentelemetry-instrumentation-cassandra`: Replace SpanAttributes with semconv constants for DB attributes
+  ([#4055](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4055))
+- `opentelemetry-instrumentation-falcon`: Replace SpanAttributes with semconv constants
+  ([#4066](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4066))
+- `opentelemetry-instrumentation-pika`: Replace SpanAttributes with semconv constants for net attributes
+  ([#4068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4068))
+- `opentelemetry-instrumentation-mysqlclient`: Replace SpanAttributes with semconv constants
+  ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
+- `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
+  ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+
+## Version 1.39.0/0.60b0 (2025-12-03)
+
+### Added
+
+- `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
+  ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
+- `opentelemetry-instrumentation-aiohttp-client`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_AIOHTTP_CLIENT_EXCLUDED_URLS`
+  ([#3850](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3850))
+- `opentelemetry-instrumentation-httpx`: add support for url exclusions via `OTEL_PYTHON_EXCLUDED_URLS` / `OTEL_PYTHON_HTTPX_EXCLUDED_URLS`
+  ([#3837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3837))
+- `opentelemetry-instrumentation-flask`: improve readthedocs for sqlcommenter configuration.
+  ([#3883](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3883))
+- `opentelemetry-instrumentation-sqlalchemy`: improve readthedocs for sqlcommenter configuration.
+  ([#3886](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3886))
+- `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-pymysql`: improve readthedocs for sqlcommenter configuration.
+  ([#3885](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3885))
+- `opentelemetry-instrumentation-django`: improve readthedocs for sqlcommenter configuration.
+  ([#3884](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3884))
+- `opentelemetry-instrumentation-aiohttp-server`: add support for custom header captures via `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST` and `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`
+  ([#3916](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3916))
+- `opentelemetry-instrumentation-redis`: add support for `suppress_instrumentation` context manager for both sync and async Redis clients and pipelines
+- `opentelemetry-instrumentation-django`: improve docs for response_hook with examples of providing attributes from middlewares
+  ([#3923](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3923))
+- Update for Log SDK breaking changes. Rename InMemoryLogExporter to InMemoryLogRecordExporter in several tests
+  ([#3589](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3589))
+- opentelemetry-instrumentation: allow to skip all instrumentations loading with a wildcard
+  ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
+- `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
+  ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
+
+### Fixed
+
+- `opentelemetry-instrumentation-botocore`: bedrock: Add safety check for bedrock ConverseStream responses
+  ([#3990](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3990))
+- `opentelemetry-instrumentation-botocore`: bedrock: only decode JSON input buffer in Anthropic Claude streaming
   ([#3875](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3875))
+- `opentelemetry-instrumentation-aiohttp-client`, `opentelemetry-instrumentation-aiohttp-server`: Fix readme links and text
+  ([#3902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3902))
+- `opentelemetry-instrumentation-aws-lambda`: Fix ImportError with slash-delimited handler paths
+  ([#3894](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3894))
+- `opentelemetry-exporter-richconsole`: Prevent deadlock when parent span is not part of the batch
+  ([#3900](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3900))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: improve readthedocs for sqlcommenter configuration.
+  ([#3882](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3882))
+- `opentelemetry-instrumentation-aiohttp-server`: delay initialization of tracer, meter and excluded urls to instrumentation for testability
+  ([#3836](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3836))
+- Replace Python 3.14-deprecated `asyncio.iscoroutinefunction` with `inspect.iscoroutinefunction`.
+  ([#3880](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3880))
+- `opentelemetry-instrumentation-elasticsearch`: Enhance elasticsearch query body sanitization
+  ([#3919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3919))
+- `opentelemetry-instrumentation-pymongo`: Fix span error descriptions
+  ([#3904](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3904))
+- build: bump ruff to 0.14.1
+  ([#3842](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3842))
+- `opentelemetry-instrumentation-redis`: Add default span name for pipeline operations
+  ([#3941](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3941))
+- `opentelemetry-instrumentation-pymongo`: Fix invalid mongodb collection attribute type
+  ([#3942](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3942))
+- `opentelemetry-instrumentation-aiohttp-client`: Fix metric attribute leakage
+  ([#3936](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3936))
+- `opentelemetry-instrumentation-aiohttp-client`: Update instrumentor to respect suppressing http instrumentation
+  ([#3957](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3957))
 
 ## Version 1.38.0/0.59b0 (2025-10-16)
 
@@ -35,6 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
 - `opentelemetry-instrumentation-grpc` User should be able to cancel grpc stream
   ([#2093](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2093))
+- `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
+  ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
 
@@ -75,7 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3670))
 - `opentelemetry-instrumentation-httpx`: fix missing metric response attributes when tracing is disabled
   ([#3615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3615))
-- `opentelemetry-instrumentation-fastapi`:  Don't pass bounded server_request_hook when using `FastAPIInstrumentor.instrument()`
+- `opentelemetry-instrumentation-fastapi`: Don't pass bounded server_request_hook when using `FastAPIInstrumentor.instrument()`
   ([#3701](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3701))
 
 ### Added
@@ -86,7 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3666))
 - `opentelemetry-sdk-extension-aws` Add AWS X-Ray Remote Sampler with initial Rules Poller implementation
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3366))
-- `opentelemetry-instrumentation`: add support for  `OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH` to inform opentelemetry-instrument about gevent monkeypatching
+- `opentelemetry-instrumentation`: add support for `OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH` to inform opentelemetry-instrument about gevent monkeypatching
   ([#3699](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3699))
 - `opentelemetry-instrumentation`: botocore: Add support for AWS Step Functions semantic convention attributes
   ([#3737](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3737))
