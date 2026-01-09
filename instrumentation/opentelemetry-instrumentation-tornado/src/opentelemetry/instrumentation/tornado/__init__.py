@@ -246,9 +246,6 @@ _HANDLER_STATE_KEY = "_otel_state_key"
 _HANDLER_CONTEXT_KEY = "_otel_trace_context_key"
 _OTEL_PATCHED_KEY = "_otel_patched_key"
 
-# Module-level variable to store semconv opt-in mode
-_sem_conv_opt_in_mode = _StabilityMode.DEFAULT
-
 _START_TIME = "start_time"
 
 _excluded_urls = get_excluded_urls("TORNADO")
@@ -259,6 +256,10 @@ response_propagation_setter = FuncSetter(tornado.web.RequestHandler.add_header)
 class TornadoInstrumentor(BaseInstrumentor):
     patched_handlers = []
     original_handler_new = None
+
+    def __init__(self):
+        super().__init__()
+        self._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -283,14 +284,12 @@ class TornadoInstrumentor(BaseInstrumentor):
         Note that the patch does not apply on every single __init__ call, only the first one for the entire
         process lifetime.
         """
-        global _sem_conv_opt_in_mode  # pylint: disable=global-statement
-
         # Initialize semantic conventions opt-in mode
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
-        _sem_conv_opt_in_mode = sem_conv_opt_in_mode
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
@@ -336,7 +335,11 @@ class TornadoInstrumentor(BaseInstrumentor):
         def handler_init(init, handler, args, kwargs):
             cls = handler.__class__
             if patch_handler_class(
-                tracer, server_histograms, cls, server_request_hook
+                tracer,
+                server_histograms,
+                cls,
+                server_request_hook,
+                sem_conv_opt_in_mode,
             ):
                 self.patched_handlers.append(cls)
             return init(*args, **kwargs)
@@ -371,8 +374,7 @@ class TornadoInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        global _sem_conv_opt_in_mode  # pylint: disable=global-statement
-        _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+        self._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
         unwrap(tornado.web.RequestHandler, "__init__")
         unwrap(tornado.httpclient.AsyncHTTPClient, "fetch")
@@ -482,7 +484,13 @@ def _create_client_histograms(
     return histograms
 
 
-def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
+def patch_handler_class(
+    tracer,
+    server_histograms,
+    cls,
+    request_hook=None,
+    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+):
     if getattr(cls, _OTEL_PATCHED_KEY, False):
         return False
 
@@ -490,22 +498,41 @@ def patch_handler_class(tracer, server_histograms, cls, request_hook=None):
     _wrap(
         cls,
         "prepare",
-        partial(_prepare, tracer, server_histograms, request_hook),
+        partial(
+            _prepare,
+            tracer,
+            server_histograms,
+            request_hook,
+            sem_conv_opt_in_mode,
+        ),
     )
     _wrap(
         cls,
         "log_exception",
-        partial(_log_exception, tracer, server_histograms),
+        partial(
+            _log_exception, tracer, server_histograms, sem_conv_opt_in_mode
+        ),
     )
 
     if issubclass(cls, tornado.websocket.WebSocketHandler):
         _wrap(
             cls,
             "on_close",
-            partial(_websockethandler_on_close, tracer, server_histograms),
+            partial(
+                _websockethandler_on_close,
+                tracer,
+                server_histograms,
+                sem_conv_opt_in_mode,
+            ),
         )
     else:
-        _wrap(cls, "on_finish", partial(_on_finish, tracer, server_histograms))
+        _wrap(
+            cls,
+            "on_finish",
+            partial(
+                _on_finish, tracer, server_histograms, sem_conv_opt_in_mode
+            ),
+        )
     return True
 
 
@@ -529,7 +556,14 @@ def _wrap(cls, method_name, wrapper):
 
 
 def _prepare(
-    tracer, server_histograms, request_hook, func, handler, args, kwargs
+    tracer,
+    server_histograms,
+    request_hook,
+    sem_conv_opt_in_mode,
+    func,
+    handler,
+    args,
+    kwargs,
 ):
     request = handler.request
     otel_handler_state = {
@@ -541,40 +575,68 @@ def _prepare(
     if otel_handler_state["exclude_request"]:
         return func(*args, **kwargs)
 
-    _record_prepare_metrics(server_histograms, handler)
+    _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode)
 
-    ctx = _start_span(tracer, handler)
+    ctx = _start_span(tracer, handler, sem_conv_opt_in_mode)
     if request_hook:
         request_hook(ctx.span, handler)
     return func(*args, **kwargs)
 
 
-def _on_finish(tracer, server_histograms, func, handler, args, kwargs):
+def _on_finish(
+    tracer,
+    server_histograms,
+    sem_conv_opt_in_mode,
+    func,
+    handler,
+    args,
+    kwargs,
+):
     try:
         return func(*args, **kwargs)
     finally:
-        _record_on_finish_metrics(server_histograms, handler)
-        _finish_span(tracer, handler)
+        _record_on_finish_metrics(
+            server_histograms, handler, None, sem_conv_opt_in_mode
+        )
+        _finish_span(tracer, handler, None, sem_conv_opt_in_mode)
 
 
 def _websockethandler_on_close(
-    tracer, server_histograms, func, handler, args, kwargs
+    tracer,
+    server_histograms,
+    sem_conv_opt_in_mode,
+    func,
+    handler,
+    args,
+    kwargs,
 ):
     try:
         func()
     finally:
-        _record_on_finish_metrics(server_histograms, handler)
-        _finish_span(tracer, handler)
+        _record_on_finish_metrics(
+            server_histograms, handler, None, sem_conv_opt_in_mode
+        )
+        _finish_span(tracer, handler, None, sem_conv_opt_in_mode)
 
 
-def _log_exception(tracer, server_histograms, func, handler, args, kwargs):
+def _log_exception(
+    tracer,
+    server_histograms,
+    sem_conv_opt_in_mode,
+    func,
+    handler,
+    args,
+    kwargs,
+):
     error = None
     if len(args) == 3:
         error = args[1]
 
-    _record_on_finish_metrics(server_histograms, handler, error)
+    _record_on_finish_metrics(
+        server_histograms, handler, error, sem_conv_opt_in_mode
+    )
 
-    _finish_span(tracer, handler, error)
+    _finish_span(tracer, handler, error, sem_conv_opt_in_mode)
     return func(*args, **kwargs)
 
 
@@ -670,7 +732,7 @@ def _get_full_handler_name(handler):
     return f"{klass.__module__}.{klass.__qualname__}"
 
 
-def _start_span(tracer, handler) -> _TraceContext:
+def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     span, token = _start_internal_or_server_span(
         tracer=tracer,
         span_name=_get_default_span_name(handler.request),
@@ -681,7 +743,7 @@ def _start_span(tracer, handler) -> _TraceContext:
 
     if span.is_recording():
         attributes = _get_attributes_from_request(
-            handler.request, _sem_conv_opt_in_mode
+            handler.request, sem_conv_opt_in_mode
         )
         for key, value in attributes.items():
             span.set_attribute(key, value)
@@ -708,7 +770,7 @@ def _start_span(tracer, handler) -> _TraceContext:
     return ctx
 
 
-def _finish_span(tracer, handler, error=None):
+def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
     status_code = handler.get_status()
     finish_args = (None, None, None)
     ctx = getattr(handler, _HANDLER_CONTEXT_KEY, None)
@@ -717,7 +779,7 @@ def _finish_span(tracer, handler, error=None):
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
             if not ctx and status_code == 404:
-                ctx = _start_span(tracer, handler)
+                ctx = _start_span(tracer, handler, sem_conv_opt_in_mode)
         else:
             status_code = 500
         if status_code >= 500:
@@ -738,7 +800,7 @@ def _finish_span(tracer, handler, error=None):
             status_code,
             str(status_code) if status_code else None,
             server_span=True,
-            sem_conv_opt_in_mode=_sem_conv_opt_in_mode,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
         if ctx.span.is_recording() and ctx.span.kind == trace.SpanKind.SERVER:
             custom_attributes = _collect_custom_response_headers_attributes(
@@ -753,11 +815,11 @@ def _finish_span(tracer, handler, error=None):
     delattr(handler, _HANDLER_CONTEXT_KEY)
 
 
-def _record_prepare_metrics(server_histograms, handler):
+def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
     request_size = int(handler.request.headers.get("Content-Length", 0))
 
     # Record old semconv metrics
-    if _report_old(_sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
         metric_attributes_old = _create_metric_attributes_old(handler)
         server_histograms["old_request_size"].record(
             request_size, attributes=metric_attributes_old
@@ -770,13 +832,13 @@ def _record_prepare_metrics(server_histograms, handler):
         )
 
     # Record new semconv metrics
-    if _report_new(_sem_conv_opt_in_mode):
+    if _report_new(sem_conv_opt_in_mode):
         metric_attributes_new = _create_metric_attributes_new(handler)
         server_histograms["new_request_size"].record(
             request_size, attributes=metric_attributes_new
         )
         # Don't add to active_requests again if already added in old mode
-        if not _report_old(_sem_conv_opt_in_mode):
+        if not _report_old(sem_conv_opt_in_mode):
             active_requests_attributes_new = (
                 _create_active_requests_attributes_new(handler.request)
             )
@@ -785,7 +847,9 @@ def _record_prepare_metrics(server_histograms, handler):
             )
 
 
-def _record_on_finish_metrics(server_histograms, handler, error=None):
+def _record_on_finish_metrics(
+    server_histograms, handler, error, sem_conv_opt_in_mode
+):
     otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
     if otel_handler_state.get("exclude_request"):
         return
@@ -800,7 +864,7 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
         status_code = error.status_code
 
     # Record old semconv metrics
-    if _report_old(_sem_conv_opt_in_mode):
+    if _report_old(sem_conv_opt_in_mode):
         metric_attributes_old = _create_metric_attributes_old(handler)
         if isinstance(error, tornado.web.HTTPError):
             metric_attributes_old[HTTP_STATUS_CODE] = status_code
@@ -820,7 +884,7 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
         )
 
     # Record new semconv metrics
-    if _report_new(_sem_conv_opt_in_mode):
+    if _report_new(sem_conv_opt_in_mode):
         metric_attributes_new = _create_metric_attributes_new(handler)
         if isinstance(error, tornado.web.HTTPError):
             metric_attributes_new[HTTP_RESPONSE_STATUS_CODE] = status_code
@@ -833,7 +897,7 @@ def _record_on_finish_metrics(server_histograms, handler, error=None):
         )
 
         # Don't subtract from active_requests again if already done in old mode
-        if not _report_old(_sem_conv_opt_in_mode):
+        if not _report_old(sem_conv_opt_in_mode):
             active_requests_attributes_new = (
                 _create_active_requests_attributes_new(handler.request)
             )
