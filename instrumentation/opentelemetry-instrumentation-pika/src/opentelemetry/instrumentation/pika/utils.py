@@ -12,6 +12,10 @@ from wrapt import ObjectProxy
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
@@ -184,19 +188,11 @@ def _enrich_span(
     if not channel:
         return
     if not hasattr(channel.connection, "params"):
-        span.set_attribute(
-            SpanAttributes.NET_PEER_NAME, channel.connection._impl.params.host
-        )
-        span.set_attribute(
-            SpanAttributes.NET_PEER_PORT, channel.connection._impl.params.port
-        )
+        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
+        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
     else:
-        span.set_attribute(
-            SpanAttributes.NET_PEER_NAME, channel.connection.params.host
-        )
-        span.set_attribute(
-            SpanAttributes.NET_PEER_PORT, channel.connection.params.port
-        )
+        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
+        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
 
 
 # pylint:disable=abstract-method
