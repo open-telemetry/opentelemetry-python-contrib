@@ -25,8 +25,14 @@ Usage
     from opentelemetry.instrumentation.aiohttp_server import (
         AioHttpServerInstrumentor
     )
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
-    AioHttpServerInstrumentor().instrument()
+    # Optional: configure non-default TracerProvider, resource, sampler
+    resource = Resource(attributes={"service.name": "my-aiohttp-service"})
+    sampler = ParentBased(root=TraceIdRatioBased(rate=0.25))  # sample 25% of traces
+    AioHttpServerInstrumentor().instrument(tracer_provider=TracerProvider(resource=resource, sampler=sampler))
 
     async def hello(request):
         return web.Response(text="Hello, world")
@@ -428,88 +434,112 @@ class AiohttpGetter(Getter):
 getter = AiohttpGetter()
 
 
-@web.middleware
-async def middleware(request, handler):
-    """Middleware for aiohttp implementing tracing logic"""
-    if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(
-        request.url.path
-    ):
-        return await handler(request)
-
-    span_name = get_default_span_name(request)
-
-    request_attrs = collect_request_attributes(request, _sem_conv_opt_in_mode)
-    active_requests_count_attrs = _parse_active_request_count_attrs(
-        request_attrs,
-        _sem_conv_opt_in_mode,
+def create_aiohttp_middleware(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _tracer = (
+        tracer_provider.get_tracer(__name__, __version__)
+        if tracer_provider
+        else tracer
     )
 
-    with tracer.start_as_current_span(
-        span_name,
-        context=extract(request, getter=getter),
-        kind=trace.SpanKind.SERVER,
-    ) as span:
-        if span.is_recording():
-            request_headers_attributes = collect_request_headers_attributes(
-                request
-            )
-            request_attrs.update(request_headers_attributes)
-            span.set_attributes(request_attrs)
-        start = default_timer()
-        active_requests_counter.add(1, active_requests_count_attrs)
-        try:
-            resp = await handler(request)
-            set_status_code(
-                span,
-                resp.status,
-                request_attrs,
-                _sem_conv_opt_in_mode,
-            )
+    @web.middleware
+    async def _middleware(request, handler):
+        """Middleware for aiohttp implementing tracing logic"""
+        if (
+            not is_http_instrumentation_enabled()
+            or _excluded_urls.url_disabled(request.url.path)
+        ):
+            return await handler(request)
+
+        span_name = get_default_span_name(request)
+
+        request_attrs = collect_request_attributes(
+            request, _sem_conv_opt_in_mode
+        )
+        active_requests_count_attrs = _parse_active_request_count_attrs(
+            request_attrs,
+            _sem_conv_opt_in_mode,
+        )
+
+        with _tracer.start_as_current_span(
+            span_name,
+            context=extract(request, getter=getter),
+            kind=trace.SpanKind.SERVER,
+        ) as span:
             if span.is_recording():
-                response_headers_attributes = (
-                    collect_response_headers_attributes(resp)
+                request_headers_attributes = (
+                    collect_request_headers_attributes(request)
                 )
-                span.set_attributes(response_headers_attributes)
-        except web.HTTPException as ex:
-            if _report_new(_sem_conv_opt_in_mode):
-                request_attrs[ERROR_TYPE] = type(ex).__qualname__
+                request_attrs.update(request_headers_attributes)
+                span.set_attributes(request_attrs)
+            start = default_timer()
+            active_requests_counter.add(1, active_requests_count_attrs)
+            try:
+                resp = await handler(request)
+                set_status_code(
+                    span,
+                    resp.status,
+                    request_attrs,
+                    _sem_conv_opt_in_mode,
+                )
                 if span.is_recording():
-                    span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
-            set_status_code(
-                span,
-                ex.status_code,
-                request_attrs,
-                _sem_conv_opt_in_mode,
-            )
-            raise
-        finally:
-            duration_s = default_timer() - start
-            if duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    request_attrs, _StabilityMode.DEFAULT
+                    response_headers_attributes = (
+                        collect_response_headers_attributes(resp)
+                    )
+                    span.set_attributes(response_headers_attributes)
+            except web.HTTPException as ex:
+                if _report_new(_sem_conv_opt_in_mode):
+                    request_attrs[ERROR_TYPE] = type(ex).__qualname__
+                    if span.is_recording():
+                        span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
+                set_status_code(
+                    span,
+                    ex.status_code,
+                    request_attrs,
+                    _sem_conv_opt_in_mode,
                 )
-                duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
-                )
-            if duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    request_attrs, _StabilityMode.HTTP
-                )
-                duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
-                )
-            active_requests_counter.add(-1, active_requests_count_attrs)
-        return resp
+                raise
+            finally:
+                duration_s = default_timer() - start
+                if duration_histogram_old:
+                    duration_attrs_old = _parse_duration_attrs(
+                        request_attrs, _StabilityMode.DEFAULT
+                    )
+                    duration_histogram_old.record(
+                        max(round(duration_s * 1000), 0), duration_attrs_old
+                    )
+                if duration_histogram_new:
+                    duration_attrs_new = _parse_duration_attrs(
+                        request_attrs, _StabilityMode.HTTP
+                    )
+                    duration_histogram_new.record(
+                        max(duration_s, 0), duration_attrs_new
+                    )
+                active_requests_counter.add(-1, active_requests_count_attrs)
+            return resp
+
+    return _middleware
 
 
-class _InstrumentedApplication(web.Application):
-    """Insert tracing middleware"""
+middleware = create_aiohttp_middleware()  # for backwards compatibility
 
-    def __init__(self, *args, **kwargs):
-        middlewares = kwargs.pop("middlewares", [])
-        middlewares.insert(0, middleware)
-        kwargs["middlewares"] = middlewares
-        super().__init__(*args, **kwargs)
+
+def create_instrumented_application(
+    tracer_provider: trace.TracerProvider | None = None,
+):
+    _middleware = create_aiohttp_middleware(tracer_provider=tracer_provider)
+
+    class _InstrumentedApplication(web.Application):
+        """Insert tracing middleware"""
+
+        def __init__(self, *args, **kwargs):
+            middlewares = kwargs.pop("middlewares", [])
+            middlewares.insert(0, _middleware)
+            kwargs["middlewares"] = middlewares
+            super().__init__(*args, **kwargs)
+
+    return _InstrumentedApplication
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
@@ -525,6 +555,7 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
             _OpenTelemetryStabilitySignalType.HTTP,
         )
 
+        tracer_provider = kwargs.get("tracer_provider", None)
         # update global values at instrument time so we can test them
         global _excluded_urls  # pylint: disable=global-statement
         _excluded_urls = get_excluded_urls("AIOHTTP_SERVER")
@@ -578,6 +609,10 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
         )
 
         self._original_app = web.Application
+
+        _InstrumentedApplication = create_instrumented_application(
+            tracer_provider=tracer_provider
+        )
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):

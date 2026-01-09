@@ -39,6 +39,7 @@ from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
 )
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_METHOD,
@@ -141,9 +142,9 @@ def fixture_suppress():
 
 @pytest_asyncio.fixture(name="server_fixture")
 async def fixture_server_fixture(tracer, aiohttp_server, suppress):
-    _, memory_exporter = tracer
+    tracer_provider, memory_exporter = tracer
 
-    AioHttpServerInstrumentor().instrument()
+    AioHttpServerInstrumentor().instrument(tracer_provider=tracer_provider)
 
     app = aiohttp.web.Application()
     app.add_routes([aiohttp.web.get("/test-path", default_handler)])
@@ -372,6 +373,59 @@ async def test_excluded_urls(
     assert len(metrics) == 0
 
     AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tracer",
+    [
+        TestBase().create_tracer_provider(
+            sampler=ParentBased(TraceIdRatioBased(0.05))
+        )
+    ],
+)
+async def test_non_global_tracer_provider(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+):
+    n_requests = 1000
+    collection_ratio = 0.05
+    n_expected_trace_ids = n_requests * collection_ratio
+
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+    for _ in range(n_requests):
+        await client.get("/test-path")
+
+    trace_ids = {
+        span.context.trace_id
+        for span in memory_exporter.get_finished_spans()
+        if span.context is not None
+    }
+    assert (
+        0.5 * n_expected_trace_ids
+        <= len(trace_ids)
+        <= 1.5 * n_expected_trace_ids
+    )
+
+
+def _get_sorted_metrics(metrics_data):
+    resource_metrics = metrics_data.resource_metrics if metrics_data else []
+
+    all_metrics = []
+    for metrics in resource_metrics:
+        for scope_metrics in metrics.scope_metrics:
+            all_metrics.extend(scope_metrics.metrics)
+
+    return sorted(
+        all_metrics,
+        key=lambda m: m.name,
+    )
 
 
 @pytest.mark.asyncio

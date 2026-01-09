@@ -126,6 +126,12 @@ class TestAioHttpIntegration(TestBase):
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 
+    def _assert_single_span(self):
+        """Assert that exactly one span was created and return it."""
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        return spans[0]
+
     @staticmethod
     def _http_request(
         trace_config,
@@ -879,6 +885,395 @@ class TestAioHttpIntegration(TestBase):
                 },
             ],
             duration_dp_attributes,
+        )
+
+    def test_custom_request_headers_captured(self):
+        """Test that specified request headers are captured as span attributes."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["X-Custom-Header", "X-Another-Header"]
+        )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            headers={
+                "X-Custom-Header": "custom-value",
+                "X-Another-Header": "another-value",
+                "X-Excluded-Header": "excluded-value",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn(
+            "http.request.header.x_excluded_header", span.attributes
+        )
+
+    def test_custom_response_headers_captured(self):
+        """Test that specified response headers are captured as span attributes."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_response_headers=["X-Custom-Header", "X-Another-Header"]
+        )
+
+        def custom_handler(_request):
+            headers = {
+                "X-Custom-Header": "custom-value",
+                "X-Another-Header": "another-value",
+                "X-Excluded-Header": "excluded-value",
+            }
+            return aiohttp.web.Response(status=200, text="OK", headers=headers)
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_excluded_header", span.attributes
+        )
+
+    def test_custom_headers_not_captured_when_not_configured(self):
+        """Test that headers are not captured when env vars are not set."""
+        trace_config = aiohttp_client.create_trace_config()
+
+        def custom_handler(_request):
+            return aiohttp.web.Response(
+                status=200,
+                text="OK",
+                headers={"X-Response-Header": "response-value"},
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={"X-Request-Header": "request-value"},
+        )
+
+        span = self._assert_single_span()
+        self.assertNotIn(
+            "http.request.header.x_request_header", span.attributes
+        )
+        self.assertNotIn(
+            "http.response.header.x_response_header", span.attributes
+        )
+
+    def test_sensitive_headers_sanitized(self):
+        """Test that sensitive header values are redacted."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["Authorization", "X-Api-Key"],
+            captured_response_headers=["Set-Cookie", "X-Secret"],
+            sensitive_headers=[
+                "Authorization",
+                "X-Api-Key",
+                "Set-Cookie",
+                "X-Secret",
+            ],
+        )
+
+        def custom_handler(_request):
+            response_headers = {
+                "Set-Cookie": "session=abc123",
+                "X-Secret": "secret",
+            }
+            return aiohttp.web.Response(
+                status=200, text="OK", headers=response_headers
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={
+                "Authorization": "Bearer secret-token",
+                "X-Api-Key": "secret-key",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.authorization"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_api_key"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.set_cookie"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_secret"],
+            ("[REDACTED]",),
+        )
+
+    def test_custom_headers_with_regex(self):
+        """Test that header capture works with regex patterns."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["X-Custom-Request-.*"],
+            captured_response_headers=["X-Custom-Response-.*"],
+        )
+
+        def custom_handler(_request):
+            response_headers = {
+                "X-Custom-Response-A": "value-A",
+                "X-Custom-Response-B": "value-B",
+                "X-Other-Response-Header": "other-value",
+            }
+            return aiohttp.web.Response(
+                status=200, text="OK", headers=response_headers
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={
+                "X-Custom-Request-One": "value-one",
+                "X-Custom-Request-Two": "value-two",
+                "X-Other-Request-Header": "other-value",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_one"],
+            ("value-one",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_two"],
+            ("value-two",),
+        )
+        self.assertNotIn(
+            "http.request.header.x_other_request_header", span.attributes
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_a"],
+            ("value-A",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_b"],
+            ("value-B",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_other_response_header", span.attributes
+        )
+
+    def test_custom_headers_case_insensitive(self):
+        """Test that header capture is case-insensitive."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["x-request-header"],
+            captured_response_headers=["x-response-header"],
+        )
+
+        def custom_handler(_request):
+            response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
+            return aiohttp.web.Response(
+                status=200, text="OK", headers=response_headers
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={"X-ReQuESt-HeaDER": "custom-value"},
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_header"],
+            ("custom-value",),
+        )
+
+    def test_multi_value_request_headers(self):
+        """Test that headers with multiple values are captured correctly."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["X-Multi-Value"]
+        )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            headers=(("X-Multi-Value", "value1"), ("X-Multi-Value", "value2")),
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_multi_value"],
+            ("value1", "value2"),
+        )
+
+    def test_standard_http_headers_captured(self):
+        """Test that standard HTTP headers can be captured."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["Content-Type", "Accept"],
+            captured_response_headers=["Content-Type", "Server"],
+        )
+
+        def custom_handler(_request):
+            response_headers = {
+                "Content-Type": "text/plain",
+                "Server": "TestServer/1.0",
+            }
+            return aiohttp.web.Response(
+                status=200, body=b"OK", headers=response_headers
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.content_type"],
+            ("application/json",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.accept"],
+            ("application/json",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.content_type"],
+            ("text/plain",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.server"],
+            ("TestServer/1.0",),
+        )
+
+    def test_capture_all_request_headers(self):
+        """Test that all request headers can be captured with .* pattern."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=[".*"]
+        )
+
+        def custom_handler(_request):
+            return aiohttp.web.Response(status=200, text="OK")
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+            headers={
+                "X-Header-One": "value1",
+                "X-Header-Two": "value2",
+                "X-Header-Three": "value3",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_one"],
+            ("value1",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_two"],
+            ("value2",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_three"],
+            ("value3",),
+        )
+
+    def test_capture_all_response_headers(self):
+        """Test that all response headers can be captured with .* pattern."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_response_headers=[".*"]
+        )
+
+        def custom_handler(_request):
+            response_headers = {
+                "X-Response-One": "value1",
+                "X-Response-Two": "value2",
+                "X-Response-Three": "value3",
+            }
+            return aiohttp.web.Response(
+                status=200, text="OK", headers=response_headers
+            )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            request_handler=custom_handler,
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_one"],
+            ("value1",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_two"],
+            ("value2",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_three"],
+            ("value3",),
+        )
+
+    def test_sanitize_with_regex_pattern(self):
+        """Test that sanitization works with regex patterns."""
+        trace_config = aiohttp_client.create_trace_config(
+            captured_request_headers=["X-Test.*"],
+            sensitive_headers=[".*secret.*"],
+        )
+
+        self._http_request(
+            trace_config=trace_config,
+            url="/test-path",
+            status_code=200,
+            headers={
+                "X-Test": "normal-value",
+                "X-Test-Secret": "secret-value",
+            },
+        )
+
+        span = self._assert_single_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"],
+            ("normal-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_test_secret"],
+            ("[REDACTED]",),
         )
 
 

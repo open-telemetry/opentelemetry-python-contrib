@@ -66,14 +66,21 @@ def chat_completions_create(
             error_type = None
             try:
                 result = wrapped(*args, **kwargs)
+                if hasattr(result, "parse"):
+                    # result is of type LegacyAPIResponse, call parse to get the actual response
+                    parsed_result = result.parse()
+                else:
+                    parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapper(result, span, logger, capture_content)
+                    return StreamWrapper(
+                        parsed_result, span, logger, capture_content
+                    )
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, logger, capture_content
+                        span, parsed_result, logger, capture_content
                     )
-                for choice in getattr(result, "choices", []):
+                for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
@@ -123,14 +130,21 @@ def async_chat_completions_create(
             error_type = None
             try:
                 result = await wrapped(*args, **kwargs)
+                if hasattr(result, "parse"):
+                    # result is of type LegacyAPIResponse, calling parse to get the actual response
+                    parsed_result = result.parse()
+                else:
+                    parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapper(result, span, logger, capture_content)
+                    return StreamWrapper(
+                        parsed_result, span, logger, capture_content
+                    )
 
                 if span.is_recording():
                     _set_response_attributes(
-                        span, result, logger, capture_content
+                        span, parsed_result, logger, capture_content
                     )
-                for choice in getattr(result, "choices", []):
+                for choice in getattr(parsed_result, "choices", []):
                     logger.emit(choice_to_event(choice, capture_content))
 
                 span.end()
@@ -349,9 +363,10 @@ def _record_metrics(
 def _set_response_attributes(
     span, result, logger: Logger, capture_content: bool
 ):
-    set_span_attribute(
-        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
-    )
+    if getattr(result, "model", None):
+        set_span_attribute(
+            span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
+        )
 
     if getattr(result, "choices", None):
         finish_reasons = []
@@ -686,3 +701,7 @@ class StreamWrapper:
         self.set_response_service_tier(chunk)
         self.build_streaming_response(chunk)
         self.set_usage(chunk)
+
+    def parse(self):
+        """Called when using with_raw_response with stream=True"""
+        return self
