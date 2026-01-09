@@ -43,6 +43,7 @@ from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_METHOD,
+    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
@@ -576,6 +577,12 @@ async def test_semantic_conventions_metrics_old_default(
         assert len(spans) == 1
         span = spans[0]
 
+        # Verify old semconv schema URL
+        assert (
+            span.instrumentation_scope.schema_url
+            == "https://opentelemetry.io/schemas/1.11.0"
+        )
+
         # Old semconv span attributes present
         assert span.attributes.get(HTTP_METHOD) == "GET"
         assert span.attributes.get(HTTP_SCHEME) == "http"
@@ -585,6 +592,7 @@ async def test_semantic_conventions_metrics_old_default(
         assert span.attributes.get(HTTP_USER_AGENT) == "test-agent"
         assert span.attributes.get(HTTP_FLAVOR) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
+        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
         # New semconv span attributes NOT present
         assert HTTP_REQUEST_METHOD not in span.attributes
         assert URL_SCHEME not in span.attributes
@@ -645,6 +653,12 @@ async def test_semantic_conventions_metrics_new(
         assert len(spans) == 1
         span = spans[0]
 
+        # Verify new semconv schema URL
+        assert (
+            span.instrumentation_scope.schema_url
+            == "https://opentelemetry.io/schemas/1.21.0"
+        )
+
         # New semconv span attributes present
         assert span.attributes.get(HTTP_REQUEST_METHOD) == "GET"
         assert span.attributes.get(URL_SCHEME) == "http"
@@ -655,6 +669,7 @@ async def test_semantic_conventions_metrics_new(
         assert span.attributes.get(USER_AGENT_ORIGINAL) == "test-agent"
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
+        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
         # Old semconv span attributes NOT present
         assert HTTP_METHOD not in span.attributes
         assert HTTP_SCHEME not in span.attributes
@@ -722,6 +737,12 @@ async def test_semantic_conventions_metrics_both(
         assert len(spans) == 1
         span = spans[0]
 
+        # Verify new semconv schema URL (both mode uses new schema)
+        assert (
+            span.instrumentation_scope.schema_url
+            == "https://opentelemetry.io/schemas/1.21.0"
+        )
+
         # Both old and new semconv span attributes present
         assert span.attributes.get(HTTP_METHOD) == "GET"
         assert span.attributes.get(HTTP_REQUEST_METHOD) == "GET"
@@ -740,6 +761,7 @@ async def test_semantic_conventions_metrics_both(
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
+        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
 
         metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
         assert len(metrics) == 3  # Both duration metrics + active requests

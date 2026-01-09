@@ -328,8 +328,10 @@ def collect_request_attributes(
     flavor = f"{request.version.major}.{request.version.minor}"
     _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
+    # http.route for both old and new
+    result[HTTP_ROUTE] = _get_view_func(request)
+
     if _report_old(sem_conv_opt_in_mode):
-        result[HTTP_ROUTE] = _get_view_func(request)
         http_host_value_list = (
             [request.host]
             if not isinstance(request.host, list)
