@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from os import environ
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -27,18 +26,6 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.util.types import AttributeValue
-
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
-
-
-def is_content_enabled() -> bool:
-    """Check if content capture is enabled via environment variable."""
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
-    return capture_content.lower() == "true"
 
 
 def set_server_address_and_port(

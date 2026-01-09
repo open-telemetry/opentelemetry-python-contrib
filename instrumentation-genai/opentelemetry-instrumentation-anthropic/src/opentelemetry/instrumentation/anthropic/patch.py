@@ -29,7 +29,6 @@ from .utils import (
 
 def messages_create(
     handler: TelemetryHandler,
-    _capture_content: bool,
 ) -> Callable[..., Any]:
     """Wrap the `create` method of the `Messages` class to trace it."""
 

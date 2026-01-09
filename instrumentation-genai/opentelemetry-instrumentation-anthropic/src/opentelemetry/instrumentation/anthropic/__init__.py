@@ -55,7 +55,6 @@ from wrapt import (
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
 from opentelemetry.instrumentation.anthropic.patch import messages_create
-from opentelemetry.instrumentation.anthropic.utils import is_content_enabled
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import TelemetryHandler
@@ -101,7 +100,7 @@ class AnthropicInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="Messages.create",
-            wrapper=messages_create(handler, is_content_enabled()),
+            wrapper=messages_create(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
