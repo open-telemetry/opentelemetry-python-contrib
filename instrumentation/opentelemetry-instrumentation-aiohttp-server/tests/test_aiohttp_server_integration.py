@@ -711,6 +711,7 @@ async def test_semantic_conventions_metrics_new(
 
 
 # pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_both(
     tracer, meter, aiohttp_server, monkeypatch
