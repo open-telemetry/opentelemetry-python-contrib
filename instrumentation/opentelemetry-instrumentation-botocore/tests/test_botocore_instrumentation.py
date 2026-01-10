@@ -568,3 +568,23 @@ class TestBotocoreInstrumentor(TestBase):
                     SERVER_PORT: 2025,
                 },
             )
+
+    @mock_aws
+    def test_presigned_url_is_traced(self):
+        rds = self._make_client("rds")
+
+        # This calls RequestSigner.generate_presigned_url internally
+        token = rds.generate_db_auth_token(
+            DBHostname="mydb.cluster-123456.us-west-2.rds.amazonaws.com",
+            Port=3306,
+            DBUsername="testuser",
+        )
+
+        self.assertIsNotNone(token)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+
+        span = spans[0]
+        self.assertEqual("botocore.presigned_url", span.name)
+        self.assertEqual("rds", span.attributes.get("aws.service"))
