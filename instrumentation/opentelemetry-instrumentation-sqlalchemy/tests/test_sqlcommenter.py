@@ -374,12 +374,13 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         cnx.execute(text("SELECT 1;")).fetchall()
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
 
-    def test_commenter_for_nonrecording_spans_disabled_by_default(self):
+    def test_commenter_for_all_spans_disabled_by_default(self):
         """Test that SQLCommenter does not add comments to non-recording spans by default."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
         non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
 
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine("sqlite:///:memory:", echo=True)
         SQLAlchemyInstrumentor().instrument(
             engine=engine,
             tracer_provider=non_recording_tracer_provider,
@@ -388,25 +389,26 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         )
         cnx = engine.connect()
         cnx.execute(text("SELECT 1;")).fetchall()
-        # Without commenter_for_nonrecording_spans, no SQL comment should be added
+        # Without commenter_for_all_spans, no SQL comment should be added
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
 
-    def test_commenter_for_nonrecording_spans_enabled(self):
-        """Test that SQLCommenter adds comments to non-recording spans when enabled."""
+    def test_commenter_for_all_spans_enabled(self):
+        """Test that SQLCommenter adds comments to all spans (including non-recording) when enabled."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
         non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
 
-        engine = create_engine("sqlite:///:memory:")
+        engine = create_engine("sqlite:///:memory:", echo=True)
         SQLAlchemyInstrumentor().instrument(
             engine=engine,
             tracer_provider=non_recording_tracer_provider,
             enable_commenter=True,
             commenter_options={"db_framework": False},
-            commenter_for_nonrecording_spans=True,
+            commenter_for_all_spans=True,
         )
         cnx = engine.connect()
         cnx.execute(text("SELECT 1;")).fetchall()
-        # With commenter_for_nonrecording_spans=True, SQL comment should be added even for non-recording spans
+        # With commenter_for_all_spans=True, SQL comment should be added even for non-recording spans
         self.assertRegex(
             self.caplog.records[-2].getMessage(),
             r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",

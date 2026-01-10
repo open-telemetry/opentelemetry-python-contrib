@@ -109,9 +109,9 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 
 SQLComment for non-recording spans
 **********************************
-By default, sqlcommenter only adds comments to recording (sampled) spans.
-You can enable sqlcommenter for non-recording spans as well by setting
-``commenter_for_nonrecording_spans=True``. This is useful for context propagation
+By default, sqlcommenter only adds comments to recording spans.
+You can enable sqlcommenter for all spans by setting
+``commenter_for_all_spans=True``. This is useful for context propagation
 to database logs regardless of sampling decisions.
 
 .. code:: python
@@ -120,7 +120,7 @@ to database logs regardless of sampling decisions.
 
     SQLAlchemyInstrumentor().instrument(
         enable_commenter=True,
-        commenter_for_nonrecording_spans=True,
+        commenter_for_all_spans=True,
     )
 
 SQLComment in span attribute
@@ -193,7 +193,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
                 ``enable_attribute_commenter``: bool to enable sqlcomment addition to span attribute, defaults to False. Must also set `enable_commenter`.
-                ``commenter_for_nonrecording_spans``: bool to enable sqlcommenter for non-recording (unsampled) spans, defaults to False. Must also set `enable_commenter`.
+                ``commenter_for_all_spans``: bool to enable sqlcommenter for unsampled spans, defaults to False. Must also set `enable_commenter`.
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -225,9 +225,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
-        commenter_for_nonrecording_spans = kwargs.get(
-            "commenter_for_nonrecording_spans", False
-        )
+        commenter_for_all_spans = kwargs.get("commenter_for_all_spans", False)
 
         _w(
             "sqlalchemy",
@@ -238,7 +236,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
-                commenter_for_nonrecording_spans,
+                commenter_for_all_spans,
             ),
         )
         _w(
@@ -250,7 +248,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 enable_commenter,
                 commenter_options,
                 enable_attribute_commenter,
-                commenter_for_nonrecording_spans,
+                commenter_for_all_spans,
             ),
         )
         # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
@@ -264,7 +262,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
-                    commenter_for_nonrecording_spans,
+                    commenter_for_all_spans,
                 ),
             )
         _w(
@@ -282,7 +280,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     enable_commenter,
                     commenter_options,
                     enable_attribute_commenter,
-                    commenter_for_nonrecording_spans,
+                    commenter_for_all_spans,
                 ),
             )
         if kwargs.get("engine") is not None:
@@ -293,7 +291,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("enable_commenter", False),
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
-                kwargs.get("commenter_for_nonrecording_spans", False),
+                kwargs.get("commenter_for_all_spans", False),
             )
         if kwargs.get("engines") is not None and isinstance(
             kwargs.get("engines"), Sequence
@@ -306,7 +304,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                     kwargs.get("enable_commenter", False),
                     kwargs.get("commenter_options", {}),
                     kwargs.get("enable_attribute_commenter", False),
-                    kwargs.get("commenter_for_nonrecording_spans", False),
+                    kwargs.get("commenter_for_all_spans", False),
                 )
                 for engine in kwargs.get("engines")
             ]

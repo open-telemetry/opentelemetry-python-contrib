@@ -62,7 +62,7 @@ def _wrap_create_async_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
-    commenter_for_nonrecording_spans=False,
+    commenter_for_all_spans=False,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -80,7 +80,7 @@ def _wrap_create_async_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
-            commenter_for_nonrecording_spans,
+            commenter_for_all_spans,
         )
         return engine
 
@@ -93,7 +93,7 @@ def _wrap_create_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
-    commenter_for_nonrecording_spans=False,
+    commenter_for_all_spans=False,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -110,7 +110,7 @@ def _wrap_create_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
-            commenter_for_nonrecording_spans,
+            commenter_for_all_spans,
         )
         return engine
 
@@ -146,7 +146,7 @@ class EngineTracer:
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
-        commenter_for_nonrecording_spans=False,
+        commenter_for_all_spans=False,
     ):
         self.tracer = tracer
         self.connections_usage = connections_usage
@@ -154,9 +154,7 @@ class EngineTracer:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
         self.enable_attribute_commenter = enable_attribute_commenter
-        self.commenter_for_nonrecording_spans = (
-            commenter_for_nonrecording_spans
-        )
+        self.commenter_for_all_spans = commenter_for_all_spans
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -308,7 +306,7 @@ class EngineTracer:
         )
         with trace.use_span(span, end_on_exit=False):
             should_comment = self.enable_commenter and (
-                span.is_recording() or self.commenter_for_nonrecording_spans
+                span.is_recording() or self.commenter_for_all_spans
             )
 
             if should_comment:

@@ -1182,7 +1182,7 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
-    def test_commenter_for_nonrecording_spans_disabled_by_default(self):
+    def test_commenter_for_all_spans_disabled_by_default(self):
         """Test that SQLCommenter does not add comments to non-recording spans by default."""
         # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
         non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
@@ -1208,11 +1208,11 @@ class TestDBApiIntegration(TestBase):
         )
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
-        # Without commenter_for_nonrecording_spans, no SQL comment should be added
+        # Without commenter_for_all_spans, no SQL comment should be added
         self.assertEqual(cursor.query, "Select 1;")
 
-    def test_commenter_for_nonrecording_spans_enabled(self):
-        """Test that SQLCommenter adds comments to non-recording spans when enabled."""
+    def test_commenter_for_all_spans_enabled(self):
+        """Test that SQLCommenter adds comments to all spans (including non-recording) when enabled."""
         # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
         non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
 
@@ -1231,14 +1231,14 @@ class TestDBApiIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"db_driver": False, "dbapi_level": False},
             connect_module=connect_module,
-            commenter_for_nonrecording_spans=True,
+            commenter_for_all_spans=True,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
         )
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
-        # With commenter_for_nonrecording_spans=True, SQL comment should be added
+        # With commenter_for_all_spans=True, SQL comment should be added
         self.assertRegex(
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
