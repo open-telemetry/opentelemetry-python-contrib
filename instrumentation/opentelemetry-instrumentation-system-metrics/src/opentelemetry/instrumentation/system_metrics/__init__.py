@@ -94,6 +94,7 @@ API
 
 from __future__ import annotations
 
+import fnmatch
 import gc
 import logging
 import os
@@ -105,9 +106,15 @@ from typing import Any, Collection, Iterable
 import psutil
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.system_metrics.environment_variables import (
+    OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS,
+)
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
+from opentelemetry.semconv._incubating.attributes.cpython_attributes import (
+    CPYTHON_GC_GENERATION,
+)
 from opentelemetry.semconv._incubating.metrics.process_metrics import (
     create_process_cpu_utilization,
 )
@@ -154,6 +161,23 @@ if sys.platform == "darwin":
     _DEFAULT_CONFIG.pop("system.network.connections")
 
 
+def _build_default_config() -> dict[str, list[str] | None]:
+    excluded_metrics: list[str] = [
+        pat.strip()
+        for pat in os.environ.get(
+            OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, ""
+        ).split(",")
+        if pat.strip()
+    ]
+    if excluded_metrics:
+        return {
+            key: value
+            for key, value in _DEFAULT_CONFIG.items()
+            if not any(fnmatch.fnmatch(key, pat) for pat in excluded_metrics)
+        }
+    return _DEFAULT_CONFIG
+
+
 class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
@@ -161,10 +185,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
-        if config is None:
-            self._config = _DEFAULT_CONFIG
-        else:
-            self._config = config
+        self._config = _build_default_config() if config is None else config
         self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
@@ -940,6 +961,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collections_labels[CPYTHON_GC_GENERATION] = index
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_collections_labels["generation"] = str(index)
             yield Observation(
                 stat["collections"], self._runtime_gc_collections_labels.copy()
@@ -950,6 +973,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection collected objects"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collected_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_collected_objects_labels["generation"] = str(
                 index
             )
@@ -963,6 +990,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
     ) -> Iterable[Observation]:
         """Observer callback for garbage collection uncollectable objects"""
         for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_uncollectable_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this a few releases after 1.40.0
             self._runtime_gc_uncollectable_objects_labels["generation"] = str(
                 index
             )
