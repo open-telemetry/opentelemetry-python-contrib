@@ -15,7 +15,8 @@
 import unittest
 
 from .base import TestCase
-from opentelemetry.instrumentation.google_genai.generate_content import GENERATE_CONTENT_EXTRA_ATTRIBUTES 
+from opentelemetry import context as context_api
+from opentelemetry.instrumentation.google_genai import GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
 
 
 class StreamingTestCase(TestCase):
@@ -45,18 +46,18 @@ class StreamingTestCase(TestCase):
 
     def test_generated_span_has_extra_genai_attributes(self):
         self.configure_valid_response(text="Yep, it works!")
-        tok = GENERATE_CONTENT_EXTRA_ATTRIBUTES.set({"extra_attrbiute_key": "extra_attribute_value"})
+        tok = context_api.attach(context_api.set_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY, {"extra_attribute_key": "extra_attribute_value"}))
         try:
             self.generate_content(
                 model="gemini-2.0-flash", contents="Does this work?"
             )
             self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
             span = self.otel.get_span_named("generate_content gemini-2.0-flash")
-            self.assertEqual(span.attributes["extra_attrbiute_key"], "extra_attribute_value")
+            self.assertEqual(span.attributes["extra_attribute_key"], "extra_attribute_value")
         except:
             raise
         finally:
-            GENERATE_CONTENT_EXTRA_ATTRIBUTES.reset(tok)
+            context_api.detach(tok)
 
     def test_handles_multiple_ressponses(self):
         self.configure_valid_response(text="First response")

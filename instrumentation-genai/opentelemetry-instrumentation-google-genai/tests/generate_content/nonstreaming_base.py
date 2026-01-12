@@ -31,7 +31,8 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
-from opentelemetry.instrumentation.google_genai.generate_content import GENERATE_CONTENT_EXTRA_ATTRIBUTES 
+from opentelemetry import context as context_api
+from opentelemetry.instrumentation.google_genai import GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
 
 # pylint: disable=too-many-public-methods
 
@@ -102,7 +103,7 @@ class NonStreamingTestCase(TestCase):
 
     def test_generated_span_has_extra_genai_attributes(self):
         self.configure_valid_response(text="Yep, it works!")
-        tok = GENERATE_CONTENT_EXTRA_ATTRIBUTES.set({"extra_attribute_key": "extra_attribute_value"})
+        tok = context_api.attach(context_api.set_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY, {"extra_attribute_key": "extra_attribute_value"}))
         try:
             self.generate_content(
                 model="gemini-2.0-flash", contents="Does this work?"
@@ -113,7 +114,7 @@ class NonStreamingTestCase(TestCase):
         except:
             raise
         finally:
-            GENERATE_CONTENT_EXTRA_ATTRIBUTES.reset(tok)
+            context_api.detach(tok)
 
     def test_span_and_event_still_written_when_response_is_exception(self):
         self.configure_exception(ValueError("Uh oh!"))

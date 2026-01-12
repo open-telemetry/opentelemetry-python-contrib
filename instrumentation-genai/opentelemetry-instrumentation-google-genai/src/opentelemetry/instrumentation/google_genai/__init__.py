@@ -42,6 +42,7 @@ API
 """
 
 from .instrumentor import GoogleGenAiSdkInstrumentor
+from .generate_content import GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
 from .version import __version__
 
-__all__ = ["GoogleGenAiSdkInstrumentor", "__version__"]
+__all__ = ["GoogleGenAiSdkInstrumentor", "GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY", "__version__"]
