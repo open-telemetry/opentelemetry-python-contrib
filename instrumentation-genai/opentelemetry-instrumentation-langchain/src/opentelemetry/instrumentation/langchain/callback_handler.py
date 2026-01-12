@@ -222,7 +222,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
-        invocation = self._telemetry_handler.stop_llm(invocation=llm_invocation)
+        invocation = self._telemetry_handler.stop_llm(
+            invocation=llm_invocation
+        )
         if not invocation.span.is_recording():  # type: ignore[reportOptionalMemberAccess]
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 

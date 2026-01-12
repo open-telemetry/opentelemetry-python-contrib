@@ -134,6 +134,7 @@ class LLMInvocation(GenAIInvocation):
     populated by the TelemetryHandler when starting an invocation.
     """
 
+
 @dataclass
 class Error:
     message: str
