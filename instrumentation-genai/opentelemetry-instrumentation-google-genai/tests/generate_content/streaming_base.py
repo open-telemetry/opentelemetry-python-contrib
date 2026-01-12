@@ -14,6 +14,8 @@
 
 import unittest
 
+from opentelemetry.instrumentation import utils
+
 from .base import TestCase
 
 
@@ -70,3 +72,16 @@ class StreamingTestCase(TestCase):
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 9)
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 12)
+
+    def test_suppress_instrumentation(self):
+        self.configure_valid_response(text="Yep, it works!")
+        with utils.suppress_instrumentation():
+            responses = self.generate_content(
+                model="gemini-2.0-flash", contents="Does this work?"
+            )
+        self.assertEqual(len(responses), 1)
+        response = responses[0]
+        self.assertEqual(response.text, "Yep, it works!")
+        self.otel.assert_does_not_have_span_named(
+            "generate_content gemini-2.0-flash"
+        )

@@ -29,6 +29,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
 )
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes import (
     code_attributes,
 )
@@ -168,6 +169,9 @@ def _wrap_sync_tool_function(
 ):
     @functools.wraps(tool_function)
     def wrapped_function(*args, **kwargs):
+        if not is_instrumentation_enabled():
+            return tool_function(*args, **kwargs)
+
         span_name = _create_function_span_name(tool_function)
         attributes = _create_function_span_attributes(
             tool_function, args, kwargs, extra_span_attributes
@@ -193,6 +197,9 @@ def _wrap_async_tool_function(
 ):
     @functools.wraps(tool_function)
     async def wrapped_function(*args, **kwargs):
+        if not is_instrumentation_enabled():
+            return await tool_function(*args, **kwargs)
+
         span_name = _create_function_span_name(tool_function)
         attributes = _create_function_span_attributes(
             tool_function, args, kwargs, extra_span_attributes
