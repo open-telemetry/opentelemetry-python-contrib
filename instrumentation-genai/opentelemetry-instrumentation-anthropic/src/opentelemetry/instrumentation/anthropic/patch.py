@@ -24,6 +24,8 @@ from opentelemetry.util.genai.types import LLMInvocation
 
 from .utils import (
     get_llm_request_attributes,
+    parse_input_messages,
+    parse_output_message,
 )
 
 
@@ -45,10 +47,14 @@ def messages_create(
             or "unknown"
         )
 
+        # Parse input messages
+        input_messages = parse_input_messages(kwargs.get("messages", []))
+
         invocation = LLMInvocation(
             request_model=request_model,
             provider="anthropic",
             attributes=attributes,
+            input_messages=input_messages,
         )
 
         with handler.llm(invocation) as invocation:
@@ -66,6 +72,9 @@ def messages_create(
             if getattr(result, "usage", None):
                 invocation.input_tokens = result.usage.input_tokens
                 invocation.output_tokens = result.usage.output_tokens
+
+            # Parse output message
+            invocation.output_messages = [parse_output_message(result)]
 
             return result
 

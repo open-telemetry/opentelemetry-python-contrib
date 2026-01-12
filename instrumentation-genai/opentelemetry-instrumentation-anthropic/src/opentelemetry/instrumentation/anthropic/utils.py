@@ -25,6 +25,13 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.util.genai.types import (
+    InputMessage,
+    OutputMessage,
+    Text,
+    ToolCall,
+    ToolCallResponse,
+)
 from opentelemetry.util.types import AttributeValue
 
 
@@ -93,3 +100,68 @@ def get_llm_request_attributes(
 
     # Filter out None values
     return {k: v for k, v in attributes.items() if v is not None}
+
+
+def _parse_content_part(
+    content_block: Any,
+) -> Text | ToolCall | ToolCallResponse:
+    """Parse an Anthropic content block to a MessagePart."""
+    if isinstance(content_block, dict):
+        block_type = content_block.get("type")
+        if block_type == "text":
+            return Text(content=content_block.get("text", ""))
+        if block_type == "tool_use":
+            return ToolCall(
+                id=content_block.get("id"),
+                name=content_block.get("name", ""),
+                arguments=content_block.get("input"),
+            )
+        if block_type == "tool_result":
+            return ToolCallResponse(
+                id=content_block.get("tool_use_id"),
+                response=content_block.get("content"),
+            )
+    # Handle object attributes (response objects)
+    block_type = getattr(content_block, "type", None)
+    if block_type == "text":
+        return Text(content=getattr(content_block, "text", ""))
+    if block_type == "tool_use":
+        return ToolCall(
+            id=getattr(content_block, "id", None),
+            name=getattr(content_block, "name", ""),
+            arguments=getattr(content_block, "input", None),
+        )
+    # Fallback: treat as text
+    return Text(content=str(content_block))
+
+
+def parse_input_messages(messages: list[dict[str, Any]]) -> list[InputMessage]:
+    """Parse Anthropic input messages to InputMessage format."""
+    result = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content")
+
+        parts: list[Any] = []
+        if isinstance(content, str):
+            parts = [Text(content=content)]
+        elif isinstance(content, list):
+            parts = [_parse_content_part(block) for block in content]
+
+        result.append(InputMessage(role=role, parts=parts))
+    return result
+
+
+def parse_output_message(response: Any) -> OutputMessage:
+    """Parse Anthropic response to OutputMessage format."""
+    role = getattr(response, "role", "assistant")
+    stop_reason = getattr(response, "stop_reason", None) or "stop"
+    content = getattr(response, "content", [])
+
+    parts: list[Any] = []
+    if isinstance(content, list):
+        parts = [_parse_content_part(block) for block in content]
+    elif isinstance(content, str):
+        parts = [Text(content=content)]
+
+    return OutputMessage(role=role, parts=parts, finish_reason=stop_reason)
