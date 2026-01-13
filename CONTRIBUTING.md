@@ -8,7 +8,7 @@ See the [public meeting notes](https://docs.google.com/document/d/18w8zOBm_mbety
 for a summary description of past meetings. To request edit access, join the
 meeting or get in touch on [Slack](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 
-See to the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
+See the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
 on how to become a [**Member**](https://github.com/open-telemetry/community/blob/main/community-membership.md#member),
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
