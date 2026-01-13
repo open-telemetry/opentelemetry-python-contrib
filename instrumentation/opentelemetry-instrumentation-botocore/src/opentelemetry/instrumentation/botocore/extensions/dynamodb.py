@@ -25,7 +25,13 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
     _BotoResultT,
 )
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    aws_attributes,
+    db_attributes,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
 
@@ -126,10 +132,10 @@ class _DynamoDbOperation(abc.ABC):
 
 class _OpBatchGetItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_REQITEMS_TABLE_NAMES,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_REQITEMS_TABLE_NAMES,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP,
     }
 
     @classmethod
@@ -139,11 +145,11 @@ class _OpBatchGetItem(_DynamoDbOperation):
 
 class _OpBatchWriteItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_REQITEMS_TABLE_NAMES,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_REQITEMS_TABLE_NAMES,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP,
-        SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP,
+        aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
     }
 
     @classmethod
@@ -153,13 +159,13 @@ class _OpBatchWriteItem(_DynamoDbOperation):
 
 class _OpCreateTable(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEXES: _REQ_GLOBAL_SEC_INDEXES,
-        SpanAttributes.AWS_DYNAMODB_LOCAL_SECONDARY_INDEXES: _REQ_LOCAL_SEC_INDEXES,
-        SpanAttributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY: _REQ_PROV_READ_CAP,
-        SpanAttributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY: _REQ_PROV_WRITE_CAP,
+        aws_attributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEXES: _REQ_GLOBAL_SEC_INDEXES,
+        aws_attributes.AWS_DYNAMODB_LOCAL_SECONDARY_INDEXES: _REQ_LOCAL_SEC_INDEXES,
+        aws_attributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY: _REQ_PROV_READ_CAP,
+        aws_attributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY: _REQ_PROV_WRITE_CAP,
     }
 
     @classmethod
@@ -169,11 +175,11 @@ class _OpCreateTable(_DynamoDbOperation):
 
 class _OpDeleteItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
-        SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
     }
 
     @classmethod
@@ -183,7 +189,7 @@ class _OpDeleteItem(_DynamoDbOperation):
 
 class _OpDeleteTable(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
 
     @classmethod
@@ -193,7 +199,7 @@ class _OpDeleteTable(_DynamoDbOperation):
 
 class _OpDescribeTable(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
 
     @classmethod
@@ -203,14 +209,14 @@ class _OpDescribeTable(_DynamoDbOperation):
 
 class _OpGetItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
-        SpanAttributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
+        aws_attributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
+        aws_attributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
     }
 
     @classmethod
@@ -220,14 +226,14 @@ class _OpGetItem(_DynamoDbOperation):
 
 class _OpListTables(_DynamoDbOperation):
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_EXCLUSIVE_START_TABLE: (
+        aws_attributes.AWS_DYNAMODB_EXCLUSIVE_START_TABLE: (
             "ExclusiveStartTableName",
             None,
         ),
-        SpanAttributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
+        aws_attributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_COUNT: (
+        aws_attributes.AWS_DYNAMODB_TABLE_COUNT: (
             "TableNames",
             _conv_val_to_len,
         ),
@@ -240,11 +246,11 @@ class _OpListTables(_DynamoDbOperation):
 
 class _OpPutItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
-        SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
     }
 
     @classmethod
@@ -254,19 +260,19 @@ class _OpPutItem(_DynamoDbOperation):
 
 class _OpQuery(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_SCAN_FORWARD: ("ScanIndexForward", None),
-        SpanAttributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET: _REQ_ATTRS_TO_GET,
-        SpanAttributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
-        SpanAttributes.AWS_DYNAMODB_INDEX_NAME: _REQ_INDEX_NAME,
-        SpanAttributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
-        SpanAttributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
-        SpanAttributes.AWS_DYNAMODB_SELECT: _REQ_SELECT,
+        aws_attributes.AWS_DYNAMODB_SCAN_FORWARD: ("ScanIndexForward", None),
+        aws_attributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET: _REQ_ATTRS_TO_GET,
+        aws_attributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
+        aws_attributes.AWS_DYNAMODB_INDEX_NAME: _REQ_INDEX_NAME,
+        aws_attributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
+        aws_attributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
+        aws_attributes.AWS_DYNAMODB_SELECT: _REQ_SELECT,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
     }
 
     @classmethod
@@ -276,22 +282,22 @@ class _OpQuery(_DynamoDbOperation):
 
 class _OpScan(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_SEGMENT: ("Segment", None),
-        SpanAttributes.AWS_DYNAMODB_TOTAL_SEGMENTS: ("TotalSegments", None),
-        SpanAttributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET: _REQ_ATTRS_TO_GET,
-        SpanAttributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
-        SpanAttributes.AWS_DYNAMODB_INDEX_NAME: _REQ_INDEX_NAME,
-        SpanAttributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
-        SpanAttributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
-        SpanAttributes.AWS_DYNAMODB_SELECT: _REQ_SELECT,
+        aws_attributes.AWS_DYNAMODB_SEGMENT: ("Segment", None),
+        aws_attributes.AWS_DYNAMODB_TOTAL_SEGMENTS: ("TotalSegments", None),
+        aws_attributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET: _REQ_ATTRS_TO_GET,
+        aws_attributes.AWS_DYNAMODB_CONSISTENT_READ: _REQ_CONSISTENT_READ,
+        aws_attributes.AWS_DYNAMODB_INDEX_NAME: _REQ_INDEX_NAME,
+        aws_attributes.AWS_DYNAMODB_LIMIT: _REQ_LIMIT,
+        aws_attributes.AWS_DYNAMODB_PROJECTION: _REQ_PROJECTION,
+        aws_attributes.AWS_DYNAMODB_SELECT: _REQ_SELECT,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_COUNT: ("Count", None),
-        SpanAttributes.AWS_DYNAMODB_SCANNED_COUNT: ("ScannedCount", None),
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_COUNT: ("Count", None),
+        aws_attributes.AWS_DYNAMODB_SCANNED_COUNT: ("ScannedCount", None),
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
     }
 
     @classmethod
@@ -301,11 +307,11 @@ class _OpScan(_DynamoDbOperation):
 
 class _OpUpdateItem(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     response_attributes = {
-        SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
-        SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
+        aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY: _RES_CONSUMED_CAP_SINGLE,
+        aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS: _RES_ITEM_COL_METRICS,
     }
 
     @classmethod
@@ -315,19 +321,19 @@ class _OpUpdateItem(_DynamoDbOperation):
 
 class _OpUpdateTable(_DynamoDbOperation):
     start_attributes = {
-        SpanAttributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
+        aws_attributes.AWS_DYNAMODB_TABLE_NAMES: _REQ_TABLE_NAME,
     }
     request_attributes = {
-        SpanAttributes.AWS_DYNAMODB_ATTRIBUTE_DEFINITIONS: (
+        aws_attributes.AWS_DYNAMODB_ATTRIBUTE_DEFINITIONS: (
             "AttributeDefinitions",
             _conv_list_to_json_list,
         ),
-        SpanAttributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEX_UPDATES: (
+        aws_attributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEX_UPDATES: (
             "GlobalSecondaryIndexUpdates",
             _conv_list_to_json_list,
         ),
-        SpanAttributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY: _REQ_PROV_READ_CAP,
-        SpanAttributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY: _REQ_PROV_WRITE_CAP,
+        aws_attributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY: _REQ_PROV_READ_CAP,
+        aws_attributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY: _REQ_PROV_WRITE_CAP,
     }
 
     @classmethod
@@ -354,9 +360,11 @@ class _DynamoDbExtension(_AwsSdkExtension):
         self._op = _OPERATION_MAPPING.get(call_context.operation)
 
     def extract_attributes(self, attributes: _AttributeMapT):
-        attributes[SpanAttributes.DB_SYSTEM] = DbSystemValues.DYNAMODB.value
-        attributes[SpanAttributes.DB_OPERATION] = self._call_context.operation
-        attributes[SpanAttributes.NET_PEER_NAME] = self._get_peer_name()
+        attributes[db_attributes.DB_SYSTEM] = (
+            db_attributes.DbSystemValues.DYNAMODB.value
+        )
+        attributes[db_attributes.DB_OPERATION] = self._call_context.operation
+        attributes[NET_PEER_NAME] = self._get_peer_name()
 
         if self._op is None:
             return
