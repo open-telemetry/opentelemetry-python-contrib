@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4068))
 - `opentelemetry-instrumentation-mysqlclient`: Replace SpanAttributes with semconv constants
   ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
+- `opentelemetry-instrumentation-tortoiseorm`: Replace SpanAttributes with semconv constants
+  ([#4080](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4080))
 - `opentelemetry-instrumentation-asgi`: Replace SpanAttributes with semconv constants
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
