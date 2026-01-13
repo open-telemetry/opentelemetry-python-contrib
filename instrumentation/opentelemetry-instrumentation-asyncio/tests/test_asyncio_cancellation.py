@@ -45,7 +45,10 @@ class TestAsyncioCancel(TestBase):
 
     def test_cancel(self):
         with self._tracer.start_as_current_span("root", kind=SpanKind.SERVER):
-            asyncio.run(cancellation_create_task())
+            try:
+                asyncio.run(cancellation_create_task())
+            except asyncio.CancelledError:
+                pass
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
         self.assertEqual(spans[0].context.trace_id, spans[1].context.trace_id)

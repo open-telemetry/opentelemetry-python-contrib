@@ -14,6 +14,8 @@
 
 from celery import Celery
 
+from opentelemetry import baggage
+
 
 class Config:
     result_backend = "rpc"
@@ -36,3 +38,8 @@ def task_add(num_a, num_b):
 @app.task
 def task_raises():
     raise CustomError("The task failed!")
+
+
+@app.task
+def task_returns_baggage():
+    return dict(baggage.get_all())

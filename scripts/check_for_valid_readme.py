@@ -1,4 +1,5 @@
 """Test script to check given paths for valid README.rst files."""
+
 import argparse
 import sys
 from pathlib import Path

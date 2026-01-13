@@ -7,7 +7,7 @@ extension-pkg-whitelist=cassandra
 
 # Add list of files or directories to be excluded. They should be base names, not
 # paths.
-ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt,docs
+ignore=CVS,gen,Dockerfile,docker-compose.yml,README.md,requirements.txt,docs,.venv,site-packages,.tox
 
 # Add files or directories matching the regex patterns to be excluded. The
 # regex matches against base names, not paths.
@@ -45,6 +45,9 @@ suggestion-mode=yes
 # active Python interpreter and may run arbitrary code.
 unsafe-load-any-extension=no
 
+# Run python dependant checks considering the baseline version
+py-version=3.9
+
 
 [MESSAGES CONTROL]
 
@@ -81,6 +84,7 @@ disable=missing-docstring,
       missing-module-docstring, # temp-pylint-upgrade
       import-error, # needed as a workaround as reported here: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/290
       cyclic-import,
+      not-context-manager
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -491,4 +495,4 @@ min-public-methods=2
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception".
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception

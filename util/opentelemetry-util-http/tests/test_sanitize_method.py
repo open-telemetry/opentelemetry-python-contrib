@@ -32,7 +32,7 @@ class TestSanitizeMethod(unittest.TestCase):
 
     def test_nonstandard_method(self):
         method = sanitize_method("UNKNOWN")
-        self.assertEqual(method, "NONSTANDARD")
+        self.assertEqual(method, "_OTHER")
 
     @patch.dict(
         "os.environ",
@@ -42,4 +42,4 @@ class TestSanitizeMethod(unittest.TestCase):
     )
     def test_nonstandard_method_allowed(self):
         method = sanitize_method("UNKNOWN")
-        self.assertEqual(method, "NONSTANDARD")
+        self.assertEqual(method, "UNKNOWN")

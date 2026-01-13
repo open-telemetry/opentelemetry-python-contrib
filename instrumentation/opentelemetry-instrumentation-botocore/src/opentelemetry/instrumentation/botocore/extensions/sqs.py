@@ -16,6 +16,7 @@ import logging
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
     _BotoResultT,
 )
 from opentelemetry.semconv.trace import SpanAttributes
@@ -35,16 +36,21 @@ class _SqsExtension(_AwsSdkExtension):
             attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
             attributes[SpanAttributes.MESSAGING_URL] = queue_url
             try:
-                attributes[
-                    SpanAttributes.MESSAGING_DESTINATION
-                ] = queue_url.split("/")[-1]
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = (
+                    queue_url.split("/")[-1]
+                )
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",
                     queue_url,
                 )
 
-    def on_success(self, span: Span, result: _BotoResultT):
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         operation = self._call_context.operation
         if operation in _SUPPORTED_OPERATIONS:
             try:

@@ -10,15 +10,18 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
     if: |
       !contains(github.event.pull_request.labels.*.name, 'Skip Changelog')
-      && github.actor != 'opentelemetrybot'
+      && github.actor != 'otelbot[bot]'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Check for CHANGELOG changes
         run: |

@@ -17,12 +17,7 @@ from logging import getLogger
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from opentelemetry.context import (
-    _SUPPRESS_INSTRUMENTATION_KEY,
-    attach,
-    detach,
-    set_value,
-)
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource, ResourceDetector
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
@@ -30,40 +25,30 @@ from opentelemetry.semconv.resource import (
     ResourceAttributes,
 )
 
-_AZURE_VM_METADATA_ENDPOINT = "http://169.254.169.254/metadata/instance/compute?api-version=2021-12-13&format=json"
-_AZURE_VM_SCALE_SET_NAME_ATTRIBUTE = "azure.vm.scaleset.name"
-_AZURE_VM_SKU_ATTRIBUTE = "azure.vm.sku"
-_logger = getLogger(__name__)
-
-EXPECTED_AZURE_AMS_ATTRIBUTES = [
+from ._constants import (
+    _AZURE_VM_METADATA_ENDPOINT,
     _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE,
     _AZURE_VM_SKU_ATTRIBUTE,
-    ResourceAttributes.CLOUD_PLATFORM,
-    ResourceAttributes.CLOUD_PROVIDER,
-    ResourceAttributes.CLOUD_REGION,
-    ResourceAttributes.CLOUD_RESOURCE_ID,
-    ResourceAttributes.HOST_ID,
-    ResourceAttributes.HOST_NAME,
-    ResourceAttributes.HOST_TYPE,
-    ResourceAttributes.OS_TYPE,
-    ResourceAttributes.OS_VERSION,
-    ResourceAttributes.SERVICE_INSTANCE_ID,
-]
+    _EXPECTED_AZURE_AMS_ATTRIBUTES,
+)
+from ._utils import _can_ignore_vm_detect
+
+_logger = getLogger(__name__)
 
 
 class AzureVMResourceDetector(ResourceDetector):
     # pylint: disable=no-self-use
     def detect(self) -> "Resource":
         attributes = {}
-        token = attach(set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
-        metadata_json = _get_azure_vm_metadata()
-        if not metadata_json:
-            return Resource(attributes)
-        for attribute_key in EXPECTED_AZURE_AMS_ATTRIBUTES:
-            attributes[attribute_key] = _get_attribute_from_metadata(
-                metadata_json, attribute_key
-            )
-        detach(token)
+        if not _can_ignore_vm_detect():
+            with suppress_instrumentation():
+                metadata_json = _get_azure_vm_metadata()
+                if not metadata_json:
+                    return Resource(attributes)
+                for attribute_key in _EXPECTED_AZURE_AMS_ATTRIBUTES:
+                    attributes[attribute_key] = _get_attribute_from_metadata(
+                        metadata_json, attribute_key
+                    )
         return Resource(attributes)
 
 
@@ -71,10 +56,8 @@ def _get_azure_vm_metadata():
     request = Request(_AZURE_VM_METADATA_ENDPOINT)
     request.add_header("Metadata", "True")
     try:
-        # TODO: Changed to 4s to fit into OTel SDK's 5 second timeout.
-        # Lengthen or allow user input if issue is resolved.
-        # See https://github.com/open-telemetry/opentelemetry-python/issues/3644
-        with urlopen(request, timeout=4) as response:
+        # VM metadata service should not take more than 200ms on success case
+        with urlopen(request, timeout=0.2) as response:
             return loads(response.read())
     except URLError:
         # Not on Azure VM

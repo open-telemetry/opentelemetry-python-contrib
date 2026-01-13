@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
-_instruments = tuple()
+_instruments: tuple[str, ...] = tuple()
 
 _supports_metrics = True
+
+_semconv_status = "migration"

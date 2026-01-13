@@ -23,7 +23,21 @@ from opentelemetry.instrumentation.propagators import (
     set_global_response_propagator,
 )
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import get_excluded_urls
 
@@ -33,14 +47,15 @@ from .pyramid_base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
-        SpanAttributes.HTTP_SCHEME: "http",
-        SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.HTTP_HOST: "localhost",
-        SpanAttributes.HTTP_TARGET: "/",
-        SpanAttributes.HTTP_FLAVOR: "1.1",
-        SpanAttributes.HTTP_STATUS_CODE: 200,
+        HTTP_METHOD: "GET",
+        HTTP_SERVER_NAME: "localhost",
+        HTTP_SCHEME: "http",
+        NET_HOST_PORT: 80,
+        NET_HOST_NAME: "localhost",
+        HTTP_HOST: "localhost",
+        HTTP_TARGET: "/",
+        HTTP_FLAVOR: "1.1",
+        HTTP_STATUS_CODE: 200,
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -95,8 +110,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_simple(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/123",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_TARGET: "/hello/123",
+                HTTP_ROUTE: "/hello/{helloid}",
             }
         )
         self.client.get("/hello/123")
@@ -134,9 +149,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_404(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_TARGET: "/bye",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_METHOD: "POST",
+                HTTP_TARGET: "/bye",
+                HTTP_STATUS_CODE: 404,
             }
         )
 
@@ -148,13 +163,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "POST /bye")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+        self.assertEqual(len(span_list[0].events), 0)
 
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/500",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/500",
+                HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_STATUS_CODE: 500,
             }
         )
         resp = self.client.get("/hello/500")
@@ -165,13 +181,25 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+        self.assertEqual(
+            span_list[0].status.status_code, trace.StatusCode.ERROR
+        )
+        self.assertIn(
+            "HTTPInternalServerError", span_list[0].status.description
+        )
+        self.assertEqual(
+            span_list[0]
+            .events[0]
+            .attributes[exception_attributes.EXCEPTION_TYPE],
+            "pyramid.httpexceptions.HTTPInternalServerError",
+        )
 
     def test_internal_exception(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/900",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/900",
+                HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_STATUS_CODE: 500,
             }
         )
         with self.assertRaises(NotImplementedError):
@@ -183,6 +211,21 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].name, "/hello/{helloid}")
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
+        self.assertEqual(
+            span_list[0].status.status_code, trace.StatusCode.ERROR
+        )
+        self.assertEqual(span_list[0].status.description, "error message")
+
+        expected_error_event_attrs = {
+            exception_attributes.EXCEPTION_TYPE: "NotImplementedError",
+            exception_attributes.EXCEPTION_MESSAGE: "error message",
+        }
+        self.assertEqual(span_list[0].events[0].name, "exception")
+        # Ensure exception event has specific attributes, but allow additional ones
+        self.assertLess(
+            expected_error_event_attrs.items(),
+            dict(span_list[0].events[0].attributes).items(),
+        )
 
     def test_tween_list(self):
         tween_list = "opentelemetry.instrumentation.pyramid.trace_tween_factory\npyramid.tweens.excview_tween_factory"

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import subprocess
 from subprocess import CalledProcessError
@@ -21,14 +23,26 @@ import tomli
 scripts_path = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.dirname(scripts_path)
 instrumentations_path = os.path.join(root_path, "instrumentation")
+genai_instrumentations_path = os.path.join(root_path, "instrumentation-genai")
 
 
-def get_instrumentation_packages():
-    for pkg in sorted(os.listdir(instrumentations_path)):
+def get_instrumentation_packages(
+    independent_packages: dict[str, str] | None = None,
+):
+    independent_packages = independent_packages or {}
+    pkg_paths = []
+    for pkg in os.listdir(instrumentations_path):
         pkg_path = os.path.join(instrumentations_path, pkg)
         if not os.path.isdir(pkg_path):
             continue
+        pkg_paths.append(pkg_path)
+    for pkg in os.listdir(genai_instrumentations_path):
+        pkg_path = os.path.join(genai_instrumentations_path, pkg)
+        if not os.path.isdir(pkg_path):
+            continue
+        pkg_paths.append(pkg_path)
 
+    for pkg_path in sorted(pkg_paths):
         try:
             version = subprocess.check_output(
                 "hatch version",
@@ -46,19 +60,30 @@ def get_instrumentation_packages():
         with open(pyproject_toml_path, "rb") as file:
             pyproject_toml = tomli.load(file)
 
+        optional_dependencies = pyproject_toml["project"][
+            "optional-dependencies"
+        ]
+        instruments = optional_dependencies.get("instruments", [])
+        # instruments-any is an optional field that can be used instead of or in addition to instruments. While instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
+        instruments_any = optional_dependencies.get("instruments-any", [])
         instrumentation = {
             "name": pyproject_toml["project"]["name"],
             "version": version.strip(),
-            "instruments": pyproject_toml["project"]["optional-dependencies"][
-                "instruments"
-            ],
+            "instruments": instruments,
+            "instruments-any": instruments_any,
         }
-        instrumentation["requirement"] = "==".join(
-            (
-                instrumentation["name"],
-                instrumentation["version"],
+        if instrumentation["name"] in independent_packages:
+            specifier = independent_packages[instrumentation["name"]]
+            instrumentation["requirement"] = (
+                f"{instrumentation['name']}{specifier}"
             )
-        )
+        else:
+            instrumentation["requirement"] = "==".join(
+                (
+                    instrumentation["name"],
+                    instrumentation["version"],
+                )
+            )
         yield instrumentation
 
 

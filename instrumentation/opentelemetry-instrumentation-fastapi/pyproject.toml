@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry FastAPI Instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,28 +18,23 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.45b0.dev",
-  "opentelemetry-instrumentation-asgi == 0.45b0.dev",
-  "opentelemetry-semantic-conventions == 0.45b0.dev",
-  "opentelemetry-util-http == 0.45b0.dev",
+  "opentelemetry-instrumentation == 0.61b0.dev",
+  "opentelemetry-instrumentation-asgi == 0.61b0.dev",
+  "opentelemetry-semantic-conventions == 0.61b0.dev",
+  "opentelemetry-util-http == 0.61b0.dev",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "fastapi ~= 0.58",
-]
-test = [
-  "opentelemetry-instrumentation-fastapi[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-  "requests ~= 2.23", # needed for testclient
-  "httpx ~= 0.22", # needed for testclient
+    "fastapi ~= 0.92",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -47,6 +42,7 @@ fastapi = "opentelemetry.instrumentation.fastapi:FastAPIInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-fastapi"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/fastapi/version.py"

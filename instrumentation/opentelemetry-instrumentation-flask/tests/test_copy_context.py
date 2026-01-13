@@ -44,5 +44,5 @@ class TestCopyContext(InstrumentationTest, WsgiTestBase):
         resp = client.get("/copy_context", headers={"x-req": "a-header"})
 
         self.assertEqual(200, resp.status_code)
-        self.assertEqual("/copy_context", resp.json["span_name"])
+        self.assertEqual("GET /copy_context", resp.json["span_name"])
         self.assertEqual("a-header", resp.json["request_header"])

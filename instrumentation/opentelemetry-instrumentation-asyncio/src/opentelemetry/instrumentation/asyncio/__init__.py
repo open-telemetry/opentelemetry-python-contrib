@@ -14,7 +14,7 @@
 """
 .. asyncio: https://github.com/python/asyncio
 
-The opentelemetry-instrumentation-asycnio package allows tracing asyncio applications.
+The opentelemetry-instrumentation-asyncio package allows tracing asyncio applications.
 The metric for coroutine, future, is generated even if there is no setting to generate a span.
 
 Run instrumented application
@@ -41,6 +41,11 @@ Run instrumented application
 
     # export OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED=true
 
+    import asyncio
+    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
+
+    AsyncioInstrumentor().instrument()
+
     loop = asyncio.get_event_loop()
 
     future = asyncio.Future()
@@ -51,6 +56,8 @@ Run instrumented application
 3. to_thread
 -------------
 .. code:: python
+
+    # export OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE=func
 
     import asyncio
     from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
@@ -76,7 +83,9 @@ asyncio metric types
 API
 ---
 """
+
 import asyncio
+import functools
 import sys
 from asyncio import futures
 from timeit import default_timer
@@ -84,6 +93,9 @@ from typing import Collection
 
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation.asyncio.instrumentation_state import (
+    _is_instrumented,
+)
 from opentelemetry.instrumentation.asyncio.package import _instruments
 from opentelemetry.instrumentation.asyncio.utils import (
     get_coros_to_trace,
@@ -116,21 +128,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         "run_coroutine_threadsafe",
     ]
 
-    def __init__(self):
-        super().__init__()
-        self.process_duration_histogram = None
-        self.process_created_counter = None
-
-        self._tracer = None
-        self._meter = None
-        self._coros_name_to_trace: set = set()
-        self._to_thread_name_to_trace: set = set()
-        self._future_active_enabled: bool = False
-
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
     def _instrument(self, **kwargs):
+        # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__, __version__, kwargs.get("tracer_provider")
         )
@@ -173,7 +175,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         """
 
         def wrap_coro_or_future(method, instance, args, kwargs):
-
             # If the first argument is a coroutine or future,
             # we decorate it with a span and return the task.
             if args and len(args) > 0:
@@ -203,10 +204,6 @@ class AsyncioInstrumentor(BaseInstrumentor):
         _wrap(asyncio, "gather", wrap_coros_or_futures)
 
     def instrument_to_thread(self) -> None:
-        # to_thread was added in Python 3.9
-        if sys.version_info < (3, 9):
-            return
-
         def wrap_to_thread(method, instance, args, kwargs) -> None:
             if args:
                 first_arg = args[0]
@@ -239,16 +236,22 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
     def trace_to_thread(self, func: callable):
-        """Trace a function."""
+        """
+        Trace a function, but if already instrumented, skip double-wrapping.
+        """
+        if _is_instrumented(func):
+            return func
+
         start = default_timer()
+        func_name = getattr(func, "__name__", None)
+        if func_name is None and isinstance(func, functools.partial):
+            func_name = func.func.__name__
         span = (
-            self._tracer.start_span(
-                f"{ASYNCIO_PREFIX} to_thread-" + func.__name__
-            )
-            if func.__name__ in self._to_thread_name_to_trace
+            self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-" + func_name)
+            if func_name in self._to_thread_name_to_trace
             else None
         )
-        attr = {"type": "to_thread", "name": func.__name__}
+        attr = {"type": "to_thread", "name": func_name}
         exception = None
         try:
             attr["state"] = "finished"
@@ -271,6 +274,15 @@ class AsyncioInstrumentor(BaseInstrumentor):
         return coro_or_future
 
     async def trace_coroutine(self, coro):
+        """
+        Wrap a coroutine so that we measure its duration, metrics, etc.
+        If already instrumented, simply 'await coro' to preserve call behavior.
+        """
+        if _is_instrumented(coro):
+            return await coro
+
+        if not hasattr(coro, "__name__"):
+            return await coro
         start = default_timer()
         attr = {
             "type": "coroutine",
@@ -288,8 +300,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
         # CancelledError is raised when a coroutine is cancelled
         # before it has a chance to run. We don't want to record
         # this as an error.
+        # Still it needs to be raised in order for `asyncio.wait_for`
+        # to properly work with timeout and raise accordingly `asyncio.TimeoutError`
         except asyncio.CancelledError:
             attr["state"] = "cancelled"
+            raise
         except Exception as exc:
             exception = exc
             state = determine_state(exception)
@@ -299,6 +314,12 @@ class AsyncioInstrumentor(BaseInstrumentor):
             self.record_process(start, attr, span, exception)
 
     def trace_future(self, future):
+        """
+        Wrap a Future's done callback. If already instrumented, skip re-wrapping.
+        """
+        if _is_instrumented(future):
+            return future
+
         start = default_timer()
         span = (
             self._tracer.start_span(f"{ASYNCIO_PREFIX} future")
@@ -307,13 +328,17 @@ class AsyncioInstrumentor(BaseInstrumentor):
         )
 
         def callback(f):
-            exception = f.exception()
             attr = {
                 "type": "future",
+                "state": (
+                    "cancelled"
+                    if f.cancelled()
+                    else determine_state(f.exception())
+                ),
             }
-            state = determine_state(exception)
-            attr["state"] = state
-            self.record_process(start, attr, span, exception)
+            self.record_process(
+                start, attr, span, None if f.cancelled() else f.exception()
+            )
 
         future.add_done_callback(callback)
         return future
@@ -358,9 +383,6 @@ def uninstrument_taskgroup_create_task() -> None:
 
 
 def uninstrument_to_thread() -> None:
-    # to_thread was added in Python 3.9
-    if sys.version_info < (3, 9):
-        return
     unwrap(asyncio, "to_thread")
 
 

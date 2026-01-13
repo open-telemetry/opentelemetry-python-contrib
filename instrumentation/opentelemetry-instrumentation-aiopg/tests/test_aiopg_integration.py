@@ -17,6 +17,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import aiopg
+import psycopg2
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
@@ -27,7 +28,16 @@ from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     _PoolAcquireContextManager,
 )
 from opentelemetry.sdk import resources
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -66,7 +76,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -76,7 +86,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(aiopg.connect(database="test"))
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -95,7 +105,7 @@ class TestAiopgInstrumentor(TestBase):
                     span = spans_list[0]
 
                     # Check version and name in span's instrumentation info
-                    self.assertEqualSpanInstrumentationInfo(
+                    self.assertEqualSpanInstrumentationScope(
                         span, opentelemetry.instrumentation.aiopg
                     )
 
@@ -116,7 +126,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.aiopg
         )
 
@@ -127,7 +137,7 @@ class TestAiopgInstrumentor(TestBase):
         cnx = async_call(pool.acquire())
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
-        cursor.execute(query)
+        async_call(cursor.execute(query))
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -147,7 +157,7 @@ class TestAiopgInstrumentor(TestBase):
                         span = spans_list[0]
 
                         # Check version and name in span's instrumentation info
-                        self.assertEqualSpanInstrumentationInfo(
+                        self.assertEqualSpanInstrumentationScope(
                             span, opentelemetry.instrumentation.aiopg
                         )
 
@@ -316,24 +326,16 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM], "testcomponent"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_NAME], "testdatabase"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertEqual(
             span.attributes["db.statement.parameters"],
             "('param1Value', False)",
         )
-        self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "testhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 123)
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_not_recording(self):
@@ -380,11 +382,11 @@ class TestAiopgIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.status.description, "Exception: Test Exception")
+        self.assertEqual(
+            span.status.description, "ProgrammingError: Test Exception"
+        )
 
     def test_executemany(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -397,9 +399,7 @@ class TestAiopgIntegration(TestBase):
 
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
     def test_callproc(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -413,7 +413,7 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Test stored procedure",
         )
 
@@ -570,17 +570,17 @@ class MockCursor:
     # pylint: disable=unused-argument, no-self-use
     async def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def executemany(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     # pylint: disable=unused-argument, no-self-use
     async def callproc(self, query, params=None, throw_exception=False):
         if throw_exception:
-            raise Exception("Test Exception")
+            raise psycopg2.ProgrammingError("Test Exception")
 
     def close(self):
         pass

@@ -21,6 +21,14 @@ from aio_pika import Exchange, RobustExchange
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind, get_tracer
 
@@ -34,7 +42,7 @@ from .consts import (
     EXCHANGE_NAME,
     MESSAGE,
     MESSAGE_ID,
-    MESSAGING_SYSTEM,
+    MESSAGING_SYSTEM_VALUE,
     ROUTING_KEY,
     SERVER_HOST,
     SERVER_PORT,
@@ -44,11 +52,11 @@ from .consts import (
 @skipIf(AIOPIKA_VERSION_INFO >= (8, 0), "Only for aio_pika 7")
 class TestInstrumentedExchangeAioRmq7(TestCase):
     EXPECTED_ATTRIBUTES = {
-        SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
+        MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
         SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
-        SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
+        NET_PEER_NAME: SERVER_HOST,
+        NET_PEER_PORT: SERVER_PORT,
+        MESSAGING_MESSAGE_ID: MESSAGE_ID,
         SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
         SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
     }
@@ -75,9 +83,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -101,9 +107,7 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:
@@ -127,11 +131,11 @@ class TestInstrumentedExchangeAioRmq7(TestCase):
 @skipIf(AIOPIKA_VERSION_INFO <= (8, 0), "Only for aio_pika 8")
 class TestInstrumentedExchangeAioRmq8(TestCase):
     EXPECTED_ATTRIBUTES = {
-        SpanAttributes.MESSAGING_SYSTEM: MESSAGING_SYSTEM,
+        MESSAGING_SYSTEM: MESSAGING_SYSTEM_VALUE,
         SpanAttributes.MESSAGING_DESTINATION: f"{EXCHANGE_NAME},{ROUTING_KEY}",
-        SpanAttributes.NET_PEER_NAME: SERVER_HOST,
-        SpanAttributes.NET_PEER_PORT: SERVER_PORT,
-        SpanAttributes.MESSAGING_MESSAGE_ID: MESSAGE_ID,
+        NET_PEER_NAME: SERVER_HOST,
+        NET_PEER_PORT: SERVER_PORT,
+        MESSAGING_MESSAGE_ID: MESSAGE_ID,
         SpanAttributes.MESSAGING_CONVERSATION_ID: CORRELATION_ID,
         SpanAttributes.MESSAGING_TEMP_DESTINATION: True,
     }
@@ -158,9 +162,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
         with mock.patch.object(
             PublishDecorator, "_get_publish_span"
         ) as mock_get_publish_span:
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 decorated_publish = PublishDecorator(
                     self.tracer, exchange
                 ).decorate(mock_publish)
@@ -184,9 +186,7 @@ class TestInstrumentedExchangeAioRmq8(TestCase):
             mocked_not_recording_span = MagicMock()
             mocked_not_recording_span.is_recording.return_value = False
             mock_get_publish_span.return_value = mocked_not_recording_span
-            with mock.patch.object(
-                Exchange, "publish", return_value=asyncio.sleep(0)
-            ) as mock_publish:
+            with mock.patch.object(Exchange, "publish") as mock_publish:
                 with mock.patch(
                     "opentelemetry.instrumentation.aio_pika.publish_decorator.propagate.inject"
                 ) as mock_inject:

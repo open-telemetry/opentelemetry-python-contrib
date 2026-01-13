@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-instrumentation-asyncclick"
+dynamic = ["version"]
+description = "Async Click instrumentation for OpenTelemetry"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+  { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "opentelemetry-api ~= 1.12",
+  "opentelemetry-instrumentation == 0.61b0.dev",
+  "opentelemetry-semantic-conventions == 0.61b0.dev",
+  "wrapt ~= 1.0",
+  "typing_extensions ~= 4.12",
+]
+
+[project.optional-dependencies]
+instruments = [
+  "asyncclick ~= 8.0",
+]
+
+[project.entry-points.opentelemetry_instrumentor]
+asyncclick = "opentelemetry.instrumentation.asyncclick:AsyncClickInstrumentor"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/instrumentation/opentelemetry-instrumentation-asyncclick"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
+
+[tool.hatch.version]
+path = "src/opentelemetry/instrumentation/asyncclick/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]

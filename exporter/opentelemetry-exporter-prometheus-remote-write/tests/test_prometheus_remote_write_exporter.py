@@ -22,6 +22,8 @@ from opentelemetry.exporter.prometheus_remote_write import (
     PrometheusRemoteWriteMetricsExporter,
 )
 from opentelemetry.exporter.prometheus_remote_write.gen.types_pb2 import (  # pylint: disable=E0611
+    Label,
+    Sample,
     TimeSeries,
 )
 from opentelemetry.sdk.metrics.export import (
@@ -120,9 +122,9 @@ def test_parse_metric(metric, prom_rw):
         "bool_value": True,
     }
 
-    assert (
-        len(metric.data.data_points) == 1
-    ), "We can only support a single datapoint in tests"
+    assert len(metric.data.data_points) == 1, (
+        "We can only support a single datapoint in tests"
+    )
     series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
@@ -153,6 +155,38 @@ def test_parse_metric(metric, prom_rw):
         for sample in single_series.samples:
             assert sample.timestamp == timestamp
             assert sample.value in values
+
+
+def test_convert_to_timeseries(prom_rw):
+    resource_labels = (("service_name", "foo"), ("bool_value", True))
+    sample_sets = {
+        (("foo", "bar"), ("baz", 42), ("__name__", "test_histogram_tu")): [
+            (1, 1641946016139)
+        ],
+        (("baz", "42"), ("foo", "bar")): [(4, 1641946016139)],
+    }
+    timeseries = prom_rw._convert_to_timeseries(sample_sets, resource_labels)
+    assert timeseries == [
+        TimeSeries(
+            labels=[
+                Label(name="__name__", value="test_histogram_tu"),
+                Label(name="baz", value="42"),
+                Label(name="bool_value", value="True"),
+                Label(name="foo", value="bar"),
+                Label(name="service_name", value="foo"),
+            ],
+            samples=[Sample(value=1, timestamp=1641946016139)],
+        ),
+        TimeSeries(
+            labels=[
+                Label(name="baz", value="42"),
+                Label(name="bool_value", value="True"),
+                Label(name="foo", value="bar"),
+                Label(name="service_name", value="foo"),
+            ],
+            samples=[Sample(value=4, timestamp=1641946016139)],
+        ),
+    ]
 
 
 class TestValidation(unittest.TestCase):

@@ -1,0 +1,56 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '141'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-does-not-exist:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "error": {
+            "code": 404,
+            "message": "Publisher Model `projects/fake-project/locations/us-central1/publishers/google/models/gemini-does-not-exist` not found.",
+            "status": "NOT_FOUND",
+            "details": []
+          }
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '1139'
+    status:
+      code: 404
+      message: Not Found
+version: 1

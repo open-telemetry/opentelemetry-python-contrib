@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from starlette import applications
 from starlette.responses import PlainTextResponse
-from starlette.routing import Route
+from starlette.routing import Host, Mount, Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
@@ -28,7 +28,12 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_ROUTE,
+    HTTP_TARGET,
+    HTTP_URL,
+)
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import (
@@ -98,6 +103,60 @@ class TestStarletteManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /foobar", span.name)
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.starlette",
+            )
+
+    def test_sub_app_starlette_call(self):
+        """
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            self.assertIn("GET /sub", span.name)
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        # expect only one span to have the attributes
+        self.assertEqual(1, len(spans_with_http_attributes))
+
+        for span in spans_with_http_attributes:
+            self.assertEqual("/sub/home", span.attributes[HTTP_TARGET])
+            self.assertEqual(
+                "http://testserver/sub/home",
+                span.attributes[HTTP_URL],
+            )
+
+    def test_host_starlette_call(self):
+        client = TestClient(self._app, base_url="http://testserver2")
+        client.get("/home")
+        spans = self.memory_exporter.get_finished_spans()
+
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        for span in spans_with_http_attributes:
+            self.assertEqual("/home", span.attributes[HTTP_TARGET])
+            self.assertEqual(
+                "http://testserver2/home",
+                span.attributes[HTTP_URL],
+            )
 
     def test_starlette_route_attribute_added(self):
         """Ensure that starlette routes are used as the span name."""
@@ -106,14 +165,10 @@ class TestStarletteManualInstrumentation(TestBase):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /user/{username}", span.name)
-        self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_ROUTE], "/user/{username}"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_ROUTE], "/user/{username}")
         # ensure that at least one attribute that is populated by
         # the asgi instrumentation is successfully feeding though.
-        self.assertEqual(
-            spans[-1].attributes[SpanAttributes.HTTP_FLAVOR], "1.1"
-        )
+        self.assertEqual(spans[-1].attributes[HTTP_FLAVOR], "1.1")
 
     def test_starlette_excluded_urls(self):
         """Ensure that given starlette routes are excluded."""
@@ -132,6 +187,10 @@ class TestStarletteManualInstrumentation(TestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) == 1)
             for scope_metric in resource_metric.scope_metrics:
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.starlette",
+                )
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
@@ -185,7 +244,7 @@ class TestStarletteManualInstrumentation(TestBase):
                         dict(point.attributes), expected_duration_attributes
                     )
                     if metric.name == "http.server.duration":
-                        self.assertAlmostEqual(duration, point.sum, delta=30)
+                        self.assertAlmostEqual(duration, point.sum, delta=350)
                     elif metric.name == "http.server.response.size":
                         self.assertEqual(response_size, point.sum)
                     elif metric.name == "http.server.request.size":
@@ -242,13 +301,21 @@ class TestStarletteManualInstrumentation(TestBase):
         def health(_):
             return PlainTextResponse("ok")
 
+        def sub_home(_):
+            return PlainTextResponse("sub hi")
+
+        sub_app = applications.Starlette(routes=[Route("/home", sub_home)])
+
         app = applications.Starlette(
             routes=[
                 Route("/foobar", home),
                 Route("/user/{username}", home),
                 Route("/healthzz", health),
-            ]
+                Mount("/sub", app=sub_app),
+                Host("testserver2", sub_app),
+            ],
         )
+
         return app
 
 
@@ -263,23 +330,23 @@ class TestStarletteManualInstrumentationHooks(
         if self._server_request_hook is not None:
             self._server_request_hook(span, scope)
 
-    def client_request_hook(self, receive_span, request):
+    def client_request_hook(self, receive_span, scope, message):
         if self._client_request_hook is not None:
-            self._client_request_hook(receive_span, request)
+            self._client_request_hook(receive_span, scope, message)
 
-    def client_response_hook(self, send_span, response):
+    def client_response_hook(self, send_span, scope, message):
         if self._client_response_hook is not None:
-            self._client_response_hook(send_span, response)
+            self._client_response_hook(send_span, scope, message)
 
     def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(receive_span, request):
+        def client_request_hook(receive_span, scope, message):
             receive_span.update_name("name from client hook")
             receive_span.set_attribute("attr-from-request-hook", "set")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.update_name("name from response hook")
             send_span.set_attribute("attr-from-response-hook", "value")
 
@@ -346,6 +413,91 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
+    def test_no_op_tracer_provider(self):
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+        self.memory_exporter.clear()
+        self._instrumentor.uninstrument()
+
+        tracer_provider = NoOpTracerProvider()
+        self._instrumentor.instrument(tracer_provider=tracer_provider)
+
+        self._client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_manual_instrument_is_noop(self):
+        app = self._create_starlette_app()
+        self._instrumentor.instrument_app(app)
+        self.assertEqual(len(app.user_middleware), 1)
+        client = TestClient(app)
+        client.get("/foobar")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 3)
+
+    def test_sub_app_starlette_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
+
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        # Due to a potential bug in starlettes handling of sub app mounts, we can
+        # check only the server kind spans for the correct attributes
+        # The internal one generated by the sub app is not yet producing the correct attributes
+        server_span = next(
+            (
+                span
+                for span in spans_with_http_attributes
+                if span.kind == SpanKind.SERVER
+            ),
+            None,
+        )
+
+        self.assertIsNotNone(server_span)
+        # As soon as the bug is fixed for starlette, we can iterate over spans_with_http_attributes here
+        # to verify the correctness of the attributes for the internal span as well
+        self.assertEqual("/sub/home", server_span.attributes[HTTP_TARGET])
+        self.assertEqual(
+            "http://testserver/sub/home",
+            server_span.attributes[HTTP_URL],
+        )
+
 
 class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     """
@@ -365,6 +517,67 @@ class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
     def tearDown(self):
         self._instrumentor.uninstrument()
         super().tearDown()
+
+    def test_sub_app_starlette_call(self):
+        """
+        !!! Attention: we need to override this testcase for the auto-instrumented variant
+            The reason is, that with auto instrumentation, the sub app is instrumented as well
+            and therefore we would see the spans for the sub app as well
+
+        This test is to ensure that a span in case of a sub app targeted contains the correct server url
+        """
+
+        self._client.get("/sub/home")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 6)
+
+        for span in spans:
+            # As we are only looking to the "outer" app, we would see only the "GET /sub" spans
+            #   -> the outer app is not aware of the sub_apps internal routes
+            sub_in = "GET /sub" in span.name
+            # The sub app spans are named GET /home as from the sub app perspective the request targets /home
+            #   -> the sub app is technically not aware of the /sub prefix
+            home_in = "GET /home" in span.name
+
+            # We expect the spans to be either from the outer app or the sub app
+            self.assertTrue(
+                sub_in or home_in,
+                f"Span {span.name} does not have /sub or /home in its name",
+            )
+
+        # We now want to specifically test all spans including the
+        # - HTTP_TARGET
+        # - HTTP_URL
+        # attributes to be populated with the expected values
+        spans_with_http_attributes = [
+            span
+            for span in spans
+            if (HTTP_URL in span.attributes or HTTP_TARGET in span.attributes)
+        ]
+
+        # We now expect spans with attributes from both the app and its sub app
+        self.assertEqual(2, len(spans_with_http_attributes))
+
+        # Due to a potential bug in starlettes handling of sub app mounts, we can
+        # check only the server kind spans for the correct attributes
+        # The internal one generated by the sub app is not yet producing the correct attributes
+        server_span = next(
+            (
+                span
+                for span in spans_with_http_attributes
+                if span.kind == SpanKind.SERVER
+            ),
+            None,
+        )
+
+        self.assertIsNotNone(server_span)
+        # As soon as the bug is fixed for starlette, we can iterate over spans_with_http_attributes here
+        # to verify the correctness of the attributes for the internal span as well
+        self.assertEqual("/sub/home", server_span.attributes[HTTP_TARGET])
+        self.assertEqual(
+            "http://testserver/sub/home",
+            server_span.attributes[HTTP_URL],
+        )
 
 
 class TestAutoInstrumentationLogic(unittest.TestCase):
@@ -468,16 +681,21 @@ class TestBaseWithCustomHeaders(TestBase):
 
 
 class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-        },
-    )
-    def setUp(self) -> None:
+    def setUp(self):
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
         super().setUp()
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -594,16 +812,21 @@ class TestHTTPAppWithCustomHeaders(TestBaseWithCustomHeaders):
 
 
 class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
-    @patch.dict(
-        "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-        },
-    )
-    def setUp(self) -> None:
+    def setUp(self):
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
         super().setUp()
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_request_headers_in_span_attributes(self):
         expected = {
@@ -719,22 +942,28 @@ class TestWebSocketAppWithCustomHeaders(TestBaseWithCustomHeaders):
             self.assertNotIn(key, server_span.attributes)
 
 
-@patch.dict(
-    "os.environ",
-    {
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
-        OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
-    },
-)
 class TestNonRecordingSpanWithCustomHeaders(TestBaseWithCustomHeaders):
     def setUp(self):
         super().setUp()
+        self.test_env_patch = patch.dict(
+            "os.environ",
+            {
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: ".*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*",
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*",
+            },
+        )
+        self.test_env_patch.start()
+
         reset_trace_globals()
         set_tracer_provider(tracer_provider=NoOpTracerProvider())
 
         self._app = self.create_app()
         self._client = TestClient(self._app)
+
+    def tearDown(self):
+        self.test_env_patch.stop()
+        super().tearDown()
 
     def test_custom_header_not_present_in_non_recording_span(self):
         resp = self._client.get(

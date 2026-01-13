@@ -16,19 +16,29 @@ import typing
 from unittest import mock
 
 import httpretty
+import httpretty.core
+import httpretty.http
 import urllib3
 import urllib3.exceptions
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _StabilityMode,
+)
+from opentelemetry.instrumentation.urllib3 import (
+    RequestInfo,
+    URLLib3Instrumentor,
+)
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     suppress_instrumentation,
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
 # pylint: disable=too-many-public-methods
@@ -41,12 +51,23 @@ class TestURLLib3Instrumentor(TestBase):
     def setUp(self):
         super().setUp()
 
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_URLLIB3_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                "OTEL_PYTHON_URLLIB3_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
         self.exclude_patch = mock.patch(
@@ -64,6 +85,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def tearDown(self):
         super().tearDown()
+        self.env_patch.stop()
         URLLib3Instrumentor().uninstrument()
 
         httpretty.disable()
@@ -81,46 +103,113 @@ class TestURLLib3Instrumentor(TestBase):
         return span_list
 
     def assert_success_span(
-        self, response: urllib3.response.HTTPResponse, url: str
+        self,
+        response: urllib3.response.HTTPResponse,
+        url: str,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
     ):
         self.assertEqual(b"Hello!", response.data)
 
         span = self.assert_span()
         self.assertIs(trace.SpanKind.CLIENT, span.kind)
         self.assertEqual("GET", span.name)
+        self.assertEqual(
+            span.status.status_code, trace.status.StatusCode.UNSET
+        )
+        expected_attr_old = {
+            "http.method": "GET",
+            "http.url": url,
+            "http.status_code": 200,
+        }
+
+        expected_attr_new = {
+            "http.request.method": "GET",
+            "url.full": url,
+            "http.response.status_code": 200,
+        }
 
         attributes = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_URL: url,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
+            _StabilityMode.DEFAULT: expected_attr_old,
+            _StabilityMode.HTTP: expected_attr_new,
+            _StabilityMode.HTTP_DUP: {
+                **expected_attr_new,
+                **expected_attr_old,
+            },
         }
-        self.assertEqual(attributes, span.attributes)
+        self.assertDictEqual(
+            dict(span.attributes), attributes.get(sem_conv_opt_in_mode)
+        )
 
-    def assert_exception_span(self, url: str):
+    def assert_exception_span(
+        self,
+        url: str,
+        sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    ):
         span = self.assert_span()
 
-        attributes = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_URL: url,
+        expected_attr_old = {
+            "http.method": "GET",
+            "http.url": url,
         }
-        self.assertEqual(attributes, span.attributes)
+
+        expected_attr_new = {
+            "http.request.method": "GET",
+            "url.full": url,
+            # TODO: Add `error.type` attribute when supported
+        }
+
+        attributes = {
+            _StabilityMode.DEFAULT: expected_attr_old,
+            _StabilityMode.HTTP: expected_attr_new,
+            _StabilityMode.HTTP_DUP: {
+                **expected_attr_new,
+                **expected_attr_old,
+            },
+        }
+
+        self.assertDictEqual(
+            dict(span.attributes), attributes.get(sem_conv_opt_in_mode)
+        )
         self.assertEqual(
             trace.status.StatusCode.ERROR, span.status.status_code
         )
 
     @staticmethod
     def perform_request(
-        url: str, headers: typing.Mapping = None, retries: urllib3.Retry = None
+        url: str,
+        headers: typing.Mapping = None,
+        retries: urllib3.Retry = None,
+        method: str = "GET",
     ) -> urllib3.response.HTTPResponse:
         if retries is None:
             retries = urllib3.Retry.from_int(0)
 
         pool = urllib3.PoolManager()
-        return pool.request("GET", url, headers=headers, retries=retries)
+        return pool.request(method, url, headers=headers, retries=retries)
 
     def test_basic_http_success(self):
         response = self.perform_request(self.HTTP_URL)
-        self.assert_success_span(response, self.HTTP_URL)
+        self.assert_success_span(
+            response,
+            self.HTTP_URL,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+
+    def test_basic_http_success_new_semconv(self):
+        response = self.perform_request(self.HTTP_URL)
+        self.assert_success_span(
+            response,
+            self.HTTP_URL,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP,
+        )
+
+    def test_basic_http_success_both_semconv(self):
+        response = self.perform_request(self.HTTP_URL)
+        self.assert_success_span(
+            response,
+            self.HTTP_URL,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
+        )
 
     def test_basic_http_success_using_connection_pool(self):
         pool = urllib3.HTTPConnectionPool("mock")
@@ -145,8 +234,30 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
         self.assertEqual(
-            span.instrumentation_info.schema_url,
+            span.instrumentation_scope.schema_url,
             "https://opentelemetry.io/schemas/1.11.0",
+        )
+
+    def test_schema_url_new_semconv(self):
+        pool = urllib3.HTTPSConnectionPool("mock")
+        response = pool.request("GET", "/status/200")
+
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
+
+    def test_schema_url_both_semconv(self):
+        pool = urllib3.HTTPSConnectionPool("mock")
+        response = pool.request("GET", "/status/200")
+
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
         )
 
     def test_basic_not_found(self):
@@ -157,10 +268,72 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(404, response.status)
 
         span = self.assert_span()
-        self.assertEqual(
-            404, span.attributes.get(SpanAttributes.HTTP_STATUS_CODE)
-        )
+        self.assertEqual(404, span.attributes.get("http.status_code"))
         self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
+
+    def test_basic_not_found_new_semconv(self):
+        url_404 = "http://mock/status/404"
+        httpretty.register_uri(httpretty.GET, url_404, status=404)
+
+        response = self.perform_request(url_404)
+        self.assertEqual(404, response.status)
+
+        span = self.assert_span()
+        self.assertEqual(404, span.attributes.get("http.response.status_code"))
+        self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
+
+    def test_basic_not_found_both_semconv(self):
+        url_404 = "http://mock/status/404"
+        httpretty.register_uri(httpretty.GET, url_404, status=404)
+
+        response = self.perform_request(url_404)
+        self.assertEqual(404, response.status)
+
+        span = self.assert_span()
+        self.assertEqual(404, span.attributes.get("http.response.status_code"))
+        self.assertEqual(404, span.attributes.get("http.status_code"))
+        self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method(self):
+        httpretty.register_uri(
+            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        )
+        self.perform_request(self.HTTP_URL, method="NONSTANDARD")
+        span = self.assert_span()
+        self.assertEqual("HTTP", span.name)
+        self.assertEqual(span.attributes.get("http.method"), "_OTHER")
+        self.assertEqual(span.attributes.get("http.status_code"), 405)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method_new_semconv(self):
+        httpretty.register_uri(
+            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        )
+        self.perform_request(self.HTTP_URL, method="NONSTANDARD")
+        span = self.assert_span()
+        self.assertEqual("HTTP", span.name)
+        self.assertEqual(span.attributes.get("http.request.method"), "_OTHER")
+        self.assertEqual(
+            span.attributes.get("http.request.method_original"), "NONSTANDARD"
+        )
+        self.assertEqual(span.attributes.get("http.response.status_code"), 405)
+
+    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    def test_nonstandard_http_method_both_semconv(self):
+        httpretty.register_uri(
+            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        )
+        self.perform_request(self.HTTP_URL, method="NONSTANDARD")
+        span = self.assert_span()
+        self.assertEqual("HTTP", span.name)
+        self.assertEqual(span.attributes.get("http.method"), "_OTHER")
+        self.assertEqual(span.attributes.get("http.status_code"), 405)
+        self.assertEqual(span.attributes.get("http.request.method"), "_OTHER")
+        self.assertEqual(
+            span.attributes.get("http.request.method_original"), "NONSTANDARD"
+        )
+        self.assertEqual(span.attributes.get("http.response.status_code"), 405)
 
     def test_basic_http_non_default_port(self):
         url = "http://mock:666/status/200"
@@ -289,6 +462,34 @@ class TestURLLib3Instrumentor(TestBase):
 
     @mock.patch(
         "urllib3.connectionpool.HTTPConnectionPool._make_request",
+        side_effect=urllib3.exceptions.ConnectTimeoutError,
+    )
+    def test_request_exception_new_semconv(self, _):
+        with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
+            self.perform_request(
+                self.HTTP_URL, retries=urllib3.Retry(connect=False)
+            )
+
+        self.assert_exception_span(
+            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP
+        )
+
+    @mock.patch(
+        "urllib3.connectionpool.HTTPConnectionPool._make_request",
+        side_effect=urllib3.exceptions.ConnectTimeoutError,
+    )
+    def test_request_exception_both_semconv(self, _):
+        with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
+            self.perform_request(
+                self.HTTP_URL, retries=urllib3.Retry(connect=False)
+            )
+
+        self.assert_exception_span(
+            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
+        )
+
+    @mock.patch(
+        "urllib3.connectionpool.HTTPConnectionPool._make_request",
         side_effect=urllib3.exceptions.ProtocolError,
     )
     def test_retries_do_not_create_spans(self, _):
@@ -315,10 +516,10 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_success_span(response, self.HTTP_URL)
 
     def test_hooks(self):
-        def request_hook(span, request, body, headers):
+        def request_hook(span, pool, request_info):
             span.update_name("name set from hook")
 
-        def response_hook(span, request, response):
+        def response_hook(span, pool, response):
             span.set_attribute("response_hook_attr", "value")
 
         URLLib3Instrumentor().uninstrument()
@@ -335,11 +536,17 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes["response_hook_attr"], "value")
 
     def test_request_hook_params(self):
-        def request_hook(span, request, headers, body):
+        def request_hook(
+            span: Span,
+            _pool: urllib3.connectionpool.ConnectionPool,
+            request_info: RequestInfo,
+        ) -> None:
+            span.set_attribute("request_hook_method", request_info.method)
+            span.set_attribute("request_hook_url", request_info.url)
             span.set_attribute(
-                "request_hook_headers", json.dumps(dict(headers))
+                "request_hook_headers", json.dumps(dict(request_info.headers))
             )
-            span.set_attribute("request_hook_body", body)
+            span.set_attribute("request_hook_body", request_info.body)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(
@@ -358,6 +565,10 @@ class TestURLLib3Instrumentor(TestBase):
 
         span = self.assert_span()
 
+        self.assertEqual(span.attributes["request_hook_method"], "POST")
+        self.assertEqual(
+            span.attributes["request_hook_url"], "http://mock/status/200"
+        )
         self.assertIn("request_hook_headers", span.attributes)
         self.assertEqual(
             span.attributes["request_hook_headers"], json.dumps(headers)
@@ -366,8 +577,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes["request_hook_body"], body)
 
     def test_request_positional_body(self):
-        def request_hook(span, request, headers, body):
-            span.set_attribute("request_hook_body", body)
+        def request_hook(
+            span: Span,
+            _pool: urllib3.connectionpool.ConnectionPool,
+            request_info: RequestInfo,
+        ) -> None:
+            span.set_attribute("request_hook_body", request_info.body)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(

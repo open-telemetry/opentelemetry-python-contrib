@@ -16,6 +16,15 @@
 This library allows tracing HTTP elasticsearch made by the
 `elasticsearch <https://elasticsearch-py.readthedocs.io/en/master/>`_ library.
 
+.. warning::
+    The elasticsearch package got native OpenTelemetry support since version
+    `8.13 <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/release-notes.html#rn-8-13-0>`_.
+    To avoid duplicated tracing this instrumentation disables itself if it finds an elasticsearch client
+    that has OpenTelemetry support enabled.
+
+    Please be aware that the two libraries may use a different semantic convention, see
+    `elasticsearch documentation <https://www.elastic.co/guide/en/elasticsearch/client/python-api/current/opentelemetry.html>`_.
+
 Usage
 -----
 
@@ -23,15 +32,15 @@ Usage
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
-
+    from datetime import datetime
 
     # instrument elasticsearch
     ElasticsearchInstrumentor().instrument()
 
     # Using elasticsearch as normal now will automatically generate spans
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 Elasticsearch instrumentation prefixes operation names with the string "Elasticsearch". This
 can be changed to a different string by either setting the OTEL_PYTHON_ELASTICSEARCH_NAME_PREFIX
@@ -39,6 +48,8 @@ environment variable or by passing the prefix as an argument to the instrumentor
 
 
 .. code-block:: python
+
+    from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
 
     ElasticsearchInstrumentor("my-custom-prefix").instrument()
 
@@ -54,10 +65,11 @@ def response_hook(span: Span, response: dict)
 
 for example:
 
-.. code: python
+.. code-block: python
 
     from opentelemetry.instrumentation.elasticsearch import ElasticsearchInstrumentor
     import elasticsearch
+    from datetime import datetime
 
     def request_hook(span, method, url, kwargs):
         if span and span.is_recording():
@@ -73,14 +85,15 @@ for example:
     # Using elasticsearch as normal now will automatically generate spans,
     # including user custom attributes added from the hooks
     es = elasticsearch.Elasticsearch()
-    es.index(index='my-index', doc_type='my-type', id=1, body={'my': 'data', 'timestamp': datetime.now()})
-    es.get(index='my-index', doc_type='my-type', id=1)
+    es.index(index='my-index', doc_type='_doc', id=1, body={'my': 'data', 'timestamp': datetime.now()})
+    es.get(index='my-index', doc_type='_doc', id=1)
 
 API
 ---
 """
 
 import re
+import warnings
 from logging import getLogger
 from os import environ
 from typing import Collection
@@ -93,8 +106,11 @@ from opentelemetry.instrumentation.elasticsearch.package import _instruments
 from opentelemetry.instrumentation.elasticsearch.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.trace import SpanKind, Status, StatusCode, get_tracer
 
 from .utils import sanitize_body
 
@@ -103,6 +119,7 @@ from .utils import sanitize_body
 es_transport_split = elasticsearch.VERSION[0] > 7
 if es_transport_split:
     import elastic_transport
+    from elastic_transport._models import DefaultType
 
 logger = getLogger(__name__)
 
@@ -173,7 +190,12 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         # pylint: disable=no-member
-        unwrap(elasticsearch.Transport, "perform_request")
+        transport_class = (
+            elastic_transport.Transport
+            if es_transport_split
+            else elasticsearch.Transport
+        )
+        unwrap(transport_class, "perform_request")
 
 
 _regex_doc_url = re.compile(r"/_doc/([^/]+)")
@@ -182,6 +204,7 @@ _regex_doc_url = re.compile(r"/_doc/([^/]+)")
 _regex_search_url = re.compile(r"/([^/]+)/_search[/]?")
 
 
+# pylint: disable=too-many-statements
 def _wrap_perform_request(
     tracer,
     span_name_prefix,
@@ -190,6 +213,16 @@ def _wrap_perform_request(
 ):
     # pylint: disable=R0912,R0914
     def wrapper(wrapped, _, args, kwargs):
+        # if wrapped elasticsearch has native OTel instrumentation just call the wrapped function
+        otel_span = kwargs.get("otel_span")
+        if otel_span and otel_span.otel_span:
+            warnings.warn(
+                "Instrumentation disabled, relying on elasticsearch native OTel support, see "
+                "https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/elasticsearch/elasticsearch.html",
+                Warning,
+            )
+            return wrapped(*args, **kwargs)
+
         method = url = None
         try:
             method, url, *_ = args
@@ -234,20 +267,40 @@ def _wrap_perform_request(
             kind=SpanKind.CLIENT,
         ) as span:
             if callable(request_hook):
-                request_hook(span, method, url, kwargs)
+                # elasticsearch 8 changed the parameters quite a bit
+                if es_transport_split:
+
+                    def normalize_kwargs(k, v):
+                        if isinstance(v, DefaultType):
+                            v = str(v)
+                        elif isinstance(v, elastic_transport.HttpHeaders):
+                            v = dict(v)
+                        elif isinstance(
+                            v, elastic_transport.OpenTelemetrySpan
+                        ):
+                            # the transport Span is always a dummy one
+                            v = None
+                        return (k, v)
+
+                    hook_kwargs = dict(
+                        normalize_kwargs(k, v) for k, v in kwargs.items()
+                    )
+                else:
+                    hook_kwargs = kwargs
+                request_hook(span, method, url, hook_kwargs)
 
             if span.is_recording():
                 attributes = {
-                    SpanAttributes.DB_SYSTEM: "elasticsearch",
+                    DB_SYSTEM: "elasticsearch",
                 }
                 if url:
                     attributes["elasticsearch.url"] = url
                 if method:
                     attributes["elasticsearch.method"] = method
                 if body:
-                    attributes[SpanAttributes.DB_STATEMENT] = sanitize_body(
-                        body
-                    )
+                    # Don't set db.statement for bulk requests, as it can be very large
+                    if isinstance(body, dict):
+                        attributes[DB_STATEMENT] = sanitize_body(body)
                 if params:
                     attributes["elasticsearch.params"] = str(params)
                 if doc_id:
@@ -258,16 +311,41 @@ def _wrap_perform_request(
                     span.set_attribute(key, value)
 
             rv = wrapped(*args, **kwargs)
-            if isinstance(rv, dict) and span.is_recording():
+
+            body = rv.body if es_transport_split else rv
+            if isinstance(body, dict) and span.is_recording():
                 for member in _ATTRIBUTES_FROM_RESULT:
-                    if member in rv:
+                    if member in body:
                         span.set_attribute(
                             f"elasticsearch.{member}",
-                            str(rv[member]),
+                            str(body[member]),
                         )
 
+            # since the transport split the raising of exceptions that set the error status
+            # are called after this code so need to set error status manually
+            if es_transport_split and span.is_recording():
+                if not (method == "HEAD" and rv.meta.status == 404) and (
+                    not 200 <= rv.meta.status < 299
+                ):
+                    exception = elasticsearch.exceptions.HTTP_EXCEPTIONS.get(
+                        rv.meta.status, elasticsearch.exceptions.ApiError
+                    )
+                    message = str(body)
+                    if isinstance(body, dict):
+                        error = body.get("error", message)
+                        if isinstance(error, dict) and "type" in error:
+                            error = error["type"]
+                        message = error
+
+                    span.set_status(
+                        Status(
+                            status_code=StatusCode.ERROR,
+                            description=f"{exception.__name__}: {message}",
+                        )
+                    )
+
             if callable(response_hook):
-                response_hook(span, rv)
+                response_hook(span, body)
             return rv
 
     return wrapper

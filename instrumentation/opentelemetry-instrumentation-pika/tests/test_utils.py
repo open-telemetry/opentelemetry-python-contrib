@@ -11,12 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import collections
 from unittest import TestCase, mock
 
+from pika.adapters.blocking_connection import (
+    _ConsumerCancellationEvt,
+    _ConsumerDeliveryEvt,
+    _QueueConsumerGeneratorInfo,
+)
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
@@ -109,11 +119,11 @@ class TestUtils(TestCase):
                     properties.correlation_id,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     channel.connection.params.host,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_PORT,
+                    NET_PEER_PORT,
                     channel.connection.params.port,
                 ),
             ],
@@ -161,11 +171,11 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     channel.connection._impl.params.host,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_PORT,
+                    NET_PEER_PORT,
                     channel.connection._impl.params.port,
                 ),
             ],
@@ -448,3 +458,113 @@ class TestUtils(TestCase):
             exchange_name, routing_key, mock_body, properties, False
         )
         self.assertEqual(retval, callback.return_value)
+
+    # pylint: disable=too-many-statements
+    @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
+    @mock.patch("opentelemetry.propagate.extract")
+    @mock.patch("opentelemetry.context.detach")
+    @mock.patch("opentelemetry.context.attach")
+    @mock.patch("opentelemetry.context.get_current")
+    def test_decorate_deque_proxy(
+        self,
+        context_get_current: mock.MagicMock,
+        context_attach: mock.MagicMock,
+        context_detach: mock.MagicMock,
+        extract: mock.MagicMock,
+        get_span: mock.MagicMock,
+    ) -> None:
+        returned_span = mock.MagicMock()
+        get_span.return_value = returned_span
+        consume_hook = mock.MagicMock()
+        tracer = mock.MagicMock()
+        generator_info = mock.MagicMock(
+            spec=_QueueConsumerGeneratorInfo,
+            pending_events=mock.MagicMock(spec=collections.deque),
+            consumer_tag="mock_task_name",
+        )
+        method = mock.MagicMock(spec=Basic.Deliver)
+        method.exchange = "test_exchange"
+        properties = mock.MagicMock()
+        evt = _ConsumerDeliveryEvt(method, properties, b"mock_body")
+        generator_info.pending_events.popleft.return_value = evt
+        proxy = utils.ReadyMessagesDequeProxy(
+            generator_info.pending_events, generator_info, tracer, consume_hook
+        )
+
+        # First call (no detach cleanup)
+        res = proxy.popleft()
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_called_once_with(
+            properties.headers, getter=utils._pika_getter
+        )
+        context_get_current.assert_called_once()
+        self.assertEqual(context_attach.call_count, 2)
+        self.assertEqual(context_detach.call_count, 1)
+        get_span.assert_called_once_with(
+            tracer,
+            None,
+            properties,
+            destination=method.exchange,
+            span_kind=SpanKind.CONSUMER,
+            task_name=generator_info.consumer_tag,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        consume_hook.assert_called_once()
+        returned_span.end.assert_called_once()
+
+        generator_info.pending_events.reset_mock()
+        extract.reset_mock()
+        context_get_current.reset_mock()
+        get_span.reset_mock()
+        context_attach.reset_mock()
+        context_detach.reset_mock()
+        returned_span.end.reset_mock()
+        consume_hook.reset_mock()
+
+        # Second call (has detach cleanup)
+        res = proxy.popleft()
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_called_once_with(
+            properties.headers, getter=utils._pika_getter
+        )
+        context_get_current.assert_called_once()
+        self.assertEqual(context_attach.call_count, 2)
+        self.assertEqual(context_detach.call_count, 2)
+        get_span.assert_called_once_with(
+            tracer,
+            None,
+            properties,
+            destination=method.exchange,
+            span_kind=SpanKind.CONSUMER,
+            task_name=generator_info.consumer_tag,
+            operation=MessagingOperationValues.RECEIVE,
+        )
+        consume_hook.assert_called_once()
+        returned_span.end.assert_called_once()
+        generator_info.pending_events.reset_mock()
+
+        extract.reset_mock()
+        context_get_current.reset_mock()
+        get_span.reset_mock()
+        context_attach.reset_mock()
+        context_detach.reset_mock()
+        returned_span.end.reset_mock()
+        consume_hook.reset_mock()
+
+        # Third call (cancellation event)
+        evt = _ConsumerCancellationEvt("")
+        generator_info.pending_events.popleft.return_value = evt
+
+        res = proxy.popleft()
+
+        self.assertEqual(res, evt)
+        generator_info.pending_events.popleft.assert_called_once()
+        extract.assert_not_called()
+        context_get_current.assert_not_called()
+        context_detach.assert_called_once()
+        context_attach.assert_not_called()
+        get_span.assert_not_called()
+        consume_hook.assert_not_called()
+        returned_span.end.assert_not_called()

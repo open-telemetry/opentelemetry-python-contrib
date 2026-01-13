@@ -1,0 +1,85 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Say this is a test"
+              }
+            ]
+          }
+        ],
+        "generationConfig": {
+          "temperature": 0.2,
+          "topP": 0.95,
+          "topK": 2.0,
+          "maxOutputTokens": 5,
+          "stopSequences": [
+            "\n\n\n"
+          ],
+          "presencePenalty": -1.5,
+          "frequencyPenalty": 1.0,
+          "seed": 12345
+        }
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '376'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model"
+              },
+              "finishReason": 2
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 5,
+            "totalTokenCount": 9,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 5
+              }
+            ],
+            "thoughtsTokenCount": 4
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T15:18:43.287437Z",
+          "responseId": "05WkaM3FEaGSmecPxYzosQM"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '468'
+    status:
+      code: 200
+      message: OK
+version: 1

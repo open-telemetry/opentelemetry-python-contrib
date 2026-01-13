@@ -14,3 +14,7 @@
 
 
 _instruments = ("httpx >= 0.18.0",)
+
+_supports_metrics = True
+
+_semconv_status = "migration"

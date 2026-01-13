@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import sys
+import functools
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
@@ -41,33 +41,61 @@ class TestAsyncioToThread(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     def test_to_thread(self):
-        # to_thread is only available in Python 3.9+
-        if sys.version_info >= (3, 9):
+        def multiply(x, y):
+            return x * y
 
-            def multiply(x, y):
-                return x * y
+        async def to_thread():
+            result = await asyncio.to_thread(multiply, 2, 3)
+            assert result == 6
 
-            async def to_thread():
-                result = await asyncio.to_thread(multiply, 2, 3)
-                assert result == 6
+        with self._tracer.start_as_current_span("root"):
+            asyncio.run(to_thread())
+        spans = self.memory_exporter.get_finished_spans()
 
-            with self._tracer.start_as_current_span("root"):
-                asyncio.run(to_thread())
-            spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        assert spans[0].name == "asyncio to_thread-multiply"
+        for metric in (
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
+        ):
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "to_thread")
+                    self.assertEqual(point.attributes["name"], "multiply")
+            if metric.name == "asyncio.process.created":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "to_thread")
+                    self.assertEqual(point.attributes["name"], "multiply")
 
-            self.assertEqual(len(spans), 2)
-            assert spans[0].name == "asyncio to_thread-multiply"
-            for metric in (
-                self.memory_metrics_reader.get_metrics_data()
-                .resource_metrics[0]
-                .scope_metrics[0]
-                .metrics
-            ):
-                if metric.name == "asyncio.process.duration":
-                    for point in metric.data.data_points:
-                        self.assertEqual(point.attributes["type"], "to_thread")
-                        self.assertEqual(point.attributes["name"], "multiply")
-                if metric.name == "asyncio.process.created":
-                    for point in metric.data.data_points:
-                        self.assertEqual(point.attributes["type"], "to_thread")
-                        self.assertEqual(point.attributes["name"], "multiply")
+    def test_to_thread_partial_func(self):
+        def multiply(x, y):
+            return x * y
+
+        double = functools.partial(multiply, 2)
+
+        async def to_thread():
+            result = await asyncio.to_thread(double, 3)
+            assert result == 6
+
+        with self._tracer.start_as_current_span("root"):
+            asyncio.run(to_thread())
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+        assert spans[0].name == "asyncio to_thread-multiply"
+        for metric in (
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
+        ):
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "to_thread")
+                    self.assertEqual(point.attributes["name"], "multiply")
+            if metric.name == "asyncio.process.created":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["type"], "to_thread")
+                    self.assertEqual(point.attributes["name"], "multiply")

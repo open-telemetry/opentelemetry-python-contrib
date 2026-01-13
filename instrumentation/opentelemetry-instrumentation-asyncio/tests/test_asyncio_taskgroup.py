@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import sys
+from unittest import skipIf
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
@@ -24,10 +25,6 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
 from .common_test_func import async_func
-
-py11 = False
-if sys.version_info >= (3, 11):
-    py11 = True
 
 
 class TestAsyncioTaskgroup(TestBase):
@@ -46,11 +43,11 @@ class TestAsyncioTaskgroup(TestBase):
         super().tearDown()
         AsyncioInstrumentor().uninstrument()
 
+    @skipIf(
+        sys.version_info < (3, 11),
+        "TaskGroup is only available in Python 3.11+",
+    )
     def test_task_group_create_task(self):
-        # TaskGroup is only available in Python 3.11+
-        if not py11:
-            return
-
         async def main():
             async with asyncio.TaskGroup() as tg:  # pylint: disable=no-member
                 for _ in range(10):

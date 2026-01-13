@@ -1,5 +1,6 @@
 #!/bin/bash
-#
+set -e
+
 # This script:
 #   1. parses the version number from the branch name
 #   2. updates version.py files to match that version

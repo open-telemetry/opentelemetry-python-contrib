@@ -1,0 +1,151 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          },
+          {
+            "role": "model",
+            "parts": [
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "New Delhi"
+                  }
+                }
+              },
+              {
+                "functionCall": {
+                  "name": "get_current_weather",
+                  "args": {
+                    "location": "San Francisco"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "parts": [
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 35, \"unit\": \"C\"}"
+                  }
+                }
+              },
+              {
+                "functionResponse": {
+                  "name": "get_current_weather",
+                  "response": {
+                    "content": "{\"temperature\": 25, \"unit\": \"C\"}"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1731'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "The current temperature in New Delhi is 35\u00b0C, and in San Francisco, it is 25\u00b0C.",
+                    "thoughtSignature": "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"
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -1.1418917729304388
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 128,
+            "candidatesTokenCount": 26,
+            "totalTokenCount": 846,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 128
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 26
+              }
+            ],
+            "thoughtsTokenCount": 692
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:33.172473Z",
+          "responseId": "ZZCkaLnDCuavgLUP4fGpsQs"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '4256'
+    status:
+      code: 200
+      message: OK
+version: 1

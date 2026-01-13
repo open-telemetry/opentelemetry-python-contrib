@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry pika instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,12 +18,14 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+  "opentelemetry-instrumentation == 0.61b0.dev",
   "opentelemetry-api ~= 1.5",
   "packaging >= 20.0",
   "wrapt >= 1.0.0, < 2.0.0",
@@ -33,18 +35,13 @@ dependencies = [
 instruments = [
   "pika >= 0.12.0",
 ]
-test = [
-  "opentelemetry-instrumentation-pika[instruments]",
-  "opentelemetry-test-utils == 0.45b0.dev",
-  "pytest",
-  "wrapt >= 1.0.0, < 2.0.0",
-]
 
 [project.entry-points.opentelemetry_instrumentor]
 pika = "opentelemetry.instrumentation.pika:PikaInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-pika"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/pika/version.py"

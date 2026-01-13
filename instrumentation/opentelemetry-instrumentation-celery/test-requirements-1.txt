@@ -1,0 +1,27 @@
+amqp==5.2.0
+asgiref==3.8.1
+billiard==4.2.1
+celery==5.3.6
+click==8.1.7
+click-didyoumean==0.3.0
+click-plugins==1.1.1
+click-repl==0.3.0
+Deprecated==1.2.14
+iniconfig==2.0.0
+kombu==5.3.5
+packaging==24.0
+pluggy==1.5.0
+prompt-toolkit==3.0.43
+py-cpuinfo==9.0.0
+pytest==7.4.4
+python-dateutil==2.8.2
+six==1.16.0
+tomli==2.0.1
+typing_extensions==4.12.2
+tzdata==2024.1
+vine==5.1.0
+wcwidth==0.2.13
+wrapt==1.16.0
+zipp==3.19.2
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-celery

@@ -1,0 +1,122 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Get weather details in New Delhi and San Francisco?"
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "functionDeclarations": [
+              {
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                  "type": 6,
+                  "properties": {
+                    "location": {
+                      "type": 1,
+                      "description": "The location for which to get the weather. It can be a city name, a city name and state, or a zip code. Examples: 'San Francisco', 'San Francisco, CA', '95616', etc."
+                    }
+                  },
+                  "propertyOrdering": [
+                    "location"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '824'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.32.3
+    method: POST
+    uri: https://us-central1-aiplatform.googleapis.com/v1/projects/fake-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent?%24alt=json%3Benum-encoding%3Dint
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "New Delhi"
+                      }
+                    },
+                    "thoughtSignature": "CuUGAcu98PA0CgDJVjnZvciC3yQjuC6R/hJiEIzLX88DIJjiqSv2B+3ZhTR62dWOcR8xHdVOUjJB+LgQO/KTzyZ9FZBM5OdkXsXMC+KsrEsjnjDq0wSAtDe8zDhztTD2mmgFT7i0asHN60aoxdkgM3myRHyzmaNjs+F2Ua3wS9MiAqzYdKoPry5kzkL/KQBI3dpsL/JiiGKFgXQ7y+hL3epdjU4ySjVw/x5zKC/MyHHpQIhHwhzKYZR3I1TUR3b0ziBZJknQHFaxNckeDKfY3aXuawPqqqf+RrUd7MEQOE0nnJF/jl7zwhxevPglX9R//MTpzV8bZIBLKu84GYIM1h7x2iHN0t5arER3VDk0kgIG0FsOaMrv+BqRykSsQc/9K2gLdB+ouGSlLJLQ8amnyiuxQC25RHRPlGvJKJCq2wCl2pEAhd7HUoCbiN145pbdoYi+L4vigSIsob7NvGHW/RJiZd1lHXAVJUCmzmhyNMj3iYW3qvO5+H41q5EZjlUT8RNBwN9Lv4V71CRdQnw5oYfH1WncPoVdbtQwPqIzhqJ93JKLJGdSkkNrODdZlt96iOHDchD0PLLz/vGg90La+v+sAvwnKRX/SGXruySlTDKntua4UBFauFD7Cyv/VQvyNpqiP39jnTdjW3J42vKLEtpf/Ldagf1JUcZ/BXQUYamhzuEdRVBg3XB0kbXA/e59vSsqXHPDFurbWzv8q56Jxu/lE8H416iPlWuR25J8SqWahHO039YtOrjGW9+/C69bFxh9HwSJtmUkoX0P0cZmRuYkOl3mpl4sRz/GfebNu7+G4+q9O5SSnpmzxEGUNccRiiTiZK89YPj3vqnODydK5qYTyMaTkYGkInxqCoJbCvXuNnYArwnVuWGKMHHJfmlV9et24zipKdMfb/ZTfdSy9uni4mgMOqd6b4er08Qft1NKktxqmU87izBd5Vt6VSfYsJqW4lrRs4f+28TfFXl2znfKt16Pi+8AuyH+49zS/xkZS5J48rGg0xWvowPkT2vSz/nYGb5xlEDPDABDvfwwib+T32d7cj6dQgZHzQWnPjZgSlSfOYuU2QSZtO5nx8oS2jnF+sb2Ywst0ZMV+ECOsH5OSjQ31Nmd6/PIHGVtFI6veBK78Xon2iuoHNwwqYZj8+hAXRMTkyY="
+                  },
+                  {
+                    "functionCall": {
+                      "name": "get_current_weather",
+                      "args": {
+                        "location": "San Francisco"
+                      }
+                    }
+                  }
+                ]
+              },
+              "finishReason": 1,
+              "avgLogprobs": -1.0146095752716064
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 74,
+            "candidatesTokenCount": 16,
+            "totalTokenCount": 290,
+            "trafficType": 1,
+            "promptTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 74
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": 1,
+                "tokenCount": 16
+              }
+            ],
+            "thoughtsTokenCount": 200
+          },
+          "modelVersion": "gemini-2.5-pro",
+          "createTime": "2025-08-19T14:55:25.379701Z",
+          "responseId": "XZCkaLWWF8qm1dkP7rOm6AM"
+        }
+    headers:
+      Content-Type:
+      - application/json; charset=UTF-8
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Origin
+      - X-Origin
+      - Referer
+      content-length:
+      - '2273'
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -16,7 +16,7 @@ import unittest
 from collections import OrderedDict
 from unittest.mock import patch
 
-from opentelemetry.sdk.extension.aws.resource._lambda import (
+from opentelemetry.sdk.extension.aws.resource._lambda import (  # pylint: disable=no-name-in-module
     AwsLambdaResourceDetector,
 )
 from opentelemetry.semconv.resource import (

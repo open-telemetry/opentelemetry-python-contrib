@@ -2,11 +2,17 @@ name: Prepare patch release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   prepare-patch-release:
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating and editing pull requests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - run: |
           if [[ ! $GITHUB_REF_NAME =~ ^release/v[0-9]+\.[0-9]+\.x-0\.[0-9]+bx$ ]]; then
@@ -40,17 +46,21 @@ jobs:
             exit 1
           fi
 
+          stable_version_prev="$stable_major_minor.$((stable_patch))"
+          unstable_version_prev="0.${unstable_minor}b$((unstable_patch))"
           stable_version="$stable_major_minor.$((stable_patch + 1))"
           unstable_version="0.${unstable_minor}b$((unstable_patch + 1))"
 
           echo "STABLE_VERSION=$stable_version" >> $GITHUB_ENV
           echo "UNSTABLE_VERSION=$unstable_version" >> $GITHUB_ENV
+          echo "STABLE_VERSION_PREV=$stable_version_prev" >> $GITHUB_ENV
+          echo "UNSTABLE_VERSION_PREV=$unstable_version_prev" >> $GITHUB_ENV
 
       - name: Update version
-        run: .github/scripts/update-version.sh $STABLE_VERSION $UNSTABLE_VERSION
+        run: .github/scripts/update-version-patch.sh $STABLE_VERSION $UNSTABLE_VERSION $STABLE_VERSION_PREV $UNSTABLE_VERSION_PREV
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Install tox
@@ -66,17 +76,32 @@ jobs:
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
 
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
       - name: Create pull request
+        id: create_pr
         env:
           # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
-          GITHUB_TOKEN: ${{ secrets.OPENTELEMETRYBOT_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
         run: |
           message="Prepare release ${STABLE_VERSION}/${UNSTABLE_VERSION}"
-          branch="opentelemetrybot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+          branch="otelbot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
 
           git commit -a -m "$message"
           git push origin HEAD:$branch
-          gh pr create --title "[$GITHUB_REF_NAME] $message" \
+          pr_url=$(gh pr create --title "[$GITHUB_REF_NAME] $message" \
                        --body "$message." \
                        --head $branch \
-                       --base $GITHUB_REF_NAME
+                       --base $GITHUB_REF_NAME)
+          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
+
+      - name: Add prepare-release label to PR
+        if: steps.create_pr.outputs.pr_url != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ steps.create_pr.outputs.pr_url }}  --add-label "prepare-release"

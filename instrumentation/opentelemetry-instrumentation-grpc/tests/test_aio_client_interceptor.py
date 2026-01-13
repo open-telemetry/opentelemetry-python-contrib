@@ -11,24 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-    from unittest import IsolatedAsyncioTestCase
-except ImportError:
-    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
-    # simplifies the following tests. Without it, the amount of test code
-    # increases significantly, with most of the additional code handling
-    # the asyncio set up.
-    from unittest import TestCase
-
-    class IsolatedAsyncioTestCase(TestCase):
-        def run(self, result=None):
-            self.skipTest(
-                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
-            )
-
+from unittest import IsolatedAsyncioTestCase
 
 import grpc
-import pytest
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -41,7 +26,12 @@ from opentelemetry.instrumentation.grpc._aio_client import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -65,7 +55,6 @@ class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
         return await continuation(client_call_details, request)
 
 
-@pytest.mark.asyncio
 class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
@@ -130,19 +119,17 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -158,19 +145,17 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -186,19 +171,17 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ClientStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -216,19 +199,17 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -305,11 +286,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             await simple_method(stub)
 
             metadata = recording_interceptor.recorded_details.metadata
-            assert len(metadata) == 2
-            assert metadata[0][0] == "mock-traceid"
-            assert metadata[0][1] == "0"
-            assert metadata[1][0] == "mock-spanid"
-            assert metadata[1][1] == "0"
+            assert len(metadata) == 3
+            assert metadata.get_all("key") == ["value"]
+            assert metadata.get_all("mock-traceid") == ["0"]
+            assert metadata.get_all("mock-spanid") == ["0"]
         finally:
             set_global_textmap(previous_propagator)
 

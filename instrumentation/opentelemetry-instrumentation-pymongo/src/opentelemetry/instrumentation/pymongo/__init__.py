@@ -36,33 +36,30 @@ API
 ---
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
-request_hook (Callable) -
-a function with extra user-defined logic to be performed before querying mongodb
-this function signature is:  def request_hook(span: Span, event: CommandStartedEvent) -> None
-response_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a successful response
-this function signature is:  def response_hook(span: Span, event: CommandSucceededEvent) -> None
-failed_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a failed response
-this function signature is:  def failed_hook(span: Span, event: CommandFailedEvent) -> None
-capture_statement (bool) - an optional value to enable capturing the database statement that is being executed
+* tracer_provider (``TracerProvider``) - an optional tracer provider
+* request_hook (``Callable[[Span, CommandStartedEvent], None]``) - a function with extra user-defined logic to be performed before querying mongodb
+* response_hook (``Callable[[Span, CommandSucceededEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a successful response
+* failed_hook (``Callable[[Span, CommandFailedEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a failed response
+* capture_statement (``bool``) - an optional value to enable capturing the database statement that is being executed
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
     from pymongo import MongoClient
 
     def request_hook(span, event):
         # request hook logic
+        pass
 
     def response_hook(span, event):
         # response hook logic
+        pass
 
     def failed_hook(span, event):
         # failed hook logic
+        pass
 
     # Instrument pymongo with hooks
     PymongoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook, failed_hook=failed_hook)
@@ -74,8 +71,11 @@ for example:
     collection.find_one()
 
 """
+
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Callable, Collection
+from typing import Any, Callable, Collection, TypeVar
 
 from pymongo import monitoring
 
@@ -86,8 +86,18 @@ from opentelemetry.instrumentation.pymongo.utils import (
 )
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
-from opentelemetry.trace import SpanKind, get_tracer
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.trace import DbSystemValues
+from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -97,15 +107,21 @@ RequestHookT = Callable[[Span, monitoring.CommandStartedEvent], None]
 ResponseHookT = Callable[[Span, monitoring.CommandSucceededEvent], None]
 FailedHookT = Callable[[Span, monitoring.CommandFailedEvent], None]
 
+CommandEvent = TypeVar(
+    "CommandEvent",
+    monitoring.CommandStartedEvent,
+    monitoring.CommandSucceededEvent,
+    monitoring.CommandFailedEvent,
+)
 
-def dummy_callback(span, event):
-    ...
+
+def dummy_callback(span: Span, event: CommandEvent): ...
 
 
 class CommandTracer(monitoring.CommandListener):
     def __init__(
         self,
-        tracer,
+        tracer: Tracer,
         request_hook: RequestHookT = dummy_callback,
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
@@ -126,27 +142,19 @@ class CommandTracer(monitoring.CommandListener):
         command_name = event.command_name
         span_name = f"{event.database_name}.{command_name}"
         statement = self._get_statement_by_command_name(command_name, event)
-        collection = event.command.get(event.command_name)
+        collection = _get_command_collection_name(event)
 
         try:
             span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
-                span.set_attribute(
-                    SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
-                )
-                span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                span.set_attribute(DB_SYSTEM, DbSystemValues.MONGODB.value)
+                span.set_attribute(DB_NAME, event.database_name)
+                span.set_attribute(DB_STATEMENT, statement)
                 if collection:
-                    span.set_attribute(
-                        SpanAttributes.DB_MONGODB_COLLECTION, collection
-                    )
+                    span.set_attribute(DB_MONGODB_COLLECTION, collection)
                 if event.connection_id is not None:
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_NAME, event.connection_id[0]
-                    )
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_PORT, event.connection_id[1]
-                    )
+                    span.set_attribute(NET_PEER_NAME, event.connection_id[0])
+                    span.set_attribute(NET_PEER_PORT, event.connection_id[1])
             try:
                 self.start_hook(span, event)
             except (
@@ -186,7 +194,12 @@ class CommandTracer(monitoring.CommandListener):
         if span is None:
             return
         if span.is_recording():
-            span.set_status(Status(StatusCode.ERROR, event.failure))
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    event.failure.get("errmsg", "Unknown error"),
+                )
+            )
             try:
                 self.failed_hook(span, event)
             except (
@@ -195,10 +208,12 @@ class CommandTracer(monitoring.CommandListener):
                 _LOG.exception(hook_exception)
         span.end()
 
-    def _pop_span(self, event):
+    def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(self, command_name, event):
+    def _get_statement_by_command_name(
+        self, command_name: str, event: CommandEvent
+    ) -> str:
         statement = command_name
         command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
         command = event.command.get(command_attribute)
@@ -207,14 +222,23 @@ class CommandTracer(monitoring.CommandListener):
         return statement
 
 
-def _get_span_dict_key(event):
+def _get_command_collection_name(event: CommandEvent) -> str | None:
+    collection_name = event.command.get(event.command_name)
+    if not collection_name or not isinstance(collection_name, str):
+        return None
+    return collection_name
+
+
+def _get_span_dict_key(
+    event: CommandEvent,
+) -> int | tuple[int, tuple[str, int | None]]:
     if event.connection_id is not None:
         return event.request_id, event.connection_id
     return event.request_id
 
 
 class PymongoInstrumentor(BaseInstrumentor):
-    _commandtracer_instance = None  # type CommandTracer
+    _commandtracer_instance: CommandTracer | None = None
     # The instrumentation for PyMongo is based on the event listener interface
     # https://api.mongodb.com/python/current/api/pymongo/monitoring.html.
     # This interface only allows to register listeners and does not provide
@@ -225,7 +249,7 @@ class PymongoInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         """Integrate with pymongo to trace it using event listener.
         https://api.mongodb.com/python/current/api/pymongo/monitoring.html
 
@@ -259,6 +283,6 @@ class PymongoInstrumentor(BaseInstrumentor):
         # If already created, just enable it
         self._commandtracer_instance.is_enabled = True
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         if self._commandtracer_instance is not None:
             self._commandtracer_instance.is_enabled = False

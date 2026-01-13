@@ -59,36 +59,41 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
-- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.trace import Span
+    from typing import Any
+
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict):
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, message: dict):
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
 To capture HTTP request headers as span attributes, set the environment variable
-``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names.
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST`` to a comma delimited list of HTTP header names,
+or pass the ``http_capture_headers_server_request`` keyword argument to the ``instrument_app`` method.
 
-For example,
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="content-type,custom_request_header"
@@ -115,14 +120,15 @@ is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). Th
 single item list containing all the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
 To capture HTTP response headers as span attributes, set the environment variable
-``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names.
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE`` to a comma delimited list of HTTP header names,
+or pass the ``http_capture_headers_server_response`` keyword argument to the ``instrument_app`` method.
 
-For example,
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="content-type,custom_response_header"
@@ -146,19 +152,21 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
 In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
 etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
-to a comma delimited list of HTTP header names to be sanitized.  Regexes may be used, and all header names will be
-matched in a case-insensitive manner.
+to a comma delimited list of HTTP header names to be sanitized, or pass the ``http_capture_headers_sanitize_fields``
+keyword argument to the ``instrument_app`` method.
 
-For example,
+Regexes may be used, and all header names will be matched in a case-insensitive manner.
+
+For example using the environment variable,
 ::
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
@@ -171,28 +179,48 @@ Note:
 API
 ---
 """
+
+from __future__ import annotations
+
+import functools
 import logging
-import typing
-from typing import Collection
+import types
+from typing import Any, Collection, Literal
+from weakref import WeakSet as _WeakSet
 
 import fastapi
-from starlette.routing import Match
+from starlette.applications import Starlette
+from starlette.middleware.errors import ServerErrorMiddleware
+from starlette.routing import Match, Route
+from starlette.types import ASGIApp, Receive, Scope, Send
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
-from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
+from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
+from opentelemetry.trace import TracerProvider, get_current_span, get_tracer
+from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import (
+    get_excluded_urls,
+    parse_excluded_urls,
+    sanitize_method,
+)
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
-
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
 
 
 class FastAPIInstrumentor(BaseInstrumentor):
@@ -206,39 +234,171 @@ class FastAPIInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: fastapi.FastAPI,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
-        tracer_provider=None,
-        meter_provider=None,
-        excluded_urls=None,
-    ):
-        """Instrument an uninstrumented FastAPI application."""
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        excluded_urls: str | None = None,
+        http_capture_headers_server_request: list[str] | None = None,
+        http_capture_headers_server_response: list[str] | None = None,
+        http_capture_headers_sanitize_fields: list[str] | None = None,
+        exclude_spans: list[Literal["receive", "send"]] | None = None,
+    ):  # pylint: disable=too-many-locals
+        """Instrument an uninstrumented FastAPI application.
+
+        Args:
+            app: The fastapi ASGI application callable to forward requests to.
+            server_request_hook: Optional callback which is called with the server span and ASGI
+                          scope object for every incoming request.
+            client_request_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method receive is called.
+            client_response_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method send is called.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
+            meter_provider: The optional meter provider to use. If omitted
+                the current globally configured one is used.
+            excluded_urls: Optional comma delimited string of regexes to match URLs that should not be traced.
+            http_capture_headers_server_request: Optional list of HTTP headers to capture from the request.
+            http_capture_headers_server_response: Optional list of HTTP headers to capture from the response.
+            http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
+            exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
+        """
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
 
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
+            # initialize semantic conventions opt-in if needed
+            _OpenTelemetrySemanticConventionStability._initialize()
+            sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.HTTP,
+            )
             if excluded_urls is None:
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
+            tracer = get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
+            )
             meter = get_meter(
                 __name__,
                 __version__,
                 meter_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url(sem_conv_opt_in_mode),
             )
 
-            app.add_middleware(
-                OpenTelemetryMiddleware,
-                excluded_urls=excluded_urls,
-                default_span_details=_get_default_span_details,
-                server_request_hook=server_request_hook,
-                client_request_hook=client_request_hook,
-                client_response_hook=client_response_hook,
-                tracer_provider=tracer_provider,
-                meter=meter,
+            def build_middleware_stack(self: Starlette) -> ASGIApp:
+                # Define an additional middleware for exception handling
+                # Normally, `opentelemetry.trace.use_span` covers the recording of
+                # exceptions into the active span, but `OpenTelemetryMiddleware`
+                # ends the span too early before the exception can be recorded.
+                class ExceptionHandlerMiddleware:
+                    def __init__(self, app):
+                        self.app = app
+
+                    async def __call__(
+                        self, scope: Scope, receive: Receive, send: Send
+                    ) -> None:
+                        try:
+                            await self.app(scope, receive, send)
+                        except Exception as exc:  # pylint: disable=broad-exception-caught
+                            span = get_current_span()
+                            if span.is_recording():
+                                span.record_exception(exc)
+                                span.set_status(
+                                    Status(
+                                        status_code=StatusCode.ERROR,
+                                        description=f"{type(exc).__name__}: {exc}",
+                                    )
+                                )
+                            raise
+
+                # For every possible use case of error handling, exception
+                # handling, trace availability in exception handlers and
+                # automatic exception recording to work, we need to make a
+                # series of wrapping and re-wrapping middlewares.
+
+                # First, grab the original middleware stack from Starlette. It
+                # comprises a stack of
+                # `ServerErrorMiddleware` -> [user defined middlewares] -> `ExceptionMiddleware`
+                inner_server_error_middleware: ServerErrorMiddleware = (  # type: ignore
+                    self._original_build_middleware_stack()  # type: ignore
+                )
+
+                if not isinstance(
+                    inner_server_error_middleware, ServerErrorMiddleware
+                ):
+                    # Oops, something changed about how Starlette creates middleware stacks
+                    _logger.error(
+                        "Skipping FastAPI instrumentation due to unexpected middleware stack: expected %s, got %s",
+                        ServerErrorMiddleware.__name__,
+                        type(inner_server_error_middleware),
+                    )
+                    return inner_server_error_middleware
+
+                # We take [user defined middlewares] -> `ExceptionHandlerMiddleware`
+                # out of the outermost `ServerErrorMiddleware` and instead pass
+                # it to our own `ExceptionHandlerMiddleware`
+                exception_middleware = ExceptionHandlerMiddleware(
+                    inner_server_error_middleware.app
+                )
+
+                # Now, we create a new `ServerErrorMiddleware` that wraps
+                # `ExceptionHandlerMiddleware` but otherwise uses the same
+                # original `handler` and debug setting. The end result is a
+                # middleware stack that's identical to the original stack except
+                # all user middlewares are covered by our
+                # `ExceptionHandlerMiddleware`.
+                error_middleware = ServerErrorMiddleware(
+                    app=exception_middleware,
+                    handler=inner_server_error_middleware.handler,
+                    debug=inner_server_error_middleware.debug,
+                )
+
+                # Finally, we wrap the stack above in our actual OTEL
+                # middleware. As a result, an active tracing context exists for
+                # every use case of user-defined error and exception handlers as
+                # well as automatic recording of exceptions in active spans.
+                otel_middleware = OpenTelemetryMiddleware(
+                    error_middleware,
+                    excluded_urls=excluded_urls,
+                    default_span_details=_get_default_span_details,
+                    server_request_hook=server_request_hook,
+                    client_request_hook=client_request_hook,
+                    client_response_hook=client_response_hook,
+                    # Pass in tracer/meter to get __name__and __version__ of fastapi instrumentation
+                    tracer=tracer,
+                    meter=meter,
+                    http_capture_headers_server_request=http_capture_headers_server_request,
+                    http_capture_headers_server_response=http_capture_headers_server_response,
+                    http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
+                    exclude_spans=exclude_spans,
+                )
+
+                # Ultimately, wrap everything in another default
+                # `ServerErrorMiddleware` (w/o user handlers) so that any
+                # exceptions raised in `OpenTelemetryMiddleware` are handled.
+                #
+                # This should not happen unless there is a bug in
+                # OpenTelemetryMiddleware, but if there is we don't want that to
+                # impact the user's application just because we wrapped the
+                # middlewares in this order.
+                return ServerErrorMiddleware(
+                    app=otel_middleware,
+                )
+
+            app._original_build_middleware_stack = app.build_middleware_stack
+            app.build_middleware_stack = types.MethodType(
+                functools.wraps(app.build_middleware_stack)(
+                    build_middleware_stack
+                ),
+                app,
             )
+
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
@@ -249,78 +409,52 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        original_build_middleware_stack = getattr(
+            app, "_original_build_middleware_stack", None
+        )
+        if original_build_middleware_stack:
+            app.build_middleware_stack = original_build_middleware_stack
+            del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
+
+        # Remove the app from the set of instrumented apps to avoid calling uninstrument twice
+        # if the instrumentation is later disabled or such
+        # Use discard to avoid KeyError if already GC'ed
+        _InstrumentedFastAPI._instrumented_fastapi_apps.discard(app)
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Any):
         self._original_fastapi = fastapi.FastAPI
-        _InstrumentedFastAPI._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedFastAPI._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedFastAPI._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedFastAPI._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
-        _excluded_urls = kwargs.get("excluded_urls")
-        _InstrumentedFastAPI._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
-        )
-        _InstrumentedFastAPI._meter_provider = kwargs.get("meter_provider")
+        _InstrumentedFastAPI._instrument_kwargs = kwargs
         fastapi.FastAPI = _InstrumentedFastAPI
 
     def _uninstrument(self, **kwargs):
-        for instance in _InstrumentedFastAPI._instrumented_fastapi_apps:
+        # Create a copy of the set to avoid RuntimeError during iteration
+        instances_to_uninstrument = list(
+            _InstrumentedFastAPI._instrumented_fastapi_apps
+        )
+        for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
         fastapi.FastAPI = self._original_fastapi
 
 
 class _InstrumentedFastAPI(fastapi.FastAPI):
-    _tracer_provider = None
-    _meter_provider = None
-    _excluded_urls = None
-    _server_request_hook: _ServerRequestHookT = None
-    _client_request_hook: _ClientRequestHookT = None
-    _client_response_hook: _ClientResponseHookT = None
-    _instrumented_fastapi_apps = set()
+    _instrument_kwargs: dict[str, Any] = {}
 
-    def __init__(self, *args, **kwargs):
+    # Track instrumented app instances using weak references to avoid GC leaks
+    _instrumented_fastapi_apps: _WeakSet[fastapi.FastAPI] = _WeakSet()
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        meter = get_meter(
-            __name__,
-            __version__,
-            _InstrumentedFastAPI._meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        FastAPIInstrumentor.instrument_app(
+            self, **_InstrumentedFastAPI._instrument_kwargs
         )
-        self.add_middleware(
-            OpenTelemetryMiddleware,
-            excluded_urls=_InstrumentedFastAPI._excluded_urls,
-            default_span_details=_get_default_span_details,
-            server_request_hook=_InstrumentedFastAPI._server_request_hook,
-            client_request_hook=_InstrumentedFastAPI._client_request_hook,
-            client_response_hook=_InstrumentedFastAPI._client_response_hook,
-            tracer_provider=_InstrumentedFastAPI._tracer_provider,
-            meter=meter,
-        )
-        self._is_instrumented_by_opentelemetry = True
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
-
-    def __del__(self):
-        if self in _InstrumentedFastAPI._instrumented_fastapi_apps:
-            _InstrumentedFastAPI._instrumented_fastapi_apps.remove(self)
 
 
 def _get_route_details(scope):
@@ -340,9 +474,17 @@ def _get_route_details(scope):
     route = None
 
     for starlette_route in app.routes:
-        match, _ = starlette_route.matches(scope)
+        match, _ = (
+            Route.matches(starlette_route, scope)
+            if isinstance(starlette_route, Route)
+            else starlette_route.matches(scope)
+        )
         if match == Match.FULL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                # routes added via host routing won't have a path attribute
+                route = scope.get("path")
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
@@ -359,10 +501,12 @@ def _get_default_span_details(scope):
         A tuple of span name and attributes
     """
     route = _get_route_details(scope)
-    method = scope.get("method", "")
+    method = sanitize_method(scope.get("method", "").strip())
     attributes = {}
+    if method == "_OTHER":
+        method = "HTTP"
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket

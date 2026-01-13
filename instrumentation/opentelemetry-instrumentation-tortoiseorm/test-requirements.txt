@@ -1,0 +1,21 @@
+aiosqlite==0.17.0
+annotated-types==0.7.0
+asgiref==3.8.1
+Deprecated==1.2.14
+iniconfig==2.0.0
+iso8601==1.1.0
+packaging==24.0
+pluggy==1.5.0
+py-cpuinfo==9.0.0
+pydantic==2.8.2
+pydantic_core==2.20.1
+pypika-tortoise==0.1.6
+pytest==7.4.4
+pytz==2024.1
+tomli==2.0.1
+tortoise-orm==0.20.0
+typing_extensions==4.12.2
+wrapt==1.16.0
+zipp==3.19.2
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-tortoiseorm

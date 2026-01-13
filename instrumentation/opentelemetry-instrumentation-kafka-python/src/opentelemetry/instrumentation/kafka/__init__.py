@@ -18,7 +18,7 @@ Instrument kafka-python to report instrumentation-kafka produced and consumed me
 Usage
 -----
 
-..code:: python
+.. code:: python
 
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
@@ -30,10 +30,14 @@ Usage
     producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
     producer.send('my-topic', b'raw_bytes')
 
+    def process_msg(message):
+        print(message)
+
     # report a span of type consumer with the default settings
     consumer = KafkaConsumer('my-topic', group_id='my-group', bootstrap_servers=['localhost:9092'])
     for message in consumer:
-    # process message
+        # process message
+        process_msg(message)
 
 The _instrument() method accepts the following keyword args:
 tracer_provider (TracerProvider) - an optional tracer provider
@@ -45,13 +49,15 @@ this function signature is:
 def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
 for example:
 
-.. code: python
+.. code:: python
+
     from opentelemetry.instrumentation.kafka import KafkaInstrumentor
     from kafka import KafkaProducer, KafkaConsumer
 
     def produce_hook(span, args, kwargs):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_produce_hook", "some-value")
+
     def consume_hook(span, record, args, kwargs):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_consume_hook", "some-value")
@@ -64,9 +70,19 @@ for example:
     producer = KafkaProducer(bootstrap_servers=['localhost:9092'])
     producer.send('my-topic', b'raw_bytes')
 
+    def process_msg(message):
+        print(message)
+
+    consumer = KafkaConsumer('my-topic', group_id='my-group', bootstrap_servers=['localhost:9092'])
+    for message in consumer:
+        # process message
+        process_msg(message)
+
 API
 ___
 """
+
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import kafka
@@ -74,7 +90,11 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.kafka.package import _instruments
+from opentelemetry.instrumentation.kafka.package import (
+    _instruments_any,
+    _instruments_kafka_python,
+    _instruments_kafka_python_ng,
+)
 from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
@@ -86,7 +106,24 @@ class KafkaInstrumentor(BaseInstrumentor):
     """
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        # Determine which package of kafka-python is installed
+        # Right now there are two packages, kafka-python and kafka-python-ng
+        # The latter is a fork of the former because the former is connected
+        # to a pypi namespace that the current maintainers cannot access
+        # https://github.com/dpkp/kafka-python/issues/2431
+        try:
+            distribution("kafka-python-ng")
+            return (_instruments_kafka_python_ng,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("kafka-python")
+            return (_instruments_kafka_python,)
+        except PackageNotFoundError:
+            pass
+
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         """Instruments the kafka module

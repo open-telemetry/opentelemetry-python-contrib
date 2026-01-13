@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("grpcio ~= 1.27",)
+_instruments = ("grpcio >= 1.42.0",)
