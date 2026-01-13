@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
 - `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
+- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable 
+  ([#4063](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4063))
 - `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
   ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
 - `opentelemetry-instrumentation-confluent-kafka`: Replace SpanAttributes with semconv constants where applicable
@@ -60,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
 - `opentelemetry-instrumentation-pyramid`: Replace SpanAttributes with semconv constants
   ([#4079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4079))
+- `opentelemetry-instrumentation-tortoiseorm`: Replace SpanAttributes with semconv constants
+  ([#4080](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4080))
+- `opentelemetry-instrumentation-asgi`: Replace SpanAttributes with semconv constants
+  ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
+- `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
+  ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
