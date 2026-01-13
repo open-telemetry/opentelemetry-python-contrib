@@ -58,6 +58,7 @@ API
 
 import logging
 import typing
+from os import environ
 
 from opentelemetry import trace
 from opentelemetry.context import Context
@@ -71,6 +72,7 @@ from opentelemetry.propagators.textmap import (
 )
 
 TRACE_HEADER_KEY = "X-Amzn-Trace-Id"
+AWS_TRACE_HEADER_ENV_KEY = "_X_AMZN_TRACE_ID"
 KV_PAIR_DELIMITER = ";"
 KEY_AND_VALUE_DELIMITER = "="
 
@@ -142,12 +144,18 @@ class AwsXRayPropagator(TextMapPropagator):
         if sampled:
             options |= trace.TraceFlags.SAMPLED
 
+        current_span = trace.get_current_span(context=context)
+        if current_span and current_span.get_span_context():
+            tracestate = current_span.get_span_context().trace_state
+        else:
+            tracestate = trace.TraceState()
+
         span_context = trace.SpanContext(
             trace_id=trace_id,
             span_id=span_id,
             is_remote=True,
             trace_flags=trace.TraceFlags(options),
-            trace_state=trace.TraceState(),
+            trace_state=tracestate,
         )
 
         if not span_context.is_valid:
@@ -324,3 +332,32 @@ class AwsXRayPropagator(TextMapPropagator):
         """Returns a set with the fields set in `inject`."""
 
         return {TRACE_HEADER_KEY}
+
+
+class AwsXRayLambdaPropagator(AwsXRayPropagator):
+    """Implementation of the AWS X-Ray Trace Header propagation protocol but
+    with special handling for Lambda's ``_X_AMZN_TRACE_ID`` environment
+    variable.
+    """
+
+    def extract(
+        self,
+        carrier: CarrierT,
+        context: typing.Optional[Context] = None,
+        getter: Getter[CarrierT] = default_getter,
+    ) -> Context:
+        xray_context = super().extract(carrier, context=context, getter=getter)
+
+        if trace.get_current_span(context=context).get_span_context().is_valid:
+            return xray_context
+
+        trace_header = environ.get(AWS_TRACE_HEADER_ENV_KEY)
+
+        if trace_header is None:
+            return xray_context
+
+        return super().extract(
+            {TRACE_HEADER_KEY: trace_header},
+            context=xray_context,
+            getter=getter,
+        )

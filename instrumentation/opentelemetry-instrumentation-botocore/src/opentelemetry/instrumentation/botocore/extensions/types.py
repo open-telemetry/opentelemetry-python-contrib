@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 from typing import Any, Dict, Optional, Tuple
 
+from opentelemetry._logs import Logger
+from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
@@ -89,9 +93,34 @@ class _AwsSdkCallContext:
             return default
 
 
+class _BotocoreInstrumentorContext:
+    def __init__(
+        self,
+        logger: Logger,
+        metrics: Dict[str, Instrument] | None = None,
+    ):
+        self.logger = logger
+        self.metrics = metrics or {}
+
+
 class _AwsSdkExtension:
     def __init__(self, call_context: _AwsSdkCallContext):
         self._call_context = call_context
+
+    @staticmethod
+    def tracer_schema_version() -> str:
+        """Returns the tracer OTel schema version the extension is following"""
+        return "1.11.0"
+
+    @staticmethod
+    def event_logger_schema_version() -> str:
+        """Returns the event logger OTel schema version the extension is following"""
+        return "1.30.0"
+
+    @staticmethod
+    def meter_schema_version() -> str:
+        """Returns the meter OTel schema version the extension is following"""
+        return "1.30.0"
 
     def should_trace_service_call(self) -> bool:  # pylint:disable=no-self-use
         """Returns if the AWS SDK service call should be traced or not
@@ -101,13 +130,29 @@ class _AwsSdkExtension:
         """
         return True
 
+    def should_end_span_on_exit(self) -> bool:  # pylint:disable=no-self-use
+        """Returns if the span should be closed automatically on exit
+
+        Extensions might override this function to disable automatic closing
+        of the span if they need to close it at a later time themselves.
+        """
+        return True
+
+    def setup_metrics(self, meter: Meter, metrics: Dict[str, Instrument]):
+        """Callback which gets invoked to setup metrics.
+
+        Extensions might override this function to add to the metrics dictionary all the metrics
+        they want to receive later in _BotocoreInstrumentorContext."""
+
     def extract_attributes(self, attributes: _AttributeMapT):
         """Callback which gets invoked before the span is created.
 
         Extensions might override this function to extract additional attributes.
         """
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         """Callback which gets invoked after the span is created but before the
         AWS SDK service is called.
 
@@ -115,7 +160,12 @@ class _AwsSdkExtension:
         a carrier.
         """
 
-    def on_success(self, span: Span, result: _BotoResultT):
+    def on_success(
+        self,
+        span: Span,
+        result: _BotoResultT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         """Callback that gets invoked when the AWS SDK call returns
         successfully.
 
@@ -123,12 +173,19 @@ class _AwsSdkExtension:
         attributes on the span.
         """
 
-    def on_error(self, span: Span, exception: _BotoClientErrorT):
+    def on_error(
+        self,
+        span: Span,
+        exception: _BotoClientErrorT,
+        instrumentor_context: _BotocoreInstrumentorContext,
+    ):
         """Callback that gets invoked when the AWS SDK service call raises a
         ClientError.
         """
 
-    def after_service_call(self):
+    def after_service_call(
+        self, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         """Callback that gets invoked after the AWS SDK service was called.
 
         Extensions might override this function to do some cleanup tasks.

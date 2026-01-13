@@ -14,7 +14,6 @@
 
 # pylint: disable=too-many-lines
 
-import asyncio
 import sys
 import time
 import unittest
@@ -23,6 +22,16 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
@@ -33,30 +42,89 @@ from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_PORT,
+    NET_PEER_IP,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_ADDRESS,
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_PATH,
+    URL_QUERY,
+    URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.test.asgitestutil import (
-    AsgiTestBase,
+    AsyncAsgiTestBase,
     setup_testing_defaults,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
-from opentelemetry.util.http import (
-    _active_requests_count_attrs,
-    _duration_attrs,
-)
 
-_expected_metric_names = [
+_expected_metric_names_old = [
     "http.server.active_requests",
     "http.server.duration",
     "http.server.response.size",
     "http.server.request.size",
 ]
-_recommended_attrs = {
-    "http.server.active_requests": _active_requests_count_attrs,
-    "http.server.duration": _duration_attrs,
-    "http.server.response.size": _duration_attrs,
-    "http.server.request.size": _duration_attrs,
+_expected_metric_names_new = [
+    "http.server.active_requests",
+    "http.server.request.duration",
+    "http.server.response.body.size",
+    "http.server.request.body.size",
+]
+_expected_metric_names_both = _expected_metric_names_old
+_expected_metric_names_both.extend(_expected_metric_names_new)
+
+_recommended_attrs_old = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old,
+    "http.server.response.size": _server_duration_attrs_old,
+    "http.server.request.size": _server_duration_attrs_old,
 }
+
+_recommended_attrs_new = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new,
+    "http.server.response.body.size": _server_duration_attrs_new,
+    "http.server.request.body.size": _server_duration_attrs_new,
+}
+
+_recommended_attrs_both = _recommended_attrs_old.copy()
+_recommended_attrs_both.update(_recommended_attrs_new)
+_recommended_attrs_both["http.server.active_requests"].extend(
+    _server_active_requests_count_attrs_old
+)
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
@@ -227,9 +295,99 @@ async def error_asgi(scope, receive, send):
         await send({"type": "http.response.body", "body": b"*"})
 
 
+class UnhandledException(Exception):
+    pass
+
+
+def failing_hook(msg):
+    def hook(*_):
+        raise UnhandledException(msg)
+
+    return hook
+
+
 # pylint: disable=too-many-public-methods
-class TestAsgiApplication(AsgiTestBase):
-    def validate_outputs(self, outputs, error=None, modifiers=None):
+class TestAsgiApplication(AsyncAsgiTestBase):
+    def setUp(self):
+        super().setUp()
+
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+        self.env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
+            },
+        )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+        self.env_patch.start()
+
+    def subTest(self, msg=..., **params):
+        sub = super().subTest(msg, **params)
+        # Reinitialize test state to avoid state pollution
+        self.setUp()
+        return sub
+
+    # Helper to assert exemplars presence across specified histogram metric names.
+    def _assert_exemplars_present(
+        self, metric_names: set[str], context: str = ""
+    ):
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        print(metrics_list)
+        metrics = []
+        for resource_metric in (
+            getattr(metrics_list, "resource_metrics", []) or []
+        ):
+            for scope_metric in (
+                getattr(resource_metric, "scope_metrics", []) or []
+            ):
+                metrics.extend(getattr(scope_metric, "metrics", []) or [])
+
+        found = {name: 0 for name in metric_names}
+        for metric in metrics:
+            if metric.name not in metric_names:
+                continue
+            for point in metric.data.data_points:
+                found[metric.name] += 1
+                exemplars = getattr(point, "exemplars", None)
+                self.assertIsNotNone(
+                    exemplars,
+                    msg=f"Expected exemplars list attribute on histogram data point for {metric.name} ({context})",
+                )
+                self.assertGreater(
+                    len(exemplars or []),
+                    0,
+                    msg=f"Expected at least one exemplar on histogram data point for {metric.name} ({context}) but none found.",
+                )
+                for ex in exemplars or []:
+                    if hasattr(ex, "span_id"):
+                        self.assertNotEqual(ex.span_id, 0)
+                    if hasattr(ex, "trace_id"):
+                        self.assertNotEqual(ex.trace_id, 0)
+        for name, count in found.items():
+            self.assertGreater(
+                count,
+                0,
+                msg=f"Did not encounter any data points for metric {name} while checking exemplars ({context}).",
+            )
+
+    # pylint: disable=too-many-locals
+    def validate_outputs(
+        self,
+        outputs,
+        error=None,
+        modifiers=None,
+        old_sem_conv=True,
+        new_sem_conv=False,
+    ):
         # Ensure modifiers is a list
         modifiers = modifiers or []
         # Check for expected outputs
@@ -264,42 +422,130 @@ class TestAsgiApplication(AsgiTestBase):
 
         # Check spans
         span_list = self.memory_exporter.get_finished_spans()
-        expected = [
+        expected_old = [
             {
                 "name": "GET / http receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.request"},
+                "attributes": {"asgi.event.type": "http.request"},
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
-                    "type": "http.response.start",
+                    HTTP_STATUS_CODE: 200,
+                    "asgi.event.type": "http.response.start",
                 },
             },
             {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             },
             {
                 "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_SCHEME: "http",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_HOST: "127.0.0.1",
-                    SpanAttributes.HTTP_FLAVOR: "1.0",
-                    SpanAttributes.HTTP_TARGET: "/",
-                    SpanAttributes.HTTP_URL: "http://127.0.0.1/",
-                    SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                    SpanAttributes.NET_PEER_PORT: 32767,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_HOST_PORT: 80,
+                    HTTP_HOST: "127.0.0.1",
+                    HTTP_FLAVOR: "1.0",
+                    HTTP_TARGET: "/",
+                    HTTP_URL: "http://127.0.0.1/",
+                    NET_PEER_IP: "127.0.0.1",
+                    NET_PEER_PORT: 32767,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
         ]
+        expected_new = [
+            {
+                "name": "GET / http receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "http.request"},
+            },
+            {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    "asgi.event.type": "http.response.start",
+                },
+            },
+            {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "http.response.body"},
+            },
+            {
+                "name": "GET /",
+                "kind": trace_api.SpanKind.SERVER,
+                "attributes": {
+                    HTTP_REQUEST_METHOD: "GET",
+                    URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
+                    SERVER_PORT: 80,
+                    NETWORK_PROTOCOL_VERSION: "1.0",
+                    URL_PATH: "/",
+                    CLIENT_ADDRESS: "127.0.0.1",
+                    CLIENT_PORT: 32767,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                },
+            },
+        ]
+        expected_both = [
+            {
+                "name": "GET / http receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "http.request"},
+            },
+            {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    "asgi.event.type": "http.response.start",
+                },
+            },
+            {
+                "name": "GET / http send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "http.response.body"},
+            },
+            {
+                "name": "GET /",
+                "kind": trace_api.SpanKind.SERVER,
+                "attributes": {
+                    HTTP_REQUEST_METHOD: "GET",
+                    URL_SCHEME: "http",
+                    SERVER_ADDRESS: "127.0.0.1",
+                    SERVER_PORT: 80,
+                    NETWORK_PROTOCOL_VERSION: "1.0",
+                    URL_PATH: "/",
+                    CLIENT_ADDRESS: "127.0.0.1",
+                    CLIENT_PORT: 32767,
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_HOST_PORT: 80,
+                    HTTP_HOST: "127.0.0.1",
+                    HTTP_FLAVOR: "1.0",
+                    HTTP_TARGET: "/",
+                    HTTP_URL: "http://127.0.0.1/",
+                    NET_PEER_IP: "127.0.0.1",
+                    NET_PEER_PORT: 32767,
+                    HTTP_STATUS_CODE: 200,
+                },
+            },
+        ]
+        expected = expected_old
+        if new_sem_conv:
+            if old_sem_conv:
+                expected = expected_both
+            else:
+                expected = expected_new
+
         # Run our expected modifiers
         for modifier in modifiers:
             expected = modifier(expected)
@@ -309,41 +555,69 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.name, expected["name"])
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
+            self.assertEqual(
+                span.instrumentation_scope.name,
+                "opentelemetry.instrumentation.asgi",
+            )
+            if "events" in expected:
+                self.assertEqual(len(span.events), len(expected["events"]))
+                for event, expected in zip(span.events, expected["events"]):
+                    self.assertEqual(event.name, expected["name"])
+                    for name, value in expected["attributes"].items():
+                        self.assertEqual(event.attributes[name], value)
 
-    def test_basic_asgi_call(self):
+    async def test_basic_asgi_call(self):
         """Test that spans are emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs)
 
-    def test_asgi_not_recording(self):
+    async def test_basic_asgi_call_new_semconv(self):
+        """Test that spans are emitted as expected."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(outputs, old_sem_conv=False, new_sem_conv=True)
+
+    async def test_basic_asgi_call_both_semconv(self):
+        """Test that spans are emitted as expected."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(outputs, old_sem_conv=True, new_sem_conv=True)
+
+    async def test_asgi_not_recording(self):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_as_current_span.return_value = mock_span
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock_span
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
         mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
         with mock.patch("opentelemetry.trace.get_tracer") as tracer:
             tracer.return_value = mock_tracer
             app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
             self.seed_app(app)
-            self.send_default_request()
+            await self.send_default_request()
             self.assertFalse(mock_span.is_recording())
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
 
-    def test_asgi_exc_info(self):
+    async def test_asgi_exc_info(self):
         """Test that exception information is emitted as expected."""
         app = otel_asgi.OpenTelemetryMiddleware(error_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, error=ValueError)
 
-    def test_long_response(self):
+    async def test_long_response(self):
         """Test that the server span is ended on the final response body message.
 
         If the server span is ended early then this test will fail due
@@ -351,14 +625,14 @@ class TestAsgiApplication(AsgiTestBase):
         """
         app = otel_asgi.OpenTelemetryMiddleware(long_response_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
 
         def add_more_body_spans(expected: list):
             more_body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             extra_spans = [more_body_span] * 3
             expected[2:2] = extra_spans
@@ -366,12 +640,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         self.validate_outputs(outputs, modifiers=[add_more_body_spans])
 
-    def test_background_execution(self):
+    async def test_background_execution(self):
         """Test that the server span is ended BEFORE the background task is finished."""
         app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs)
         span_list = self.memory_exporter.get_finished_spans()
         server_span = span_list[-1]
@@ -382,26 +656,50 @@ class TestAsgiApplication(AsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
-    def test_trailers(self):
+    async def test_exclude_internal_spans(self):
+        """Test that internal spans are excluded from the emitted spans when
+        the `exclude_receive_span` or `exclude_send_span` attributes are set.
+        """
+        cases = [
+            (["receive", "send"], ["GET / http receive", "GET / http send"]),
+            (["send"], ["GET / http send"]),
+            (["receive"], ["GET / http receive"]),
+            ([], []),
+        ]
+        for exclude_spans, excluded_spans in cases:
+            self.memory_exporter.clear()
+            app = otel_asgi.OpenTelemetryMiddleware(
+                simple_asgi, exclude_spans=exclude_spans
+            )
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+            span_list = self.memory_exporter.get_finished_spans()
+            self.assertTrue(span_list)
+            for span in span_list:
+                for excluded_span in excluded_spans:
+                    self.assertNotEqual(span.name, excluded_span)
+
+    async def test_trailers(self):
         """Test that trailers are emitted as expected and that the server span is ended
         BEFORE the background task is finished."""
         app = otel_asgi.OpenTelemetryMiddleware(
             background_execution_trailers_asgi
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
 
         def add_body_and_trailer_span(expected: list):
             body_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.body"},
+                "attributes": {"asgi.event.type": "http.response.body"},
             }
             trailer_span = {
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "http.response.trailers"},
+                "attributes": {"asgi.event.type": "http.response.trailers"},
             }
             expected[2:2] = [body_span]
             expected[4:4] = [trailer_span] * 2
@@ -417,7 +715,7 @@ class TestAsgiApplication(AsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
-    def test_override_span_name(self):
+    async def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
         span_name = "Dymaxion"
 
@@ -438,11 +736,11 @@ class TestAsgiApplication(AsgiTestBase):
             simple_asgi, default_span_details=get_predefined_span_details
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_span_name])
 
-    def test_custom_tracer_provider_otel_asgi(self):
+    async def test_custom_tracer_provider_otel_asgi(self):
         resource = resources.Resource.create({"service-test-key": "value"})
         result = TestBase.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
@@ -451,36 +749,36 @@ class TestAsgiApplication(AsgiTestBase):
             simple_asgi, tracer_provider=tracer_provider
         )
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         span_list = exporter.get_finished_spans()
         for span in span_list:
             self.assertEqual(
                 span.resource.attributes["service-test-key"], "value"
             )
 
-    def test_no_op_tracer_provider_otel_asgi(self):
+    async def test_no_op_tracer_provider_otel_asgi(self):
         app = otel_asgi.OpenTelemetryMiddleware(
             simple_asgi, tracer_provider=trace_api.NoOpTracerProvider()
         )
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
 
-        response_start, response_body, *_ = self.get_all_output()
+        response_start, response_body, *_ = await self.get_all_output()
         self.assertEqual(response_body["body"], b"*")
         self.assertEqual(response_start["status"], 200)
 
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
-    def test_behavior_with_scope_server_as_none(self):
+    async def test_behavior_with_scope_server_as_none(self):
         """Test that middleware is ok when server is none in scope."""
 
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_HOST: "0.0.0.0",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_URL: "http://0.0.0.0/",
+                    HTTP_HOST: "0.0.0.0",
+                    NET_HOST_PORT: 80,
+                    HTTP_URL: "http://0.0.0.0/",
                 }
             )
             return expected
@@ -488,45 +786,301 @@ class TestAsgiApplication(AsgiTestBase):
         self.scope["server"] = None
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
-    def test_host_header(self):
+    async def test_behavior_with_scope_server_as_none_new_semconv(self):
+        """Test that middleware is ok when server is none in scope."""
+
+        def update_expected_server(expected):
+            expected[3]["attributes"].update(
+                {
+                    SERVER_ADDRESS: "0.0.0.0",
+                    SERVER_PORT: 80,
+                }
+            )
+            return expected
+
+        self.scope["server"] = None
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_server],
+            old_sem_conv=False,
+            new_sem_conv=True,
+        )
+
+    async def test_behavior_with_scope_server_as_none_both_semconv(self):
+        """Test that middleware is ok when server is none in scope."""
+
+        def update_expected_server(expected):
+            expected[3]["attributes"].update(
+                {
+                    HTTP_HOST: "0.0.0.0",
+                    NET_HOST_PORT: 80,
+                    HTTP_URL: "http://0.0.0.0/",
+                    SERVER_ADDRESS: "0.0.0.0",
+                    SERVER_PORT: 80,
+                }
+            )
+            return expected
+
+        self.scope["server"] = None
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_server],
+            old_sem_conv=True,
+            new_sem_conv=True,
+        )
+
+    async def test_host_header(self):
         """Test that host header is converted to http.server_name."""
         hostname = b"server_name_1"
 
         def update_expected_server(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8")}
+                {
+                    HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                }
             )
             return expected
 
         self.scope["headers"].append([b"host", hostname])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_server])
 
-    def test_user_agent(self):
+    async def test_host_header_both_semconv(self):
+        """Test that host header is converted to http.server_name."""
+        hostname = b"server_name_1"
+
+        def update_expected_server(expected):
+            expected[3]["attributes"].update(
+                {
+                    HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                }
+            )
+            return expected
+
+        self.scope["headers"].append([b"host", hostname])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_server],
+            old_sem_conv=True,
+            new_sem_conv=True,
+        )
+
+    async def test_user_agent(self):
         """Test that host header is converted to http.server_name."""
         user_agent = b"test-agent"
 
         def update_expected_user_agent(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_USER_AGENT: user_agent.decode("utf8")}
+                {HTTP_USER_AGENT: user_agent.decode("utf8")}
             )
             return expected
 
         self.scope["headers"].append([b"user-agent", user_agent])
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(outputs, modifiers=[update_expected_user_agent])
 
-    def test_traceresponse_header(self):
+    async def test_user_agent_new_semconv(self):
+        """Test that host header is converted to http.server_name."""
+        user_agent = b"test-agent"
+
+        def update_expected_user_agent(expected):
+            expected[3]["attributes"].update(
+                {USER_AGENT_ORIGINAL: user_agent.decode("utf8")}
+            )
+            return expected
+
+        self.scope["headers"].append([b"user-agent", user_agent])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_user_agent],
+            old_sem_conv=False,
+            new_sem_conv=True,
+        )
+
+    async def test_user_agent_both_semconv(self):
+        """Test that host header is converted to http.server_name."""
+        user_agent = b"test-agent"
+
+        def update_expected_user_agent(expected):
+            expected[3]["attributes"].update(
+                {
+                    HTTP_USER_AGENT: user_agent.decode("utf8"),
+                    USER_AGENT_ORIGINAL: user_agent.decode("utf8"),
+                }
+            )
+            return expected
+
+        self.scope["headers"].append([b"user-agent", user_agent])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_user_agent],
+            old_sem_conv=True,
+            new_sem_conv=True,
+        )
+
+    async def test_user_agent_synthetic_bot_detection(self):
+        """Test that bot user agents are detected as synthetic with type 'bot'"""
+        test_cases = [
+            b"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+            b"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+            b"googlebot/1.0",
+            b"bingbot/1.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_bot(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "bot",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_bot]
+                )
+
+    async def test_user_agent_synthetic_test_detection(self):
+        """Test that test user agents are detected as synthetic with type 'test'"""
+        test_cases = [
+            b"alwayson/1.0",
+            b"AlwaysOn/2.0",
+            b"test-alwayson-client",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_synthetic_test(
+                    expected, ua: bytes = user_agent
+                ):
+                    expected[3]["attributes"].update(
+                        {
+                            HTTP_USER_AGENT: ua.decode("utf8"),
+                            USER_AGENT_SYNTHETIC_TYPE: "test",
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_synthetic_test]
+                )
+
+    async def test_user_agent_non_synthetic(self):
+        """Test that normal user agents are not marked as synthetic"""
+        test_cases = [
+            b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            b"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+            b"PostmanRuntime/7.28.4",
+            b"curl/7.68.0",
+        ]
+
+        # Test each user agent case separately to avoid span accumulation
+        for user_agent in test_cases:
+            with self.subTest(user_agent=user_agent):
+                # Clear headers first
+                self.scope["headers"] = []
+
+                def update_expected_non_synthetic(
+                    expected, ua: bytes = user_agent
+                ):
+                    # Should only have the user agent, not synthetic type
+                    expected[3]["attributes"].update(
+                        {
+                            HTTP_USER_AGENT: ua.decode("utf8"),
+                        }
+                    )
+                    return expected
+
+                self.scope["headers"].append([b"user-agent", user_agent])
+                app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+                self.seed_app(app)
+                await self.send_default_request()
+                outputs = await self.get_all_output()
+                self.validate_outputs(
+                    outputs, modifiers=[update_expected_non_synthetic]
+                )
+
+    async def test_user_agent_synthetic_new_semconv(self):
+        """Test synthetic user agent detection with new semantic conventions"""
+        user_agent = b"Mozilla/5.0 (compatible; Googlebot/2.1)"
+
+        def update_expected_synthetic_new_semconv(expected):
+            expected[3]["attributes"].update(
+                {
+                    USER_AGENT_ORIGINAL: user_agent.decode("utf8"),
+                    USER_AGENT_SYNTHETIC_TYPE: "bot",
+                }
+            )
+            return expected
+
+        self.scope["headers"] = []
+        self.scope["headers"].append([b"user-agent", user_agent])
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs,
+            modifiers=[update_expected_synthetic_new_semconv],
+            old_sem_conv=False,
+            new_sem_conv=True,
+        )
+
+    async def test_traceresponse_header(self):
         """Test a traceresponse header is sent when a global propagator is set."""
 
         orig = get_global_response_propagator()
@@ -534,12 +1088,12 @@ class TestAsgiApplication(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
+        response_start, response_body, *_ = await self.get_all_output()
 
         span = self.memory_exporter.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
 
-        response_start, response_body, *_ = self.get_all_output()
         self.assertEqual(response_body["body"], b"*")
         self.assertEqual(response_start["status"], 200)
 
@@ -559,8 +1113,9 @@ class TestAsgiApplication(AsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_websocket(self):
+    async def test_websocket(self):
         self.scope = {
+            "method": "GET",
             "type": "websocket",
             "http_version": "1.1",
             "scheme": "ws",
@@ -572,57 +1127,58 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 6)
         expected = [
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.connect"},
+                "attributes": {"asgi.event.type": "websocket.connect"},
             },
             {
-                "name": "/ websocket send",
+                "name": "GET / websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.accept"},
+                "attributes": {"asgi.event.type": "websocket.accept"},
             },
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.receive",
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    "asgi.event.type": "websocket.receive",
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
-                "name": "/ websocket send",
+                "name": "GET / websocket send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    "type": "websocket.send",
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    "asgi.event.type": "websocket.send",
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
-                "name": "/ websocket receive",
+                "name": "GET / websocket receive",
                 "kind": trace_api.SpanKind.INTERNAL,
-                "attributes": {"type": "websocket.disconnect"},
+                "attributes": {"asgi.event.type": "websocket.disconnect"},
             },
             {
-                "name": "/",
+                "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
-                    SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
-                    SpanAttributes.NET_HOST_PORT: self.scope["server"][1],
-                    SpanAttributes.HTTP_HOST: self.scope["server"][0],
-                    SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
-                    SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f'{self.scope["scheme"]}://{self.scope["server"][0]}{self.scope["path"]}',
-                    SpanAttributes.NET_PEER_IP: self.scope["client"][0],
-                    SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_SCHEME: self.scope["scheme"],
+                    NET_HOST_PORT: self.scope["server"][1],
+                    HTTP_HOST: self.scope["server"][0],
+                    HTTP_FLAVOR: self.scope["http_version"],
+                    HTTP_TARGET: self.scope["path"],
+                    HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
+                    NET_PEER_IP: self.scope["client"][0],
+                    NET_PEER_PORT: self.scope["client"][1],
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: self.scope["method"],
                 },
             },
         ]
@@ -631,7 +1187,165 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertEqual(span.kind, expected["kind"])
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
 
-    def test_websocket_traceresponse_header(self):
+    async def test_websocket_new_semconv(self):
+        self.scope = {
+            "method": "GET",
+            "type": "websocket",
+            "http_version": "1.1",
+            "scheme": "ws",
+            "path": "/",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 32767),
+            "server": ("127.0.0.1", 80),
+        }
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 6)
+        expected = [
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.connect"},
+            },
+            {
+                "name": "GET / websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.accept"},
+            },
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "asgi.event.type": "websocket.receive",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "GET / websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "asgi.event.type": "websocket.send",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.disconnect"},
+            },
+            {
+                "name": "GET /",
+                "kind": trace_api.SpanKind.SERVER,
+                "attributes": {
+                    URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
+                    SERVER_PORT: self.scope["server"][1],
+                    NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
+                    URL_PATH: self.scope["path"],
+                    CLIENT_ADDRESS: self.scope["client"][0],
+                    CLIENT_PORT: self.scope["client"][1],
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_REQUEST_METHOD: self.scope["method"],
+                },
+            },
+        ]
+        for span, expected in zip(span_list, expected):
+            self.assertEqual(span.name, expected["name"])
+            self.assertEqual(span.kind, expected["kind"])
+            self.assertDictEqual(dict(span.attributes), expected["attributes"])
+
+    async def test_websocket_both_semconv(self):
+        self.scope = {
+            "method": "GET",
+            "type": "websocket",
+            "http_version": "1.1",
+            "scheme": "ws",
+            "path": "/",
+            "query_string": b"",
+            "headers": [],
+            "client": ("127.0.0.1", 32767),
+            "server": ("127.0.0.1", 80),
+        }
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 6)
+        expected = [
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.connect"},
+            },
+            {
+                "name": "GET / websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.accept"},
+            },
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "asgi.event.type": "websocket.receive",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "GET / websocket send",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {
+                    "asgi.event.type": "websocket.send",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
+                },
+            },
+            {
+                "name": "GET / websocket receive",
+                "kind": trace_api.SpanKind.INTERNAL,
+                "attributes": {"asgi.event.type": "websocket.disconnect"},
+            },
+            {
+                "name": "GET /",
+                "kind": trace_api.SpanKind.SERVER,
+                "attributes": {
+                    HTTP_SCHEME: self.scope["scheme"],
+                    NET_HOST_PORT: self.scope["server"][1],
+                    HTTP_HOST: self.scope["server"][0],
+                    HTTP_FLAVOR: self.scope["http_version"],
+                    HTTP_TARGET: self.scope["path"],
+                    HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
+                    NET_PEER_IP: self.scope["client"][0],
+                    NET_PEER_PORT: self.scope["client"][1],
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: self.scope["method"],
+                    URL_SCHEME: self.scope["scheme"],
+                    SERVER_ADDRESS: self.scope["server"][0],
+                    SERVER_PORT: self.scope["server"][1],
+                    NETWORK_PROTOCOL_VERSION: self.scope["http_version"],
+                    URL_PATH: self.scope["path"],
+                    CLIENT_ADDRESS: self.scope["client"][0],
+                    CLIENT_PORT: self.scope["client"][1],
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    HTTP_REQUEST_METHOD: self.scope["method"],
+                },
+            },
+        ]
+        for span, expected in zip(span_list, expected):
+            self.assertEqual(span.name, expected["name"])
+            self.assertEqual(span.kind, expected["kind"])
+            self.assertDictEqual(dict(span.attributes), expected["attributes"])
+
+    async def test_websocket_traceresponse_header(self):
         """Test a traceresponse header is set for websocket messages"""
 
         orig = get_global_response_propagator()
@@ -649,10 +1363,10 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        _, socket_send, *_ = self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        _, socket_send, *_ = await self.get_all_output()
 
         span = self.memory_exporter.get_finished_spans()[-1]
         self.assertEqual(trace_api.SpanKind.SERVER, span.kind)
@@ -671,22 +1385,22 @@ class TestAsgiApplication(AsgiTestBase):
 
         set_global_response_propagator(orig)
 
-    def test_lifespan(self):
+    async def test_lifespan(self):
         self.scope["type"] = "lifespan"
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
 
-    def test_hooks(self):
+    async def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
 
-        def client_request_hook(recieve_span, request):
-            recieve_span.update_name("name from client request hook")
+        def client_request_hook(receive_span, scope, message):
+            receive_span.update_name("name from client request hook")
 
-        def client_response_hook(send_span, response):
+        def client_response_hook(send_span, scope, message):
             send_span.set_attribute("attr-from-hook", "value")
 
         def update_expected_hook_results(expected):
@@ -706,20 +1420,57 @@ class TestAsgiApplication(AsgiTestBase):
             client_response_hook=client_response_hook,
         )
         self.seed_app(app)
-        self.send_default_request()
-        outputs = self.get_all_output()
+        await self.send_default_request()
+        outputs = await self.get_all_output()
         self.validate_outputs(
             outputs, modifiers=[update_expected_hook_results]
         )
 
-    def test_asgi_metrics(self):
+    async def test_hook_exceptions(self):
+        def exception_event(msg):
+            return {
+                "name": "exception",
+                "attributes": {
+                    "exception.type": f"{__name__}.UnhandledException",
+                    "exception.message": msg,
+                },
+            }
+
+        def update_expected_hook_results(expected):
+            for entry in expected:
+                if entry["kind"] == trace_api.SpanKind.SERVER:
+                    entry["events"] = [exception_event("server request")]
+                elif entry["name"] == "GET / http receive":
+                    entry["events"] = [exception_event("client request")]
+                elif entry["name"] == "GET / http send":
+                    entry["events"] = [exception_event("client response")]
+
+            return expected
+
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi,
+            server_request_hook=failing_hook("server request"),
+            client_request_hook=failing_hook("client request"),
+            client_response_hook=failing_hook("client response"),
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        outputs = await self.get_all_output()
+        self.validate_outputs(
+            outputs, modifiers=[update_expected_hook_results]
+        )
+
+    async def test_asgi_metrics(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
@@ -728,8 +1479,12 @@ class TestAsgiApplication(AsgiTestBase):
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.asgi",
+                )
                 for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
+                    self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
                     self.assertEqual(len(data_points), 1)
                     for point in data_points:
@@ -740,16 +1495,141 @@ class TestAsgiApplication(AsgiTestBase):
                             number_data_point_seen = True
                         for attr in point.attributes:
                             self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                                attr, _recommended_attrs_old[metric.name]
                             )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
-    def test_basic_metric_success(self):
+    async def test_asgi_metrics_new_semconv(self):
+        # pylint: disable=too-many-nested-blocks
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.asgi",
+                )
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_new[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_both_semconv(self):
+        # pylint: disable=too-many-nested-blocks
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                self.assertEqual(
+                    scope_metric.scope.name,
+                    "opentelemetry.instrumentation.asgi",
+                )
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_both)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr, _recommended_attrs_both[metric.name]
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_exemplars_expected_old_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.duration"}, context="old semconv"
+        )
+
+    async def test_asgi_metrics_exemplars_expected_new_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for request duration histogram (new semconv)."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.request.duration"}, context="new semconv"
+        )
+
+    async def test_asgi_metrics_exemplars_expected_both_semconv(self):
+        """Failing test placeholder asserting exemplars should be present for both duration histograms when both semconv modes enabled."""
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        for _ in range(5):
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+        self._assert_exemplars_present(
+            {"http.server.duration", "http.server.request.duration"},
+            context="both semconv",
+        )
+
+    async def test_basic_metric_success(self):
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
         start = default_timer()
-        self.send_default_request()
+        await self.send_default_request()
         duration = max(round((default_timer() - start) * 1000), 0)
+        await self.get_all_output()
         expected_duration_attributes = {
             "http.method": "GET",
             "http.host": "127.0.0.1",
@@ -778,7 +1658,7 @@ class TestAsgiApplication(AsgiTestBase):
                             self.assertEqual(point.count, 1)
                             if metric.name == "http.server.duration":
                                 self.assertAlmostEqual(
-                                    duration, point.sum, delta=5
+                                    duration, point.sum, delta=30
                                 )
                             elif metric.name == "http.server.response.size":
                                 self.assertEqual(1024, point.sum)
@@ -791,7 +1671,204 @@ class TestAsgiApplication(AsgiTestBase):
                             )
                             self.assertEqual(point.value, 0)
 
-    def test_metric_target_attribute(self):
+    async def test_basic_metric_success_nonrecording_span(self):
+        mock_tracer = mock.Mock()
+        mock_span = mock.Mock()
+        mock_span.is_recording.return_value = False
+        mock_tracer.start_as_current_span.return_value = mock_span
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
+        mock_tracer.start_as_current_span.return_value.__exit__ = mock_span
+        with mock.patch("opentelemetry.trace.get_tracer") as tracer:
+            tracer.return_value = mock_tracer
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+            self.seed_app(app)
+            start = default_timer()
+            await self.send_default_request()
+            duration = max(round((default_timer() - start) * 1000), 0)
+            await self.get_all_output()
+            expected_duration_attributes = {
+                "http.method": "GET",
+                "http.host": "127.0.0.1",
+                "http.scheme": "http",
+                "http.flavor": "1.0",
+                "net.host.port": 80,
+                "http.status_code": 200,
+            }
+            expected_requests_count_attributes = {
+                "http.method": "GET",
+                "http.host": "127.0.0.1",
+                "http.scheme": "http",
+                "http.flavor": "1.0",
+            }
+            metrics_list = self.memory_metrics_reader.get_metrics_data()
+            # pylint: disable=too-many-nested-blocks
+            for resource_metric in metrics_list.resource_metrics:
+                for scope_metrics in resource_metric.scope_metrics:
+                    for metric in scope_metrics.metrics:
+                        for point in list(metric.data.data_points):
+                            if isinstance(point, HistogramDataPoint):
+                                self.assertDictEqual(
+                                    expected_duration_attributes,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(point.count, 1)
+                                if metric.name == "http.server.duration":
+                                    self.assertAlmostEqual(
+                                        duration, point.sum, delta=15
+                                    )
+                                elif (
+                                    metric.name == "http.server.response.size"
+                                ):
+                                    self.assertEqual(1024, point.sum)
+                                elif metric.name == "http.server.request.size":
+                                    self.assertEqual(128, point.sum)
+                            elif isinstance(point, NumberDataPoint):
+                                self.assertDictEqual(
+                                    expected_requests_count_attributes,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(point.value, 0)
+
+    async def test_basic_metric_success_new_semconv(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        start = default_timer()
+        await self.send_default_request()
+        duration_s = max(default_timer() - start, 0)
+        await self.get_all_output()
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.0",
+            "http.response.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        # pylint: disable=too-many-nested-blocks
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.count, 1)
+                            if metric.name == "http.server.request.duration":
+                                self.assertAlmostEqual(
+                                    duration_s, point.sum, places=2
+                                )
+                            elif (
+                                metric.name == "http.server.response.body.size"
+                            ):
+                                self.assertEqual(1024, point.sum)
+                            elif (
+                                metric.name == "http.server.request.body.size"
+                            ):
+                                self.assertEqual(128, point.sum)
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    async def test_basic_metric_success_both_semconv(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+        self.seed_app(app)
+        start = default_timer()
+        await self.send_default_request()
+        duration = max(round((default_timer() - start) * 1000), 0)
+        duration_s = max(default_timer() - start, 0)
+        await self.get_all_output()
+        expected_duration_attributes_old = {
+            "http.method": "GET",
+            "http.host": "127.0.0.1",
+            "http.scheme": "http",
+            "http.flavor": "1.0",
+            "net.host.port": 80,
+            "http.status_code": 200,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.host": "127.0.0.1",
+            "http.scheme": "http",
+            "http.flavor": "1.0",
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        expected_duration_attributes_new = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.0",
+            "http.response.status_code": 200,
+        }
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        # pylint: disable=too-many-nested-blocks
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metrics in resource_metric.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+                            if metric.name == "http.server.request.duration":
+                                self.assertAlmostEqual(
+                                    duration_s, point.sum, places=2
+                                )
+                                self.assertDictEqual(
+                                    expected_duration_attributes_new,
+                                    dict(point.attributes),
+                                )
+                            elif (
+                                metric.name == "http.server.response.body.size"
+                            ):
+                                self.assertEqual(1024, point.sum)
+                                self.assertDictEqual(
+                                    expected_duration_attributes_new,
+                                    dict(point.attributes),
+                                )
+                            elif (
+                                metric.name == "http.server.request.body.size"
+                            ):
+                                self.assertEqual(128, point.sum)
+                                self.assertDictEqual(
+                                    expected_duration_attributes_new,
+                                    dict(point.attributes),
+                                )
+                            elif metric.name == "http.server.duration":
+                                self.assertAlmostEqual(
+                                    duration, point.sum, delta=30
+                                )
+                                self.assertDictEqual(
+                                    expected_duration_attributes_old,
+                                    dict(point.attributes),
+                                )
+                            elif metric.name == "http.server.response.size":
+                                self.assertEqual(1024, point.sum)
+                                self.assertDictEqual(
+                                    expected_duration_attributes_old,
+                                    dict(point.attributes),
+                                )
+                            elif metric.name == "http.server.request.size":
+                                self.assertEqual(128, point.sum)
+                                self.assertDictEqual(
+                                    expected_duration_attributes_old,
+                                    dict(point.attributes),
+                                )
+                        elif isinstance(point, NumberDataPoint):
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(point.value, 0)
+
+    async def test_metric_target_attribute(self):
         expected_target = "/api/user/{id}"
 
         class TestRoute:
@@ -807,7 +1884,8 @@ class TestAsgiApplication(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(target_asgi)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         metrics_list = self.memory_metrics_reader.get_metrics_data()
         assertions = 0
         for resource_metric in metrics_list.resource_metrics:
@@ -824,7 +1902,7 @@ class TestAsgiApplication(AsgiTestBase):
                             assertions += 1
         self.assertEqual(assertions, 3)
 
-    def test_no_metric_for_websockets(self):
+    async def test_no_metric_for_websockets(self):
         self.scope = {
             "type": "websocket",
             "http_version": "1.1",
@@ -837,11 +1915,34 @@ class TestAsgiApplication(AsgiTestBase):
         }
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
         self.seed_app(app)
-        self.send_input({"type": "websocket.connect"})
-        self.send_input({"type": "websocket.receive", "text": "ping"})
-        self.send_input({"type": "websocket.disconnect"})
-        self.get_all_output()
+        await self.send_input({"type": "websocket.connect"})
+        await self.send_input({"type": "websocket.receive", "text": "ping"})
+        await self.send_input({"type": "websocket.disconnect"})
+        await self.get_all_output()
         self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+
+    async def test_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    async def test_no_excluded_urls(self):
+        self.scope["path"] = "/test_excluded_urls"
+        app = otel_asgi.OpenTelemetryMiddleware(
+            simple_asgi, excluded_urls="test_excluded_urls"
+        )
+        self.seed_app(app)
+        self.scope["path"] = "/test_no_excluded_urls"
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertGreater(len(spans), 0)
 
 
 class TestAsgiAttributes(unittest.TestCase):
@@ -861,57 +1962,164 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertDictEqual(
             attrs,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_HOST: "127.0.0.1",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://127.0.0.1/?foo=bar",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_SERVER_NAME: "test",
-                SpanAttributes.HTTP_FLAVOR: "1.0",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                SpanAttributes.NET_PEER_PORT: 32767,
+                HTTP_METHOD: "GET",
+                HTTP_HOST: "127.0.0.1",
+                HTTP_TARGET: "/",
+                HTTP_URL: "http://test/?foo=bar",
+                NET_HOST_PORT: 80,
+                HTTP_SCHEME: "http",
+                HTTP_SERVER_NAME: "test",
+                HTTP_FLAVOR: "1.0",
+                NET_PEER_IP: "127.0.0.1",
+                NET_PEER_PORT: 32767,
+            },
+        )
+
+    def test_request_attributes_new_semconv(self):
+        self.scope["query_string"] = b"foo=bar"
+        headers = []
+        headers.append((b"host", b"test"))
+        self.scope["headers"] = headers
+
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP,
+        )
+
+        self.assertDictEqual(
+            attrs,
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_PATH: "/",
+                URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
+                SERVER_PORT: 80,
+                URL_SCHEME: "http",
+                NETWORK_PROTOCOL_VERSION: "1.0",
+                CLIENT_ADDRESS: "127.0.0.1",
+                CLIENT_PORT: 32767,
+            },
+        )
+
+    def test_request_attributes_both_semconv(self):
+        self.scope["query_string"] = b"foo=bar"
+        headers = []
+        headers.append((b"host", b"test"))
+        self.scope["headers"] = headers
+
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP_DUP,
+        )
+
+        self.assertDictEqual(
+            attrs,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_HOST: "127.0.0.1",
+                HTTP_TARGET: "/",
+                HTTP_URL: "http://test/?foo=bar",
+                NET_HOST_PORT: 80,
+                HTTP_SCHEME: "http",
+                HTTP_SERVER_NAME: "test",
+                HTTP_FLAVOR: "1.0",
+                NET_PEER_IP: "127.0.0.1",
+                NET_PEER_PORT: 32767,
+                HTTP_REQUEST_METHOD: "GET",
+                URL_PATH: "/",
+                URL_QUERY: "foo=bar",
+                SERVER_ADDRESS: "127.0.0.1",
+                SERVER_PORT: 80,
+                URL_SCHEME: "http",
+                NETWORK_PROTOCOL_VERSION: "1.0",
+                CLIENT_ADDRESS: "127.0.0.1",
+                CLIENT_PORT: 32767,
             },
         )
 
     def test_query_string(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
+
+    def test_query_string_new_semconv(self):
+        self.scope["query_string"] = b"foo=bar"
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP,
         )
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
+
+    def test_query_string_both_semconv(self):
+        self.scope["query_string"] = b"foo=bar"
+        attrs = otel_asgi.collect_request_attributes(
+            self.scope,
+            _StabilityMode.HTTP_DUP,
+        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
+        self.assertEqual(attrs[URL_SCHEME], "http")
+        self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
+        self.assertEqual(attrs[URL_PATH], "/")
+        self.assertEqual(attrs[URL_QUERY], "foo=bar")
 
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
 
     def test_query_string_percent_str(self):
         self.scope["query_string"] = "foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
 
     def test_response_attributes(self):
         otel_asgi.set_status_code(self.span, 404)
-        expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
+        expected = (mock.call(HTTP_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, 1)
         self.assertEqual(self.span.set_attribute.call_count, 1)
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
+
+    def test_response_attributes_new_semconv(self):
+        otel_asgi.set_status_code(
+            self.span,
+            404,
+            None,
+            _StabilityMode.HTTP,
+        )
+        expected = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
+        self.assertEqual(self.span.set_attribute.call_count, 1)
+        self.assertEqual(self.span.set_attribute.call_count, 1)
+        self.span.set_attribute.assert_has_calls(expected, any_order=True)
+
+    def test_response_attributes_both_semconv(self):
+        otel_asgi.set_status_code(
+            self.span,
+            404,
+            None,
+            _StabilityMode.HTTP_DUP,
+        )
+        expected = (mock.call(HTTP_STATUS_CODE, 404),)
+        expected2 = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
+        self.assertEqual(self.span.set_attribute.call_count, 2)
+        self.assertEqual(self.span.set_attribute.call_count, 2)
+        self.span.set_attribute.assert_has_calls(expected, any_order=True)
+        self.span.set_attribute.assert_has_calls(expected2, any_order=True)
 
     def test_response_attributes_invalid_status_code(self):
         otel_asgi.set_status_code(self.span, "Invalid Status Code")
         self.assertEqual(self.span.set_status.call_count, 1)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         self.scope["server"] = ("username:password@mock", 80)
         self.scope["path"] = "/status/200"
+        self.scope["query_string"] = b"X-Goog-Signature=1234567890"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://mock/status/200"
+            attrs[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
     def test_collect_target_attribute_missing(self):
@@ -946,8 +2154,10 @@ class TestAsgiAttributes(unittest.TestCase):
         )
 
 
-class TestWrappedApplication(AsgiTestBase):
-    def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
+class TestWrappedApplication(AsyncAsgiTestBase):
+    async def test_mark_span_internal_in_presence_of_span_from_other_framework(
+        self,
+    ):
         tracer_provider, exporter = TestBase.create_tracer_provider()
         tracer = tracer_provider.get_tracer(__name__)
         app = otel_asgi.OpenTelemetryMiddleware(
@@ -962,7 +2172,8 @@ class TestWrappedApplication(AsgiTestBase):
                 await app(scope, receive, send)
 
         self.seed_app(wrapped_app)
-        self.send_default_request()
+        await self.send_default_request()
+        await self.get_all_output()
         span_list = exporter.get_finished_spans()
 
         self.assertEqual(SpanKind.INTERNAL, span_list[0].kind)
@@ -979,11 +2190,11 @@ class TestWrappedApplication(AsgiTestBase):
         )
 
 
-class TestAsgiApplicationRaisingError(AsgiTestBase):
+class TestAsgiApplicationRaisingError(AsyncAsgiTestBase):
     def tearDown(self):
         pass
 
-    def test_asgi_issue_1883(self):
+    async def test_asgi_value_error_exception(self):
         """
         Test that exception UnboundLocalError local variable 'start' referenced before assignment is not raised
         See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1883
@@ -994,11 +2205,9 @@ class TestAsgiApplicationRaisingError(AsgiTestBase):
 
         app = otel_asgi.OpenTelemetryMiddleware(bad_app)
         self.seed_app(app)
-        self.send_default_request()
+        await self.send_default_request()
         try:
-            asyncio.get_event_loop().run_until_complete(
-                self.communicator.stop()
-            )
+            await self.communicator.wait()
         except ValueError as exc_info:
             self.assertEqual(exc_info.args[0], "whatever")
         except Exception as exc_info:  # pylint: disable=W0703

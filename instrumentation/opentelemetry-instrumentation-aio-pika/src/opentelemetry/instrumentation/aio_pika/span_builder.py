@@ -16,13 +16,22 @@ from typing import Optional
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 
-_DEFAULT_ATTRIBUTES = {SpanAttributes.MESSAGING_SYSTEM: "rabbitmq"}
+_DEFAULT_ATTRIBUTES = {MESSAGING_SYSTEM: "rabbitmq"}
 
 
 class SpanBuilder:
@@ -44,11 +53,18 @@ class SpanBuilder:
 
     def set_destination(self, destination: str):
         self._destination = destination
+        # TODO: Update this implementation once the semantic conventions for messaging stabilize
+        # See: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/messaging.md
         self._attributes[SpanAttributes.MESSAGING_DESTINATION] = destination
 
     def set_channel(self, channel: AbstractChannel):
-        connection = channel.connection
-        if getattr(connection, "connection", None):
+        if hasattr(channel, "_connection"):
+            # aio_rmq 9.1 and above removed the connection attribute from the abstract listings
+            connection = channel._connection
+        else:
+            # aio_rmq 9.0.5 and below
+            connection = channel.connection
+        if hasattr(connection, "connection"):
             # aio_rmq 7
             url = connection.connection.url
         else:
@@ -56,31 +72,33 @@ class SpanBuilder:
             url = connection.url
         self._attributes.update(
             {
-                SpanAttributes.NET_PEER_NAME: url.host,
-                SpanAttributes.NET_PEER_PORT: url.port,
+                NET_PEER_NAME: url.host,
+                NET_PEER_PORT: url.port or 5672,
             }
         )
 
     def set_message(self, message: AbstractMessage):
         properties = message.properties
         if properties.message_id:
-            self._attributes[
-                SpanAttributes.MESSAGING_MESSAGE_ID
-            ] = properties.message_id
+            self._attributes[MESSAGING_MESSAGE_ID] = properties.message_id
         if properties.correlation_id:
-            self._attributes[
-                SpanAttributes.MESSAGING_CONVERSATION_ID
-            ] = properties.correlation_id
+            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = (
+                properties.correlation_id
+            )
 
     def build(self) -> Optional[Span]:
         if not is_instrumentation_enabled():
             return None
         if self._operation:
-            self._attributes[SpanAttributes.MESSAGING_OPERATION] = self._operation.value
+            self._attributes[MESSAGING_OPERATION] = self._operation.value
         else:
+            # TODO: Update this implementation once the semantic conventions for messaging stabilize
+            # See: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/registry/attributes/messaging.md
             self._attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
         span = self._tracer.start_span(
-            self._generate_span_name(), kind=self._kind, attributes=self._attributes
+            self._generate_span_name(),
+            kind=self._kind,
+            attributes=self._attributes,
         )
         return span
 

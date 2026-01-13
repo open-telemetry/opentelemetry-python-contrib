@@ -1,0 +1,26 @@
+asgiref==3.8.1
+Deprecated==1.2.14
+hupper==1.12.1
+iniconfig==2.0.0
+packaging==24.0
+PasteDeploy==3.1.0
+plaster==1.1.2
+plaster-pastedeploy==1.0.1
+pluggy==1.5.0
+py-cpuinfo==9.0.0
+pyramid==2.0.2
+pytest==7.4.4
+tomli==2.0.1
+translationstring==1.4
+typing_extensions==4.12.2
+venusian==3.1.0
+WebOb==1.8.8
+Werkzeug==3.0.6
+wrapt==1.16.0
+zipp==3.19.2
+zope.deprecation==5.0
+zope.interface==6.2
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-wsgi
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-pyramid

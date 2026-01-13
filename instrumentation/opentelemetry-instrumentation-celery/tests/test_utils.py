@@ -20,6 +20,9 @@ from celery import Celery
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.sdk import trace
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 
 
@@ -47,7 +50,7 @@ class TestUtils(unittest.TestCase):
         utils.set_attributes_from_context(span, context)
 
         self.assertEqual(
-            span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID),
+            span.attributes.get(MESSAGING_MESSAGE_ID),
             "44b7f305",
         )
         self.assertEqual(
@@ -167,8 +170,10 @@ class TestUtils(unittest.TestCase):
         # propagate and retrieve a Span
         task_id = "7c6731af-9533-40c3-83a9-25b58f0d837f"
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.attach_span(fn_task, task_id, span)
-        span_after = utils.retrieve_span(fn_task, task_id)
+        utils.attach_context(fn_task, task_id, span, mock.Mock(), "")
+        ctx = utils.retrieve_context(fn_task, task_id)
+        self.assertIsNotNone(ctx)
+        span_after, _, _ = ctx
         self.assertIs(span, span_after)
 
     def test_span_delete(self):
@@ -180,17 +185,19 @@ class TestUtils(unittest.TestCase):
         # propagate a Span
         task_id = "7c6731af-9533-40c3-83a9-25b58f0d837f"
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
-        utils.attach_span(fn_task, task_id, span)
+        utils.attach_context(fn_task, task_id, span, mock.Mock(), "")
         # delete the Span
-        utils.detach_span(fn_task, task_id)
-        self.assertEqual(utils.retrieve_span(fn_task, task_id), (None, None))
+        utils.detach_context(fn_task, task_id)
+        self.assertEqual(utils.retrieve_context(fn_task, task_id), None)
 
     def test_optional_task_span_attach(self):
         task_id = "7c6731af-9533-40c3-83a9-25b58f0d837f"
         span = trace._Span("name", mock.Mock(spec=trace_api.SpanContext))
 
         # assert this is is a no-aop
-        self.assertIsNone(utils.attach_span(None, task_id, span))
+        self.assertIsNone(
+            utils.attach_context(None, task_id, span, mock.Mock(), "")
+        )
 
     def test_span_delete_empty(self):
         # ensure detach_span doesn't raise an exception if span is not present
@@ -201,10 +208,8 @@ class TestUtils(unittest.TestCase):
         # delete the Span
         task_id = "7c6731af-9533-40c3-83a9-25b58f0d837f"
         try:
-            utils.detach_span(fn_task, task_id)
-            self.assertEqual(
-                utils.retrieve_span(fn_task, task_id), (None, None)
-            )
+            utils.detach_context(fn_task, task_id)
+            self.assertEqual(utils.retrieve_context(fn_task, task_id), None)
         except Exception as ex:  # pylint: disable=broad-except
             self.fail(f"Exception was raised: {ex}")
 

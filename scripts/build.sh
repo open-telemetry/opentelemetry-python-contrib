@@ -8,15 +8,15 @@ set -ev
 # Get the latest versions of packaging tools
 python3 -m pip install --upgrade pip build setuptools wheel
 
-BASEDIR=$(dirname $(readlink -f $(dirname $0)))
+BASEDIR=$(dirname "$(readlink -f "$(dirname $0)")")
 DISTDIR=dist
 
 (
   cd $BASEDIR
   mkdir -p $DISTDIR
-  rm -rf $DISTDIR/*
+  rm -rf ${DISTDIR:?}/*
 
- for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
+ for d in exporter/*/ opentelemetry-instrumentation/ opentelemetry-contrib-instrumentations/ opentelemetry-distro/ instrumentation/*/ processor/*/ propagator/*/ resource/*/ sdk-extension/*/ util/*/ ; do
    (
      echo "building $d"
      cd "$d"
@@ -27,12 +27,17 @@ DISTDIR=dist
      fi
    )
  done
+
  (
    cd $DISTDIR
-   for x in *.tar.gz ; do
+   for x in * ; do
+    # FIXME: Remove this once opentelemetry-resource-detector-azure package goes 1.X
+    if echo "$x" | grep -Eq "^opentelemetry_(resource_detector_azure|util_genai).*(\.tar\.gz|\.whl)$"; then
+      echo "Skipping $x because of manual upload by Azure maintainers."
+      rm $x
     # NOTE: We filter beta vs 1.0 package at this point because we can read the
-    # version directly from the .tar.gz file.
-    if (echo "$x" | grep -Eq ^opentelemetry_.*-0\..*\.tar\.gz$); then
+    # version directly from the .tar.gz/whl file
+    elif echo "$x" | grep -Eq "^opentelemetry_.*-0\..*(\.tar\.gz|\.whl)$"; then
       :
     else
       echo "Skipping $x because it is not in pre-1.0 state and should be released using a tag."

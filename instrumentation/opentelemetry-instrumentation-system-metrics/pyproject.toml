@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry System Metrics Instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,24 +18,21 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+  "opentelemetry-instrumentation == 0.61b0.dev",
   "opentelemetry-api ~= 1.11",
-  "opentelemetry-sdk ~= 1.11",
-  "psutil ~= 5.9",
+  "psutil >= 5.9.0, < 8",
 ]
 
 [project.optional-dependencies]
 instruments = [
   "psutil >= 5",
-]
-test = [
-  "opentelemetry-instrumentation-system-metrics[instruments]",
-  "opentelemetry-test-utils == 0.44b0.dev",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -43,6 +40,7 @@ system_metrics = "opentelemetry.instrumentation.system_metrics:SystemMetricsInst
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-system-metrics"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
 path = "src/opentelemetry/instrumentation/system_metrics/version.py"

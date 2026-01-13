@@ -19,6 +19,7 @@ import contextlib
 import tempfile
 import threading
 from concurrent import futures
+from unittest import mock
 
 import grpc
 
@@ -29,7 +30,16 @@ from opentelemetry.instrumentation.grpc import (
     server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -81,8 +91,8 @@ class Servicer(GRPCTestServerServicer):
 
 class TestOpenTelemetryServerInterceptor(TestBase):
     net_peer_span_attributes = {
-        SpanAttributes.NET_PEER_IP: "[::1]",
-        SpanAttributes.NET_PEER_NAME: "localhost",
+        NET_PEER_IP: "[::1]",
+        NET_PEER_NAME: "localhost",
     }
 
     @contextlib.contextmanager
@@ -104,41 +114,44 @@ class TestOpenTelemetryServerInterceptor(TestBase):
 
         grpc_server_instrumentor = GrpcInstrumentorServer()
         grpc_server_instrumentor.instrument()
-        with self.server(max_workers=1) as (server, channel):
-            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-            rpc_call = "TestServicer/handler"
-            try:
-                server.start()
-                channel.unary_unary(rpc_call)(b"test")
-            finally:
-                server.stop(None)
 
-            spans_list = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(spans_list), 1)
-            span = spans_list[0]
-            self.assertEqual(span.name, rpc_call)
-            self.assertIs(span.kind, trace.SpanKind.SERVER)
+        try:
+            with self.server(max_workers=1) as (server, channel):
+                server.add_generic_rpc_handlers(
+                    (UnaryUnaryRpcHandler(handler),)
+                )
+                rpc_call = "TestServicer/handler"
+                try:
+                    server.start()
+                    channel.unary_unary(rpc_call)(b"test")
+                finally:
+                    server.stop(None)
 
-            # Check version and name in span's instrumentation info
-            self.assertEqualSpanInstrumentationInfo(
-                span, opentelemetry.instrumentation.grpc
-            )
-
-            # Check attributes
-            self.assertSpanHasAttributes(
-                span,
-                {
-                    **self.net_peer_span_attributes,
-                    SpanAttributes.RPC_METHOD: "handler",
-                    SpanAttributes.RPC_SERVICE: "TestServicer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
-                },
-            )
-
+        finally:
             grpc_server_instrumentor.uninstrument()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            },
+        )
 
     def test_uninstrument(self):
         def handler(request, context):
@@ -188,7 +201,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -197,12 +210,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -252,7 +263,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -261,12 +272,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             parent_span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -307,7 +316,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -316,12 +325,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -371,7 +378,7 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -380,12 +387,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             parent_span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -468,12 +473,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 span,
                 {
                     **self.net_peer_span_attributes,
-                    SpanAttributes.RPC_METHOD: "handler",
-                    SpanAttributes.RPC_SERVICE: "TestServicer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    RPC_METHOD: "handler",
+                    RPC_SERVICE: "TestServicer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -534,12 +537,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
                 span,
                 {
                     **self.net_peer_span_attributes,
-                    SpanAttributes.RPC_METHOD: "handler",
-                    SpanAttributes.RPC_SERVICE: "TestServicer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    RPC_METHOD: "handler",
+                    RPC_SERVICE: "TestServicer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -552,22 +553,121 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         # our detailed failure message
         failure_message = "This is a test failure"
 
-        # aborting RPC handler
-        def handler(request, context):
+        # aborting RPC handlers
+        def error_status_handler(request, context):
+            context.abort(grpc.StatusCode.INTERNAL, failure_message)
+
+        def unset_status_handler(request, context):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, failure_message)
 
-        with self.server(
-            max_workers=1,
-            interceptors=[interceptor],
-        ) as (server, channel):
-            server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
-            rpc_call = "TestServicer/handler"
+        rpc_call_error = "TestServicer/error_status_handler"
+        rpc_call_unset = "TestServicer/unset_status_handler"
 
-            server.start()
-            # unfortunately, these are just bare exceptions in grpc...
-            with self.assertRaises(Exception):
-                channel.unary_unary(rpc_call)(b"")
-            server.stop(None)
+        rpc_calls = {
+            rpc_call_error: error_status_handler,
+            rpc_call_unset: unset_status_handler,
+        }
+
+        for rpc_call, handler in rpc_calls.items():
+            with self.server(
+                max_workers=1,
+                interceptors=[interceptor],
+            ) as (server, channel):
+                server.add_generic_rpc_handlers(
+                    (UnaryUnaryRpcHandler(handler),)
+                )
+
+                server.start()
+
+                with self.assertRaises(Exception):
+                    channel.unary_unary(rpc_call)(b"")
+
+                # unfortunately, these are just bare exceptions in grpc...
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
+
+        # check error span
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call_error)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        # make sure this span errored, with the right status and detail
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description,
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
+        )
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "error_status_handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
+            },
+        )
+
+        # check unset status span
+        span = spans_list[1]
+
+        self.assertEqual(span.name, rpc_call_unset)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
+
+        self.assertEqual(span.status.description, None)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "unset_status_handler",
+                RPC_SERVICE: "TestServicer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
+            },
+        )
+
+    def test_non_list_interceptors(self):
+        """Check that we handle non-list interceptors correctly."""
+        grpc_server_instrumentor = GrpcInstrumentorServer()
+        grpc_server_instrumentor.instrument()
+
+        try:
+            with self.server(
+                max_workers=1,
+                interceptors=(mock.MagicMock(),),
+            ) as (server, channel):
+                add_GRPCTestServerServicer_to_server(Servicer(), server)
+
+                rpc_call = "/GRPCTestServer/SimpleMethod"
+                request = Request(client_id=1, request_data="test")
+                msg = request.SerializeToString()
+                try:
+                    server.start()
+                    channel.unary_unary(rpc_call)(msg)
+                finally:
+                    server.stop(None)
+        finally:
+            grpc_server_instrumentor.uninstrument()
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -577,15 +677,8 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
-        )
-
-        # make sure this span errored, with the right status and detail
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
         )
 
         # Check attributes
@@ -593,12 +686,10 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             span,
             {
                 **self.net_peer_span_attributes,
-                SpanAttributes.RPC_METHOD: "handler",
-                SpanAttributes.RPC_SERVICE: "TestServicer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -610,9 +701,10 @@ class TestOpenTelemetryServerInterceptorUnix(
 
     @contextlib.contextmanager
     def server(self, max_workers=1, interceptors=None):
-        with futures.ThreadPoolExecutor(
-            max_workers=max_workers
-        ) as executor, tempfile.TemporaryDirectory() as tmp:
+        with (
+            futures.ThreadPoolExecutor(max_workers=max_workers) as executor,
+            tempfile.TemporaryDirectory() as tmp,
+        ):
             server = grpc.server(
                 executor,
                 options=(("grpc.so_reuseport", 0),),

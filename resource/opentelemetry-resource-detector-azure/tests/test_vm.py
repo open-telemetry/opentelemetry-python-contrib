@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
 from opentelemetry.resource.detector.azure.vm import AzureVMResourceDetector
@@ -363,18 +363,28 @@ WINDOWS_ATTRIBUTES = {
 class TestAzureVMResourceDetector(unittest.TestCase):
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_linux(self, mock_urlopen):
-        mock_response = Mock()
-        mock_urlopen.return_value = mock_response
-        mock_response.read.return_value = LINUX_JSON
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            LINUX_JSON
+        )
         attributes = AzureVMResourceDetector().detect().attributes
         for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
 
     @patch("opentelemetry.resource.detector.azure.vm.urlopen")
     def test_windows(self, mock_urlopen):
-        mock_response = Mock()
-        mock_urlopen.return_value = mock_response
-        mock_response.read.return_value = WINDOWS_JSON
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            WINDOWS_JSON
+        )
         attributes = AzureVMResourceDetector().detect().attributes
-        for attribute_key, attribute_value in LINUX_ATTRIBUTES.items():
+        for attribute_key, attribute_value in WINDOWS_ATTRIBUTES.items():
             self.assertEqual(attributes[attribute_key], attribute_value)
+
+    @patch("opentelemetry.resource.detector.azure.vm._can_ignore_vm_detect")
+    @patch("opentelemetry.resource.detector.azure.vm.urlopen")
+    def test_in_another_rp(self, mock_urlopen, detect_mock):
+        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+            LINUX_JSON
+        )
+        detect_mock.return_value = True
+        attributes = AzureVMResourceDetector().detect().attributes
+        self.assertEqual(attributes, {})

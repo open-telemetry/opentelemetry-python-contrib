@@ -1,11 +1,11 @@
 #!/bin/bash
+set -e
 
 PROM_VERSION=v2.39.0
 PROTO_VERSION=v1.3.2
 
 # SRC_DIR is from protoc perspective. ie its the destination for our checkouts/clones
 SRC_DIR=opentelemetry/exporter/prometheus_remote_write/gen/
-DST_DIR=../src/opentelemetry/exporter/prometheus_remote_write/gen/
 
 #TODO:
 # Check that black & protoc are installed properly
@@ -49,7 +49,7 @@ sed -i 's/import "gogoproto\/gogo.proto";/import "opentelemetry\/exporter\/prome
 echo "Removing clones..."
 rm -rf protobuf prometheus
 
-# Used libprotoc 3.21.1 & protoc 21.7
+# Used libprotoc 26
 echo "Compiling proto files to Python"
 protoc -I .  --python_out=../src ${SRC_DIR}/gogoproto/gogo.proto ${SRC_DIR}/remote.proto ${SRC_DIR}/types.proto
 

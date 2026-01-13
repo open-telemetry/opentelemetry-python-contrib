@@ -24,14 +24,13 @@ from pymemcache.exceptions import (
     MemcacheUnknownError,
 )
 
-# pylint: disable=import-error,no-name-in-module
-from tests.utils import MockSocket, _str
-
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
+
+from .utils import MockSocket, _str
 
 TEST_HOST = "localhost"
 TEST_PORT = 117711
@@ -53,9 +52,7 @@ pymemcache_version_gt_341 = pymemcache_version > get_package_version.parse(
 )
 
 
-class PymemcacheClientTestCase(
-    TestBase
-):  # pylint: disable=too-many-public-methods
+class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-methods
     """Tests for a patched pymemcache.client.base.Client."""
 
     def setUp(self):
@@ -555,7 +552,7 @@ class PymemcacheHashClientTestCase(TestBase):
         current_port = TEST_PORT
 
         # pylint: disable=import-outside-toplevel
-        from pymemcache.client.hash import HashClient
+        from pymemcache.client.hash import HashClient  # noqa: PLC0415
 
         # pylint: disable=attribute-defined-outside-init
         self.client = HashClient([], **kwargs)

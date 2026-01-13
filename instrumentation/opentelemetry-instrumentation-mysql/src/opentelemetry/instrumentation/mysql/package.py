@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("mysql-connector-python ~= 8.0",)
+_instruments = ("mysql-connector-python >= 8.0, < 10.0",)

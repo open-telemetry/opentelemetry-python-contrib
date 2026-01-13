@@ -16,13 +16,20 @@ import json
 from unittest import mock
 
 import botocore.session
-from moto import mock_dynamodb2  # pylint: disable=import-error
+from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.botocore.extensions.dynamodb import (
+    _BotocoreInstrumentorContext,
     _DynamoDbExtension,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import (
+    aws_attributes,
+    db_attributes,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import Span
 
@@ -100,24 +107,24 @@ class TestDynamoDbExtension(TestBase):
         self.assertEqual(1, len(spans))
         span = spans[0]
 
-        self.assertEqual("dynamodb", span.attributes[SpanAttributes.DB_SYSTEM])
+        self.assertEqual("dynamodb", span.attributes[db_attributes.DB_SYSTEM])
         self.assertEqual(
-            operation, span.attributes[SpanAttributes.DB_OPERATION]
+            operation, span.attributes[db_attributes.DB_OPERATION]
         )
         self.assertEqual(
             "dynamodb.us-west-2.amazonaws.com",
-            span.attributes[SpanAttributes.NET_PEER_NAME],
+            span.attributes[NET_PEER_NAME],
         )
         return span
 
     def assert_table_names(self, span: Span, *table_names):
         self.assertEqual(
             tuple(table_names),
-            span.attributes[SpanAttributes.AWS_DYNAMODB_TABLE_NAMES],
+            span.attributes[aws_attributes.AWS_DYNAMODB_TABLE_NAMES],
         )
 
     def assert_consumed_capacity(self, span: Span, *table_names):
-        cap = span.attributes[SpanAttributes.AWS_DYNAMODB_CONSUMED_CAPACITY]
+        cap = span.attributes[aws_attributes.AWS_DYNAMODB_CONSUMED_CAPACITY]
         self.assertEqual(len(cap), len(table_names))
         cap_tables = set()
         for item in cap:
@@ -129,50 +136,50 @@ class TestDynamoDbExtension(TestBase):
 
     def assert_item_col_metrics(self, span: Span):
         actual = span.attributes[
-            SpanAttributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS
+            aws_attributes.AWS_DYNAMODB_ITEM_COLLECTION_METRICS
         ]
         self.assertIsNotNone(actual)
         json.loads(actual)
 
     def assert_provisioned_read_cap(self, span: Span, expected: int):
         actual = span.attributes[
-            SpanAttributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY
+            aws_attributes.AWS_DYNAMODB_PROVISIONED_READ_CAPACITY
         ]
         self.assertEqual(expected, actual)
 
     def assert_provisioned_write_cap(self, span: Span, expected: int):
         actual = span.attributes[
-            SpanAttributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY
+            aws_attributes.AWS_DYNAMODB_PROVISIONED_WRITE_CAPACITY
         ]
         self.assertEqual(expected, actual)
 
     def assert_consistent_read(self, span: Span, expected: bool):
-        actual = span.attributes[SpanAttributes.AWS_DYNAMODB_CONSISTENT_READ]
+        actual = span.attributes[aws_attributes.AWS_DYNAMODB_CONSISTENT_READ]
         self.assertEqual(expected, actual)
 
     def assert_projection(self, span: Span, expected: str):
-        actual = span.attributes[SpanAttributes.AWS_DYNAMODB_PROJECTION]
+        actual = span.attributes[aws_attributes.AWS_DYNAMODB_PROJECTION]
         self.assertEqual(expected, actual)
 
     def assert_attributes_to_get(self, span: Span, *attrs):
         self.assertEqual(
             tuple(attrs),
-            span.attributes[SpanAttributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET],
+            span.attributes[aws_attributes.AWS_DYNAMODB_ATTRIBUTES_TO_GET],
         )
 
     def assert_index_name(self, span: Span, expected: str):
         self.assertEqual(
-            expected, span.attributes[SpanAttributes.AWS_DYNAMODB_INDEX_NAME]
+            expected, span.attributes[aws_attributes.AWS_DYNAMODB_INDEX_NAME]
         )
 
     def assert_limit(self, span: Span, expected: int):
         self.assertEqual(
-            expected, span.attributes[SpanAttributes.AWS_DYNAMODB_LIMIT]
+            expected, span.attributes[aws_attributes.AWS_DYNAMODB_LIMIT]
         )
 
     def assert_select(self, span: Span, expected: str):
         self.assertEqual(
-            expected, span.attributes[SpanAttributes.AWS_DYNAMODB_SELECT]
+            expected, span.attributes[aws_attributes.AWS_DYNAMODB_SELECT]
         )
 
     def assert_extension_item_col_metrics(self, operation: str):
@@ -180,11 +187,13 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension(operation)
 
         extension.on_success(
-            span, {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}}
+            span,
+            {"ItemCollectionMetrics": {"ItemCollectionKey": {"id": "1"}}},
+            _BotocoreInstrumentorContext(logger=mock.Mock()),
         )
         self.assert_item_col_metrics(span)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_batch_get_item(self):
         table_name1 = "test_table1"
         table_name2 = "test_table2"
@@ -203,7 +212,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_table_names(span, table_name1, table_name2)
         self.assert_consumed_capacity(span, table_name1, table_name2)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_batch_write_item(self):
         table_name1 = "test_table1"
         table_name2 = "test_table2"
@@ -224,7 +233,7 @@ class TestDynamoDbExtension(TestBase):
         self.assert_consumed_capacity(span, table_name1, table_name2)
         self.assert_item_col_metrics(span)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_create_table(self):
         local_sec_idx = {
             "IndexName": "local_sec_idx",
@@ -257,18 +266,18 @@ class TestDynamoDbExtension(TestBase):
         self.assertEqual(
             (json.dumps(global_sec_idx),),
             span.attributes[
-                SpanAttributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEXES
+                aws_attributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEXES
             ],
         )
         self.assertEqual(
             (json.dumps(local_sec_idx),),
             span.attributes[
-                SpanAttributes.AWS_DYNAMODB_LOCAL_SECONDARY_INDEXES
+                aws_attributes.AWS_DYNAMODB_LOCAL_SECONDARY_INDEXES
             ],
         )
         self.assert_provisioned_read_cap(span, 42)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_delete_item(self):
         self._create_prepared_table()
 
@@ -290,14 +299,16 @@ class TestDynamoDbExtension(TestBase):
         extension = self._create_extension("DeleteItem")
 
         extension.on_success(
-            span, {"ConsumedCapacity": {"TableName": "table"}}
+            span,
+            {"ConsumedCapacity": {"TableName": "table"}},
+            _BotocoreInstrumentorContext(logger=mock.Mock()),
         )
         self.assert_consumed_capacity(span, "table")
 
     def test_delete_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("DeleteItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_delete_table(self):
         self._create_prepared_table()
 
@@ -306,7 +317,7 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("DeleteTable")
         self.assert_table_names(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_describe_table(self):
         self._create_prepared_table()
 
@@ -315,26 +326,42 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("DescribeTable")
         self.assert_table_names(span, self.default_table_name)
 
-    @mock_dynamodb2
-    def test_get_item(self):
+    @mock_aws
+    def test_get_item_expression(self):
         self._create_prepared_table()
 
         self.client.get_item(
             TableName=self.default_table_name,
             Key={"id": {"S": "1"}},
             ConsistentRead=True,
-            AttributesToGet=["id"],
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
         span = self.assert_span("GetItem")
         self.assert_table_names(span, self.default_table_name)
         self.assert_consistent_read(span, True)
-        self.assert_projection(span, "1,2")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
+    def test_get_item_non_expression(self):
+        self._create_prepared_table()
+
+        self.client.get_item(
+            TableName=self.default_table_name,
+            Key={"id": {"S": "1"}},
+            ConsistentRead=True,
+            ProjectionExpression="PE",
+            ReturnConsumedCapacity="TOTAL",
+        )
+
+        span = self.assert_span("GetItem")
+        self.assert_table_names(span, self.default_table_name)
+        self.assert_consistent_read(span, True)
+        self.assert_projection(span, "PE")
+        self.assert_consumed_capacity(span, self.default_table_name)
+
+    @mock_aws
     def test_list_tables(self):
         self._create_table(TableName="my_table")
         self._create_prepared_table()
@@ -344,14 +371,14 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("ListTables")
         self.assertEqual(
             "my_table",
-            span.attributes[SpanAttributes.AWS_DYNAMODB_EXCLUSIVE_START_TABLE],
+            span.attributes[aws_attributes.AWS_DYNAMODB_EXCLUSIVE_START_TABLE],
         )
         self.assertEqual(
-            1, span.attributes[SpanAttributes.AWS_DYNAMODB_TABLE_COUNT]
+            1, span.attributes[aws_attributes.AWS_DYNAMODB_TABLE_COUNT]
         )
-        self.assertEqual(5, span.attributes[SpanAttributes.AWS_DYNAMODB_LIMIT])
+        self.assertEqual(5, span.attributes[aws_attributes.AWS_DYNAMODB_LIMIT])
 
-    @mock_dynamodb2
+    @mock_aws
     def test_put_item(self):
         table = "test_table"
         self._create_prepared_table(TableName=table)
@@ -372,7 +399,7 @@ class TestDynamoDbExtension(TestBase):
     def test_put_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("PutItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_query(self):
         self._create_prepared_table()
 
@@ -390,24 +417,24 @@ class TestDynamoDbExtension(TestBase):
                 }
             },
             ScanIndexForward=True,
-            ProjectionExpression="1,2",
+            ProjectionExpression="PE",
             ReturnConsumedCapacity="TOTAL",
         )
 
         span = self.assert_span("Query")
         self.assert_table_names(span, self.default_table_name)
         self.assertTrue(
-            span.attributes[SpanAttributes.AWS_DYNAMODB_SCAN_FORWARD]
+            span.attributes[aws_attributes.AWS_DYNAMODB_SCAN_FORWARD]
         )
         self.assert_attributes_to_get(span, "id")
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_scan(self):
         self._create_prepared_table()
 
@@ -418,8 +445,8 @@ class TestDynamoDbExtension(TestBase):
             Limit=42,
             Select="ALL_ATTRIBUTES",
             TotalSegments=17,
-            Segment=21,
-            ProjectionExpression="1,2",
+            Segment=16,
+            ProjectionExpression="PE",
             ConsistentRead=True,
             ReturnConsumedCapacity="TOTAL",
         )
@@ -427,24 +454,24 @@ class TestDynamoDbExtension(TestBase):
         span = self.assert_span("Scan")
         self.assert_table_names(span, self.default_table_name)
         self.assertEqual(
-            21, span.attributes[SpanAttributes.AWS_DYNAMODB_SEGMENT]
+            16, span.attributes[aws_attributes.AWS_DYNAMODB_SEGMENT]
         )
         self.assertEqual(
-            17, span.attributes[SpanAttributes.AWS_DYNAMODB_TOTAL_SEGMENTS]
+            17, span.attributes[aws_attributes.AWS_DYNAMODB_TOTAL_SEGMENTS]
         )
-        self.assertEqual(1, span.attributes[SpanAttributes.AWS_DYNAMODB_COUNT])
+        self.assertEqual(0, span.attributes[aws_attributes.AWS_DYNAMODB_COUNT])
         self.assertEqual(
-            1, span.attributes[SpanAttributes.AWS_DYNAMODB_SCANNED_COUNT]
+            0, span.attributes[aws_attributes.AWS_DYNAMODB_SCANNED_COUNT]
         )
         self.assert_attributes_to_get(span, "id", "idl")
         self.assert_consistent_read(span, True)
         self.assert_index_name(span, "lsi")
         self.assert_limit(span, 42)
-        self.assert_projection(span, "1,2")
+        self.assert_projection(span, "PE")
         self.assert_select(span, "ALL_ATTRIBUTES")
         self.assert_consumed_capacity(span, self.default_table_name)
 
-    @mock_dynamodb2
+    @mock_aws
     def test_update_item(self):
         self._create_prepared_table()
 
@@ -465,7 +492,7 @@ class TestDynamoDbExtension(TestBase):
     def test_update_item_item_collection_metrics(self):
         self.assert_extension_item_col_metrics("UpdateItem")
 
-    @mock_dynamodb2
+    @mock_aws
     def test_update_table(self):
         self._create_prepared_table()
 
@@ -496,11 +523,11 @@ class TestDynamoDbExtension(TestBase):
         self.assert_provisioned_write_cap(span, 19)
         self.assertEqual(
             (json.dumps(attr_definition),),
-            span.attributes[SpanAttributes.AWS_DYNAMODB_ATTRIBUTE_DEFINITIONS],
+            span.attributes[aws_attributes.AWS_DYNAMODB_ATTRIBUTE_DEFINITIONS],
         )
         self.assertEqual(
             (json.dumps(global_sec_idx_updates),),
             span.attributes[
-                SpanAttributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEX_UPDATES
+                aws_attributes.AWS_DYNAMODB_GLOBAL_SECONDARY_INDEX_UPDATES
             ],
         )

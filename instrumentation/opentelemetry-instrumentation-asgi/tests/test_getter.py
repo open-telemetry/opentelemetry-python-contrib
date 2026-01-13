@@ -69,3 +69,13 @@ class TestASGIGetter(TestCase):
             expected_val,
             "Should be equal",
         )
+
+    def test_non_utf8_headers(self):
+        getter = ASGIGetter()
+        carrier = {"headers": [(b"test-key", b"Moto Z\xb2")]}
+        expected_val = ["Moto Z²"]
+        self.assertEqual(
+            getter.get(carrier, "test-key"),
+            expected_val,
+            "Should be equal",
+        )

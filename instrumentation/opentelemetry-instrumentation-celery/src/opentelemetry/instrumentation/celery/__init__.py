@@ -50,7 +50,7 @@ Usage
 Setting up tracing
 ------------------
 
-When tracing a celery worker process, tracing and instrumention both must be initialized after the celery worker
+When tracing a celery worker process, tracing and instrumentation both must be initialized after the celery worker
 process is initialized. This is required for any tracing components that might use threading to work correctly
 such as the BatchSpanProcessor. Celery provides a signal called ``worker_process_init`` that can be used to
 accomplish this as shown in the example above.
@@ -67,6 +67,7 @@ from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
 
+from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry.instrumentation.celery import utils
 from opentelemetry.instrumentation.celery.package import _instruments
@@ -75,7 +76,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 if VERSION >= (4, 0, 1):
@@ -113,10 +116,8 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
-    def __init__(self):
-        super().__init__()
-        self.metrics = None
-        self.task_id_to_start_time = {}
+    metrics = None
+    task_id_to_start_time = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -171,6 +172,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         request = task.request
         tracectx = extract(request, getter=celery_getter) or None
+        token = context_api.attach(tracectx) if tracectx is not None else None
 
         logger.debug("prerun signal start task_id=%s", task_id)
 
@@ -181,7 +183,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
-        utils.attach_span(task, task_id, (span, activation))
+        utils.attach_context(task, task_id, span, activation, token)
 
     def _trace_postrun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
@@ -193,10 +195,13 @@ class CeleryInstrumentor(BaseInstrumentor):
         logger.debug("postrun signal task_id=%s", task_id)
 
         # retrieve and finish the Span
-        span, activation = utils.retrieve_span(task, task_id)
-        if span is None:
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
             logger.warning("no existing span found for task_id=%s", task_id)
             return
+
+        span, activation, token = ctx
 
         # request context tags
         if span.is_recording():
@@ -206,10 +211,14 @@ class CeleryInstrumentor(BaseInstrumentor):
             span.set_attribute(_TASK_NAME_KEY, task.name)
 
         activation.__exit__(None, None, None)
-        utils.detach_span(task, task_id)
+        utils.detach_context(task, task_id)
         self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
+        # if the process sending the task is not instrumented
+        # there's no incoming context and no token to detach
+        if token is not None:
+            context_api.detach(token)
 
     def _trace_before_publish(self, *args, **kwargs):
         task = utils.retrieve_task_from_sender(kwargs)
@@ -233,14 +242,16 @@ class CeleryInstrumentor(BaseInstrumentor):
         # apply some attributes here because most of the data is not available
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
+            span.set_attribute(MESSAGING_MESSAGE_ID, task_id)
             span.set_attribute(_TASK_NAME_KEY, task_name)
             utils.set_attributes_from_context(span, kwargs)
 
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=E1101
 
-        utils.attach_span(task, task_id, (span, activation), is_publish=True)
+        utils.attach_context(
+            task, task_id, span, activation, None, is_publish=True
+        )
 
         headers = kwargs.get("headers")
         if headers:
@@ -255,13 +266,16 @@ class CeleryInstrumentor(BaseInstrumentor):
             return
 
         # retrieve and finish the Span
-        _, activation = utils.retrieve_span(task, task_id, is_publish=True)
-        if activation is None:
+        ctx = utils.retrieve_context(task, task_id, is_publish=True)
+
+        if ctx is None:
             logger.warning("no existing span found for task_id=%s", task_id)
             return
 
+        _, activation, _ = ctx
+
         activation.__exit__(None, None, None)  # pylint: disable=E1101
-        utils.detach_span(task, task_id, is_publish=True)
+        utils.detach_context(task, task_id, is_publish=True)
 
     @staticmethod
     def _trace_failure(*args, **kwargs):
@@ -271,9 +285,14 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None:
             return
 
-        # retrieve and pass exception info to activation
-        span, _ = utils.retrieve_span(task, task_id)
-        if span is None or not span.is_recording():
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
+            return
+
+        span, _, _ = ctx
+
+        if not span.is_recording():
             return
 
         status_kwargs = {"status_code": StatusCode.ERROR}
@@ -313,8 +332,14 @@ class CeleryInstrumentor(BaseInstrumentor):
         if task is None or task_id is None or reason is None:
             return
 
-        span, _ = utils.retrieve_span(task, task_id)
-        if span is None or not span.is_recording():
+        ctx = utils.retrieve_context(task, task_id)
+
+        if ctx is None:
+            return
+
+        span, _, _ = ctx
+
+        if not span.is_recording():
             return
 
         # Add retry reason metadata to span

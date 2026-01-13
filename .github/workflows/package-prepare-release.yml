@@ -1,0 +1,221 @@
+name: "[Package] Prepare release"
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        options:
+        - opentelemetry-propagator-aws-xray
+        - opentelemetry-resource-detector-azure
+        - opentelemetry-sdk-extension-aws
+        - opentelemetry-instrumentation-openai-v2
+        - opentelemetry-instrumentation-openai-agents-v2
+        - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-google-genai
+        - opentelemetry-util-genai
+        description: 'Package to be released'
+        required: true
+
+permissions:
+  contents: read
+
+run-name: "[Package][${{ inputs.package }}] Prepare release"
+jobs:
+  prereqs:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.verify.outputs.version }}
+      changelog: ${{ steps.verify.outputs.changelog }}
+      version_file: ${{ steps.verify.outputs.version_file }}
+      release_branch_name: ${{ steps.verify.outputs.release_branch_name }}
+      next_version: ${{ steps.verify.outputs.next_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: verify
+        name: Verify prerequisites
+        run: |
+          if [[ $GITHUB_REF_NAME != main ]]; then
+            echo this workflow should only be run against main
+            exit 1
+          fi
+
+          path=./$(./scripts/eachdist.py find-package --package ${{ inputs.package }})
+          changelog=$path/CHANGELOG.md
+
+          if [ ! -f $changelog ]; then
+            echo "missing $changelog file"
+            exit 1
+          fi
+
+          if ! grep --quiet "^## Unreleased$" $changelog; then
+            echo the $changelog is missing an \"Unreleased\" section
+            exit 1
+          fi
+
+          version_dev=$(./scripts/eachdist.py version --package ${{ inputs.package }})
+
+          if [[ ! $version_dev =~ ^([0-9]+)\.([0-9]+)[\.|b]{1}([0-9]+).*.dev$ ]]; then
+            echo "unexpected version: $version"
+            exit 1
+          fi
+
+          version=${version_dev%.dev}
+
+          version_file=$(find $path -type f -path "**/version.py")
+          file_count=$(echo "$version_file" | wc -l)
+
+          if [ "$file_count" -ne 1 ]; then
+            echo "Error: expected one version file, found $file_count"
+            echo "$version_file"
+            exit 1
+          fi
+
+          if [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # 1.2.3 or 1.2.3rc1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            release_branch_name="package-release/${{ inputs.package }}/v$major.$minor.x"
+            next_version="$major.$((minor + 1)).0"
+          elif [[ $version =~ ^([0-9]+)\.([0-9]+)b([0-9]+)$ ]]; then
+            # 0.1b1
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            release_branch_name="package-release/${{ inputs.package }}/v$major.${minor}bx"
+            next_version="$major.$((minor + 1))b0"
+          else
+            echo "unexpected version: '$version'"
+            exit 1
+          fi
+
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "changelog=$changelog" >> $GITHUB_OUTPUT
+          echo "version_file=$version_file" >> $GITHUB_OUTPUT
+          echo "release_branch_name=$release_branch_name" >> $GITHUB_OUTPUT
+          echo "next_version=$next_version" >> $GITHUB_OUTPUT
+
+  create-pull-request-against-release-branch:
+    runs-on: ubuntu-latest
+    needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          echo "RELEASE_BRANCH_NAME=${{ needs.prereqs.outputs.release_branch_name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.prereqs.outputs.version }}" >> $GITHUB_ENV
+          echo "CHANGELOG=${{ needs.prereqs.outputs.changelog }}" >> $GITHUB_ENV
+          echo "VERSION_FILE=${{ needs.prereqs.outputs.version_file }}" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=${{ github.event.inputs.package }}" >> $GITHUB_ENV
+
+      - name: Create package release branch
+        run: |
+          git push origin HEAD:$RELEASE_BRANCH_NAME
+
+      - name: Update package version
+        run: |
+          # replace the version in the version file (1.2.3dev -> 1.2.3)
+          sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${VERSION}\"/g" $VERSION_FILE
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install tox
+        run: pip install tox
+      - name: run tox
+        run: tox -e generate
+
+      - name: Update the change log with the approximate release date
+        run: |
+          date=$(date "+%Y-%m-%d")
+          sed -Ei "s/^## Unreleased$/## Version ${VERSION} ($date)/" ${CHANGELOG}
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
+      - name: Create pull request against the release branch
+        env:
+          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+        run: |
+          message="Prepare release for ${PACKAGE_NAME} v${VERSION}"
+          branch="otelbot/prepare-${RELEASE_BRANCH_NAME}"
+
+          git commit -a -m "$message"
+          git push origin HEAD:$branch
+          gh pr create --title "[$RELEASE_BRANCH_NAME] $message" \
+                       --body "$message." \
+                       --head $branch \
+                       --base $RELEASE_BRANCH_NAME
+
+  create-pull-request-against-main:
+    runs-on: ubuntu-latest
+    needs: prereqs
+    permissions:
+      contents: write # required for pushing branches
+      pull-requests: write # required for creating pull requests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ github.event.inputs.package }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.prereqs.outputs.version }}" >> $GITHUB_ENV
+          echo "VERSION_FILE=${{ needs.prereqs.outputs.version_file }}" >> $GITHUB_ENV
+          echo "NEXT_VERSION=${{ needs.prereqs.outputs.next_version }}" >> $GITHUB_ENV
+          echo "CHANGELOG=${{ needs.prereqs.outputs.changelog }}" >> $GITHUB_ENV
+
+      - name: Update version
+        run: |
+          # replace the version in the version file (1.2.3dev -> 1.3.3.dev)
+          sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${NEXT_VERSION}.dev\"/g" $VERSION_FILE
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install tox
+        run: pip install tox
+      - name: run tox
+        run: tox -e generate
+
+      - name: Update the change log on main
+        run: |
+          # the actual release date on main will be updated at the end of the release workflow
+          date=$(date "+%Y-%m-%d")
+          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${VERSION} ($date)/" ${CHANGELOG}
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        id: otelbot-token-main
+        with:
+          app-id: ${{ vars.OTELBOT_APP_ID }}
+          private-key: ${{ secrets.OTELBOT_PRIVATE_KEY }}
+
+      - name: Create pull request against main
+        env:
+          # not using secrets.GITHUB_TOKEN since pull requests from that token do not run workflows
+          GITHUB_TOKEN: ${{ steps.otelbot-token-main.outputs.token }}
+        run: |
+          message="Update ${PACKAGE_NAME} version to v${NEXT_VERSION}"
+          body="Update \`${PACKAGE_NAME}\` version to v\`${NEXT_VERSION}\`."
+          branch="otelbot/update-${PACKAGE_NAME}-version-to-v${NEXT_VERSION}"
+
+          git commit -a -m "$message"
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main

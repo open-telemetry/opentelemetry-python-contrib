@@ -12,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-
-try:
-    from unittest import IsolatedAsyncioTestCase
-except ImportError:
-    # unittest.IsolatedAsyncioTestCase was introduced in Python 3.8. It's use
-    # simplifies the following tests. Without it, the amount of test code
-    # increases significantly, with most of the additional code handling
-    # the asyncio set up.
-    from unittest import TestCase
-
-    class IsolatedAsyncioTestCase(TestCase):
-        def run(self, result=None):
-            self.skipTest(
-                "This test requires Python 3.8 for unittest.IsolatedAsyncioTestCase"
-            )
-
+from unittest import IsolatedAsyncioTestCase
 
 import grpc
 import grpc.aio
-import pytest
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -40,7 +24,16 @@ from opentelemetry.instrumentation.grpc import (
     aio_server_interceptor,
 )
 from opentelemetry.sdk import trace as trace_sdk
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_IP,
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -74,13 +67,9 @@ class Servicer(GRPCTestServerServicer):
 
 
 async def run_with_test_server(
-    runnable, servicer=Servicer(), add_interceptor=True
+    runnable, servicer=Servicer(), interceptors=None
 ):
-    if add_interceptor:
-        interceptors = [aio_server_interceptor()]
-        server = grpc.aio.server(interceptors=interceptors)
-    else:
-        server = grpc.aio.server()
+    server = grpc.aio.server(interceptors=interceptors)
 
     add_GRPCTestServerServicer_to_server(servicer, server)
 
@@ -97,7 +86,6 @@ async def run_with_test_server(
     return resp
 
 
-@pytest.mark.asyncio
 class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
     async def test_instrumentor(self):
         """Check that automatic instrumentation configures the interceptor"""
@@ -112,7 +100,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 msg = request.SerializeToString()
                 return await channel.unary_unary(rpc_call)(msg)
 
-            await run_with_test_server(request, add_interceptor=False)
+            await run_with_test_server(request)
 
             spans_list = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans_list), 1)
@@ -122,7 +110,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertIs(span.kind, trace.SpanKind.SERVER)
 
             # Check version and name in span's instrumentation info
-            self.assertEqualSpanInstrumentationInfo(
+            self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.grpc
             )
 
@@ -130,14 +118,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -157,7 +143,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, add_interceptor=False)
+        await run_with_test_server(request)
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
@@ -171,7 +157,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request)
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -181,7 +169,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -189,14 +177,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -223,7 +209,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, servicer=TwoSpanServicer())
+        await run_with_test_server(
+            request,
+            servicer=TwoSpanServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -234,7 +224,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -242,14 +232,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -270,7 +258,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for response in channel.unary_stream(rpc_call)(msg):
                 print(response)
 
-        await run_with_test_server(request)
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -280,7 +270,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -288,14 +278,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -324,7 +312,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for response in channel.unary_stream(rpc_call)(msg):
                 print(response)
 
-        await run_with_test_server(request, servicer=TwoSpanServicer())
+        await run_with_test_server(
+            request,
+            servicer=TwoSpanServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -335,7 +327,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             parent_span, opentelemetry.instrumentation.grpc
         )
 
@@ -343,14 +335,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertSpanHasAttributes(
             parent_span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -384,7 +374,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         lifetime_servicer = SpanLifetimeServicer()
         active_span_before_call = trace.get_current_span()
 
-        await run_with_test_server(request, servicer=lifetime_servicer)
+        await run_with_test_server(
+            request,
+            servicer=lifetime_servicer,
+            interceptors=[aio_server_interceptor()],
+        )
 
         active_span_in_handler = lifetime_servicer.span
         active_span_after_call = trace.get_current_span()
@@ -407,7 +401,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             await request(channel)
             await request(channel)
 
-        await run_with_test_server(sequential_requests)
+        await run_with_test_server(
+            sequential_requests, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -427,14 +423,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -467,7 +461,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             await asyncio.gather(request(channel), request(channel))
 
         await run_with_test_server(
-            concurrent_requests, servicer=LatchedServicer()
+            concurrent_requests,
+            servicer=LatchedServicer(),
+            interceptors=[aio_server_interceptor()],
         )
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -488,14 +484,12 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertSpanHasAttributes(
                 span,
                 {
-                    SpanAttributes.NET_PEER_IP: "[::1]",
-                    SpanAttributes.NET_PEER_NAME: "localhost",
-                    SpanAttributes.RPC_METHOD: "SimpleMethod",
-                    SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                    SpanAttributes.RPC_SYSTEM: "grpc",
-                    SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                        0
-                    ],
+                    NET_PEER_IP: "[::1]",
+                    NET_PEER_NAME: "localhost",
+                    RPC_METHOD: "SimpleMethod",
+                    RPC_SERVICE: "GRPCTestServer",
+                    RPC_SYSTEM: "grpc",
+                    RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
                 },
             )
 
@@ -507,9 +501,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class AbortServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                await context.abort(
-                    grpc.StatusCode.FAILED_PRECONDITION, failure_message
-                )
+                await context.abort(grpc.StatusCode.INTERNAL, failure_message)
 
         testcase = self
 
@@ -520,12 +512,14 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(
-                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
-            )
+            self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
             self.assertEqual(cm.exception.details(), failure_message)
 
-        await run_with_test_server(request, servicer=AbortServicer())
+        await run_with_test_server(
+            request,
+            servicer=AbortServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -535,7 +529,7 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -543,21 +537,19 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+            f"{grpc.StatusCode.INTERNAL}:{failure_message}",
         )
 
         # Check attributes
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
             },
         )
 
@@ -590,7 +582,11 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             )
             self.assertEqual(cm.exception.details(), failure_message)
 
-        await run_with_test_server(request, servicer=AbortServicer())
+        await run_with_test_server(
+            request,
+            servicer=AbortServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -600,29 +596,78 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         # make sure this span errored, with the right status and detail
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description,
-            f"{grpc.StatusCode.FAILED_PRECONDITION}:{failure_message}",
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.status.description, None)
+
+        # Check attributes
+        self.assertSpanHasAttributes(
+            span,
+            {
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
+            },
+        )
+
+    async def test_non_list_interceptors(self):
+        """Check that we handle non-list interceptors correctly."""
+
+        grpc_server_instrumentor = GrpcAioInstrumentorServer()
+        grpc_server_instrumentor.instrument()
+
+        try:
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+
+            async def request(channel):
+                request = Request(client_id=1, request_data="test")
+                msg = request.SerializeToString()
+                return await channel.unary_unary(rpc_call)(msg)
+
+            class MockInterceptor(grpc.aio.ServerInterceptor):
+                async def intercept_service(
+                    self, continuation, handler_call_details
+                ):
+                    return await continuation(handler_call_details)
+
+            await run_with_test_server(
+                request, interceptors=(MockInterceptor(),)
+            )
+
+        finally:
+            grpc_server_instrumentor.uninstrument()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+
+        # Check version and name in span's instrumentation info
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
         )
 
         # Check attributes
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.NET_PEER_IP: "[::1]",
-                SpanAttributes.NET_PEER_NAME: "localhost",
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
-                    0
-                ],
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 

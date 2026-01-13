@@ -51,7 +51,6 @@ Usage
     pika_instrumentation = PikaInstrumentor()
     pika_instrumentation.instrument_channel(channel=channel)
 
-
     channel.basic_publish(exchange='', routing_key='hello', body=b'Hello World!')
 
     pika_instrumentation.uninstrument_channel(channel=channel)
@@ -60,7 +59,21 @@ Usage
 
 .. code-block:: python
 
+    import pika
+    from opentelemetry.instrumentation.pika import PikaInstrumentor
+    from opentelemetry.trace import get_tracer_provider
+
+    connection = pika.BlockingConnection(pika.URLParameters('amqp://localhost'))
+    channel = connection.channel()
+    tracer_provider = get_tracer_provider()
+
+    channel.queue_declare(queue='hello')
+
     PikaInstrumentor.instrument_channel(channel, tracer_provider=tracer_provider)
+
+    channel.basic_publish(exchange='', routing_key='hello', body=b'Hello World!')
+
+    PikaInstrumentor.uninstrument_channel(channel)
 
 * PikaInstrumentor also supports instrumenting with hooks that will be called when producing or consuming a message.
   The hooks should be of type "Callable[[Span, bytes, BasicProperties], None]"
@@ -69,13 +82,35 @@ Usage
 
 .. code-block:: python
 
+    import pika
+    from opentelemetry.instrumentation.pika import PikaInstrumentor
+    from opentelemetry.trace import Span
+    from pika import BasicProperties
+
     def publish_hook(span: Span, body: bytes, properties: BasicProperties):
         span.set_attribute("messaging.payload", body.decode())
 
     def consume_hook(span: Span, body: bytes, properties: BasicProperties):
         span.set_attribute("messaging.id", properties.message_id)
 
+    connection = pika.BlockingConnection(pika.URLParameters('amqp://localhost'))
+    channel = connection.channel()
+    channel.queue_declare(queue='hello')
+
     PikaInstrumentor.instrument_channel(channel, publish_hook=publish_hook, consume_hook=consume_hook)
+
+    channel.basic_publish(exchange='', routing_key='hello', body=b'Hello World!')
+
+    PikaInstrumentor.uninstrument_channel(channel)
+
+Consumer Instrumentation
+------------------------
+For consumer instrumentation, pika supports two consuming modes:
+
+* Consumers using the `basic_consume` method which accepts a callback. This is supported for global instrumentation
+  (`PikaInstrumentor().instrument()`) as well channel specific instrumentation (`PikaInstrumentor().instrument_channel(channel)`)
+* Consumers using the `consume` method which returns a generator over messages. This is supported for global
+  instrumentations only (`PikaInstrumentor().instrument()`)
 
 API
 ---

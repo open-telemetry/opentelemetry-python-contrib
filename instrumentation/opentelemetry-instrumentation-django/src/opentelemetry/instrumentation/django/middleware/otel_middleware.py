@@ -22,6 +22,17 @@ from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
+from opentelemetry.instrumentation._semconv import (
+    _filter_semconv_active_request_count_attr,
+    _filter_semconv_duration_attrs,
+    _report_new,
+    _report_old,
+    _server_active_requests_count_attrs_new,
+    _server_active_requests_count_attrs_old,
+    _server_duration_attrs_new,
+    _server_duration_attrs_old,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
@@ -29,7 +40,10 @@ from opentelemetry.instrumentation.utils import (
     _start_internal_or_server_span,
     extract_attributes_from_object,
 )
-from opentelemetry.instrumentation.wsgi import add_response_attributes
+from opentelemetry.instrumentation.wsgi import (
+    add_response_attributes,
+    wsgi_getter,
+)
 from opentelemetry.instrumentation.wsgi import (
     collect_custom_request_headers_attributes as wsgi_collect_custom_request_headers_attributes,
 )
@@ -39,21 +53,22 @@ from opentelemetry.instrumentation.wsgi import (
 from opentelemetry.instrumentation.wsgi import (
     collect_request_attributes as wsgi_collect_request_attributes,
 )
-from opentelemetry.instrumentation.wsgi import wsgi_getter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_TARGET,
+)
+from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
 from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
-    _parse_active_request_count_attrs,
-    _parse_duration_attrs,
     get_custom_headers,
     get_excluded_urls,
     get_traced_request_attrs,
     normalise_request_header_name,
     normalise_response_header_name,
+    sanitize_method,
 )
 
 try:
@@ -96,14 +111,17 @@ else:
 
 # try/except block exclusive for optional ASGI imports.
 try:
-    from opentelemetry.instrumentation.asgi import asgi_getter, asgi_setter
+    from opentelemetry.instrumentation.asgi import (
+        asgi_getter,
+        asgi_setter,
+        set_status_code,
+    )
     from opentelemetry.instrumentation.asgi import (
         collect_custom_headers_attributes as asgi_collect_custom_headers_attributes,
     )
     from opentelemetry.instrumentation.asgi import (
         collect_request_attributes as asgi_collect_request_attributes,
     )
-    from opentelemetry.instrumentation.asgi import set_status_code
 
     _is_asgi_supported = True
 except ImportError:
@@ -113,26 +131,6 @@ except ImportError:
     _is_asgi_supported = False
 
 _logger = getLogger(__name__)
-_attributes_by_preference = [
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.HTTP_HOST,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.HTTP_SERVER_NAME,
-        SpanAttributes.NET_HOST_PORT,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [
-        SpanAttributes.HTTP_SCHEME,
-        SpanAttributes.NET_HOST_NAME,
-        SpanAttributes.NET_HOST_PORT,
-        SpanAttributes.HTTP_TARGET,
-    ],
-    [SpanAttributes.HTTP_URL],
-]
 
 
 def _is_asgi_request(request: HttpRequest) -> bool:
@@ -159,16 +157,21 @@ class _DjangoMiddleware(MiddlewareMixin):
     _excluded_urls = get_excluded_urls("DJANGO")
     _tracer = None
     _meter = None
-    _duration_histogram = None
+    _duration_histogram_old = None
+    _duration_histogram_new = None
     _active_request_counter = None
+    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     _otel_request_hook: Callable[[Span, HttpRequest], None] = None
-    _otel_response_hook: Callable[
-        [Span, HttpRequest, HttpResponse], None
-    ] = None
+    _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
+        None
+    )
 
     @staticmethod
     def _get_span_name(request):
+        method = sanitize_method(request.method.strip())
+        if method == "_OTHER":
+            return "HTTP"
         try:
             if getattr(request, "resolver_match"):
                 match = request.resolver_match
@@ -176,10 +179,10 @@ class _DjangoMiddleware(MiddlewareMixin):
                 match = resolve(request.path)
 
             if hasattr(match, "route") and match.route:
-                return f"{request.method} {match.route}"
+                return f"{method} {match.route}"
 
             if hasattr(match, "url_name") and match.url_name:
-                return f"{request.method} {match.url_name}"
+                return f"{method} {match.url_name}"
 
             return request.method
 
@@ -187,6 +190,7 @@ class _DjangoMiddleware(MiddlewareMixin):
             return request.method
 
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-branches
     def process_request(self, request):
         # request.META is a dictionary containing all available HTTP headers
         # Read more about request.META here:
@@ -212,7 +216,10 @@ class _DjangoMiddleware(MiddlewareMixin):
             carrier_getter = wsgi_getter
             collect_request_attributes = wsgi_collect_request_attributes
 
-        attributes = collect_request_attributes(carrier)
+        attributes = collect_request_attributes(
+            carrier,
+            self._sem_conv_opt_in_mode,
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._tracer,
             span_name=self._get_span_name(request),
@@ -225,14 +232,15 @@ class _DjangoMiddleware(MiddlewareMixin):
         )
 
         active_requests_count_attrs = _parse_active_request_count_attrs(
-            attributes
+            attributes,
+            self._sem_conv_opt_in_mode,
         )
-        duration_attrs = _parse_duration_attrs(attributes)
 
-        request.META[
-            self._environ_active_request_attr_key
-        ] = active_requests_count_attrs
-        request.META[self._environ_duration_attr_key] = duration_attrs
+        request.META[self._environ_active_request_attr_key] = (
+            active_requests_count_attrs
+        )
+        # Pass all of attributes to duration key because we will filter during response
+        request.META[self._environ_duration_attr_key] = attributes
         self._active_request_counter.add(1, active_requests_count_attrs)
         if span.is_recording():
             attributes = extract_attributes_from_object(
@@ -286,9 +294,14 @@ class _DjangoMiddleware(MiddlewareMixin):
             request.META[self._environ_token] = token
 
         if _DjangoMiddleware._otel_request_hook:
-            _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                span, request
-            )
+            try:
+                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                    span, request
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Raising an exception here would leak the request span since process_response
+                # would not be called. Log the exception instead.
+                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -303,12 +316,20 @@ class _DjangoMiddleware(MiddlewareMixin):
         ):
             span = request.META[self._environ_span_key]
 
-            if span.is_recording():
-                match = getattr(request, "resolver_match", None)
-                if match:
-                    route = getattr(match, "route", None)
-                    if route:
-                        span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
+            match = getattr(request, "resolver_match", None)
+            if match:
+                route = getattr(match, "route", None)
+                if route:
+                    if span.is_recording():
+                        # http.route is present for both old and new semconv
+                        span.set_attribute(HTTP_ROUTE, route)
+                    duration_attrs = request.META[
+                        self._environ_duration_attr_key
+                    ]
+                    if _report_old(self._sem_conv_opt_in_mode):
+                        duration_attrs[HTTP_TARGET] = route
+                    if _report_new(self._sem_conv_opt_in_mode):
+                        duration_attrs[HTTP_ROUTE] = route
 
     def process_exception(self, request, exception):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
@@ -319,6 +340,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
     def process_response(self, request, response):
         if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
             return response
@@ -335,15 +357,16 @@ class _DjangoMiddleware(MiddlewareMixin):
         duration_attrs = request.META.pop(
             self._environ_duration_attr_key, None
         )
-        if duration_attrs:
-            duration_attrs[
-                SpanAttributes.HTTP_STATUS_CODE
-            ] = response.status_code
         request_start_time = request.META.pop(self._environ_timer_key, None)
 
         if activation and span:
             if is_asgi_request:
-                set_status_code(span, response.status_code)
+                set_status_code(
+                    span,
+                    response.status_code,
+                    metric_attributes=duration_attrs,
+                    sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
+                )
 
                 if span.is_recording() and span.kind == SpanKind.SERVER:
                     custom_headers = {}
@@ -369,6 +392,8 @@ class _DjangoMiddleware(MiddlewareMixin):
                     span,
                     f"{response.status_code} {response.reason_phrase}",
                     response.items(),
+                    duration_attrs=duration_attrs,
+                    sem_conv_opt_in_mode=self._sem_conv_opt_in_mode,
                 )
                 if span.is_recording() and span.kind == SpanKind.SERVER:
                     custom_attributes = (
@@ -385,11 +410,40 @@ class _DjangoMiddleware(MiddlewareMixin):
 
             # record any exceptions raised while processing the request
             exception = request.META.pop(self._environ_exception_key, None)
-            if _DjangoMiddleware._otel_response_hook:
-                _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
-                    span, request, response
-                )
 
+            if _DjangoMiddleware._otel_response_hook:
+                try:
+                    _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
+                        span, request, response
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    _logger.exception("Exception raised by response_hook")
+
+        if request_start_time is not None:
+            duration_s = default_timer() - request_start_time
+            if self._duration_histogram_old:
+                duration_attrs_old = _parse_duration_attrs(
+                    duration_attrs, _StabilityMode.DEFAULT
+                )
+                # http.target to be included in old semantic conventions
+                target = duration_attrs.get(HTTP_TARGET)
+                if target:
+                    duration_attrs_old[HTTP_TARGET] = target
+                self._duration_histogram_old.record(
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                )
+            if self._duration_histogram_new:
+                duration_attrs_new = _parse_duration_attrs(
+                    duration_attrs, _StabilityMode.HTTP
+                )
+                self._duration_histogram_new.record(
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                )
+        self._active_request_counter.add(-1, active_requests_count_attrs)
+
+        if activation and span:
             if exception:
                 activation.__exit__(
                     type(exception),
@@ -399,14 +453,30 @@ class _DjangoMiddleware(MiddlewareMixin):
             else:
                 activation.__exit__(None, None, None)
 
-        if request_start_time is not None:
-            duration = max(
-                round((default_timer() - request_start_time) * 1000), 0
-            )
-            self._duration_histogram.record(duration, duration_attrs)
-        self._active_request_counter.add(-1, active_requests_count_attrs)
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
 
         return response
+
+
+def _parse_duration_attrs(
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+):
+    return _filter_semconv_duration_attrs(
+        req_attrs,
+        _server_duration_attrs_old,
+        _server_duration_attrs_new,
+        sem_conv_opt_in_mode,
+    )
+
+
+def _parse_active_request_count_attrs(
+    req_attrs, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+):
+    return _filter_semconv_active_request_count_attr(
+        req_attrs,
+        _server_active_requests_count_attrs_old,
+        _server_active_requests_count_attrs_new,
+        sem_conv_opt_in_mode,
+    )

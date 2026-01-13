@@ -1,0 +1,58 @@
+---
+name: Feature Request
+description: Suggest an idea for this project
+labels: [feature-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a feature request against this repo, consider whether the feature should/could be implemented in the [other OpenTelemetry client libraries](https://github.com/open-telemetry/). If so, please [open an issue on opentelemetry-specification](https://github.com/open-telemetry/opentelemetry-specification/issues/new) first.
+  - type: textarea
+    id: related-problem
+    attributes:
+      label: What problem do you want to solve?
+      description: Is your feature request related to a problem? If so, provide a concise description of the problem.
+      placeholder: Describe the problem and include relevant issue IDs
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: What do you want to happen instead? What is the expected behavior?
+      placeholder: I'd like to ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: Which alternative solutions or features have you considered?
+      placeholder: Some potential solutions
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the feature request here.
+      placeholder: Some related requests in other projects or upstream spec proposals.
+    validations:
+      required: false
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to implement a fix?
+      description: |
+        For guidance on how to get started, refer to the [contribution guide](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md).
+      options:
+        - "No"
+        - "Yes"
+
+  - type: dropdown
+    attributes:
+      label: Tip
+      description: This element is static, used to render a helpful sub-heading for end-users and community members to help prioritize issues. Please leave as is.
+      options:
+        - <sub>[React](https://github.blog/news-insights/product-news/add-reactions-to-pull-requests-issues-and-comments/) with 👍 to help prioritize this issue. Please use comments to provide useful context, avoiding `+1` or `me too`, to help us triage it. Learn more [here](https://opentelemetry.io/community/end-user/issue-participation/).</sub>
+      default: 0

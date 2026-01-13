@@ -149,7 +149,7 @@ Usage Aio Client
     grpc_client_instrumentor.instrument()
 
     async def run():
-        with grpc.aio.insecure_channel("localhost:50051") as channel:
+        async with grpc.aio.insecure_channel("localhost:50051") as channel:
 
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
@@ -168,7 +168,7 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import aio_client_interceptors
 
-    channel = grpc.aio.insecure_channel("localhost:12345", interceptors=aio_client_interceptors())
+    async with grpc.aio.insecure_channel("localhost:50051", interceptors=aio_client_interceptors()) as channel:
 
 
 Usage Aio Server
@@ -253,6 +253,11 @@ You can also use the filters directly on the provided interceptors:
 
 .. code-block::
 
+    import grpc
+    from concurrent import futures
+    from opentelemetry.instrumentation.grpc import filters
+    from opentelemetry.instrumentation.grpc import server_interceptor
+
     my_interceptor = server_interceptor(
         filter_ = filters.negate(filters.method_name("TestMethod"))
     )
@@ -273,6 +278,7 @@ then the global interceptor automatically adds the filters to exclude requests t
 services ``GRPCTestServer`` and ``GRPCHealthServer``.
 
 """
+
 import os
 from typing import Callable, Collection, List, Union
 
@@ -333,7 +339,8 @@ class GrpcInstrumentorServer(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs:
+            if "interceptors" in kwargs and kwargs["interceptors"]:
+                kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
@@ -347,6 +354,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                         tracer_provider=tracer_provider, filter_=self._filter
                     )
                 ]
+
             return self._original_func(*args, **kwargs)
 
         grpc.server = server
@@ -385,7 +393,8 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def server(*args, **kwargs):
-            if "interceptors" in kwargs:
+            if "interceptors" in kwargs and kwargs["interceptors"]:
+                kwargs["interceptors"] = list(kwargs["interceptors"])
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
@@ -515,6 +524,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
     def _add_interceptors(self, tracer_provider, kwargs):
         if "interceptors" in kwargs and kwargs["interceptors"]:
+            kwargs["interceptors"] = list(kwargs["interceptors"])
             kwargs["interceptors"] = (
                 aio_client_interceptors(
                     tracer_provider=tracer_provider,
@@ -574,7 +584,7 @@ def client_interceptor(
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _client
+    from . import _client  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -604,7 +614,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _server
+    from . import _server  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -627,7 +637,7 @@ def aio_client_interceptors(
     Returns:
         An invocation-side interceptor object.
     """
-    from . import _aio_client
+    from . import _aio_client  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,
@@ -673,7 +683,7 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     Returns:
         A service-side interceptor object.
     """
-    from . import _aio_server
+    from . import _aio_server  # noqa: PLC0415
 
     tracer = trace.get_tracer(
         __name__,

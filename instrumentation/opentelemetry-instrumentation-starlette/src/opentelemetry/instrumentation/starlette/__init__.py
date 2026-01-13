@@ -55,29 +55,35 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span and an ASGI scope when the method ``receive`` is called.
-- The client response hook is called with the internal span and an ASGI event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
 
 For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict):
+    from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+    from opentelemetry.trace import Span
+    from typing import Any
+
+    def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
-    def client_request_hook(span: Span, scope: dict):
+
+    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
-    def client_response_hook(span: Span, message: dict):
+
+    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -108,10 +114,10 @@ Additionally, the special keyword ``all`` can be used to capture all request hea
 
 The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.request.header.custom_request_header = ["<value1>,<value2>"]``
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
 Response headers
 ****************
@@ -142,10 +148,10 @@ Additionally, the special keyword ``all`` can be used to capture all response he
 
 The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
 is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+list containing the header values.
 
 For example:
-``http.response.header.custom_response_header = ["<value1>,<value2>"]``
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
 
 Sanitizing headers
 ******************
@@ -167,32 +173,49 @@ Note:
 API
 ---
 """
-import typing
-from typing import Collection
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Collection, cast
+from weakref import WeakSet
 
 from starlette import applications
 from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.instrumentation.asgi.types import (
+    ClientRequestHook,
+    ClientResponseHook,
+    ServerRequestHook,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
-from opentelemetry.metrics import get_meter
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
+from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
+from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
+
+if TYPE_CHECKING:
+    from typing import TypedDict, Unpack
+
+    class InstrumentKwargs(TypedDict, total=False):
+        tracer_provider: TracerProvider
+        meter_provider: MeterProvider
+        server_request_hook: ServerRequestHook
+        client_request_hook: ClientRequestHook
+        client_response_hook: ClientResponseHook
+
 
 _excluded_urls = get_excluded_urls("STARLETTE")
 
-_ServerRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientRequestHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-_ClientResponseHookT = typing.Optional[typing.Callable[[Span, dict], None]]
-
 
 class StarletteInstrumentor(BaseInstrumentor):
-    """An instrumentor for starlette
+    """An instrumentor for Starlette.
 
-    See `BaseInstrumentor`
+    See `BaseInstrumentor`.
     """
 
     _original_starlette = None
@@ -200,20 +223,26 @@ class StarletteInstrumentor(BaseInstrumentor):
     @staticmethod
     def instrument_app(
         app: applications.Starlette,
-        server_request_hook: _ServerRequestHookT = None,
-        client_request_hook: _ClientRequestHookT = None,
-        client_response_hook: _ClientResponseHookT = None,
-        meter_provider=None,
-        tracer_provider=None,
+        server_request_hook: ServerRequestHook = None,
+        client_request_hook: ClientRequestHook = None,
+        client_response_hook: ClientResponseHook = None,
+        meter_provider: MeterProvider | None = None,
+        tracer_provider: TracerProvider | None = None,
     ):
         """Instrument an uninstrumented Starlette application."""
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         meter = get_meter(
             __name__,
             __version__,
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        if not getattr(app, "is_instrumented_by_opentelemetry", False):
+        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
@@ -221,14 +250,14 @@ class StarletteInstrumentor(BaseInstrumentor):
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
                 client_response_hook=client_response_hook,
-                tracer_provider=tracer_provider,
+                # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+                tracer=tracer,
                 meter=meter,
             )
-            app.is_instrumented_by_opentelemetry = True
+            app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
-            if app not in _InstrumentedStarlette._instrumented_starlette_apps:
-                _InstrumentedStarlette._instrumented_starlette_apps.add(app)
+            _InstrumentedStarlette._instrumented_starlette_apps.add(app)
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
@@ -243,7 +272,7 @@ class StarletteInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
         _InstrumentedStarlette._server_request_hook = kwargs.get(
@@ -255,11 +284,11 @@ class StarletteInstrumentor(BaseInstrumentor):
         _InstrumentedStarlette._client_response_hook = kwargs.get(
             "client_response_hook"
         )
-        _InstrumentedStarlette._meter_provider = kwargs.get("_meter_provider")
+        _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
 
         applications.Starlette = _InstrumentedStarlette
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Any):
         """uninstrumenting all created apps by user"""
         for instance in _InstrumentedStarlette._instrumented_starlette_apps:
             self.uninstrument_app(instance)
@@ -268,15 +297,21 @@ class StarletteInstrumentor(BaseInstrumentor):
 
 
 class _InstrumentedStarlette(applications.Starlette):
-    _tracer_provider = None
-    _meter_provider = None
-    _server_request_hook: _ServerRequestHookT = None
-    _client_request_hook: _ClientRequestHookT = None
-    _client_response_hook: _ClientResponseHookT = None
-    _instrumented_starlette_apps = set()
+    _tracer_provider: TracerProvider | None = None
+    _meter_provider: MeterProvider | None = None
+    _server_request_hook: ServerRequestHook = None
+    _client_request_hook: ClientRequestHook = None
+    _client_response_hook: ClientResponseHook = None
+    _instrumented_starlette_apps: WeakSet[applications.Starlette] = WeakSet()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            _InstrumentedStarlette._tracer_provider,
+            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -290,57 +325,62 @@ class _InstrumentedStarlette(applications.Starlette):
             server_request_hook=_InstrumentedStarlette._server_request_hook,
             client_request_hook=_InstrumentedStarlette._client_request_hook,
             client_response_hook=_InstrumentedStarlette._client_response_hook,
-            tracer_provider=_InstrumentedStarlette._tracer_provider,
+            # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
+            tracer=tracer,
             meter=meter,
         )
         self._is_instrumented_by_opentelemetry = True
         # adding apps to set for uninstrumenting
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 
-    def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
 
-
-def _get_route_details(scope):
+def _get_route_details(scope: dict[str, Any]) -> str | None:
     """
-    Function to retrieve Starlette route from scope.
+    Function to retrieve Starlette route from ASGI scope.
 
     TODO: there is currently no way to retrieve http.route from
     a starlette application from scope.
     See: https://github.com/encode/starlette/pull/804
 
     Args:
-        scope: A Starlette scope
+        scope: The ASGI scope that contains the Starlette application in the "app" key.
+
     Returns:
-        A string containing the route or None
+        The path to the route if found, otherwise None.
     """
-    app = scope["app"]
-    route = None
+    app = cast(applications.Starlette, scope["app"])
+    route: str | None = None
 
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
         if match == Match.FULL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                # routes added via host routing won't have a path attribute
+                route = scope.get("path")
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
     return route
 
 
-def _get_default_span_details(scope):
-    """
-    Callback to retrieve span name and attributes from scope.
+def _get_default_span_details(
+    scope: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    """Callback to retrieve span name and attributes from ASGI scope.
 
     Args:
-        scope: A Starlette scope
+        scope: The ASGI scope that contains the Starlette application in the "app" key.
+
     Returns:
-        A tuple of span name and attributes
+        A tuple of span name and attributes.
     """
     route = _get_route_details(scope)
-    method = scope.get("method", "")
-    attributes = {}
+    method: str = scope.get("method", "")
+    attributes: dict[str, Any] = {}
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket

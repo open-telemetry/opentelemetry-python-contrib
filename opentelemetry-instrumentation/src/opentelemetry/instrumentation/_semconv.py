@@ -12,160 +12,182 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import threading
 from enum import Enum
+from typing import Container, Mapping, MutableMapping
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+    NET_PEER_IP,
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.client_attributes import (
+    CLIENT_ADDRESS,
+    CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_REQUEST_METHOD_ORIGINAL,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_FULL,
+    URL_PATH,
+    URL_QUERY,
+    URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
+from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.trace import Span
+from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.types import AttributeValue
 
-# TODO: will come through semconv package once updated
-_SPAN_ATTRIBUTES_ERROR_TYPE = "error.type"
-_SPAN_ATTRIBUTES_NETWORK_PEER_ADDRESS = "network.peer.address"
-_SPAN_ATTRIBUTES_NETWORK_PEER_PORT = "network.peer.port"
-_METRIC_ATTRIBUTES_CLIENT_DURATION_NAME = "http.client.request.duration"
+# Values defined in milliseconds
+HTTP_DURATION_HISTOGRAM_BUCKETS_OLD = (
+    0.0,
+    5.0,
+    10.0,
+    25.0,
+    50.0,
+    75.0,
+    100.0,
+    250.0,
+    500.0,
+    750.0,
+    1000.0,
+    2500.0,
+    5000.0,
+    7500.0,
+    10000.0,
+)
+
+# Values defined in seconds
+HTTP_DURATION_HISTOGRAM_BUCKETS_NEW = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    2.5,
+    5,
+    7.5,
+    10,
+)
+
+# These lists represent attributes for metrics that are currently supported
 
 _client_duration_attrs_old = [
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.NET_PEER_PORT,
-    SpanAttributes.NET_PEER_NAME,
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_FLAVOR,
+    HTTP_SCHEME,
+    NET_PEER_PORT,
+    NET_PEER_NAME,
 ]
 
 _client_duration_attrs_new = [
-    _SPAN_ATTRIBUTES_ERROR_TYPE,
-    SpanAttributes.HTTP_REQUEST_METHOD,
-    SpanAttributes.HTTP_RESPONSE_STATUS_CODE,
-    SpanAttributes.NETWORK_PROTOCOL_VERSION,
-    SpanAttributes.SERVER_ADDRESS,
-    SpanAttributes.SERVER_PORT,
+    ERROR_TYPE,
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    NETWORK_PROTOCOL_VERSION,
+    SERVER_ADDRESS,
+    SERVER_PORT,
     # TODO: Support opt-in for scheme in new semconv
-    # SpanAttributes.URL_SCHEME,
+    # URL_SCHEME,
 ]
 
+_server_duration_attrs_old = [
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+]
 
-def _filter_duration_attrs(attrs, sem_conv_opt_in_mode):
-    filtered_attrs = {}
-    allowed_attributes = (
-        _client_duration_attrs_new
-        if sem_conv_opt_in_mode == _OpenTelemetryStabilityMode.HTTP
-        else _client_duration_attrs_old
-    )
-    for key, val in attrs.items():
-        if key in allowed_attributes:
-            filtered_attrs[key] = val
-    return filtered_attrs
+_server_duration_attrs_new = [
+    ERROR_TYPE,
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+    NETWORK_PROTOCOL_VERSION,
+    URL_SCHEME,
+]
 
+_server_active_requests_count_attrs_old = [
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+]
 
-def set_string_attribute(result, key, value):
-    if value:
-        result[key] = value
+_server_active_requests_count_attrs_new = [
+    HTTP_REQUEST_METHOD,
+    URL_SCHEME,
+    # TODO: Support SERVER_ADDRESS AND SERVER_PORT
+]
 
-
-def set_int_attribute(result, key, value):
-    if value:
-        try:
-            result[key] = int(value)
-        except ValueError:
-            return
-
-
-def _set_http_method(result, original, normalized, sem_conv_opt_in_mode):
-    original = original.strip()
-    normalized = normalized.strip()
-    # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
-    # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
-    if original != normalized and _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, SpanAttributes.HTTP_REQUEST_METHOD_ORIGINAL, original
-        )
-
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_METHOD, normalized)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, SpanAttributes.HTTP_REQUEST_METHOD, normalized
-        )
+OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
 
-def _set_http_url(result, url, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_URL, url)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.URL_FULL, url)
-
-
-def _set_http_scheme(result, scheme, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_SCHEME, scheme)
-    # TODO: Support opt-in for scheme in new semconv
-    # if _report_new(sem_conv_opt_in_mode):
-    #     set_string_attribute(result, SpanAttributes.URL_SCHEME, scheme)
-
-
-def _set_http_hostname(result, hostname, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_HOST, hostname)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, hostname)
-
-
-def _set_http_net_peer_name(result, peer_name, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.NET_PEER_NAME, peer_name)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.SERVER_ADDRESS, peer_name)
-
-
-def _set_http_port(result, port, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.NET_PEER_PORT, port)
-    if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.SERVER_PORT, port)
-
-
-def _set_http_status_code(result, code, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_int_attribute(result, SpanAttributes.HTTP_STATUS_CODE, code)
-    if _report_new(sem_conv_opt_in_mode):
-        set_int_attribute(
-            result, SpanAttributes.HTTP_RESPONSE_STATUS_CODE, code
-        )
-
-
-def _set_http_network_protocol_version(result, version, sem_conv_opt_in_mode):
-    if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, SpanAttributes.HTTP_FLAVOR, version)
-    if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(
-            result, SpanAttributes.NETWORK_PROTOCOL_VERSION, version
-        )
-
-
-_OTEL_SEMCONV_STABILITY_OPT_IN_KEY = "OTEL_SEMCONV_STABILITY_OPT_IN"
-
-
-class _OpenTelemetryStabilitySignalType:
+class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
+    DATABASE = "database"
+    GEN_AI = "gen_ai"
 
 
-class _OpenTelemetryStabilityMode(Enum):
-    # http - emit the new, stable HTTP and networking conventions ONLY
-    HTTP = "http"
-    # http/dup - emit both the old and the stable HTTP and networking conventions
-    HTTP_DUP = "http/dup"
-    # default - continue emitting old experimental HTTP and networking conventions
+class _StabilityMode(Enum):
     DEFAULT = "default"
+    HTTP = "http"
+    HTTP_DUP = "http/dup"
+    DATABASE = "database"
+    DATABASE_DUP = "database/dup"
+    GEN_AI_LATEST_EXPERIMENTAL = "gen_ai_latest_experimental"
 
 
-def _report_new(mode):
-    return mode.name != _OpenTelemetryStabilityMode.DEFAULT.name
+def _report_new(mode: _StabilityMode):
+    return mode != _StabilityMode.DEFAULT
 
 
-def _report_old(mode):
-    return mode.name != _OpenTelemetryStabilityMode.HTTP.name
+def _report_old(mode: _StabilityMode):
+    return mode not in (_StabilityMode.HTTP, _StabilityMode.DATABASE)
 
 
 class _OpenTelemetrySemanticConventionStability:
@@ -175,43 +197,385 @@ class _OpenTelemetrySemanticConventionStability:
 
     @classmethod
     def _initialize(cls):
-        with _OpenTelemetrySemanticConventionStability._lock:
-            if not _OpenTelemetrySemanticConventionStability._initialized:
-                # Users can pass in comma delimited string for opt-in options
-                # Only values for http stability are supported for now
-                opt_in = os.environ.get(_OTEL_SEMCONV_STABILITY_OPT_IN_KEY, "")
-                opt_in_list = []
-                if opt_in:
-                    opt_in_list = [s.strip() for s in opt_in.split(",")]
-                http_opt_in = _OpenTelemetryStabilityMode.DEFAULT
-                if opt_in_list:
-                    # Process http opt-in
-                    # http/dup takes priority over http
-                    if (
-                        _OpenTelemetryStabilityMode.HTTP_DUP.value
-                        in opt_in_list
-                    ):
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP_DUP
-                    elif _OpenTelemetryStabilityMode.HTTP.value in opt_in_list:
-                        http_opt_in = _OpenTelemetryStabilityMode.HTTP
-                _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
-                    _OpenTelemetryStabilitySignalType.HTTP
-                ] = http_opt_in
-                _OpenTelemetrySemanticConventionStability._initialized = True
+        with cls._lock:
+            if cls._initialized:
+                return
+
+            # Users can pass in comma delimited string for opt-in options
+            # Only values for http, gen ai, and database stability are supported for now
+            opt_in = os.environ.get(OTEL_SEMCONV_STABILITY_OPT_IN)
+
+            if not opt_in:
+                # early return in case of default
+                cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = {
+                    _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
+                }
+                cls._initialized = True
+                return
+
+            opt_in_list = [s.strip() for s in opt_in.split(",")]
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.HTTP
+            ] = cls._filter_mode(
+                opt_in_list, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP
+            )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.DEFAULT,
+                _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+            )
+
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.DATABASE
+            ] = cls._filter_mode(
+                opt_in_list,
+                _StabilityMode.DATABASE,
+                _StabilityMode.DATABASE_DUP,
+            )
+            cls._initialized = True
+
+    @staticmethod
+    def _filter_mode(opt_in_list, stable_mode, dup_mode):
+        # Process semconv stability opt-in
+        # http/dup,database/dup has higher precedence over http,database
+        if dup_mode.value in opt_in_list:
+            return dup_mode
+
+        return (
+            stable_mode
+            if stable_mode.value in opt_in_list
+            else _StabilityMode.DEFAULT
+        )
 
     @classmethod
-    # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)
     def _get_opentelemetry_stability_opt_in_mode(
-        cls,
-        signal_type: _OpenTelemetryStabilitySignalType,
-    ) -> _OpenTelemetryStabilityMode:
-        return _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
-            signal_type, _OpenTelemetryStabilityMode.DEFAULT
+        cls, signal_type: _OpenTelemetryStabilitySignalType
+    ) -> _StabilityMode:
+        # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)
+        return cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
+            signal_type, _StabilityMode.DEFAULT
         )
 
 
+def _filter_semconv_duration_attrs(
+    attrs: Mapping[str, AttributeValue],
+    old_attrs: Container[AttributeValue],
+    new_attrs: Container[AttributeValue],
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> dict[str, AttributeValue]:
+    filtered_attrs = {}
+    # duration is two different metrics depending on sem_conv_opt_in_mode, so no DUP attributes
+    allowed_attributes = (
+        new_attrs if sem_conv_opt_in_mode == _StabilityMode.HTTP else old_attrs
+    )
+    for key, val in attrs.items():
+        if key in allowed_attributes:
+            filtered_attrs[key] = val
+    return filtered_attrs
+
+
+def _filter_semconv_active_request_count_attr(
+    attrs: Mapping[str, AttributeValue],
+    old_attrs: Container[AttributeValue],
+    new_attrs: Container[AttributeValue],
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> dict[str, AttributeValue]:
+    filtered_attrs = {}
+    if _report_old(sem_conv_opt_in_mode):
+        for key, val in attrs.items():
+            if key in old_attrs:
+                filtered_attrs[key] = val
+    if _report_new(sem_conv_opt_in_mode):
+        for key, val in attrs.items():
+            if key in new_attrs:
+                filtered_attrs[key] = val
+    return filtered_attrs
+
+
+def set_string_attribute(
+    result: MutableMapping[str, AttributeValue],
+    key: str,
+    value: AttributeValue,
+) -> None:
+    if value:
+        result[key] = value
+
+
+def set_int_attribute(
+    result: MutableMapping[str, AttributeValue],
+    key: str,
+    value: AttributeValue,
+) -> None:
+    if value:
+        try:
+            result[key] = int(value)
+        except ValueError:
+            return
+
+
+def _set_http_method(
+    result: MutableMapping[str, AttributeValue],
+    original: str,
+    normalized: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    original = original.strip()
+    normalized = normalized.strip()
+    # See https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#common-attributes
+    # Method is case sensitive. "http.request.method_original" should not be sanitized or automatically capitalized.
+    if original != normalized and _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_REQUEST_METHOD_ORIGINAL, original)
+
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_METHOD, normalized)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_REQUEST_METHOD, normalized)
+
+
+def _set_http_status_code(
+    result: MutableMapping[str, AttributeValue],
+    code: str | int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, HTTP_STATUS_CODE, code)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, HTTP_RESPONSE_STATUS_CODE, code)
+
+
+def _set_http_url(
+    result: MutableMapping[str, AttributeValue],
+    url: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_URL, url)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, URL_FULL, url)
+
+
+def _set_http_scheme(
+    result: MutableMapping[str, AttributeValue],
+    scheme: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_SCHEME, scheme)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, URL_SCHEME, scheme)
+
+
+def _set_http_flavor_version(
+    result: MutableMapping[str, AttributeValue],
+    version: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_FLAVOR, version)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
+
+
+def _set_http_user_agent(
+    result: MutableMapping[str, AttributeValue],
+    user_agent: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_USER_AGENT, user_agent)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, USER_AGENT_ORIGINAL, user_agent)
+
+
+# Client
+
+
+def _set_http_host_client(
+    result: MutableMapping[str, AttributeValue],
+    host: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_HOST, host)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SERVER_ADDRESS, host)
+
+
+def _set_http_net_peer_name_client(
+    result: MutableMapping[str, AttributeValue],
+    peer_name: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_PEER_NAME, peer_name)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SERVER_ADDRESS, peer_name)
+
+
+def _set_http_peer_port_client(
+    result: MutableMapping[str, AttributeValue],
+    port: str | int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, NET_PEER_PORT, port)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, SERVER_PORT, port)
+
+
+def _set_http_network_protocol_version(
+    result: MutableMapping[str, AttributeValue],
+    version: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_FLAVOR, version)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_PROTOCOL_VERSION, version)
+
+
+# Server
+
+
+def _set_http_net_host(
+    result: MutableMapping[str, AttributeValue],
+    host: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_HOST_NAME, host)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, SERVER_ADDRESS, host)
+
+
+def _set_http_net_host_port(
+    result: MutableMapping[str, AttributeValue],
+    port: str | int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, NET_HOST_PORT, port)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, SERVER_PORT, port)
+
+
+def _set_http_target(
+    result: MutableMapping[str, AttributeValue],
+    target: str,
+    path: str | None,
+    query: str | None,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_TARGET, target)
+    if _report_new(sem_conv_opt_in_mode):
+        if path:
+            set_string_attribute(result, URL_PATH, path)
+        if query:
+            set_string_attribute(result, URL_QUERY, query)
+
+
+def _set_http_host_server(
+    result: MutableMapping[str, AttributeValue],
+    host: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, HTTP_HOST, host)
+    if _report_new(sem_conv_opt_in_mode):
+        if not result.get(SERVER_ADDRESS):
+            set_string_attribute(result, SERVER_ADDRESS, host)
+
+
+# net.peer.ip -> net.sock.peer.addr
+# https://github.com/open-telemetry/semantic-conventions/blob/40db676ca0e735aa84f242b5a0fb14e49438b69b/schemas/1.15.0#L18
+# net.sock.peer.addr -> client.socket.address for server spans (TODO) AND client.address if missing
+# https://github.com/open-telemetry/semantic-conventions/blob/v1.21.0/CHANGELOG.md#v1210-2023-07-13
+# https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md#common-attributes-across-http-client-and-server-spans
+def _set_http_peer_ip_server(
+    result: MutableMapping[str, AttributeValue],
+    ip: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_PEER_IP, ip)
+    if _report_new(sem_conv_opt_in_mode):
+        # Only populate if not already populated
+        if not result.get(CLIENT_ADDRESS):
+            set_string_attribute(result, CLIENT_ADDRESS, ip)
+
+
+def _set_http_peer_port_server(
+    result: MutableMapping[str, AttributeValue],
+    port: str | int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_int_attribute(result, NET_PEER_PORT, port)
+    if _report_new(sem_conv_opt_in_mode):
+        set_int_attribute(result, CLIENT_PORT, port)
+
+
+def _set_http_net_peer_name_server(
+    result: MutableMapping[str, AttributeValue],
+    name: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_PEER_NAME, name)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, CLIENT_ADDRESS, name)
+
+
+def _set_status(
+    span: Span,
+    metrics_attributes: MutableMapping[str, AttributeValue],
+    status_code: int,
+    status_code_str: str,
+    server_span: bool = True,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+) -> None:
+    if status_code < 0:
+        if _report_new(sem_conv_opt_in_mode):
+            metrics_attributes[ERROR_TYPE] = status_code_str
+        if span.is_recording():
+            if _report_new(sem_conv_opt_in_mode):
+                span.set_attribute(ERROR_TYPE, status_code_str)
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    "Non-integer HTTP status: " + status_code_str,
+                )
+            )
+    else:
+        status = http_status_to_status_code(
+            status_code, server_span=server_span
+        )
+
+        if _report_old(sem_conv_opt_in_mode):
+            if span.is_recording():
+                span.set_attribute(HTTP_STATUS_CODE, status_code)
+            metrics_attributes[HTTP_STATUS_CODE] = status_code
+        if _report_new(sem_conv_opt_in_mode):
+            if span.is_recording():
+                span.set_attribute(HTTP_RESPONSE_STATUS_CODE, status_code)
+            metrics_attributes[HTTP_RESPONSE_STATUS_CODE] = status_code
+            if status == StatusCode.ERROR:
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, status_code_str)
+                metrics_attributes[ERROR_TYPE] = status_code_str
+        if span.is_recording():
+            span.set_status(Status(status))
+
+
 # Get schema version based off of opt-in mode
-def _get_schema_url(mode: _OpenTelemetryStabilityMode) -> str:
-    if mode is _OpenTelemetryStabilityMode.DEFAULT:
+def _get_schema_url(mode: _StabilityMode) -> str:
+    if mode is _StabilityMode.DEFAULT:
         return "https://opentelemetry.io/schemas/1.11.0"
-    return SpanAttributes.SCHEMA_URL
+    return Schemas.V1_21_0.value

@@ -1,0 +1,98 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say this is a test",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "role": "assistant",
+            "content": [
+              {
+                "text": "This is a test",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "role": "user",
+            "content": [
+              {
+                "text": "Say again this is a test",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "anthropic_version": "bedrock-2023-05-31",
+        "system": "You are a friendly model",
+        "max_tokens": 10
+      }
+    headers:
+      Content-Length:
+      - '357'
+      User-Agent:
+      - Boto3/1.35.56 md/Botocore#1.35.56 ua/2.0 os/linux#6.1.0-1034-oem md/arch#x86_64
+        lang/python#3.10.12 md/pyimpl#CPython cfg/retry-mode#legacy Botocore/1.35.56
+      X-Amz-Date:
+      - 20250213T113029Z
+      X-Amz-Security-Token:
+      - test_aws_security_token
+      X-Amzn-Trace-Id:
+      - Root=1-ebb1f004-773abbf27202dcf183809217;Parent=e7ecc8b27ef7ce36;Sampled=1
+      amz-sdk-invocation-id:
+      - 656f63a7-9bca-490b-953e-1d4a126a79da
+      amz-sdk-request:
+      - attempt=1
+      authorization:
+      - Bearer test_aws_authorization
+    method: POST
+    uri: https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-v2/invoke
+  response:
+    body:
+      string: |-
+        {
+          "id": "msg_bdrk_01UnsouyLmsvQU98E9WzpGCp",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-2.0",
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a test"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 37,
+            "output_tokens": 8
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 13 Feb 2025 11:30:30 GMT
+      Set-Cookie: test_set_cookie
+      X-Amzn-Bedrock-Input-Token-Count:
+      - '37'
+      X-Amzn-Bedrock-Invocation-Latency:
+      - '335'
+      X-Amzn-Bedrock-Output-Token-Count:
+      - '8'
+      x-amzn-RequestId:
+      - 3daf61e4-4dbc-4c62-af7b-a8b395e4156c
+    status:
+      code: 200
+      message: OK
+version: 1

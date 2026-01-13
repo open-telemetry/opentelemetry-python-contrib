@@ -13,72 +13,10 @@
 # limitations under the License.
 
 """
-The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
+The integration with PostgreSQL supports the `psycopg2`_ library. It can be enabled by
 using ``Psycopg2Instrumentor``.
 
-.. _Psycopg: http://initd.org/psycopg/
-
-SQLCOMMENTER
-*****************************************
-You can optionally configure Psycopg2 instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-
-    Psycopg2Instrumentor().instrument(enable_commenter=True, commenter_options={})
-
-
-For example,
-::
-
-   Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
-
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
-
-db_driver = True(Default) or False
-
-For example,
-::
-Enabling this flag will add psycopg2 and it's version which is /*psycopg2%%3A2.9.3*/
-
-dbapi_threadsafety = True(Default) or False
-
-For example,
-::
-Enabling this flag will add threadsafety /*dbapi_threadsafety=2*/
-
-dbapi_level = True(Default) or False
-
-For example,
-::
-Enabling this flag will add dbapi_level /*dbapi_level='2.0'*/
-
-libpq_version = True(Default) or False
-
-For example,
-::
-Enabling this flag will add libpq_version /*libpq_version=140001*/
-
-driver_paramstyle = True(Default) or False
-
-For example,
-::
-Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
-
-opentelemetry_values = True(Default) or False
-
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
+.. _Psycopg2: https://www.psycopg.org/docs/
 
 Usage
 -----
@@ -88,14 +26,115 @@ Usage
     import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
-
+    # Call instrument() to wrap all database connections
     Psycopg2Instrumentor().instrument()
 
     cnx = psycopg2.connect(database='Database')
+
     cursor = cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
     cursor.execute("INSERT INTO test (testField) VALUES (123)")
     cursor.close()
     cnx.close()
+
+.. code-block:: python
+
+    import psycopg2
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Alternatively, use instrument_connection for an individual connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(cnx)
+    cursor = instrumented_cnx.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+    cursor.execute("INSERT INTO test (testField) VALUES (123)")
+    cursor.close()
+    instrumented_cnx.close()
+
+Configuration
+-------------
+
+SQLCommenter
+************
+You can optionally configure Psycopg2 instrumentation to enable sqlcommenter which enriches
+the query with contextual information. Queries made after setting up trace integration with
+sqlcommenter enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This supports context
+propagation between database client and server when database log records are enabled.
+For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    Psycopg2Instrumentor().instrument(enable_commenter=True)
+
+
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Opts into sqlcomment for Psycopg2 trace integration.
+    # Opts out of tags for libpq_version, db_driver.
+    Psycopg2Instrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "libpq_version": False,
+            "db_driver": False,
+        }
+    )
+
+Available commenter_options
+###########################
+
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
+
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version.                        | ``psycopg2='2.9.3'``                                                      |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``libpq_version``         | PostgreSQL libpq version                                  | ``libpq_version=140001``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    # Opts into sqlcomment for Psycopg2 trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    Psycopg2Instrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+Warning:
+    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---
@@ -103,6 +142,7 @@ API
 
 import logging
 import typing
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import psycopg2
@@ -113,7 +153,11 @@ from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.psycopg2.package import _instruments
+from opentelemetry.instrumentation.psycopg2.package import (
+    _instruments_any,
+    _instruments_psycopg2,
+    _instruments_psycopg2_binary,
+)
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
@@ -131,7 +175,22 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     _DATABASE_SYSTEM = "postgresql"
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        # Determine which package of psycopg2 is installed
+        # Right now there are two packages, psycopg2 and psycopg2-binary
+        # The latter is a binary wheel package that does not require a compiler
+        try:
+            distribution("psycopg2")
+            return (_instruments_psycopg2,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("psycopg2-binary")
+            return (_instruments_psycopg2_binary,)
+        except PackageNotFoundError:
+            pass
+
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         """Integrate with PostgreSQL Psycopg library.
@@ -140,6 +199,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
+        enable_attribute_commenter = kwargs.get(
+            "enable_attribute_commenter", False
+        )
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -151,6 +213,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             db_api_integration_factory=DatabaseApiIntegration,
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     def _uninstrument(self, **kwargs):
@@ -160,6 +223,19 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(connection, tracer_provider=None):
+        """Enable instrumentation in a psycopg2 connection.
+
+        Args:
+            connection: psycopg2.extensions.connection
+                The psycopg2 connection object to be instrumented.
+            tracer_provider: opentelemetry.trace.TracerProvider, optional
+                The TracerProvider to use for instrumentation. If not specified,
+                the global TracerProvider will be used.
+
+        Returns:
+            An instrumented psycopg2 connection object.
+        """
+
         if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
             connection._is_instrumented_by_opentelemetry = False
 

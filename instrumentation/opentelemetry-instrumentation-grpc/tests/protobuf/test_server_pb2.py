@@ -142,7 +142,7 @@ Request = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _REQUEST,
-        "__module__": "test_server_pb2"
+        "__module__": "test_server_pb2",
         # @@protoc_insertion_point(class_scope:Request)
     },
 )
@@ -153,7 +153,7 @@ Response = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _RESPONSE,
-        "__module__": "test_server_pb2"
+        "__module__": "test_server_pb2",
         # @@protoc_insertion_point(class_scope:Response)
     },
 )

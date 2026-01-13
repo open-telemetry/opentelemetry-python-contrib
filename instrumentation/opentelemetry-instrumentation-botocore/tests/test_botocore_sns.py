@@ -18,9 +18,12 @@ from unittest import mock
 
 import botocore.session
 from botocore.awsrequest import AWSResponse
-from moto import mock_sns
+from moto import mock_aws
 
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+from opentelemetry.semconv._incubating.attributes.aws_attributes import (
+    AWS_SNS_TOPIC_ARN,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
@@ -41,6 +44,9 @@ class TestSnsExtension(TestBase):
         )
         self.client = session.create_client("sns", region_name="us-west-2")
         self.topic_name = "my-topic"
+        self.topic_arn = (
+            f"arn:aws:sns:us-west-2:123456789012:{self.topic_name}"
+        )
 
     def tearDown(self):
         super().tearDown()
@@ -91,11 +97,11 @@ class TestSnsExtension(TestBase):
         self.assertEqual(span_context.trace_id, int(trace_parent[1], 16))
         self.assertEqual(span_context.span_id, int(trace_parent[2], 16))
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_topic_arn(self):
         self._test_publish_to_arn("TopicArn")
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_target_arn(self):
         self._test_publish_to_arn("TargetArn")
 
@@ -115,17 +121,15 @@ class TestSnsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
         )
         self.assertEqual(
-            self.topic_name,
+            self.topic_arn,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
         self.assertEqual(
             target_arn,
-            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
-            #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
-    @mock_sns
+    @mock_aws
     def test_publish_to_phone_number(self):
         phone_number = "+10000000000"
         self.client.publish(
@@ -135,10 +139,11 @@ class TestSnsExtension(TestBase):
 
         span = self.assert_span("phone_number send")
         self.assertEqual(
-            phone_number, span.attributes[SpanAttributes.MESSAGING_DESTINATION]
+            "phone_number:**",
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
 
-    @mock_sns
+    @mock_aws
     def test_publish_injects_span(self):
         message_attrs = {}
         topic_arn = self._create_topic()
@@ -149,6 +154,10 @@ class TestSnsExtension(TestBase):
         )
 
         span = self.assert_span(f"{self.topic_name} send")
+        self.assertEqual(
+            topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )
         self.assert_injected_span(message_attrs, span)
 
     def test_publish_batch_to_topic(self):
@@ -187,15 +196,30 @@ class TestSnsExtension(TestBase):
             span.attributes[SpanAttributes.MESSAGING_DESTINATION_KIND],
         )
         self.assertEqual(
-            self.topic_name,
+            topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )
+        self.assertEqual(
+            topic_arn,
             span.attributes[SpanAttributes.MESSAGING_DESTINATION],
         )
         self.assertEqual(
             topic_arn,
-            # TODO: Use SpanAttributes.MESSAGING_DESTINATION_NAME when
-            #  opentelemetry-semantic-conventions 0.42b0 is released
-            span.attributes["messaging.destination.name"],
+            span.attributes[SpanAttributes.MESSAGING_DESTINATION_NAME],
         )
 
         self.assert_injected_span(message1_attrs, span)
         self.assert_injected_span(message2_attrs, span)
+
+    @mock_aws
+    def test_create_topic_span(self):
+        _ = self.client.create_topic(Name=self.topic_name)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertEqual(SpanKind.CLIENT, span.kind)
+        self.assertEqual("SNS.CreateTopic", span.name)
+        self.assertEqual(
+            self.topic_arn,
+            span.attributes[AWS_SNS_TOPIC_ARN],
+        )

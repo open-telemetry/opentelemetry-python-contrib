@@ -13,10 +13,9 @@
 # limitations under the License.
 # pylint:disable=cyclic-import
 
+from unittest import mock
+
 import grpc
-from tests.protobuf import (  # pylint: disable=no-name-in-module
-    test_server_pb2_grpc,
-)
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
@@ -29,7 +28,13 @@ from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.sdk.trace import Span as SdkSpan
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 
@@ -41,6 +46,7 @@ from ._client import (
     simple_method_future,
 )
 from ._server import create_test_server
+from .protobuf import test_server_pb2_grpc
 from .protobuf.test_server_pb2 import Request
 
 
@@ -113,7 +119,7 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
@@ -127,19 +133,17 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "SimpleMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -153,19 +157,17 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ServerStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -179,19 +181,17 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "ClientStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "ClientStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -207,19 +207,17 @@ class TestClientProto(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.grpc
         )
 
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.RPC_METHOD: "BidirectionalStreamingMethod",
-                SpanAttributes.RPC_SERVICE: "GRPCTestServer",
-                SpanAttributes.RPC_SYSTEM: "grpc",
-                SpanAttributes.RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[
-                    0
-                ],
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
             },
         )
 
@@ -270,6 +268,32 @@ class TestClientProto(TestBase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+
+    def test_client_interceptor_falsy_response(
+        self,
+    ):
+        """ensure that client interceptor closes the span only once even if the response is falsy."""
+
+        with mock.patch.object(SdkSpan, "end") as span_end_mock:
+            tracer_provider, _exporter = self.create_tracer_provider()
+            tracer = tracer_provider.get_tracer(__name__)
+
+            interceptor = OpenTelemetryClientInterceptor(tracer)
+
+            def invoker(_request, _metadata):
+                return {}
+
+            request = Request(client_id=1, request_data="data")
+            interceptor.intercept_unary(
+                request,
+                {},
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod",
+                    timeout=None,
+                ),
+                invoker=invoker,
+            )
+            self.assertEqual(span_end_mock.call_count, 1)
 
     def test_client_interceptor_trace_context_propagation(
         self,

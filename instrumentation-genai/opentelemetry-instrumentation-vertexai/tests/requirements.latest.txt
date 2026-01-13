@@ -1,0 +1,94 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# ********************************
+# WARNING: NOT HERMETIC !!!!!!!!!!
+# ********************************
+#
+# This "requirements.txt" is installed in conjunction
+# with multiple other dependencies in the top-level "tox.ini"
+# file. In particular, please see:
+#
+#   vertexai-latest: {[testenv]test_deps}
+#   vertexai-latest: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/requirements.latest.txt
+#
+# This provides additional dependencies, namely:
+#
+#   opentelemetry-api
+#   opentelemetry-sdk
+#   opentelemetry-semantic-conventions
+#
+# ... with a "dev" version based on the latest distribution.
+
+
+# This variant of the requirements aims to test the system using
+# the newest supported version of external dependencies.
+
+annotated-types==0.7.0
+asgiref==3.8.1
+cachetools==5.5.0
+certifi==2024.8.30
+charset-normalizer==3.4.0
+Deprecated==1.2.15
+docstring_parser==0.16
+exceptiongroup==1.2.2
+google-api-core[grpc, async_rest]==2.23.0
+google-auth[aiohttp]==2.36.0
+google-cloud-aiplatform==1.79.0
+google-cloud-bigquery==3.27.0
+google-cloud-core==2.4.1
+google-cloud-resource-manager==1.13.1
+google-cloud-storage==2.19.0
+google-crc32c==1.5.0
+google-resumable-media==2.7.2
+googleapis-common-protos==1.66.0
+grpc-google-iam-v1==0.13.1
+grpcio==1.68.1
+grpcio-status==1.68.1
+idna==3.10
+importlib_metadata==8.5.0
+iniconfig==2.0.0
+multidict==6.1.0
+packaging==24.2
+pluggy==1.5.0
+propcache==0.2.0
+proto-plus==1.25.0
+protobuf==5.29.1
+pyasn1==0.6.1
+pyasn1_modules==0.4.1
+pydantic==2.10.3
+pydantic_core==2.27.1
+pytest==7.4.4
+pytest-asyncio==0.21.0
+pytest-vcr==1.0.2
+python-dateutil==2.9.0.post0
+PyYAML==6.0.2
+requests==2.32.3
+rsa==4.9
+shapely==2.0.6
+fsspec==2025.9.0
+six==1.17.0
+tomli==2.2.1
+typing_extensions==4.12.2
+urllib3==1.26.20
+vcrpy==6.0.2
+wrapt==1.17.0
+yarl==1.15.2
+zipp==3.20.2
+# test with the latest version of opentelemetry-api, sdk, and semantic conventions
+
+-e opentelemetry-instrumentation
+-e instrumentation-genai/opentelemetry-instrumentation-vertexai[instruments]
+-e util/opentelemetry-util-genai[upload]

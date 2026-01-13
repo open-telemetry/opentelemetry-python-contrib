@@ -98,9 +98,9 @@ class OTTracePropagator(TextMapPropagator):
                 if not key.startswith(OT_BAGGAGE_PREFIX):
                     continue
 
-                baggage[
-                    key[len(OT_BAGGAGE_PREFIX) :]
-                ] = _extract_first_element(getter.get(carrier, key))
+                baggage[key[len(OT_BAGGAGE_PREFIX) :]] = (
+                    _extract_first_element(getter.get(carrier, key))
+                )
 
             for key, value in baggage.items():
                 context = set_baggage(key, value, context)

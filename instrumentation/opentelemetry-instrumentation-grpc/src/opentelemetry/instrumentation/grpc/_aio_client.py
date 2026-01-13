@@ -14,10 +14,9 @@
 
 import functools
 import logging
-from collections import OrderedDict
 
 import grpc
-from grpc.aio import ClientCallDetails
+from grpc.aio import ClientCallDetails, Metadata
 
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
@@ -25,7 +24,9 @@ from opentelemetry.instrumentation.grpc._client import (
 )
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_GRPC_STATUS_CODE,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def _unary_done_callback(span, code, details, response_hook):
     def callback(call):
         try:
             span.set_attribute(
-                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                RPC_GRPC_STATUS_CODE,
                 code.value[0],
             )
             if code != grpc.StatusCode.OK:
@@ -55,20 +56,19 @@ def _unary_done_callback(span, code, details, response_hook):
 
 class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     @staticmethod
-    def propagate_trace_in_details(client_call_details):
+    def propagate_trace_in_details(client_call_details: ClientCallDetails):
         metadata = client_call_details.metadata
         if not metadata:
-            mutable_metadata = OrderedDict()
+            mutable_metadata = Metadata()
         else:
-            mutable_metadata = OrderedDict(metadata)
+            mutable_metadata = Metadata(*tuple(metadata))
 
         inject(mutable_metadata, setter=_carrier_setter)
-        metadata = tuple(mutable_metadata.items())
 
         return ClientCallDetails(
             client_call_details.method,
             client_call_details.timeout,
-            metadata,
+            mutable_metadata,
             client_call_details.credentials,
             client_call_details.wait_for_ready,
         )
@@ -77,7 +77,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
     def add_error_details_to_span(span, exc):
         if isinstance(exc, grpc.RpcError):
             span.set_attribute(
-                SpanAttributes.RPC_GRPC_STATUS_CODE,
+                RPC_GRPC_STATUS_CODE,
                 exc.code().value[0],
             )
         span.set_status(

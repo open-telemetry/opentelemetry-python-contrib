@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=E0611
+# pylint: disable=too-many-lines
 
 from sys import modules
 from timeit import default_timer
@@ -24,6 +25,12 @@ from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
@@ -39,7 +46,6 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import (
     SpanKind,
@@ -51,8 +57,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
-    _active_requests_count_attrs,
-    _duration_attrs,
     get_excluded_urls,
     get_traced_request_attrs,
 )
@@ -112,15 +116,25 @@ class TestMiddleware(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        _django_instrumentor.instrument()
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
         self.env_patch = patch.dict(
             "os.environ",
             {
                 "OTEL_PYTHON_DJANGO_EXCLUDED_URLS": "http://testserver/excluded_arg/123,excluded_noarg",
                 "OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS": "path_info,content_type,non_existing_variable",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
+        _django_instrumentor.instrument()
         self.exclude_patch = patch(
             "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware._excluded_urls",
             get_excluded_urls("DJANGO"),
@@ -145,6 +159,46 @@ class TestMiddleware(WsgiTestBase):
         super().tearDownClass()
         conf.settings = conf.LazySettings()
 
+    def test_middleware_added_at_position(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding two dummy middlewares
+        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middelware)
+        middleware.append(temprory_middelware)
+
+        middleware_position = 1
+        _django_instrumentor.instrument(
+            middleware_position=middleware_position
+        )
+        self.assertEqual(
+            middleware[middleware_position],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+        )
+
+    def test_middleware_added_at_position_if_wrong_position(self):
+        _django_instrumentor.uninstrument()
+        if DJANGO_2_0:
+            middleware = conf.settings.MIDDLEWARE
+        else:
+            middleware = conf.settings.MIDDLEWARE_CLASSES
+        # adding middleware
+        temprory_middelware = "django.utils.deprecation.MiddlewareMixin"
+        middleware.append(temprory_middelware)
+        middleware_position = (
+            756  # wrong position out of bound of middleware length
+        )
+        _django_instrumentor.instrument(
+            middleware_position=middleware_position
+        )
+        self.assertEqual(
+            middleware[0],
+            "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware",
+        )
+
     def test_templated_route_get(self):
         Client().get("/route/2020/template/")
 
@@ -155,24 +209,26 @@ class TestMiddleware(WsgiTestBase):
 
         self.assertEqual(
             span.name,
-            "GET ^route/(?P<year>[0-9]{4})/template/$"
-            if DJANGO_2_2
-            else "GET",
+            (
+                "GET ^route/(?P<year>[0-9]{4})/template/$"
+                if DJANGO_2_2
+                else "GET"
+            ),
         )
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes["http.url"],
             "http://testserver/route/2020/template/",
         )
         if DJANGO_2_2:
             self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE],
+                span.attributes["http.route"],
                 "^route/(?P<year>[0-9]{4})/template/$",
             )
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
 
     def test_traced_get(self):
         Client().get("/traced/")
@@ -185,17 +241,64 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "GET ^traced/" if DJANGO_2_2 else "GET")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes["http.url"],
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-            )
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
+
+    def test_traced_get_new_semconv(self):
+        Client().get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^traced/" if DJANGO_2_2 else "GET")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["http.request.method"], "GET")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["server.port"], 80)
+        self.assertEqual(span.attributes["client.address"], "127.0.0.1")
+        self.assertEqual(span.attributes["network.protocol.version"], "1.1")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.response.status_code"], 200)
+
+    def test_traced_get_both_semconv(self):
+        Client().get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^traced/" if DJANGO_2_2 else "GET")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["http.method"], "GET")
+        self.assertEqual(
+            span.attributes["http.url"],
+            "http://testserver/traced/",
+        )
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
+        self.assertEqual(span.attributes["http.request.method"], "GET")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["server.port"], 80)
+        self.assertEqual(span.attributes["client.address"], "127.0.0.1")
+        self.assertEqual(span.attributes["network.protocol.version"], "1.1")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.response.status_code"], 200)
 
     def test_not_recording(self):
         mock_tracer = Mock()
@@ -231,17 +334,62 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "POST ^traced/" if DJANGO_2_2 else "POST")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "POST")
+        self.assertEqual(span.attributes["http.method"], "POST")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes["http.url"],
             "http://testserver/traced/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^traced/"
-            )
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 200)
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
+
+    def test_traced_post_new_semconv(self):
+        Client().post("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "POST ^traced/" if DJANGO_2_2 else "POST")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["http.request.method"], "POST")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["server.port"], 80)
+        self.assertEqual(span.attributes["client.address"], "127.0.0.1")
+        self.assertEqual(span.attributes["network.protocol.version"], "1.1")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.response.status_code"], 200)
+
+    def test_traced_post_both_semconv(self):
+        Client().post("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "POST ^traced/" if DJANGO_2_2 else "POST")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["http.method"], "POST")
+        self.assertEqual(
+            span.attributes["http.url"],
+            "http://testserver/traced/",
+        )
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
+        self.assertEqual(span.attributes["http.request.method"], "POST")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["server.port"], 80)
+        self.assertEqual(span.attributes["client.address"], "127.0.0.1")
+        self.assertEqual(span.attributes["network.protocol.version"], "1.1")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.response.status_code"], 200)
 
     def test_error(self):
         with self.assertRaises(ValueError):
@@ -255,27 +403,80 @@ class TestMiddleware(WsgiTestBase):
         self.assertEqual(span.name, "GET ^error/" if DJANGO_2_2 else "GET")
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_METHOD], "GET")
+        self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            span.attributes[SpanAttributes.HTTP_URL],
+            span.attributes["http.url"],
             "http://testserver/error/",
         )
         if DJANGO_2_2:
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_ROUTE], "^error/"
-            )
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_SCHEME], "http")
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_STATUS_CODE], 500)
+            self.assertEqual(span.attributes["http.route"], "^error/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 500)
 
         self.assertEqual(len(span.events), 1)
         event = span.events[0]
         self.assertEqual(event.name, "exception")
+        self.assertEqual(event.attributes["exception.type"], "ValueError")
+        self.assertEqual(event.attributes["exception.message"], "error")
+
+    def test_error_new_semconv(self):
+        with self.assertRaises(ValueError):
+            Client().get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^error/" if DJANGO_2_2 else "GET")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["http.request.method"], "GET")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^error/")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["http.response.status_code"], 500)
+
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(event.attributes["exception.type"], "ValueError")
+        self.assertEqual(event.attributes["exception.message"], "error")
+        self.assertEqual(span.attributes["error.type"], "500")
+
+    def test_error_both_semconv(self):
+        with self.assertRaises(ValueError):
+            Client().get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+
+        self.assertEqual(span.name, "GET ^error/" if DJANGO_2_2 else "GET")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["http.method"], "GET")
         self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_TYPE], "ValueError"
+            span.attributes["http.url"],
+            "http://testserver/error/",
         )
-        self.assertEqual(
-            event.attributes[SpanAttributes.EXCEPTION_MESSAGE], "error"
-        )
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^error/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 500)
+        self.assertEqual(span.attributes["http.request.method"], "GET")
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^error/")
+        self.assertEqual(span.attributes["url.scheme"], "http")
+        self.assertEqual(span.attributes["http.response.status_code"], 500)
+
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(event.attributes["exception.type"], "ValueError")
+        self.assertEqual(event.attributes["exception.message"], "error")
+        self.assertEqual(span.attributes["error.type"], "500")
 
     def test_exclude_lists(self):
         client = Client()
@@ -341,6 +542,46 @@ class TestMiddleware(WsgiTestBase):
         span = span_list[0]
         self.assertEqual(span.name, "GET")
 
+    def test_nonstandard_http_method_span_name(self):
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes["http.method"], "_OTHER")
+
+    def test_nonstandard_http_method_span_name_new_semconv(self):
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes["http.request.method"], "_OTHER")
+        self.assertEqual(
+            span.attributes["http.request.method_original"], "NONSTANDARD"
+        )
+
+    def test_nonstandard_http_method_span_name_both_semconv(self):
+        Client().request(
+            REQUEST_METHOD="NONSTANDARD", PATH_INFO="/span_name/1234/"
+        )
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+
+        span = span_list[0]
+        self.assertEqual(span.name, "HTTP")
+        self.assertEqual(span.attributes["http.method"], "_OTHER")
+        self.assertEqual(span.attributes["http.request.method"], "_OTHER")
+        self.assertEqual(
+            span.attributes["http.request.method_original"], "NONSTANDARD"
+        )
+
     def test_traced_request_attrs(self):
         Client().get("/span_name/1234/", CONTENT_TYPE="test/ct")
         span_list = self.memory_exporter.get_finished_spans()
@@ -390,7 +631,33 @@ class TestMiddleware(WsgiTestBase):
         self.assertIsInstance(response_hook_args[2], HttpResponse)
         self.assertEqual(response_hook_args[2], response)
 
-    async def test_trace_parent(self):
+    def test_request_hook_exception(self):
+        def request_hook(span, request):
+            # pylint: disable=broad-exception-raised
+            raise Exception("request hook exception")
+
+        _DjangoMiddleware._otel_request_hook = request_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_request_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_response_hook_exception(self):
+        def response_hook(span, request, response):
+            # pylint: disable=broad-exception-raised
+            raise Exception("response hook exception")
+
+        _DjangoMiddleware._otel_response_hook = response_hook
+        Client().get("/span_name/1234/")
+        _DjangoMiddleware._otel_response_hook = None
+
+        # ensure that span ended
+        finished_spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+
+    def test_trace_parent(self):
         id_generator = RandomIdGenerator()
         trace_id = format_trace_id(id_generator.generate_trace_id())
         span_id = format_span_id(id_generator.generate_span_id())
@@ -398,7 +665,7 @@ class TestMiddleware(WsgiTestBase):
 
         Client().get(
             "/span_name/1234/",
-            traceparent=traceparent_value,
+            HTTP_TRACEPARENT=traceparent_value,
         )
         span = self.memory_exporter.get_finished_spans()[0]
 
@@ -450,9 +717,20 @@ class TestMiddleware(WsgiTestBase):
             "http.server.active_requests",
             "http.server.duration",
         ]
-        _recommended_attrs = {
-            "http.server.active_requests": _active_requests_count_attrs,
-            "http.server.duration": _duration_attrs,
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+            "http.target": "^span_name/([0-9]{4})/$",
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
         }
         start = default_timer()
         for _ in range(3):
@@ -479,12 +757,163 @@ class TestMiddleware(WsgiTestBase):
                             self.assertAlmostEqual(
                                 duration, point.sum, delta=100
                             )
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
                         if isinstance(point, NumberDataPoint):
                             number_data_point_seen = True
                             self.assertEqual(point.value, 0)
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs[metric.name]
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    # pylint: disable=too-many-locals
+    def test_wsgi_metrics_new_semconv(self):
+        _expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.request.duration",
+        ]
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+            "http.route": "^span_name/([0-9]{4})/$",
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration_s = default_timer() - start
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histrogram_data_point_seen = True
+                            self.assertAlmostEqual(
+                                duration_s, point.sum, places=1
+                            )
+                            self.assertDictEqual(
+                                expected_duration_attributes,
+                                dict(point.attributes),
+                            )
+                            self.assertEqual(
+                                point.explicit_bounds,
+                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                            )
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                            self.assertEqual(point.value, 0)
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
+                            )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-nested-blocks
+    def test_wsgi_metrics_both_semconv(self):
+        _expected_metric_names = [
+            "http.server.duration",
+            "http.server.active_requests",
+            "http.server.request.duration",
+        ]
+        expected_duration_attributes_old = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+            "http.target": "^span_name/([0-9]{4})/$",
+        }
+        expected_duration_attributes_new = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+            "http.route": "^span_name/([0-9]{4})/$",
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration_s = max(default_timer() - start, 0)
+        duration = max(round(duration_s * 1000), 0)
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histrogram_data_point_seen = True
+                            if metric.name == "http.server.request.duration":
+                                self.assertAlmostEqual(
+                                    duration_s, point.sum, places=1
+                                )
+                                self.assertDictEqual(
+                                    expected_duration_attributes_new,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+                            elif metric.name == "http.server.duration":
+                                self.assertAlmostEqual(
+                                    duration, point.sum, delta=100
+                                )
+                                self.assertDictEqual(
+                                    expected_duration_attributes_old,
+                                    dict(point.attributes),
+                                )
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                                )
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                            self.assertEqual(point.value, 0)
+                            self.assertDictEqual(
+                                expected_requests_count_attributes,
+                                dict(point.attributes),
                             )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
@@ -551,9 +980,7 @@ class TestMiddlewareWithTracerProvider(WsgiTestBase):
             Client().get("/span_name/1234/")
             span_list = self.exporter.get_finished_spans()
             print(span_list)
-            self.assertEqual(
-                span_list[0].attributes[SpanAttributes.HTTP_STATUS_CODE], 200
-            )
+            self.assertEqual(span_list[0].attributes["http.status_code"], 200)
             self.assertEqual(trace.SpanKind.INTERNAL, span_list[0].kind)
             self.assertEqual(
                 parent_span.get_span_context().span_id,
@@ -677,3 +1104,66 @@ class TestMiddlewareWsgiWithCustomHeaders(WsgiTestBase):
         for key, _ in not_expected.items():
             self.assertNotIn(key, span.attributes)
         self.memory_exporter.clear()
+
+
+class TestMiddlewareSpanActivationTiming(WsgiTestBase):
+    """Test span activation timing relative to metrics recording."""
+
+    @classmethod
+    def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        _django_instrumentor.instrument()
+
+    def tearDown(self):
+        super().tearDown()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
+
+    def test_span_ended_after_metrics_recorded(self):
+        """Span activation exits after metrics recording."""
+        Client().get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        # Span properly finished
+        self.assertIsNotNone(spans[0].end_time)
+
+        # Metrics recorded
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        histogram_found = any(
+            "duration" in metric.name
+            for rm in metrics_list.resource_metrics
+            for sm in rm.scope_metrics
+            for metric in sm.metrics
+        )
+        self.assertTrue(histogram_found)
+
+    def test_metrics_recorded_with_exception(self):
+        """Metrics recorded even when request raises exception."""
+        with self.assertRaises(ValueError):
+            Client().get("/error/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+
+        # Metrics still recorded
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        histogram_found = any(
+            "duration" in metric.name
+            for rm in metrics_list.resource_metrics
+            for sm in rm.scope_metrics
+            for metric in sm.metrics
+        )
+        self.assertTrue(histogram_found)

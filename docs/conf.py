@@ -40,6 +40,13 @@ instr_dirs = [
     if isdir(join(instr, f))
 ]
 
+instr_genai = "../instrumentation-genai"
+instr_genai_dirs = [
+    os.path.abspath("/".join(["../instrumentation-genai", f, "src"]))
+    for f in listdir(instr_genai)
+    if isdir(join(instr_genai, f))
+]
+
 prop = "../propagator"
 prop_dirs = [
     os.path.abspath("/".join([prop, f, "src"]))
@@ -60,7 +67,21 @@ resource_dirs = [
     for f in listdir(resource)
     if isdir(join(resource, f))
 ]
-sys.path[:0] = exp_dirs + instr_dirs + sdk_ext_dirs + prop_dirs + resource_dirs
+util = "../util"
+util_dirs = [
+    os.path.abspath("/".join([util, f, "src"]))
+    for f in listdir(util)
+    if isdir(join(util, f))
+]
+sys.path[:0] = (
+    exp_dirs
+    + instr_dirs
+    + instr_genai_dirs
+    + sdk_ext_dirs
+    + prop_dirs
+    + resource_dirs
+    + util_dirs
+)
 
 # -- Project information -----------------------------------------------------
 
@@ -108,6 +129,8 @@ intersphinx_mapping = {
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
+    "redis": ("https://redis.readthedocs.io/en/latest/", None),
+    "fsspec": ("https://filesystem-spec.readthedocs.io/en/latest/", None),
 }
 
 # http://www.sphinx-doc.org/en/master/config.html#confval-nitpicky
@@ -132,7 +155,14 @@ def getlistcfg(strval):
     ]
 
 
-ignore_categories = ["py-class", "py-func", "py-exc", "py-obj", "any"]
+ignore_categories = [
+    "py-class",
+    "py-func",
+    "py-exc",
+    "py-obj",
+    "py-data",
+    "any",
+]
 
 for category in ignore_categories:
     if category in mcfg:

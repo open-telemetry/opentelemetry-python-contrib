@@ -29,6 +29,10 @@ class TestSQLite3(TestBase):
         self._cursor = self._connection.cursor()
         self._connection2 = dbapi2.connect(":memory:")
         self._cursor2 = self._connection2.cursor()
+        self._connection3 = SQLite3Instrumentor.instrument_connection(
+            dbapi2.connect(":memory:")
+        )
+        self._cursor3 = self._connection3.cursor()
 
     def tearDown(self):
         super().tearDown()
@@ -40,6 +44,10 @@ class TestSQLite3(TestBase):
             self._cursor2.close()
         if self._connection2:
             self._connection2.close()
+        if self._cursor3:
+            self._cursor3.close()
+        if self._connection3:
+            self._connection3.close()
         SQLite3Instrumentor().uninstrument()
 
     def validate_spans(self, span_name):
@@ -65,6 +73,7 @@ class TestSQLite3(TestBase):
         stmt = "CREATE TABLE IF NOT EXISTS test (id integer)"
         self._cursor.execute(stmt)
         self._cursor2.execute(stmt)
+        self._cursor3.execute(stmt)
         self.memory_exporter.clear()
 
     def test_execute(self):
@@ -76,6 +85,10 @@ class TestSQLite3(TestBase):
 
         with self._tracer.start_as_current_span("rootSpan"):
             self._cursor2.execute(stmt)
+        self.validate_spans("CREATE")
+
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor3.execute(stmt)
         self.validate_spans("CREATE")
 
     def test_executemany(self):
@@ -93,10 +106,15 @@ class TestSQLite3(TestBase):
             self._cursor2.executemany(stmt, data)
         self.validate_spans("INSERT")
 
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor3.executemany(stmt, data)
+        self.validate_spans("INSERT")
+
     def test_callproc(self):
         """Should create a child span for callproc"""
-        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(
-            Exception
+        with (
+            self._tracer.start_as_current_span("rootSpan"),
+            self.assertRaises(Exception),
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")

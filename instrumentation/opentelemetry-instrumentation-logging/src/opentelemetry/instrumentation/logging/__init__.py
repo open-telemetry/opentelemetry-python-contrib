@@ -14,6 +14,47 @@
 
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
+"""
+The OpenTelemetry `logging` integration automatically injects tracing context into
+log statements, though it is opt-in and must be enabled explicitly by setting the
+environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
+
+.. code-block:: python
+
+    import logging
+
+    from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+    LoggingInstrumentor().instrument()
+
+    logging.warning('OTel test')
+
+When running the above example you will see the following output:
+
+::
+
+    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
+
+The environment variable `OTEL_PYTHON_LOG_CORRELATION` must be set to `true`
+in order to enable trace context injection into logs by calling
+`logging.basicConfig()` and setting a logging format that makes use of the
+injected tracing variables.
+
+Alternatively, `set_logging_format` argument can be set to `True` when
+initializing the `LoggingInstrumentor` class to achieve the same effect:
+
+.. code-block:: python
+
+    import logging
+
+    from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
+    LoggingInstrumentor().instrument(set_logging_format=True)
+
+    logging.warning('OTel test')
+
+"""
+
 import logging  # pylint: disable=import-self
 from os import environ
 from typing import Collection
@@ -36,7 +77,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 
-__doc__ = _MODULE_DOC
+__doc__ = _MODULE_DOC  # noqa: A001
 
 LEVELS = {
     "debug": logging.DEBUG,

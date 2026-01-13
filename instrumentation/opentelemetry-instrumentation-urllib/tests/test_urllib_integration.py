@@ -25,6 +25,10 @@ import httpretty
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )
@@ -34,7 +38,17 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_METHOD,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+)
+from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -43,7 +57,7 @@ from opentelemetry.util.http import get_excluded_urls
 # pylint: disable=too-many-public-methods
 
 
-class RequestsIntegrationTestBase(abc.ABC):
+class URLLibIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
 
     URL = "http://mock/status/200"
@@ -54,12 +68,23 @@ class RequestsIntegrationTestBase(abc.ABC):
     def setUp(self):
         super().setUp()
 
+        test_name = ""
+        if hasattr(self, "_testMethodName"):
+            test_name = self._testMethodName
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "http"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "http/dup"
+
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
-                "OTEL_PYTHON_URLLIB_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg"
+                "OTEL_PYTHON_URLLIB_EXCLUDED_URLS": "http://localhost/env_excluded_arg/123,env_excluded_noarg",
+                OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode,
             },
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
 
         self.exclude_patch = mock.patch(
@@ -99,7 +124,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     @staticmethod
     def base_exception_callback(*_, **__):
-        raise Exception("test")
+        raise Exception("test")  # pylint: disable=broad-exception-raised
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -129,15 +154,66 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
             },
         )
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.urllib
+        )
+
+    def test_basic_new_semconv(self):
+        result = self.perform_request(self.URL)
+
+        self.assertEqual(result.read(), b"Hello!")
+        span = self.assert_span()
+
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "GET")
+
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: self.URL,
+                HTTP_RESPONSE_STATUS_CODE: 200,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.urllib
+        )
+
+    def test_basic_both_semconv(self):
+        result = self.perform_request(self.URL)
+
+        self.assertEqual(result.read(), b"Hello!")
+        span = self.assert_span()
+
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "GET")
+
+        self.assertEqual(
+            span.attributes,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: self.URL,
+                HTTP_RESPONSE_STATUS_CODE: 200,
+            },
+        )
+
+        self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
+
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 
@@ -188,9 +264,56 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
+
+        self.assertIs(
+            span.status.status_code,
+            trace.StatusCode.ERROR,
         )
+
+    def test_not_foundbasic_new_semconv(self):
+        url_404 = "http://mock/status/404/"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_404,
+            status=404,
+        )
+        exception = None
+        try:
+            self.perform_request(url_404)
+        except Exception as err:  # pylint: disable=broad-except
+            exception = err
+        code = exception.code
+        self.assertEqual(code, 404)
+
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
+
+        self.assertIs(
+            span.status.status_code,
+            trace.StatusCode.ERROR,
+        )
+
+    def test_not_foundbasic_both_semconv(self):
+        url_404 = "http://mock/status/404/"
+        httpretty.register_uri(
+            httpretty.GET,
+            url_404,
+            status=404,
+        )
+        exception = None
+        try:
+            self.perform_request(url_404)
+        except Exception as err:  # pylint: disable=broad-except
+            exception = err
+        code = exception.code
+        self.assertEqual(code, 404)
+
+        span = self.assert_span()
+
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
+        self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
@@ -214,14 +337,14 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
             },
         )
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationInfo(
+        self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.urllib
         )
 
@@ -332,9 +455,44 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             dict(span.attributes),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: "http://mock/status/500",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_URL: "http://mock/status/500",
+                HTTP_STATUS_CODE: 500,
+            },
+        )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_requests_exception_with_response_new_semconv(self, *_, **__):
+        with self.assertRaises(HTTPError):
+            self.perform_request("http://mock/status/500")
+
+        span = self.assert_span()
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: "http://mock/status/500",
+                HTTP_RESPONSE_STATUS_CODE: 500,
+                ERROR_TYPE: "HTTPError",
+            },
+        )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_requests_exception_with_response_both_semconv(self, *_, **__):
+        with self.assertRaises(HTTPError):
+            self.perform_request("http://mock/status/500")
+
+        span = self.assert_span()
+        self.assertEqual(
+            dict(span.attributes),
+            {
+                HTTP_METHOD: "GET",
+                HTTP_URL: "http://mock/status/500",
+                HTTP_STATUS_CODE: 500,
+                HTTP_REQUEST_METHOD: "GET",
+                URL_FULL: "http://mock/status/500",
+                HTTP_RESPONSE_STATUS_CODE: 500,
+                ERROR_TYPE: "HTTPError",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -354,14 +512,17 @@ class RequestsIntegrationTestBase(abc.ABC):
         span = self.assert_span()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_credential_removal(self):
+    def test_remove_sensitive_params(self):
         url = "http://username:password@mock/status/200"
 
         with self.assertRaises(Exception):
             self.perform_request(url)
 
         span = self.assert_span()
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200",
+        )
 
     def test_hooks(self):
         def request_hook(span, request_obj):
@@ -393,7 +554,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assert_span(num_spans=0)
 
 
-class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
+class TestURLLibIntegration(URLLibIntegrationTestBase, TestBase):
     @staticmethod
     def perform_request(url: str, opener: OpenerDirector = None):
         if not opener:

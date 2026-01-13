@@ -28,6 +28,7 @@ Run instrumented actor
 
     from remoulade.brokers.rabbitmq import RabbitmqBroker
     import remoulade
+    from opentelemetry.instrumentation.remoulade import RemouladeInstrumentor
 
     RemouladeInstrumentor().instrument()
 
@@ -38,11 +39,12 @@ Run instrumented actor
     def multiply(x, y):
         return x * y
 
-    broker.declare_actor(count_words)
+    broker.declare_actor(multiply)
 
     multiply.send(43, 51)
 
 """
+
 from typing import Collection
 
 from remoulade import Middleware, broker
@@ -53,7 +55,7 @@ from opentelemetry.instrumentation.remoulade import utils
 from opentelemetry.instrumentation.remoulade.package import _instruments
 from opentelemetry.instrumentation.remoulade.version import __version__
 from opentelemetry.propagate import extract, inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 
 _REMOULADE_MESSAGE_TAG_KEY = "remoulade.action"
 _REMOULADE_MESSAGE_SEND = "send"
@@ -110,7 +112,7 @@ class _InstrumentationMiddleware(Middleware):
                 {
                     _REMOULADE_MESSAGE_TAG_KEY: _REMOULADE_MESSAGE_RUN,
                     _REMOULADE_MESSAGE_NAME_KEY: message.actor_name,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: message.message_id,
+                    messaging_attributes.MESSAGING_MESSAGE_ID: message.message_id,
                 }
             )
 
@@ -135,7 +137,7 @@ class _InstrumentationMiddleware(Middleware):
                 {
                     _REMOULADE_MESSAGE_TAG_KEY: _REMOULADE_MESSAGE_SEND,
                     _REMOULADE_MESSAGE_NAME_KEY: message.actor_name,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: message.message_id,
+                    messaging_attributes.MESSAGING_MESSAGE_ID: message.message_id,
                 }
             )
 

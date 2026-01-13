@@ -6,10 +6,17 @@ name: 'Component Owners'
 on:
   pull_request_target:
 
+permissions:
+  contents: read
+
 jobs:
   run_self:
     runs-on: ubuntu-latest
     name: Auto Assign Owners
+    permissions: 
+      contents: read          # to read changed files 
+      issues: write           # to read/write issue assignees 
+      pull-requests: write    # to read/write PR reviewers 
     # Don't fail tests if this workflow fails. Some pending issues:
     # - https://github.com/dyladan/component-owners/issues/8
     continue-on-error: true

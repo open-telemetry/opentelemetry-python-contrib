@@ -22,9 +22,14 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkCallContext,
     _AwsSdkExtension,
+    _BotocoreInstrumentorContext,
 )
 from opentelemetry.propagate import inject
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.faas_attributes import (
+    FAAS_INVOKED_NAME,
+    FAAS_INVOKED_PROVIDER,
+    FAAS_INVOKED_REGION,
+)
 from opentelemetry.trace.span import Span
 
 
@@ -61,11 +66,9 @@ class _OpInvoke(_LambdaOperation):
     def extract_attributes(
         cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
     ):
-        attributes[SpanAttributes.FAAS_INVOKED_PROVIDER] = "aws"
-        attributes[
-            SpanAttributes.FAAS_INVOKED_NAME
-        ] = cls._parse_function_name(call_context)
-        attributes[SpanAttributes.FAAS_INVOKED_REGION] = call_context.region
+        attributes[FAAS_INVOKED_PROVIDER] = "aws"
+        attributes[FAAS_INVOKED_NAME] = cls._parse_function_name(call_context)
+        attributes[FAAS_INVOKED_REGION] = call_context.region
 
     @classmethod
     def _parse_function_name(cls, call_context: _AwsSdkCallContext):
@@ -119,7 +122,9 @@ class _LambdaExtension(_AwsSdkExtension):
 
         self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(self, span: Span):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._op is None:
             return
 

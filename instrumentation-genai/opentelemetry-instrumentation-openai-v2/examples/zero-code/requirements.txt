@@ -1,0 +1,6 @@
+openai~=1.57.3
+
+opentelemetry-sdk~=1.36.0
+opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+opentelemetry-distro~=0.57b0
+opentelemetry-instrumentation-openai-v2~=2.1b0

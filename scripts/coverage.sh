@@ -11,9 +11,6 @@ function cov {
         ${1}
 }
 
-PYTHON_VERSION=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')
-PYTHON_VERSION_INFO=(${PYTHON_VERSION//./ })
-
 coverage erase
 
 cov instrumentation/opentelemetry-instrumentation-flask
