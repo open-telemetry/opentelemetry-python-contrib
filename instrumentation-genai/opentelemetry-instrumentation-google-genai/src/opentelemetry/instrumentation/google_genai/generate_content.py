@@ -25,7 +25,6 @@ from typing import (
     AsyncIterator,
     Awaitable,
     Iterator,
-    Mapping,
     Optional,
     Union,
 )
@@ -310,10 +309,11 @@ def _create_completion_details_attributes(
     return attributes
 
 
-def _get_extra_generate_content_attributes() -> Optional[
-    Mapping[str, AttributeValue]
-]:
-    return context_api.get_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY)
+def _get_extra_generate_content_attributes() -> dict[str, AttributeValue]:
+    attrs = context_api.get_value(
+        GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
+    )
+    return dict(attrs or {})
 
 
 class _GenerateContentInstrumentationHelper:
@@ -463,6 +463,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_completion_details(
         self,
+        extra_attributes: dict[str, Any],
         request_attributes: dict[str, Any],
         final_attributes: dict[str, Any],
         request: Union[ContentListUnion, ContentListUnionDict],
@@ -487,7 +488,9 @@ class _GenerateContentInstrumentationHelper:
         span = trace.get_current_span()
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
-            attributes=request_attributes | final_attributes,
+            attributes=extra_attributes
+            | request_attributes
+            | final_attributes,
         )
         self.completion_hook.on_completion(
             inputs=input_messages,
@@ -742,9 +745,8 @@ def _create_instrumented_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -773,6 +775,7 @@ def _create_instrumented_generate_content(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
@@ -817,9 +820,8 @@ def _create_instrumented_generate_content_stream(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content_stream"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -848,6 +850,7 @@ def _create_instrumented_generate_content_stream(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
@@ -892,9 +895,8 @@ def _create_instrumented_async_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.AsyncModels.generate_content"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -922,6 +924,7 @@ def _create_instrumented_async_generate_content(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
@@ -968,9 +971,8 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             "google.genai.AsyncModels.generate_content_stream",
             end_on_exit=False,
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if (
                 not helper.sem_conv_opt_in_mode
                 == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
@@ -990,6 +992,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
@@ -1023,6 +1026,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                         final_attributes = helper.create_final_attributes()
                         span.set_attributes(final_attributes)
                         helper._maybe_log_completion_details(
+                            extra_attributes,
                             request_attributes,
                             final_attributes,
                             contents,
