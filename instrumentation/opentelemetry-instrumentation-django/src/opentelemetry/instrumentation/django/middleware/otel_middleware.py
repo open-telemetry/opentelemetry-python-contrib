@@ -165,10 +165,10 @@ class _DjangoMiddleware:
             activation.__enter__()
             if _DjangoMiddleware._otel_request_hook:
                 try:
-                    _DjangoMiddleware._otel_request_hook(
+                    _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
                         request.META.get(self._environ_span_key), request
                     )
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     _logger.exception("Exception raised by request_hook")
             response = self.get_response(request)
             return self.process_response(request, response)
