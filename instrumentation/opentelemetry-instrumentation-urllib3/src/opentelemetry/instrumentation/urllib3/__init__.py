@@ -310,6 +310,9 @@ class URLLib3Instrumentor(BaseInstrumentor):
                     to adding it as a span attribute.
                 ``excluded_urls``: A string containing a comma-delimited
                     list of regexes used to exclude URLs from tracking
+                ``captured_request_headers``: An optional sequence of header names to capture from the request headers
+                ``captured_response_headers``: An optional sequence of header names to capture from the response headers
+                ``sensitive_headers``: An optional sequence of captured header names to redact
         """
         # initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
