@@ -20,7 +20,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union, Mapping
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
@@ -57,6 +57,9 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
+from opentelemetry.util.types import (
+    AttributeValue,
+)
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 from .allowlist_util import AllowList
@@ -70,6 +73,7 @@ from .message import (
 )
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
+from opentelemetry import context as context_api
 
 _logger = logging.getLogger(__name__)
 
@@ -80,6 +84,7 @@ _CONTENT_ELIDED = "<elided>"
 # Constant used for the value of 'gen_ai.operation.name".
 _GENERATE_CONTENT_OP_NAME = "generate_content"
 
+GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY = context_api.create_key("generate_content_extra_attributes_context_key")
 
 class _MethodsSnapshot:
     def __init__(self):
@@ -292,6 +297,10 @@ def _create_completion_details_attributes(
         ]
 
     return attributes
+
+
+def _get_extra_generate_content_attributes() -> Optional[Mapping[str, AttributeValue]]:
+    return context_api.get_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY)
 
 
 class _GenerateContentInstrumentationHelper:
@@ -720,6 +729,8 @@ def _create_instrumented_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content"
         ) as span:
+            if extra_attributes := _get_extra_generate_content_attributes():
+                span.set_attributes(extra_attributes)
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
@@ -793,6 +804,8 @@ def _create_instrumented_generate_content_stream(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content_stream"
         ) as span:
+            if extra_attributes := _get_extra_generate_content_attributes():
+                span.set_attributes(extra_attributes)
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
@@ -866,6 +879,8 @@ def _create_instrumented_async_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.AsyncModels.generate_content"
         ) as span:
+            if extra_attributes := _get_extra_generate_content_attributes():
+                span.set_attributes(extra_attributes)
             span.set_attributes(request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
@@ -940,6 +955,8 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             "google.genai.AsyncModels.generate_content_stream",
             end_on_exit=False,
         ) as span:
+            if extra_attributes := _get_extra_generate_content_attributes():
+                span.set_attributes(extra_attributes)
             span.set_attributes(request_attributes)
             if (
                 not helper.sem_conv_opt_in_mode
