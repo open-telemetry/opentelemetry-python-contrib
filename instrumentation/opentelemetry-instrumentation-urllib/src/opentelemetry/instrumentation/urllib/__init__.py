@@ -116,6 +116,9 @@ single item list containing all the header values.
 For example:
 ``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
 
+.. note::
+   Some headers are injected at a lower level by the ``http.client`` module and so are not captured by this instrumentation
+
 Response headers
 ****************
 To capture HTTP response headers as span attributes, set the environment variable
