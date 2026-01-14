@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
 - `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
   ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
-- `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
+- `opentelemetry-instrumentation-httpx`: add ability to capture custom headers
   ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
 - `opentelemetry-instrumentation-urllib3`: add ability to capture custom headers
   ([#4050](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4050))
@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-django`: fix trace failures when HTTP requests get cancelled in ASGI workers
+  ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4102))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
@@ -46,11 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
 - `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
   ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
-- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
-- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
-- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable
   ([#4063](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4063))
 - `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
   ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
@@ -169,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `rstcheck` to pre-commit to stop introducing invalid RST
   ([#3777](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3777))
 - `opentelemetry-exporter-credential-provider-gcp`: create this package which provides support for supplying your machine's Application Default
-  Credentials (https://cloud.google.com/docs/authentication/application-default-credentials) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. [#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
+  Credentials (<https://cloud.google.com/docs/authentication/application-default-credentials>) to the OTLP Exporters created automatically by OpenTelemetry Python's auto instrumentation. These credentials authorize OTLP traces to be sent to `telemetry.googleapis.com`. [#3766](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3766).
 - `opentelemetry-instrumentation-psycopg`: Add missing parameter `capture_parameters` to instrumentor.
   ([#3676](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3676))
 - `opentelemetry-instrumentation-dbapi`: Adds sqlcommenter to documentation.
@@ -554,7 +556,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiokafka` Wrap `AIOKafkaConsumer.getone()` instead of `AIOKafkaConsumer.__anext__`
   ([#2874](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2874))
 - `opentelemetry-instrumentation-confluent-kafka` Fix to allow `topic` to be extracted from `kwargs` in `produce()`
-  ([#2901])(https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901)
+  ([#2901])(<https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2901>)
 - `opentelemetry-instrumentation-system-metrics` Update metric units to conform to UCUM conventions.
   ([#2922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2922))
 - `opentelemetry-instrumentation-celery` Don't detach context without a None token
@@ -957,7 +959,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add optional distro and configurator selection for auto-instrumentation
   ([#1823](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1823))
 - `opentelemetry-instrumentation-django` - Add option to add Opentelemetry middleware at specific position in middleware chain
-  ([#2912]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2912)
+  ([#2912]<https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2912>)
 
 ### Added
 
@@ -1227,7 +1229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix uninstrumentation of existing app instances in FastAPI
   ([#1258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1258))
 - Fix uninstrumentation of existing app instances in falcon
-  ([#1341]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1341)
+  ([#1341]<https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1341>)
 
 ## Version 1.12.0/0.33b0 (2022-08-08)
 
@@ -2171,7 +2173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-ext-boto` Initial release
 - `opentelemetry-ext-botocore` Initial release
 - `opentelemetry-ext-system-metrics` Initial release
-  (https://github.com/open-telemetry/opentelemetry-python/pull/652)
+  (<https://github.com/open-telemetry/opentelemetry-python/pull/652>)
 
 ## Version 0.8b0 (2020-05-27)
 
