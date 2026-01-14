@@ -178,7 +178,9 @@ class _DjangoMiddleware:
                 self._environ_active_request_attr_key, None
             )
             if active_requests_count_attrs is not None:
-                self._active_request_counter.add(-1, active_requests_count_attrs)
+                self._active_request_counter.add(
+                    -1, active_requests_count_attrs
+                )
 
             # Exit span context
             exception = request.META.pop(self._environ_exception_key, None)
@@ -314,15 +316,12 @@ class _DjangoMiddleware:
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        # Note: activation.__enter__() is called in __call__ to ensure
-        # proper cleanup via finally block even on request cancellation
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
         if token:
             request.META[self._environ_token] = token
-        # Note: request_hook is called in __call__ after activation.__enter__()
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -372,7 +371,6 @@ class _DjangoMiddleware:
 
         activation = request.META.get(self._environ_activation_key)
         span = request.META.pop(self._environ_span_key, None)
-        # Note: active_requests_count_attrs is popped in __call__ finally block
         duration_attrs = request.META.pop(
             self._environ_duration_attr_key, None
         )
@@ -427,8 +425,6 @@ class _DjangoMiddleware:
             if propagator:
                 propagator.inject(response)
 
-            # Note: exception handling moved to __call__ finally block
-
             if _DjangoMiddleware._otel_response_hook:
                 try:
                     _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
@@ -459,10 +455,6 @@ class _DjangoMiddleware:
                     max(duration_s, 0),
                     duration_attrs_new,
                 )
-
-        # Note: counter decrement, activation.__exit__, and detach(token)
-        # are now handled in __call__ finally block to ensure cleanup
-        # even when requests are cancelled
 
         return response
 

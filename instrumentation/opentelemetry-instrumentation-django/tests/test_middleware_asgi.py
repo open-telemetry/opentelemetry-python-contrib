@@ -651,7 +651,6 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.memory_exporter.clear()
 
     async def test_cancelled_request_cleanup(self):
-        """Test that a cancelled request results in proper span cleanup without error status."""
         # Start a slow request and cancel it before it completes
         task = asyncio.create_task(self.async_client.get("/slow/"))
         await asyncio.sleep(0.01)  # Let the request start

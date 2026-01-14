@@ -81,6 +81,5 @@ async def async_with_custom_header(request):
 
 
 async def async_slow(request):  # pylint: disable=unused-argument
-    """View that takes a long time - used to test cancellation"""
     await asyncio.sleep(10)
     return HttpResponse()
