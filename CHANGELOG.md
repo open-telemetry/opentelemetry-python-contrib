@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
 - `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
   ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
+- `opentelemetry-instrumentation-urllib3`: add ability to capture custom headers
+  ([#4050](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4050))
+- `opentelemetry-instrumentation-urllib`: add ability to capture custom headers
+  ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
 
 ### Fixed
 
@@ -74,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
   ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
+  ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
