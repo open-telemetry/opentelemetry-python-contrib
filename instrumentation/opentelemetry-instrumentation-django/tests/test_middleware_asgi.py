@@ -14,6 +14,7 @@
 
 # pylint: disable=E0611
 
+import asyncio
 from sys import modules
 from unittest.mock import Mock, patch
 
@@ -83,6 +84,7 @@ from .views import (
     async_excluded_noarg,
     async_excluded_noarg2,
     async_route_span_name,
+    async_slow,
     async_traced,
     async_traced_template,
     async_with_custom_header,
@@ -105,6 +107,7 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", async_excluded_noarg),
     re_path(r"^excluded_noarg2/", async_excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", async_route_span_name),
+    re_path(r"^slow/", async_slow),
 ]
 _django_instrumentor = DjangoInstrumentor()
 
@@ -646,6 +649,24 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             f"00-{trace_id}-{span_id}-01",
         )
         self.memory_exporter.clear()
+
+    async def test_cancelled_request_cleanup(self):
+        """Test that a cancelled request results in proper span cleanup without error status."""
+        # Start a slow request and cancel it before it completes
+        task = asyncio.create_task(self.async_client.get("/slow/"))
+        await asyncio.sleep(0.01)  # Let the request start
+        task.cancel()
+
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # CancelledError should NOT be recorded as an error
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(len(span.events), 0)  # No exception event
 
 
 class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):

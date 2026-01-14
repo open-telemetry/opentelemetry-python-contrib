@@ -1,3 +1,5 @@
+import asyncio
+
 from django.http import HttpResponse
 
 
@@ -76,3 +78,9 @@ async def async_with_custom_header(request):
     response.headers["custom-test-header-1"] = "test-header-value-1"
     response.headers["custom-test-header-2"] = "test-header-value-2"
     return response
+
+
+async def async_slow(request):  # pylint: disable=unused-argument
+    """View that takes a long time - used to test cancellation"""
+    await asyncio.sleep(10)
+    return HttpResponse()
