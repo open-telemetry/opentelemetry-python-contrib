@@ -20,7 +20,15 @@ import json
 import logging
 import os
 import time
-from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union, Mapping
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Iterator,
+    Mapping,
+    Optional,
+    Union,
+)
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
@@ -37,6 +45,7 @@ from google.genai.types import (
     GenerateContentResponse,
 )
 
+from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
@@ -57,10 +66,10 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 from opentelemetry.util.types import (
     AttributeValue,
 )
-from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -73,7 +82,6 @@ from .message import (
 )
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
-from opentelemetry import context as context_api
 
 _logger = logging.getLogger(__name__)
 
@@ -84,7 +92,10 @@ _CONTENT_ELIDED = "<elided>"
 # Constant used for the value of 'gen_ai.operation.name".
 _GENERATE_CONTENT_OP_NAME = "generate_content"
 
-GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY = context_api.create_key("generate_content_extra_attributes_context_key")
+GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY = context_api.create_key(
+    "generate_content_extra_attributes_context_key"
+)
+
 
 class _MethodsSnapshot:
     def __init__(self):
@@ -299,7 +310,9 @@ def _create_completion_details_attributes(
     return attributes
 
 
-def _get_extra_generate_content_attributes() -> Optional[Mapping[str, AttributeValue]]:
+def _get_extra_generate_content_attributes() -> Optional[
+    Mapping[str, AttributeValue]
+]:
     return context_api.get_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY)
 
 
