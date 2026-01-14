@@ -193,8 +193,8 @@ class BotocoreInstrumentor(BaseInstrumentor):
         )
         wrap_function_wrapper(
             "botocore.signers",
-            "RequestSigner.__init__",
-            self._patched_signer_init,
+            "RequestSigner.generate_presigned_url",
+            self._patched_generate_presigned_url,
         )
 
     @staticmethod
@@ -361,32 +361,29 @@ class BotocoreInstrumentor(BaseInstrumentor):
         tracer = get_tracer(__name__, __version__, self.tracer_provider)
 
         with tracer.start_as_current_span("botocore.presigned_url") as span:
-            try:
-                service = getattr(instance, "_service_id", None)
-                if service:
-                    service = service.lower()
-                    span.set_attribute(SpanAttributes.RPC_SERVICE, service)
-                    span.set_attribute("aws.service", service)
-            except Exception:
-                pass
+            # Service name
+            service = getattr(instance, "_service_id", None)
+            if service:
+                service = service.lower()
+                span.set_attribute(SpanAttributes.RPC_SERVICE, service)
+                span.set_attribute("aws.service", service)
+
+            # Operation name (best-effort only)
+            operation = kwargs.get("ClientMethod")
+            if operation:
+                span.set_attribute("aws.operation", operation)
+
+            # Expiry time
+            expires_in = kwargs.get("ExpiresIn")
+            if expires_in is not None:
+                span.set_attribute("aws.expires_in", expires_in)
+
+            # Region
+            region = getattr(instance, "_region_name", None)
+            if region:
+                span.set_attribute("aws.region", region)
 
             return wrapped(*args, **kwargs)
-
-    def _patched_signer_init(self, wrapped, instance, args, kwargs):
-        # Let botocore build the RequestSigner normally
-        wrapped(*args, **kwargs)
-
-        try:
-            original = instance.generate_presigned_url
-        except Exception:
-            return
-
-        def wrapped_presign(*a, **kw):
-            return self._patched_generate_presigned_url(
-                original, instance, a, kw
-            )
-
-        instance.generate_presigned_url = wrapped_presign
 
     def _call_request_hook(self, span: Span, call_context: _AwsSdkCallContext):
         if not callable(self.request_hook):
