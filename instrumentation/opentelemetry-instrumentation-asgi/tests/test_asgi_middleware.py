@@ -42,6 +42,22 @@ from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
 )
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+    HTTP_USER_AGENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_PORT,
+    NET_PEER_IP,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
@@ -68,7 +84,6 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.asgitestutil import (
     AsyncAsgiTestBase,
     setup_testing_defaults,
@@ -417,7 +432,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                     "asgi.event.type": "http.response.start",
                 },
             },
@@ -430,16 +445,16 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_SCHEME: "http",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_HOST: "127.0.0.1",
-                    SpanAttributes.HTTP_FLAVOR: "1.0",
-                    SpanAttributes.HTTP_TARGET: "/",
-                    SpanAttributes.HTTP_URL: "http://127.0.0.1/",
-                    SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                    SpanAttributes.NET_PEER_PORT: 32767,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_HOST_PORT: 80,
+                    HTTP_HOST: "127.0.0.1",
+                    HTTP_FLAVOR: "1.0",
+                    HTTP_TARGET: "/",
+                    HTTP_URL: "http://127.0.0.1/",
+                    NET_PEER_IP: "127.0.0.1",
+                    NET_PEER_PORT: 32767,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
         ]
@@ -488,7 +503,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "name": "GET / http send",
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_STATUS_CODE: 200,
                     "asgi.event.type": "http.response.start",
                 },
@@ -511,16 +526,16 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     CLIENT_ADDRESS: "127.0.0.1",
                     CLIENT_PORT: 32767,
                     HTTP_RESPONSE_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_SCHEME: "http",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_HOST: "127.0.0.1",
-                    SpanAttributes.HTTP_FLAVOR: "1.0",
-                    SpanAttributes.HTTP_TARGET: "/",
-                    SpanAttributes.HTTP_URL: "http://127.0.0.1/",
-                    SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                    SpanAttributes.NET_PEER_PORT: 32767,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_HOST_PORT: 80,
+                    HTTP_HOST: "127.0.0.1",
+                    HTTP_FLAVOR: "1.0",
+                    HTTP_TARGET: "/",
+                    HTTP_URL: "http://127.0.0.1/",
+                    NET_PEER_IP: "127.0.0.1",
+                    NET_PEER_PORT: 32767,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
         ]
@@ -761,9 +776,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_HOST: "0.0.0.0",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_URL: "http://0.0.0.0/",
+                    HTTP_HOST: "0.0.0.0",
+                    NET_HOST_PORT: 80,
+                    HTTP_URL: "http://0.0.0.0/",
                 }
             )
             return expected
@@ -805,9 +820,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_HOST: "0.0.0.0",
-                    SpanAttributes.NET_HOST_PORT: 80,
-                    SpanAttributes.HTTP_URL: "http://0.0.0.0/",
+                    HTTP_HOST: "0.0.0.0",
+                    NET_HOST_PORT: 80,
+                    HTTP_URL: "http://0.0.0.0/",
                     SERVER_ADDRESS: "0.0.0.0",
                     SERVER_PORT: 80,
                 }
@@ -833,8 +848,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8"),
-                    SpanAttributes.HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                    HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    HTTP_URL: f"http://{hostname.decode('utf8')}/",
                 }
             )
             return expected
@@ -853,8 +868,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_server(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_SERVER_NAME: hostname.decode("utf8"),
-                    SpanAttributes.HTTP_URL: f"http://{hostname.decode('utf8')}/",
+                    HTTP_SERVER_NAME: hostname.decode("utf8"),
+                    HTTP_URL: f"http://{hostname.decode('utf8')}/",
                 }
             )
             return expected
@@ -877,7 +892,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         def update_expected_user_agent(expected):
             expected[3]["attributes"].update(
-                {SpanAttributes.HTTP_USER_AGENT: user_agent.decode("utf8")}
+                {HTTP_USER_AGENT: user_agent.decode("utf8")}
             )
             return expected
 
@@ -917,7 +932,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         def update_expected_user_agent(expected):
             expected[3]["attributes"].update(
                 {
-                    SpanAttributes.HTTP_USER_AGENT: user_agent.decode("utf8"),
+                    HTTP_USER_AGENT: user_agent.decode("utf8"),
                     USER_AGENT_ORIGINAL: user_agent.decode("utf8"),
                 }
             )
@@ -955,7 +970,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 ):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "bot",
                         }
                     )
@@ -989,7 +1004,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 ):
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            HTTP_USER_AGENT: ua.decode("utf8"),
                             USER_AGENT_SYNTHETIC_TYPE: "test",
                         }
                     )
@@ -1025,7 +1040,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     # Should only have the user agent, not synthetic type
                     expected[3]["attributes"].update(
                         {
-                            SpanAttributes.HTTP_USER_AGENT: ua.decode("utf8"),
+                            HTTP_USER_AGENT: ua.decode("utf8"),
                         }
                     )
                     return expected
@@ -1134,7 +1149,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
@@ -1142,7 +1157,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "kind": trace_api.SpanKind.INTERNAL,
                 "attributes": {
                     "asgi.event.type": "websocket.send",
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
@@ -1154,16 +1169,16 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
-                    SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
-                    SpanAttributes.NET_HOST_PORT: self.scope["server"][1],
-                    SpanAttributes.HTTP_HOST: self.scope["server"][0],
-                    SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
-                    SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
-                    SpanAttributes.NET_PEER_IP: self.scope["client"][0],
-                    SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_METHOD: self.scope["method"],
+                    HTTP_SCHEME: self.scope["scheme"],
+                    NET_HOST_PORT: self.scope["server"][1],
+                    HTTP_HOST: self.scope["server"][0],
+                    HTTP_FLAVOR: self.scope["http_version"],
+                    HTTP_TARGET: self.scope["path"],
+                    HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
+                    NET_PEER_IP: self.scope["client"][0],
+                    NET_PEER_PORT: self.scope["client"][1],
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: self.scope["method"],
                 },
             },
         ]
@@ -1282,7 +1297,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     "asgi.event.type": "websocket.receive",
                     HTTP_RESPONSE_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
@@ -1291,7 +1306,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "attributes": {
                     "asgi.event.type": "websocket.send",
                     HTTP_RESPONSE_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_STATUS_CODE: 200,
                 },
             },
             {
@@ -1303,16 +1318,16 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "name": "GET /",
                 "kind": trace_api.SpanKind.SERVER,
                 "attributes": {
-                    SpanAttributes.HTTP_SCHEME: self.scope["scheme"],
-                    SpanAttributes.NET_HOST_PORT: self.scope["server"][1],
-                    SpanAttributes.HTTP_HOST: self.scope["server"][0],
-                    SpanAttributes.HTTP_FLAVOR: self.scope["http_version"],
-                    SpanAttributes.HTTP_TARGET: self.scope["path"],
-                    SpanAttributes.HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
-                    SpanAttributes.NET_PEER_IP: self.scope["client"][0],
-                    SpanAttributes.NET_PEER_PORT: self.scope["client"][1],
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_METHOD: self.scope["method"],
+                    HTTP_SCHEME: self.scope["scheme"],
+                    NET_HOST_PORT: self.scope["server"][1],
+                    HTTP_HOST: self.scope["server"][0],
+                    HTTP_FLAVOR: self.scope["http_version"],
+                    HTTP_TARGET: self.scope["path"],
+                    HTTP_URL: f"{self.scope['scheme']}://{self.scope['server'][0]}{self.scope['path']}",
+                    NET_PEER_IP: self.scope["client"][0],
+                    NET_PEER_PORT: self.scope["client"][1],
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: self.scope["method"],
                     URL_SCHEME: self.scope["scheme"],
                     SERVER_ADDRESS: self.scope["server"][0],
                     SERVER_PORT: self.scope["server"][1],
@@ -1947,16 +1962,16 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertDictEqual(
             attrs,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_HOST: "127.0.0.1",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://test/?foo=bar",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_SERVER_NAME: "test",
-                SpanAttributes.HTTP_FLAVOR: "1.0",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                SpanAttributes.NET_PEER_PORT: 32767,
+                HTTP_METHOD: "GET",
+                HTTP_HOST: "127.0.0.1",
+                HTTP_TARGET: "/",
+                HTTP_URL: "http://test/?foo=bar",
+                NET_HOST_PORT: 80,
+                HTTP_SCHEME: "http",
+                HTTP_SERVER_NAME: "test",
+                HTTP_FLAVOR: "1.0",
+                NET_PEER_IP: "127.0.0.1",
+                NET_PEER_PORT: 32767,
             },
         )
 
@@ -2000,16 +2015,16 @@ class TestAsgiAttributes(unittest.TestCase):
         self.assertDictEqual(
             attrs,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_HOST: "127.0.0.1",
-                SpanAttributes.HTTP_TARGET: "/",
-                SpanAttributes.HTTP_URL: "http://test/?foo=bar",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.HTTP_SERVER_NAME: "test",
-                SpanAttributes.HTTP_FLAVOR: "1.0",
-                SpanAttributes.NET_PEER_IP: "127.0.0.1",
-                SpanAttributes.NET_PEER_PORT: 32767,
+                HTTP_METHOD: "GET",
+                HTTP_HOST: "127.0.0.1",
+                HTTP_TARGET: "/",
+                HTTP_URL: "http://test/?foo=bar",
+                NET_HOST_PORT: 80,
+                HTTP_SCHEME: "http",
+                HTTP_SERVER_NAME: "test",
+                HTTP_FLAVOR: "1.0",
+                NET_PEER_IP: "127.0.0.1",
+                NET_PEER_PORT: 32767,
                 HTTP_REQUEST_METHOD: "GET",
                 URL_PATH: "/",
                 URL_QUERY: "foo=bar",
@@ -2025,9 +2040,7 @@ class TestAsgiAttributes(unittest.TestCase):
     def test_query_string(self):
         self.scope["query_string"] = b"foo=bar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
 
     def test_query_string_new_semconv(self):
         self.scope["query_string"] = b"foo=bar"
@@ -2046,9 +2059,7 @@ class TestAsgiAttributes(unittest.TestCase):
             self.scope,
             _StabilityMode.HTTP_DUP,
         )
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
         self.assertEqual(attrs[URL_SCHEME], "http")
         self.assertEqual(attrs[CLIENT_ADDRESS], "127.0.0.1")
         self.assertEqual(attrs[URL_PATH], "/")
@@ -2057,20 +2068,16 @@ class TestAsgiAttributes(unittest.TestCase):
     def test_query_string_percent_bytes(self):
         self.scope["query_string"] = b"foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
 
     def test_query_string_percent_str(self):
         self.scope["query_string"] = "foo%3Dbar"
         attrs = otel_asgi.collect_request_attributes(self.scope)
-        self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL], "http://127.0.0.1/?foo=bar"
-        )
+        self.assertEqual(attrs[HTTP_URL], "http://127.0.0.1/?foo=bar")
 
     def test_response_attributes(self):
         otel_asgi.set_status_code(self.span, 404)
-        expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
+        expected = (mock.call(HTTP_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, 1)
         self.assertEqual(self.span.set_attribute.call_count, 1)
         self.span.set_attribute.assert_has_calls(expected, any_order=True)
@@ -2094,7 +2101,7 @@ class TestAsgiAttributes(unittest.TestCase):
             None,
             _StabilityMode.HTTP_DUP,
         )
-        expected = (mock.call(SpanAttributes.HTTP_STATUS_CODE, 404),)
+        expected = (mock.call(HTTP_STATUS_CODE, 404),)
         expected2 = (mock.call(HTTP_RESPONSE_STATUS_CODE, 404),)
         self.assertEqual(self.span.set_attribute.call_count, 2)
         self.assertEqual(self.span.set_attribute.call_count, 2)
@@ -2111,7 +2118,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope["query_string"] = b"X-Goog-Signature=1234567890"
         attrs = otel_asgi.collect_request_attributes(self.scope)
         self.assertEqual(
-            attrs[SpanAttributes.HTTP_URL],
+            attrs[HTTP_URL],
             "http://REDACTED:REDACTED@mock/status/200?X-Goog-Signature=REDACTED",
         )
 
