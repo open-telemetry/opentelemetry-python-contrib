@@ -28,9 +28,13 @@ from opentelemetry.instrumentation.aws_lambda import (
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
     AwsLambdaInstrumentor,
 )
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
-    TRACE_HEADER_KEY,
     TRACE_ID_FIRST_PART_LENGTH,
     TRACE_ID_VERSION,
 )
@@ -54,7 +58,13 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
+from opentelemetry.trace import (
+    NoOpTracerProvider,
+    SpanKind,
+    StatusCode,
+    format_span_id,
+    format_trace_id,
+)
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -601,26 +611,24 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
     def test_api_gateway_proxy_event_response_header(self):
         handler_patch = mock.patch.dict(
             "os.environ",
-            {
-                _HANDLER: "tests.mocks.lambda_function.rest_api_handler",
-                OTEL_PROPAGATORS: "tracecontext,xray-lambda",
-                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
-            },
+            {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"},
         )
         handler_patch.start()
-        reload(propagate)
+
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
 
         AwsLambdaInstrumentor().instrument()
 
         response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
 
+        ctx = self.memory_exporter.get_finished_spans()[0].get_span_context()
         self.assertEqual(
-            response["headers"].keys(),
-            {
-                TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME,
-                TRACE_HEADER_KEY,
-            },
+            response["headers"]["traceresponse"],
+            f"00-{format_trace_id(ctx.trace_id)}-{format_span_id(ctx.span_id)}-01",
         )
+
+        set_global_response_propagator(orig)
 
     def test_api_gateway_http_api_proxy_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()

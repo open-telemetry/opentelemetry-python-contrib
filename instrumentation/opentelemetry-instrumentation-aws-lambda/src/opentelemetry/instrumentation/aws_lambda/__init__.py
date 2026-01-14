@@ -83,6 +83,9 @@ from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.propagators import (
+    get_global_response_propagator,
+)
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
 from opentelemetry.propagate import get_global_textmap
@@ -383,9 +386,10 @@ def _instrument(
                             HTTP_STATUS_CODE,
                             result.get("statusCode"),
                         )
-                        get_global_textmap().inject(
-                            result.setdefault("headers", {}),
-                        )
+                        if propagator := get_global_response_propagator():
+                            propagator.inject(
+                                result.setdefault("headers", {}),
+                            )
         finally:
             if token:
                 context_api.detach(token)
