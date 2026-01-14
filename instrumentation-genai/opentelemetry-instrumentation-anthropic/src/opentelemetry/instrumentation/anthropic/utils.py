@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -27,9 +28,60 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.types import AttributeValue
 
+if TYPE_CHECKING:
+    from anthropic.resources.messages import Messages
+
+
+@dataclass
+class MessageCreateParams:
+    """Parameters extracted from Messages.create() call."""
+
+    model: str | None = None
+    max_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    top_k: int | None = None
+    stop_sequences: Sequence[str] | None = None
+
+
+# Use parameter signature from
+# https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L92
+# to handle named vs positional args robustly
+def extract_params(  # pylint: disable=too-many-locals
+    *,
+    max_tokens: int | None = None,
+    messages: Any | None = None,
+    model: str | None = None,
+    metadata: Any | None = None,
+    service_tier: Any | None = None,
+    stop_sequences: Sequence[str] | None = None,
+    stream: Any | None = None,
+    system: Any | None = None,
+    temperature: float | None = None,
+    thinking: Any | None = None,
+    tool_choice: Any | None = None,
+    tools: Any | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
+    extra_headers: Any | None = None,
+    extra_query: Any | None = None,
+    extra_body: Any | None = None,
+    timeout: Any | None = None,
+    **_kwargs: Any,
+) -> MessageCreateParams:
+    """Extract relevant parameters from Messages.create() arguments."""
+    return MessageCreateParams(
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        stop_sequences=stop_sequences,
+    )
+
 
 def set_server_address_and_port(
-    client_instance: Any, attributes: dict[str, Any]
+    client_instance: "Messages", attributes: dict[str, Any]
 ) -> None:
     """Extract server address and port from the Anthropic client instance."""
     base_client = getattr(client_instance, "_client", None)
@@ -52,9 +104,9 @@ def set_server_address_and_port(
 
 
 def get_llm_request_attributes(
-    kwargs: dict[str, Any], client_instance: Any
+    params: MessageCreateParams, client_instance: "Messages"
 ) -> dict[str, AttributeValue]:
-    """Extract LLM request attributes from kwargs.
+    """Extract LLM request attributes from MessageCreateParams.
 
     Returns a dictionary of OpenTelemetry semantic convention attributes for LLM requests.
     The attributes follow the GenAI semantic conventions (gen_ai.*) and server semantic
@@ -79,14 +131,12 @@ def get_llm_request_attributes(
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
-        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
-        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("top_p"),
-        GenAIAttributes.GEN_AI_REQUEST_TOP_K: kwargs.get("top_k"),
-        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: kwargs.get(
-            "stop_sequences"
-        ),
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: params.model,
+        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: params.max_tokens,
+        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: params.temperature,
+        GenAIAttributes.GEN_AI_REQUEST_TOP_P: params.top_p,
+        GenAIAttributes.GEN_AI_REQUEST_TOP_K: params.top_k,
+        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: params.stop_sequences,
     }
 
     set_server_address_and_port(client_instance, attributes)

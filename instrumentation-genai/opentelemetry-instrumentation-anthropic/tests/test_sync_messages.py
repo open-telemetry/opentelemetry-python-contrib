@@ -91,7 +91,7 @@ def test_sync_messages_create_basic(
     span_exporter, anthropic_client, instrument_no_content
 ):
     """Test basic sync message creation produces correct span."""
-    model = "claude-3-5-sonnet-20241022"
+    model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
     response = anthropic_client.messages.create(
@@ -119,7 +119,7 @@ def test_sync_messages_create_with_all_params(
     span_exporter, anthropic_client, instrument_no_content
 ):
     """Test message creation with all optional parameters."""
-    model = "claude-3-5-sonnet-20241022"
+    model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello."}]
 
     anthropic_client.messages.create(
@@ -150,7 +150,7 @@ def test_sync_messages_create_token_usage(
     span_exporter, anthropic_client, instrument_no_content
 ):
     """Test that token usage is captured correctly."""
-    model = "claude-3-5-sonnet-20241022"
+    model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 5."}]
 
     response = anthropic_client.messages.create(
@@ -180,7 +180,7 @@ def test_sync_messages_create_stop_reason(
     span_exporter, anthropic_client, instrument_no_content
 ):
     """Test that stop reason is captured as finish_reasons array."""
-    model = "claude-3-5-sonnet-20241022"
+    model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
 
     response = anthropic_client.messages.create(
@@ -203,7 +203,7 @@ def test_sync_messages_create_connection_error(
     span_exporter, instrument_no_content
 ):
     """Test that connection errors are handled correctly."""
-    model = "claude-3-5-sonnet-20241022"
+    model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
 
     # Create client with invalid endpoint
