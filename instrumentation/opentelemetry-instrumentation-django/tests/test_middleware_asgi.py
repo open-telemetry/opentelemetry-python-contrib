@@ -660,13 +660,13 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         #
         # Django's ASGI runner will call task.cancel() in practice if it detects a closed
         # connection
-        with self.assertRaises(CancelledError):
+        with self.assertRaises(asyncio.CancelledError):
             # simulate a cancellation during the response side
             # of the middleware
             with patch(
                 "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_response",
                 #
-                side_effect=CancelledError,
+                side_effect=asyncio.CancelledError,
             ):
                 await self.async_client.get("/traced-custom-error/")
 
