@@ -89,12 +89,6 @@ from .views import (
     async_with_custom_header,
 )
 
-
-async def async_slow(request):  # pylint: disable=unused-argument
-    """View that takes a long time - used to test cancellation."""
-    await asyncio.sleep(10)
-    return HttpResponse()
-
 DJANGO_2_0 = VERSION >= (2, 0)
 DJANGO_3_1 = VERSION >= (3, 1)
 
@@ -112,7 +106,6 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", async_excluded_noarg),
     re_path(r"^excluded_noarg2/", async_excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", async_route_span_name),
-    re_path(r"^slow/", async_slow),
 ]
 _django_instrumentor = DjangoInstrumentor()
 
@@ -655,22 +648,34 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         )
         self.memory_exporter.clear()
 
-    async def test_cancelled_request_cleanup(self):
-        # Start a slow request and cancel it before it completes
-        task = asyncio.create_task(self.async_client.get("/slow/"))
-        await asyncio.sleep(0.01)  # Let the request start
-        task.cancel()
+    async def test_cancelled_http_requests_clean_up_spans(self):
+        """
+        An ASGI request handling task can be cancelled by Django
+        if it detects that a connection is closed.
 
-        with self.assertRaises(asyncio.CancelledError):
-            await task
+        This manifests in an asyncio.CancelledError
+        """
+        # HACK unfortunately asyncio.CancelledError bubbles up to the top of the AsyncClient,
+        # making a bit of a mess
+        #
+        # Django's ASGI runner will call task.cancel() in practice if it detects a closed
+        # connection
+        with self.assertRaises(CancelledError):
+            # simulate a cancellation during the response side
+            # of the middleware
+            with patch(
+                "opentelemetry.instrumentation.django.middleware.otel_middleware._DjangoMiddleware.process_response",
+                #
+                side_effect=CancelledError,
+            ):
+                await self.async_client.get("/traced-custom-error/")
 
-        spans = self.memory_exporter.get_finished_spans()
+        spans = self.exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
-
         span = spans[0]
-        # CancelledError should NOT be recorded as an error
-        self.assertEqual(span.status.status_code, StatusCode.UNSET)
-        self.assertEqual(len(span.events), 0)  # No exception event
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.name, "GET")
+        self.memory_exporter.clear()
 
 
 class TestMiddlewareAsgiWithTracerProvider(SimpleTestCase, TestBase):
