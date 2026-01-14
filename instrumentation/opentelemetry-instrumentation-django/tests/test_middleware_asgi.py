@@ -84,11 +84,16 @@ from .views import (
     async_excluded_noarg,
     async_excluded_noarg2,
     async_route_span_name,
-    async_slow,
     async_traced,
     async_traced_template,
     async_with_custom_header,
 )
+
+
+async def async_slow(request):  # pylint: disable=unused-argument
+    """View that takes a long time - used to test cancellation."""
+    await asyncio.sleep(10)
+    return HttpResponse()
 
 DJANGO_2_0 = VERSION >= (2, 0)
 DJANGO_3_1 = VERSION >= (3, 1)
