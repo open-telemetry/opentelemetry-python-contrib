@@ -137,6 +137,18 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
+class _OnceLogger:
+    _is_already_warned_asgi_instrumentation = False
+
+    @staticmethod
+    def log_warning_asgi_instrumentation():
+        if _OnceLogger._is_already_warned_asgi_instrumentation == False:
+            _OnceLogger._is_already_warned_asgi_instrumentation = True
+            _logger.warning(
+                "ASGI request detected but ASGI instrumentation is not available. Skipping instrumentation. You may need to install the `opentelemetry-instrumentation-asgi` package."
+            )
+
+
 class _DjangoMiddleware(MiddlewareMixin):
     """Django Middleware for OpenTelemetry"""
 
@@ -201,6 +213,7 @@ class _DjangoMiddleware(MiddlewareMixin):
 
         is_asgi_request = _is_asgi_request(request)
         if not _is_asgi_supported and is_asgi_request:
+            _OnceLogger.log_warning_asgi_instrumentation()
             return
 
         # pylint:disable=W0212
