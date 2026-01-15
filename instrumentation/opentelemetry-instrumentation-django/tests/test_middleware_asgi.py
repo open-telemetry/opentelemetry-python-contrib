@@ -641,7 +641,7 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         )
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
-        trace_flags = format(span_id, "02x")
+        trace_flags = format(span.get_span_context().trace_flags, "02x")
         self.assertEqual(
             response["traceresponse"],
             f"00-{trace_id}-{span_id}-{trace_flags}",
