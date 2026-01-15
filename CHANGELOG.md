@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
   ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+- `opentelemetry-instrumentation-dbapi`: Fix sqlcomment calculation of mysql_client_version field if connection reassignment, with "unknown" fallback
+  ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
 
 ### Breaking changes
 
@@ -201,8 +203,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3615](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3615))
 - `opentelemetry-instrumentation-fastapi`: Don't pass bounded server_request_hook when using `FastAPIInstrumentor.instrument()`
   ([#3701](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3701))
-- `opentelemetry-instrumentation-dbapi`: Fix sqlcomment calculation of mysql_client_version field if connection reassignment, with "unknown" fallback
-  ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
 
 ### Added
 
