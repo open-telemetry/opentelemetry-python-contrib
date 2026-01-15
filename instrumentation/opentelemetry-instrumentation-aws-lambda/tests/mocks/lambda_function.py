@@ -31,5 +31,5 @@ def handler_exc(event, context):
     raise Exception("500 internal server error")
 
 
-def http_api_inferred_response(event, context):
+def http_api_inferred_response_handler(event, context):
     return {"message": "Hello from Lambda!"}

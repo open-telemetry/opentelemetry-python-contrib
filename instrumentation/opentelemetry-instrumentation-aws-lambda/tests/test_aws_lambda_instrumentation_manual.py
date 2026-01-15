@@ -638,7 +638,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         handler_patch = mock.patch.dict(
             "os.environ",
             {
-                _HANDLER: "tests.mocks.lambda_function.http_api_inferred_response"
+                _HANDLER: "tests.mocks.lambda_function.http_api_inferred_response_handler"
             },
         )
         handler_patch.start()
