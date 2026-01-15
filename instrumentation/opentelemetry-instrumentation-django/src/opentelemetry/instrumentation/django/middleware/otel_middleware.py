@@ -21,6 +21,7 @@ from typing import Callable
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
+from opentelemetry import trace
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
@@ -406,30 +407,6 @@ class _DjangoMiddleware:
                 except Exception:  # pylint: disable=broad-exception-caught
                     _logger.exception("Exception raised by response_hook")
 
-        if request_start_time is not None:
-            duration_s = default_timer() - request_start_time
-            if self._duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.DEFAULT
-                )
-                # http.target to be included in old semantic conventions
-                target = duration_attrs.get(HTTP_TARGET)
-                if target:
-                    duration_attrs_old[HTTP_TARGET] = target
-                self._duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0),
-                    duration_attrs_old,
-                )
-            if self._duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.HTTP
-                )
-                self._duration_histogram_new.record(
-                    max(duration_s, 0),
-                    duration_attrs_new,
-                )
-        self._active_request_counter.add(-1, active_requests_count_attrs)
-
         if activation and span:
             if exception:
                 activation.__exit__(
@@ -442,6 +419,7 @@ class _DjangoMiddleware:
 
         if request_start_time is not None:
             duration_s = default_timer() - request_start_time
+            span_ctx = trace.set_span_in_context(span)
             if self._duration_histogram_old:
                 duration_attrs_old = _parse_duration_attrs(
                     duration_attrs, _StabilityMode.DEFAULT
@@ -455,7 +433,9 @@ class _DjangoMiddleware:
                     duration_attrs_old
                 )
                 self._duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=span_ctx,
                 )
             if self._duration_histogram_new:
                 duration_attrs_new = _parse_duration_attrs(
@@ -466,7 +446,9 @@ class _DjangoMiddleware:
                     duration_attrs_new
                 )
                 self._duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=span_ctx,
                 )
         self._active_request_counter.add(-1, active_requests_count_attrs)
         if request.META.get(self._environ_token, None) is not None:
