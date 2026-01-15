@@ -68,8 +68,6 @@ class StreamingTestCase(TestCase):
             self.assertEqual(
                 span.attributes["extra_attribute_key"], "extra_attribute_value"
             )
-        except:
-            raise
         finally:
             context_api.detach(tok)
 
