@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import abc
 from unittest import mock
 
@@ -63,10 +65,18 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    get_excluded_urls,
+)
 
 
 class TransportMock:
@@ -175,6 +185,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -211,6 +222,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -253,6 +265,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -276,6 +289,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "_OTHER",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 405,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -300,6 +314,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 ERROR_TYPE: "405",
                 HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
@@ -534,6 +549,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -564,6 +580,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -591,6 +608,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PEER_PORT: 80,
                 NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -613,6 +631,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -636,6 +655,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 500,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -675,6 +695,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 210,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -702,6 +723,227 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         result = requests.get(self.URL, headers=None, timeout=5)
         self.assertEqual(result.text, "Hello!")
         self.assert_span()
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "X-Custom-Header,X-Another-Header",
+        },
+    )
+    def test_custom_request_headers_captured(self):
+        """Test that specified request headers are captured as span attributes."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        headers = {
+            "X-Custom-Header": "custom-value",
+            "X-Another-Header": "another-value",
+            "X-Excluded-Header": "excluded-value",
+        }
+        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        result = requests.get(self.URL, headers=headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn("http.request.x_excluded_header", span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "X-Custom-Header,X-Another-Header",
+        },
+    )
+    def test_custom_response_headers_captured(self):
+        """Test that specified request headers are captured as span attributes."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        headers = {
+            "X-Custom-Header": "custom-value",
+            "X-Another-Header": "another-value",
+            "X-Excluded-Header": "excluded-value",
+        }
+        httpretty.register_uri(
+            httpretty.GET, self.URL, body="Hello!", adding_headers=headers
+        )
+        result = requests.get(self.URL, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn("http.response.x_excluded_header", span.attributes)
+
+    @mock.patch.dict("os.environ", {})
+    def test_custom_headers_not_captured_when_not_configured(self):
+        """Test that headers are not captured when env vars are not set."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        headers = {"X-Request-Header": "request-value"}
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers={"X-Response-Header": "response-value"},
+        )
+        result = requests.get(self.URL, headers=headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertNotIn(
+            "http.request.header.x_request_header", span.attributes
+        )
+        self.assertNotIn(
+            "http.response.header.x_response_header", span.attributes
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "Set-Cookie,X-Secret",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "Authorization,X-Api-Key",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "Authorization,X-Api-Key,Set-Cookie,X-Secret",
+        },
+    )
+    def test_sensitive_headers_sanitized(self):
+        """Test that sensitive header values are redacted."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        request_headers = {
+            "Authorization": "Bearer secret-token",
+            "X-Api-Key": "secret-key",
+        }
+        response_headers = {
+            "Set-Cookie": "session=abc123",
+            "X-Secret": "secret",
+        }
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.authorization"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_api_key"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.set_cookie"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_secret"],
+            ("[REDACTED]",),
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "X-Custom-Response-.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "X-Custom-Request-.*",
+        },
+    )
+    def test_custom_headers_with_regex(self):
+        """Test that header capture works with regex patterns."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        request_headers = {
+            "X-Custom-Request-One": "value-one",
+            "X-Custom-Request-Two": "value-two",
+            "X-Other-Request-Header": "other-value",
+        }
+        response_headers = {
+            "X-Custom-Response-A": "value-A",
+            "X-Custom-Response-B": "value-B",
+            "X-Other-Response-Header": "other-value",
+        }
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_one"],
+            ("value-one",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_two"],
+            ("value-two",),
+        )
+        self.assertNotIn(
+            "http.request.header.x_other_request_header", span.attributes
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_a"],
+            ("value-A",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_b"],
+            ("value-B",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_other_response_header", span.attributes
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "x-response-header",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "x-request-header",
+        },
+    )
+    def test_custom_headers_case_insensitive(self):
+        """Test that header capture is case-insensitive."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        request_headers = {"X-ReQuESt-HeaDER": "custom-value"}
+        response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_header"],
+            ("custom-value",),
+        )
 
 
 class TestRequestsIntegrationPreparedRequest(

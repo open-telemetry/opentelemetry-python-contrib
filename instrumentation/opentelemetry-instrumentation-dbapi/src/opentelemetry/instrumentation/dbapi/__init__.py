@@ -65,7 +65,7 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -184,7 +184,16 @@ from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -547,13 +556,13 @@ class DatabaseApiIntegration:
         if user and isinstance(user, bytes):
             user = user.decode()
         if user is not None:
-            self.span_attributes[SpanAttributes.DB_USER] = str(user)
+            self.span_attributes[DB_USER] = str(user)
         host = self.connection_props.get("host")
         if host is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_NAME] = host
+            self.span_attributes[NET_PEER_NAME] = host
         port = self.connection_props.get("port")
         if port is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
+            self.span_attributes[NET_PEER_PORT] = port
 
 
 # pylint: disable=abstract-method
@@ -682,13 +691,9 @@ class CursorTracer(Generic[CursorT]):
         if not span.is_recording():
             return
         statement = self.get_statement(cursor, args)
-        span.set_attribute(
-            SpanAttributes.DB_SYSTEM, self._db_api_integration.database_system
-        )
-        span.set_attribute(
-            SpanAttributes.DB_NAME, self._db_api_integration.database
-        )
-        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        span.set_attribute(DB_SYSTEM, self._db_api_integration.database_system)
+        span.set_attribute(DB_NAME, self._db_api_integration.database)
+        span.set_attribute(DB_STATEMENT, statement)
 
         for (
             attribute_key,

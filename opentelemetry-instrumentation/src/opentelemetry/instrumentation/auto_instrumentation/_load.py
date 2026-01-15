@@ -35,6 +35,8 @@ from opentelemetry.util._importlib_metadata import (
 
 _logger = getLogger(__name__)
 
+SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
+
 
 class _EntryPointDistFinder:
     @cached_property
@@ -94,6 +96,9 @@ def _load_instrumentors(distro):
         entry_point.load()()
 
     for entry_point in entry_points(group="opentelemetry_instrumentor"):
+        if SKIPPED_INSTRUMENTATIONS_WILDCARD in package_to_exclude:
+            break
+
         if entry_point.name in package_to_exclude:
             _logger.debug(
                 "Instrumentation skipped for library %s", entry_point.name
