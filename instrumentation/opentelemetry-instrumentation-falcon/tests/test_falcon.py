@@ -45,12 +45,27 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_PORT,
+    NET_PEER_IP,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_PORT,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
@@ -63,7 +78,6 @@ from opentelemetry.semconv.attributes.url_attributes import (
     URL_PATH,
     URL_SCHEME,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
@@ -251,19 +265,17 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
 
         expected_attributes = {}
         expected_attributes_old = {
-            SpanAttributes.HTTP_METHOD: method,
-            SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-            SpanAttributes.HTTP_SCHEME: "http",
-            SpanAttributes.NET_HOST_PORT: 80,
-            SpanAttributes.HTTP_HOST: "falconframework.org",
-            SpanAttributes.HTTP_TARGET: "/"
-            if self._has_fixed_http_target
-            else "/hello",
-            SpanAttributes.NET_PEER_PORT: 65133,
-            SpanAttributes.HTTP_FLAVOR: "1.1",
+            HTTP_METHOD: method,
+            HTTP_SERVER_NAME: "falconframework.org",
+            HTTP_SCHEME: "http",
+            NET_HOST_PORT: 80,
+            HTTP_HOST: "falconframework.org",
+            HTTP_TARGET: "/" if self._has_fixed_http_target else "/hello",
+            NET_PEER_PORT: 65133,
+            HTTP_FLAVOR: "1.1",
             "falcon.resource": "HelloWorldResource",
-            SpanAttributes.HTTP_STATUS_CODE: 201,
-            SpanAttributes.HTTP_ROUTE: "/hello",
+            HTTP_STATUS_CODE: 201,
+            HTTP_ROUTE: "/hello",
         }
         expected_attributes_new = {
             HTTP_REQUEST_METHOD: method,
@@ -275,7 +287,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             NETWORK_PROTOCOL_VERSION: "1.1",
             "falcon.resource": "HelloWorldResource",
             HTTP_RESPONSE_STATUS_CODE: 201,
-            SpanAttributes.HTTP_ROUTE: "/hello",
+            HTTP_ROUTE: "/hello",
         }
 
         if old_semconv:
@@ -287,10 +299,8 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
-        if SpanAttributes.NET_PEER_IP in span.attributes:
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
-            )
+        if NET_PEER_IP in span.attributes:
+            self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
         self.memory_exporter.clear()
 
     def test_404(self):
@@ -303,26 +313,24 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/"
+                HTTP_METHOD: "GET",
+                HTTP_SERVER_NAME: "falconframework.org",
+                HTTP_SCHEME: "http",
+                NET_HOST_PORT: 80,
+                HTTP_HOST: "falconframework.org",
+                HTTP_TARGET: "/"
                 if self._has_fixed_http_target
                 else "/does-not-exist",
-                SpanAttributes.NET_PEER_PORT: 65133,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                NET_PEER_PORT: 65133,
+                HTTP_FLAVOR: "1.1",
+                HTTP_STATUS_CODE: 404,
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
-        if SpanAttributes.NET_PEER_IP in span.attributes:
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
-            )
+        if NET_PEER_IP in span.attributes:
+            self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
     def test_500(self):
         try:
@@ -348,27 +356,23 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/"
-                if self._has_fixed_http_target
-                else "/error",
-                SpanAttributes.NET_PEER_PORT: 65133,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
-                SpanAttributes.HTTP_ROUTE: "/error",
+                HTTP_METHOD: "GET",
+                HTTP_SERVER_NAME: "falconframework.org",
+                HTTP_SCHEME: "http",
+                NET_HOST_PORT: 80,
+                HTTP_HOST: "falconframework.org",
+                HTTP_TARGET: "/" if self._has_fixed_http_target else "/error",
+                NET_PEER_PORT: 65133,
+                HTTP_FLAVOR: "1.1",
+                HTTP_STATUS_CODE: 500,
+                HTTP_ROUTE: "/error",
             },
         )
         # In falcon<3, NET_PEER_IP is always set by default to 127.0.0.1
         # In falcon>=3, NET_PEER_IP is not set to anything by default
         # https://github.com/falconry/falcon/blob/5233d0abed977d9dab78ebadf305f5abe2eef07c/falcon/testing/helpers.py#L1168-L1172 # noqa
-        if SpanAttributes.NET_PEER_IP in span.attributes:
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_IP], "127.0.0.1"
-            )
+        if NET_PEER_IP in span.attributes:
+            self.assertEqual(span.attributes[NET_PEER_IP], "127.0.0.1")
 
     def test_url_template_new_semconv(self):
         self.client().simulate_get("/user/123")
@@ -396,7 +400,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 "falcon.resource": "UserResource",
                 HTTP_RESPONSE_STATUS_CODE: 200,
-                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
+                HTTP_ROUTE: "/user/{user_id}",
             },
         )
 
@@ -425,19 +429,19 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.assertSpanHasAttributes(
             span,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_SERVER_NAME: "falconframework.org",
-                SpanAttributes.HTTP_SCHEME: "http",
-                SpanAttributes.NET_HOST_PORT: 80,
-                SpanAttributes.HTTP_HOST: "falconframework.org",
-                SpanAttributes.HTTP_TARGET: "/"
+                HTTP_METHOD: "GET",
+                HTTP_SERVER_NAME: "falconframework.org",
+                HTTP_SCHEME: "http",
+                NET_HOST_PORT: 80,
+                HTTP_HOST: "falconframework.org",
+                HTTP_TARGET: "/"
                 if self._has_fixed_http_target
                 else "/user/123",
-                SpanAttributes.NET_PEER_PORT: 65133,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
+                NET_PEER_PORT: 65133,
+                HTTP_FLAVOR: "1.1",
                 "falcon.resource": "UserResource",
-                SpanAttributes.HTTP_STATUS_CODE: 200,
-                SpanAttributes.HTTP_ROUTE: "/user/{user_id}",
+                HTTP_STATUS_CODE: 200,
+                HTTP_ROUTE: "/user/{user_id}",
             },
         )
 

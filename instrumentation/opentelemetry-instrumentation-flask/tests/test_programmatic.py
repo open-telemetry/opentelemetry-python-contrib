@@ -923,6 +923,48 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertTrue(number_data_point_seen)
         self.assertFalse(histogram_data_point_seen)
 
+    def test_duration_histogram_old_record_with_context(self):
+        with patch("opentelemetry.trace.set_span_in_context") as mock_set_span:
+            self.client.get("/hello/123")
+
+            # Verify that trace.set_span_in_context was called for metrics exemplar context
+            # with same trace, span ID as trace
+            mock_set_span.assert_called()
+            call_args = mock_set_span.call_args
+            self.assertEqual(len(call_args[0]), 1)
+            span_arg = call_args[0][0]
+            self.assertIsNotNone(span_arg)
+            finished_spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(finished_spans), 1)
+            finished_span = finished_spans[0]
+            self.assertEqual(
+                span_arg.context.trace_id, finished_span.context.trace_id
+            )
+            self.assertEqual(
+                span_arg.context.span_id, finished_span.context.span_id
+            )
+
+    def test_duration_histogram_new_record_with_context_new_semconv(self):
+        with patch("opentelemetry.trace.set_span_in_context") as mock_set_span:
+            self.client.get("/hello/123")
+
+            # Verify that trace.set_span_in_context was called for metrics exemplar context
+            # with same trace, span ID as trace
+            mock_set_span.assert_called()
+            call_args = mock_set_span.call_args
+            self.assertEqual(len(call_args[0]), 1)
+            span_arg = call_args[0][0]
+            self.assertIsNotNone(span_arg)
+            finished_spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(finished_spans), 1)
+            finished_span = finished_spans[0]
+            self.assertEqual(
+                span_arg.context.trace_id, finished_span.context.trace_id
+            )
+            self.assertEqual(
+                span_arg.context.span_id, finished_span.context.span_id
+            )
+
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):
     def setUp(self):
@@ -992,7 +1034,7 @@ class TestProgrammaticHooksWithoutApp(InstrumentationTest, WsgiTestBase):
             request_hook=request_hook_test, response_hook=response_hook_test
         )
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
-        from flask import Flask
+        from flask import Flask  # noqa: PLC0415
 
         self.app = Flask(__name__)
 
@@ -1062,7 +1104,7 @@ class TestProgrammaticCustomTracerProviderWithoutApp(
 
         FlaskInstrumentor().instrument(tracer_provider=tracer_provider)
         # pylint: disable=import-outside-toplevel,reimported,redefined-outer-name
-        from flask import Flask
+        from flask import Flask  # noqa: PLC0415
 
         self.app = Flask(__name__)
 

@@ -76,13 +76,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_30_0.value,
         )
         logger_provider = kwargs.get("logger_provider")
         logger = get_logger(
             __name__,
             "",
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_30_0.value,
             logger_provider=logger_provider,
         )
         meter_provider = kwargs.get("meter_provider")
@@ -90,7 +90,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             __name__,
             "",
             meter_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=Schemas.V1_30_0.value,
         )
 
         instruments = Instruments(self._meter)
@@ -129,7 +129,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel
+        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")

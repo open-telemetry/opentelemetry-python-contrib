@@ -235,7 +235,7 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -291,6 +291,7 @@ API
 ---
 """
 
+import sys
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -337,6 +338,11 @@ from opentelemetry.util.http import (
 
 _logger = getLogger(__name__)
 
+# Global constants for Flask 3.1+ streaming context cleanup
+_IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
+    flask.__version__
+) >= package_version.parse("3.1.0")
+
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
@@ -380,6 +386,7 @@ def _rewrapped_app(
     sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     duration_histogram_new=None,
 ):
+    # pylint: disable=too-many-statements
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -445,8 +452,18 @@ def _rewrapped_app(
             return start_response(status, response_headers, *args, **kwargs)
 
         result = wsgi_app(wrapped_app_environ, _start_response)
+
+        # Note: Streaming response context cleanup is now handled in the Flask teardown function
+        # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
+        # for OpenTelemetry generator context management
+
         if should_trace:
             duration_s = default_timer() - start
+            # Get the span from wrapped_app_environ and re-create context manually
+            # to pass to histogram for exemplars generation
+            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+            metrics_context = trace.set_span_in_context(span)
+
             if duration_histogram_old:
                 duration_attrs_old = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.DEFAULT
@@ -462,7 +479,9 @@ def _rewrapped_app(
                 )
 
                 duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0), duration_attrs_old
+                    max(round(duration_s * 1000), 0),
+                    duration_attrs_old,
+                    context=metrics_context,
                 )
             if duration_histogram_new:
                 duration_attrs_new = otel_wsgi._parse_duration_attrs(
@@ -478,8 +497,11 @@ def _rewrapped_app(
                 )
 
                 duration_histogram_new.record(
-                    max(duration_s, 0), duration_attrs_new
+                    max(duration_s, 0),
+                    duration_attrs_new,
+                    context=metrics_context,
                 )
+
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
 
@@ -584,6 +606,7 @@ def _wrapped_teardown_request(
             return
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
+        token = flask.request.environ.get(_ENVIRON_TOKEN)
 
         original_reqctx_ref = flask.request.environ.get(
             _ENVIRON_REQCTX_REF_KEY
@@ -601,15 +624,79 @@ def _wrapped_teardown_request(
             # like any decorated with `flask.copy_current_request_context`.
 
             return
-        if exc is None:
-            activation.__exit__(None, None, None)
-        else:
-            activation.__exit__(
-                type(exc), exc, getattr(exc, "__traceback__", None)
+
+        try:
+            # For Flask 3.1+, check if this is a streaming response that might
+            # have already been cleaned up to prevent double cleanup
+            # Only check for streaming in Flask 3.1+ and Python 3.10+ to avoid interference with older versions
+            is_flask_31_plus = _IS_FLASK_31_PLUS and sys.version_info >= (
+                3,
+                10,
             )
 
-        if flask.request.environ.get(_ENVIRON_TOKEN, None):
-            context.detach(flask.request.environ.get(_ENVIRON_TOKEN))
+            is_streaming = False
+            if is_flask_31_plus:
+                try:
+                    # Additional safety check: verify we're in a Flask request context
+                    if hasattr(flask, "request") and hasattr(
+                        flask.request, "response"
+                    ):
+                        is_streaming = (
+                            hasattr(flask.request, "response")
+                            and flask.request.response
+                            and hasattr(flask.request.response, "stream")
+                            and flask.request.response.stream
+                        )
+                except (RuntimeError, AttributeError):
+                    # Not in a proper Flask request context, don't check for streaming
+                    is_streaming = False
+
+            if is_flask_31_plus and is_streaming:
+                # For Flask 3.1+ streaming responses, ensure OpenTelemetry contexts are cleaned up
+                # This addresses the generator context leak issues documented by Logfire
+                # (open-telemetry/opentelemetry-python#2606)
+                try:
+                    context.detach(token)
+                    if hasattr(activation, "__exit__"):
+                        activation.__exit__(None, None, None)
+
+                    # Mark as cleaned up
+                    flask.request.environ[_ENVIRON_ACTIVATION_KEY] = None
+                    flask.request.environ[_ENVIRON_TOKEN] = None
+
+                    _logger.debug(
+                        "Streaming response context cleanup completed in teardown function"
+                    )
+
+                except (
+                    RuntimeError,
+                    ValueError,
+                    TypeError,
+                    AttributeError,
+                ) as cleanup_exc:
+                    _logger.debug(
+                        "Teardown streaming context cleanup failed: %s",
+                        cleanup_exc,
+                    )
+                return
+
+            if exc is None:
+                activation.__exit__(None, None, None)
+            else:
+                activation.__exit__(
+                    type(exc), exc, getattr(exc, "__traceback__", None)
+                )
+
+            if token:
+                context.detach(token)
+
+        except (RuntimeError, AttributeError, ValueError) as teardown_exc:
+            # Log the error but don't raise it to avoid breaking the request handling
+            _logger.debug(
+                "Error during request teardown: %s",
+                teardown_exc,
+                exc_info=True,
+            )
 
     return _teardown_request
 
