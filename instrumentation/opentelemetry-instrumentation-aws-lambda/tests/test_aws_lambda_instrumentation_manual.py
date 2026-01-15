@@ -650,7 +650,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
 
         response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
 
-        self.assertNotIn("headers", response)
+        self.assertEqual(response, {"message": "Hello from Lambda!"})
 
         set_global_response_propagator(orig)
 
