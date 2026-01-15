@@ -239,6 +239,7 @@ _recommended_metrics_attrs_both_with_custom = {
 }
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
         super().setUp()
