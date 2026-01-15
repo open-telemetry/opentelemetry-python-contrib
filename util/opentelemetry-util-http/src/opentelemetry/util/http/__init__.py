@@ -20,9 +20,24 @@ from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
 from typing import Callable, Iterable, overload
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    UserAgentSyntheticTypeValues,
+)
+from opentelemetry.util.http.constants import BOT_PATTERNS, TEST_PATTERNS
 
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
@@ -33,6 +48,12 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
 OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
     "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
 )
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
+)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = (
+    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
+)
 
 OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
     "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
@@ -40,23 +61,25 @@ OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
 
 # List of recommended metrics attributes
 _duration_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_STATUS_CODE,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
-    SpanAttributes.NET_HOST_NAME,
-    SpanAttributes.NET_HOST_PORT,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
+    NET_HOST_NAME,
+    NET_HOST_PORT,
 }
 
 _active_requests_count_attrs = {
-    SpanAttributes.HTTP_METHOD,
-    SpanAttributes.HTTP_HOST,
-    SpanAttributes.HTTP_SCHEME,
-    SpanAttributes.HTTP_FLAVOR,
-    SpanAttributes.HTTP_SERVER_NAME,
+    HTTP_METHOD,
+    HTTP_HOST,
+    HTTP_SCHEME,
+    HTTP_FLAVOR,
+    HTTP_SERVER_NAME,
 }
+
+PARAMS_TO_REDACT = ["AWSAccessKeyId", "Signature", "sig", "X-Goog-Signature"]
 
 
 class ExcludeList:
@@ -159,23 +182,23 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
 
 
 def remove_url_credentials(url: str) -> str:
-    """Given a string url, remove the username and password only if it is a valid url"""
-
+    """Given a string url, replace the username and password with the keyword `REDACTED` only if it is a valid url"""
     try:
         parsed = urlparse(url)
         if all([parsed.scheme, parsed.netloc]):  # checks for valid url
-            parsed_url = urlparse(url)
-            _, _, netloc = parsed.netloc.rpartition("@")
-            return urlunparse(
-                (
-                    parsed_url.scheme,
-                    netloc,
-                    parsed_url.path,
-                    parsed_url.params,
-                    parsed_url.query,
-                    parsed_url.fragment,
+            if "@" in parsed.netloc:
+                _, _, host = parsed.netloc.rpartition("@")
+                new_netloc = "REDACTED:REDACTED@" + host
+                return urlunparse(
+                    (
+                        parsed.scheme,
+                        new_netloc,
+                        parsed.path,
+                        parsed.params,
+                        parsed.query,
+                        parsed.fragment,
+                    )
                 )
-            )
     except ValueError:  # an unparsable url was passed
         pass
     return url
@@ -234,6 +257,35 @@ def get_custom_headers(env_var: str) -> list[str]:
     return []
 
 
+def get_custom_header_attributes(
+    headers: Mapping[str, str | list[str]] | None,
+    captured_headers: list[str] | None,
+    sensitive_headers: list[str] | None,
+    normalize_function: Callable[[str], str],
+) -> dict[str, list[str]]:
+    """Extract and sanitize HTTP headers for span attributes.
+
+    Args:
+        headers: The HTTP headers to process, either from a request or response.
+            Can be None if no headers are available.
+        captured_headers: List of header regexes to capture as span attributes.
+            If None or empty, no headers will be captured.
+        sensitive_headers: List of header regexes whose values should be sanitized
+            (redacted). If None, no sanitization is applied.
+        normalize_function: Function to normalize header names.
+
+    Returns:
+        Dictionary of normalized header attribute names to their values
+        as lists of strings.
+    """
+    if not headers or not captured_headers:
+        return {}
+    sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
+    return sanitize.sanitize_header_values(
+        headers, captured_headers, normalize_function
+    )
+
+
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {
         key: req_attrs[key]
@@ -255,3 +307,80 @@ def _parse_url_query(url: str):
     path = parsed_url.path
     query_params = parsed_url.query
     return path, query_params
+
+
+def redact_query_parameters(url: str) -> str:
+    """Given a string url, redact sensitive query parameter values"""
+    try:
+        parsed = urlparse(url)
+        if not parsed.query:  # No query parameters to redact
+            return url
+        query_params = parse_qs(parsed.query)
+        if not any(param in query_params for param in PARAMS_TO_REDACT):
+            return url
+        for param in PARAMS_TO_REDACT:
+            if param in query_params:
+                query_params[param] = ["REDACTED"]
+        return urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                urlencode(query_params, doseq=True),
+                parsed.fragment,
+            )
+        )
+    except ValueError:  # an unparsable url was passed
+        return url
+
+
+def redact_url(url: str) -> str:
+    """Redact sensitive data from the URL, including credentials and query parameters."""
+    url = remove_url_credentials(url)
+    url = redact_query_parameters(url)
+    return url
+
+
+def normalize_user_agent(
+    user_agent: str | bytes | bytearray | memoryview | None,
+) -> str | None:
+    """Convert user-agent header values into a usable string."""
+    # Different servers/frameworks surface headers as str, bytes, bytearray or memoryview;
+    # keep decoding logic centralized so instrumentation modules just call this helper.
+    if user_agent is None:
+        return None
+    if isinstance(user_agent, str):
+        return user_agent
+    if isinstance(user_agent, (bytes, bytearray)):
+        return user_agent.decode("latin-1")
+    if isinstance(user_agent, memoryview):
+        return user_agent.tobytes().decode("latin-1")
+    return str(user_agent)
+
+
+def detect_synthetic_user_agent(user_agent: str | None) -> str | None:
+    """
+    Detect synthetic user agent type based on user agent string contents.
+
+    Args:
+        user_agent: The user agent string to analyze
+
+    Returns:
+        UserAgentSyntheticTypeValues.TEST if user agent contains any pattern from TEST_PATTERNS
+        UserAgentSyntheticTypeValues.BOT if user agent contains any pattern from BOT_PATTERNS
+        None otherwise
+
+    Note: Test patterns take priority over bot patterns.
+    """
+    if not user_agent:
+        return None
+
+    user_agent_lower = user_agent.lower()
+
+    if any(test_pattern in user_agent_lower for test_pattern in TEST_PATTERNS):
+        return UserAgentSyntheticTypeValues.TEST.value
+    if any(bot_pattern in user_agent_lower for bot_pattern in BOT_PATTERNS):
+        return UserAgentSyntheticTypeValues.BOT.value
+
+    return None

@@ -83,7 +83,7 @@ For example,
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -177,6 +177,7 @@ API
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Collection, cast
+from weakref import WeakSet
 
 from starlette import applications
 from starlette.routing import Match
@@ -191,7 +192,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
 from opentelemetry.metrics import MeterProvider, get_meter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_ROUTE,
+)
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
@@ -226,7 +229,21 @@ class StarletteInstrumentor(BaseInstrumentor):
         meter_provider: MeterProvider | None = None,
         tracer_provider: TracerProvider | None = None,
     ):
-        """Instrument an uninstrumented Starlette application."""
+        """Instrument an uninstrumented Starlette application.
+
+        Args:
+            app: The starlette ASGI application callable to forward requests to.
+            server_request_hook: Optional callback which is called with the server span and ASGI
+                          scope object for every incoming request.
+            client_request_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method receive is called.
+            client_response_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method send is called.
+            meter_provider: The optional meter provider to use. If omitted
+                the current globally configured one is used.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
+        """
         tracer = get_tracer(
             __name__,
             __version__,
@@ -239,7 +256,7 @@ class StarletteInstrumentor(BaseInstrumentor):
             meter_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
-        if not getattr(app, "is_instrumented_by_opentelemetry", False):
+        if not getattr(app, "_is_instrumented_by_opentelemetry", False):
             app.add_middleware(
                 OpenTelemetryMiddleware,
                 excluded_urls=_excluded_urls,
@@ -251,11 +268,10 @@ class StarletteInstrumentor(BaseInstrumentor):
                 tracer=tracer,
                 meter=meter,
             )
-            app.is_instrumented_by_opentelemetry = True
+            app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
-            if app not in _InstrumentedStarlette._instrumented_starlette_apps:
-                _InstrumentedStarlette._instrumented_starlette_apps.add(app)
+            _InstrumentedStarlette._instrumented_starlette_apps.add(app)
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
@@ -300,7 +316,7 @@ class _InstrumentedStarlette(applications.Starlette):
     _server_request_hook: ServerRequestHook = None
     _client_request_hook: ClientRequestHook = None
     _client_response_hook: ClientResponseHook = None
-    _instrumented_starlette_apps: set[applications.Starlette] = set()
+    _instrumented_starlette_apps: WeakSet[applications.Starlette] = WeakSet()
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -331,9 +347,6 @@ class _InstrumentedStarlette(applications.Starlette):
         # adding apps to set for uninstrumenting
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 
-    def __del__(self):
-        _InstrumentedStarlette._instrumented_starlette_apps.remove(self)
-
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:
     """
@@ -355,7 +368,11 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     for starlette_route in app.routes:
         match, _ = starlette_route.matches(scope)
         if match == Match.FULL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                # routes added via host routing won't have a path attribute
+                route = scope.get("path")
             break
         if match == Match.PARTIAL:
             route = starlette_route.path
@@ -377,7 +394,7 @@ def _get_default_span_details(
     method: str = scope.get("method", "")
     attributes: dict[str, Any] = {}
     if route:
-        attributes[SpanAttributes.HTTP_ROUTE] = route
+        attributes[HTTP_ROUTE] = route
     if method and route:  # http
         span_name = f"{method} {route}"
     elif route:  # websocket

@@ -27,7 +27,22 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import rpc_attributes
+from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
+    CLOUD_REGION,
+)
+from opentelemetry.semconv._incubating.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_STACKTRACE,
+    EXCEPTION_TYPE,
+)
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import format_span_id, format_trace_id
@@ -58,15 +73,15 @@ class TestBotocoreInstrumentor(TestBase):
 
     def _default_span_attributes(self, service: str, operation: str):
         return {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: service,
-            SpanAttributes.RPC_METHOD: operation,
-            "aws.region": self.region,
+            rpc_attributes.RPC_SYSTEM: "aws-api",
+            rpc_attributes.RPC_SERVICE: service,
+            rpc_attributes.RPC_METHOD: operation,
+            CLOUD_REGION: self.region,
             "retry_attempts": 0,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
+            HTTP_STATUS_CODE: 200,
             # Some services like IAM or STS have a global endpoint and exclude specified region.
-            SpanAttributes.SERVER_ADDRESS: f"{service.lower()}.{'' if self.region == 'aws-global' else self.region + '.'}amazonaws.com",
-            SpanAttributes.SERVER_PORT: 443,
+            SERVER_ADDRESS: f"{service.lower()}.{'' if self.region == 'aws-global' else self.region + '.'}amazonaws.com",
+            SERVER_PORT: 443,
         }
 
     def assert_only_span(self):
@@ -147,16 +162,16 @@ class TestBotocoreInstrumentor(TestBase):
         span = spans[0]
 
         expected = self._default_span_attributes("S3", "ListObjects")
-        expected.pop(SpanAttributes.HTTP_STATUS_CODE)
+        expected.pop(HTTP_STATUS_CODE)
         expected.pop("retry_attempts")
         self.assertEqual(expected, span.attributes)
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
 
         self.assertEqual(1, len(span.events))
         event = span.events[0]
-        self.assertIn(SpanAttributes.EXCEPTION_STACKTRACE, event.attributes)
-        self.assertIn(SpanAttributes.EXCEPTION_TYPE, event.attributes)
-        self.assertIn(SpanAttributes.EXCEPTION_MESSAGE, event.attributes)
+        self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
+        self.assertIn(EXCEPTION_TYPE, event.attributes)
+        self.assertIn(EXCEPTION_MESSAGE, event.attributes)
 
     @mock_aws
     def test_s3_client(self):
@@ -334,7 +349,7 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
-        expected[SpanAttributes.SERVER_ADDRESS] = "sts.amazonaws.com"
+        expected[SERVER_ADDRESS] = "sts.amazonaws.com"
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
@@ -512,8 +527,8 @@ class TestBotocoreInstrumentor(TestBase):
             "EC2",
             "DescribeInstances",
             attributes={
-                SpanAttributes.SERVER_ADDRESS: f"ec2.{self.region}.amazonaws.com",
-                SpanAttributes.SERVER_PORT: 443,
+                SERVER_ADDRESS: f"ec2.{self.region}.amazonaws.com",
+                SERVER_PORT: 443,
             },
         )
         self.memory_exporter.clear()
@@ -525,9 +540,9 @@ class TestBotocoreInstrumentor(TestBase):
             "IAM",
             "ListUsers",
             attributes={
-                SpanAttributes.SERVER_ADDRESS: "iam.amazonaws.com",
-                SpanAttributes.SERVER_PORT: 443,
-                "aws.region": "aws-global",
+                SERVER_ADDRESS: "iam.amazonaws.com",
+                SERVER_PORT: 443,
+                CLOUD_REGION: "aws-global",
             },
         )
 
@@ -549,7 +564,7 @@ class TestBotocoreInstrumentor(TestBase):
                 "S3",
                 "ListBuckets",
                 attributes={
-                    SpanAttributes.SERVER_ADDRESS: "proxy.amazon.org",
-                    SpanAttributes.SERVER_PORT: 2025,
+                    SERVER_ADDRESS: "proxy.amazon.org",
+                    SERVER_PORT: 2025,
                 },
             )

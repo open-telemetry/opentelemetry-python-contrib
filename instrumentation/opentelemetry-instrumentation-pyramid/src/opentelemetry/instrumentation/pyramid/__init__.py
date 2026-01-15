@@ -65,10 +65,8 @@ For example:
     from pyramid.config import Configurator
     from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 
-    settings = {
-        'pyramid.tweens', 'opentelemetry.instrumentation.pyramid.trace_tween_factory\\nyour_tween_no_1\\nyour_tween_no_2',
-    }
-    config = Configurator(settings=settings)
+    config = Configurator()
+    config.add_tween('opentelemetry.instrumentation.pyramid.trace_tween_factory')
     PyramidInstrumentor().instrument_config(config)
 
     # use your config as normal.
@@ -94,7 +92,7 @@ will exclude requests such as ``https://site/client/123/info`` and ``https://sit
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************

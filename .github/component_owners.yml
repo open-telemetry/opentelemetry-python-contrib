@@ -1,77 +1,29 @@
 components:
 
-  docs/instrumentation:
-    - nemoshlag
+  instrumentation/opentelemetry-instrumentation-aiohttp-client:
+    - herin049
 
+  instrumentation/opentelemetry-instrumentation-aiokafka:
+    - dimastbk
 
-  instrumentation/opentelemetry-instrumentation-aio-pika:
-    - ofek1weiss
-
-  instrumentation/opentelemetry-instrumentation-boto3sqs:
-    - oxeye-nikolay
-    - nikosokolik
-  
   instrumentation/opentelemetry-instrumentation-asyncclick:
     - jomcgi
 
-  instrumentation/opentelemetry-instrumentation-kafka-python:
-    - nozik
-  
-  instrumentation/opentelemetry-instrumentation-pika:
-    - oxeye-nikolay
-    - nikosokolik
+  instrumentation/opentelemetry-instrumentation-asyncio:
+    - bourbonkk
 
-  instrumentation/opentelemetry-instrumentation-redis:
-    - sungwonh
+  instrumentation/opentelemetry-instrumentation-botocore:
+    - lukeina2z
+    - yiyuan-he
 
-  instrumentation/opentelemetry-instrumentation-remoulade:
-    - ben-natan
-    - machine424
-
-  instrumentation/opentelemetry-instrumentation-confluent-kafka:
-    - oxeye-dorkolog
-    - dorkolog
-
-  propagator/opentelemetry-propagator-aws-xray:
-    - NathanielRN
-
-  sdk-extension/opentelemetry-sdk-extension-aws:
-    - NathanielRN
-    - Kausik-A
-    - srprash
-
-  instrumentation/opentelemetry-instrumentation-tortoiseorm:
-    - tonybaloney
-
-  instrumentation/opentelemetry-instrumentation-tornado:
-    - shalevr
+  instrumentation/opentelemetry-instrumentation-pymssql:
+    - guillaumep
 
   instrumentation/opentelemetry-instrumentation-urllib:
     - shalevr
 
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
-
-  instrumentation/opentelemetry-instrumentation-sqlalchemy:
-    - shalevr
-
-  instrumentation/opentelemetry-instrumentation-cassandra:
-    - mattcontinisio
-
-  instrumentation/opentelemetry-instrumentation-asyncio:
-    - bourbonkk
-
-  instrumentation/opentelemetry-instrumentation-psycopg:
-    - federicobond
-
-  instrumentation/opentelemetry-instrumentation-pymssql:
-    - guillaumep
-
-  instrumentation/opentelemetry-instrumentation-aiokafka:
-    - dimastbk
-
-  processor/opentelemetry-processor-baggage:
-    - codeboten
 
   instrumentation-genai/:
     - karthikscale3
@@ -81,3 +33,27 @@ components:
     - nirga
     - alizenhom
     - codefromthecrypt
+
+  processor/opentelemetry-processor-baggage:
+    - codeboten
+
+  propagator/opentelemetry-propagator-aws-xray:
+    - jj22ee
+
+  sdk-extension/opentelemetry-sdk-extension-aws:
+    - srprash
+    - jj22ee
+
+  util/opentelemetry-util-genai:
+    - DylanRussell
+    - keith-decker
+
+  instrumentation-genai/opentelemetry-instrumentation-langchain:
+    - zhirafovod
+    - wrisa
+
+  instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
+    - nagkumar91
+
+  instrumentation-genai/opentelemetry-instrumentation-anthropic:
+    - vasantteja

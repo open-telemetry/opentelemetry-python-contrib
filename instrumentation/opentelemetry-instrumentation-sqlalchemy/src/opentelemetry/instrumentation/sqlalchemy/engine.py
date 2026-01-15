@@ -23,8 +23,22 @@ from sqlalchemy.event import (  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
-from opentelemetry.instrumentation.utils import _get_opentelemetry_values
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.instrumentation.utils import (
+    _get_opentelemetry_values,
+    is_instrumentation_enabled,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+    NET_TRANSPORT,
+    NetTransportValues,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 
@@ -54,6 +68,9 @@ def _wrap_create_async_engine(
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -79,6 +96,9 @@ def _wrap_create_engine(
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
         object that will listen to SQLAlchemy events.
         """
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         engine = func(*args, **kwargs)
         EngineTracer(
             tracer,
@@ -96,15 +116,16 @@ def _wrap_create_engine(
 def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         with tracer.start_as_current_span(
             "connect", kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(module.url)
                 span.set_attributes(attrs)
-                span.set_attribute(
-                    SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name)
-                )
+                span.set_attribute(DB_SYSTEM, _normalize_vendor(module.name))
             return func(*args, **kwargs)
 
     return _wrap_connect_internal
@@ -144,6 +165,9 @@ class EngineTracer:
         self._register_event_listener(engine, "checkout", self._pool_checkout)
 
     def _add_idle_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -153,6 +177,9 @@ class EngineTracer:
         )
 
     def _add_used_to_connection_usage(self, value):
+        if not is_instrumentation_enabled():
+            return
+
         self.connections_usage.add(
             value,
             attributes={
@@ -251,19 +278,22 @@ class EngineTracer:
 
     def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
         """Uses statement and attrs to set attributes of provided Otel span"""
-        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
-        span.set_attribute(SpanAttributes.DB_SYSTEM, self.vendor)
+        span.set_attribute(DB_STATEMENT, statement)
+        span.set_attribute(DB_SYSTEM, self.vendor)
         for key, value in attrs.items():
             span.set_attribute(key, value)
 
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
+        if not is_instrumentation_enabled():
+            return statement, params
+
         attrs, found = _get_attributes_from_url(conn.engine.url)
         if not found:
             attrs = _get_attributes_from_cursor(self.vendor, cursor, attrs)
 
-        db_name = attrs.get(SpanAttributes.DB_NAME, "")
+        db_name = attrs.get(DB_NAME, "")
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
             kind=trace.SpanKind.CLIENT,
@@ -332,13 +362,13 @@ def _get_attributes_from_url(url):
     """Set connection tags from the url. return true if successful."""
     attrs = {}
     if url.host:
-        attrs[SpanAttributes.NET_PEER_NAME] = url.host
+        attrs[NET_PEER_NAME] = url.host
     if url.port:
-        attrs[SpanAttributes.NET_PEER_PORT] = url.port
+        attrs[NET_PEER_PORT] = url.port
     if url.database:
-        attrs[SpanAttributes.DB_NAME] = url.database
+        attrs[DB_NAME] = url.database
     if url.username:
-        attrs[SpanAttributes.DB_USER] = url.username
+        attrs[DB_USER] = url.username
     return attrs, bool(url.host)
 
 
@@ -349,25 +379,21 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         if not info:
             return attrs
 
-        attrs[SpanAttributes.DB_NAME] = info.dbname
+        attrs[DB_NAME] = info.dbname
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
-            attrs[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.OTHER.value
-            )
+            attrs[NET_TRANSPORT] = NetTransportValues.OTHER.value
             if info.port:
                 # postgresql enforces this pattern on all socket names
-                attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
+                attrs[NET_PEER_NAME] = os.path.join(
                     info.host, f".s.PGSQL.{info.port}"
                 )
         else:
-            attrs[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.IP_TCP.value
-            )
-            attrs[SpanAttributes.NET_PEER_NAME] = info.host
+            attrs[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
+            attrs[NET_PEER_NAME] = info.host
             if info.port:
-                attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
+                attrs[NET_PEER_PORT] = int(info.port)
     return attrs
 
 

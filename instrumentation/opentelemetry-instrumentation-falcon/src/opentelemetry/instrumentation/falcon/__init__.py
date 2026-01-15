@@ -93,7 +93,7 @@ The hooks can be configured as follows:
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic convention <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -196,6 +196,7 @@ from packaging import version as package_version
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
@@ -297,6 +298,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
         self.active_requests_counter = self._otel_meter.create_up_down_counter(
