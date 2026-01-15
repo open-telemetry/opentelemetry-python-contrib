@@ -229,7 +229,21 @@ class StarletteInstrumentor(BaseInstrumentor):
         meter_provider: MeterProvider | None = None,
         tracer_provider: TracerProvider | None = None,
     ):
-        """Instrument an uninstrumented Starlette application."""
+        """Instrument an uninstrumented Starlette application.
+
+        Args:
+            app: The starlette ASGI application callable to forward requests to.
+            server_request_hook: Optional callback which is called with the server span and ASGI
+                          scope object for every incoming request.
+            client_request_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method receive is called.
+            client_response_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method send is called.
+            meter_provider: The optional meter provider to use. If omitted
+                the current globally configured one is used.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
+        """
         tracer = get_tracer(
             __name__,
             __version__,

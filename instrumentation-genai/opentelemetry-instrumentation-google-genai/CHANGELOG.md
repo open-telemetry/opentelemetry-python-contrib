@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Enable the addition of custom attributes to the `generate_content {model.name}` span via the Context API. ([#3961](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3961)).
+
 ## Version 0.5b0 (2025-12-11)
 
 - Ensure log event is written and completion hook is called even when model call results in exception. Put new
