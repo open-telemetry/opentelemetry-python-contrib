@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4050](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4050))
 - `opentelemetry-instrumentation-urllib`: add ability to capture custom headers
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
+- `opentelemetry-instrumentation`, `opentelemetry-instrumentation-flask`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-django`, `opentelemetry-instrumentation-falcon`, `opentelemetry-instrumentation-asgi`: Add Labeler utility. Add FalconInstrumentor, FlaskInstrumentor, DjangoInstrumentor, WsgiInstrumentor, AsgiInstrumentor support of custom attributes merging for HTTP duration metrics.
+  ([#3689](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3689))
 
 ### Fixed
 
