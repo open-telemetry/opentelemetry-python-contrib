@@ -331,8 +331,11 @@ class EngineTracer:
                             statement, **commenter_data
                         )
                 else:
-                    # Non-recording span - just add comment for context propagation
-                    statement = _add_sql_comment(statement, **commenter_data)
+                    # Non-recording span - add comment for context propagation
+                    if span.get_span_context() != trace.INVALID_SPAN_CONTEXT:
+                        statement = _add_sql_comment(
+                            statement, **commenter_data
+                        )
             elif span.is_recording():
                 # No sqlcomment, but still set attributes for recording spans
                 self._set_db_client_span_attributes(span, statement, attrs)

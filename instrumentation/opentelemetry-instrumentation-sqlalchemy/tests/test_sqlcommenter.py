@@ -28,6 +28,7 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import NoOpTracerProvider
 
 
 class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
@@ -413,3 +414,21 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             self.caplog.records[-2].getMessage(),
             r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
+
+    def test_commenter_for_all_spans_with_noop_tracer(self):
+        """Test that SQLCommenter does not add comments when using NoOpTracer (invalid span context)."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        noop_tracer_provider = NoOpTracerProvider()
+
+        engine = create_engine("sqlite:///:memory:", echo=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=noop_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+            commenter_for_all_spans=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1;")).fetchall()
+        # With NoOpTracer, no SQL comment should be added (invalid span context)
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")

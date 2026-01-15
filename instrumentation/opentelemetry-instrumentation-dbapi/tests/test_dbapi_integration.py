@@ -37,6 +37,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import NoOpTracerProvider
 
 
 # pylint: disable=too-many-public-methods
@@ -1243,6 +1244,35 @@ class TestDBApiIntegration(TestBase):
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
+
+    def test_commenter_for_all_spans_with_noop_tracer(self):
+        """Test that SQLCommenter does not add comments when using NoOpTracer (invalid span context)."""
+        noop_tracer_provider = NoOpTracerProvider()
+
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            tracer_provider=noop_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+            commenter_for_all_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Select 1;")
+        # With NoOpTracer, no SQL comment should be added (invalid span context)
+        self.assertEqual(cursor.query, "Select 1;")
 
 
 # pylint: disable=unused-argument

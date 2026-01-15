@@ -786,10 +786,15 @@ class CursorTracer(Generic[CursorT]):
                             args, cursor
                         )
                 else:
-                    # Non-recording span - just add comment for context propagation
-                    args = self._update_args_with_added_sql_comment(
-                        args, cursor
-                    )
+                    # Non-recording span - add comment for context propagation
+                    # but only if span context is valid (not NoOpTracer)
+                    if (
+                        span.get_span_context()
+                        != trace_api.INVALID_SPAN_CONTEXT
+                    ):
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
                 self._populate_span(span, cursor, *args)
@@ -834,10 +839,15 @@ class CursorTracer(Generic[CursorT]):
                             args, cursor
                         )
                 else:
-                    # Non-recording span - just add comment for context propagation
-                    args = self._update_args_with_added_sql_comment(
-                        args, cursor
-                    )
+                    # Non-recording span - add comment for context propagation
+                    # but only if span context is valid (not NoOpTracer)
+                    if (
+                        span.get_span_context()
+                        != trace_api.INVALID_SPAN_CONTEXT
+                    ):
+                        args = self._update_args_with_added_sql_comment(
+                            args, cursor
+                        )
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
                 self._populate_span(span, cursor, *args)
