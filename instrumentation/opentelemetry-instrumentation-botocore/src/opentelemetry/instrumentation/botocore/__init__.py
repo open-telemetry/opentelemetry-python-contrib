@@ -125,10 +125,13 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
+from opentelemetry.semconv._incubating.attributes import rpc_attributes
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
 
@@ -297,9 +300,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
+            rpc_attributes.RPC_SYSTEM: "aws-api",
+            rpc_attributes.RPC_SERVICE: call_context.service_id,
+            rpc_attributes.RPC_METHOD: call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -347,34 +350,25 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
             return result
 
-    def _get_tracer_schema_version(self):
-        # Best-effort fallback for presigned URLs (but for no extensions)
-        return "1.27.0"
-
-    def _get_default_tracer(self):
-        return get_tracer(
-            __name__,
-            __version__,
-            self.tracer_provider,
-            schema_url=f"https://opentelemetry.io/schemas/{self._get_tracer_schema_version()}",
-        )
-
     def _patched_generate_presigned_url(self, wrapped, instance, args, kwargs):
         if not is_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        tracer = self._get_default_tracer()
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            self.tracer_provider,
+        )
 
         with tracer.start_as_current_span("botocore.presigned_url") as span:
             if service := getattr(instance, "_service_id", None):
                 service = service.lower()
-                span.set_attribute(SpanAttributes.RPC_SERVICE, service)
-
+                span.set_attribute(rpc_attributes.RPC_SERVICE, service)
                 # Botocore uses the low-level operation name ("connect") when generating
                 # RDS auth tokens, not the high-level helper name.
 
             if operation := kwargs.get("operation_name"):
-                span.set_attribute(SpanAttributes.RPC_METHOD, operation)
+                span.set_attribute(rpc_attributes.RPC_METHOD, operation)
 
             if expires_in := kwargs.get("expires_in"):
                 span.set_attribute("aws.expires_in", expires_in)
@@ -432,7 +426,7 @@ def _apply_response_attributes(span: Span, result):
 
     status_code = metadata.get("HTTPStatusCode")
     if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        span.set_attribute(HTTP_STATUS_CODE, status_code)
 
 
 def _determine_call_context(
