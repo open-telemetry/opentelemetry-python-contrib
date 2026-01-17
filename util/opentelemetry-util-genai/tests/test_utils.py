@@ -107,10 +107,7 @@ def _assert_span_attributes(
     span_attrs: Mapping[str, Any], expected_values: Mapping[str, Any]
 ) -> None:
     for key, value in expected_values.items():
-        if value == "*":
-            assert key in span_attrs
-        else:
-            assert span_attrs.get(key) == value
+        assert span_attrs.get(key) == value
     assert len(span_attrs) == len(expected_values), (
         f"Actual {span_attrs} are different than expected {expected_values}"
     )
@@ -243,8 +240,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
                 GenAI.GEN_AI_REQUEST_MODEL: "test-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
-                GenAI.GEN_AI_INPUT_MESSAGES: "*",
-                GenAI.GEN_AI_OUTPUT_MESSAGES: "*",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
                 GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
                 GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
@@ -304,8 +301,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
                 GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
-                GenAI.GEN_AI_INPUT_MESSAGES: "*",
-                GenAI.GEN_AI_OUTPUT_MESSAGES: "*",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
                 "manual": True,
                 "extra_manual": "yes",
@@ -494,3 +491,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 error_attributes.ERROR_TYPE: BoomError.__qualname__,
             },
         )
+
+
+class AnyNonNone:
+    def __eq__(self, other):
+        return other is not None
