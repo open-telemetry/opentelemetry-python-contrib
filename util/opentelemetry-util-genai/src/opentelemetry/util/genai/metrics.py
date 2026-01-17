@@ -83,7 +83,8 @@ class InvocationMetricsRecorder:
         duration_seconds: Optional[float] = None
         if invocation.monotonic_start_s is not None:
             duration_seconds = max(
-                timeit.default_timer() - invocation.monotonic_start_s, 0.0
+                timeit.default_timer() - invocation.monotonic_start_s,
+                0.0,
             )
 
         span_context = set_span_in_context(span)
