@@ -686,6 +686,34 @@ class CursorTracer(Generic[CursorT]):
             if self._commenter_options.get(k, True)
         }
 
+    def _should_comment(self, span: trace_api.Span, args: tuple[Any, ...]):
+        return (
+            args
+            and self._commenter_enabled
+            and (span.is_recording() or self._commenter_for_all_spans)
+        )
+
+    def _apply_commenter(
+        self, span: trace_api.Span, cursor: CursorT, args: tuple[Any, ...]
+    ) -> tuple[Any, ...]:
+        has_valid_context = (
+            span.get_span_context() != trace_api.INVALID_SPAN_CONTEXT
+        )
+        can_add_comment = span.is_recording() or has_valid_context
+
+        commented_args = (
+            self._update_args_with_added_sql_comment(args, cursor)
+            if can_add_comment
+            else args
+        )
+        # Use commented args in db.statement only if enable_attribute_commenter
+        attr_args = (
+            commented_args if self._enable_attribute_commenter else args
+        )
+        self._populate_span(span, cursor, *attr_args)
+
+        return commented_args
+
     def _update_args_with_added_sql_comment(self, args, cursor) -> tuple:
         """Updates args with cursor info and adds sqlcomment to query statement"""
         try:
@@ -765,36 +793,10 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            should_comment = (
-                args
-                and self._commenter_enabled
-                and (span.is_recording() or self._commenter_for_all_spans)
-            )
+            should_comment = self._should_comment(span, args)
 
             if should_comment:
-                if span.is_recording():
-                    if self._enable_attribute_commenter:
-                        # sqlcomment in both executed query and db.statement
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                        self._populate_span(span, cursor, *args)
-                    else:
-                        # sqlcomment only in executed query, not in db.statement
-                        self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                else:
-                    # Non-recording span - add comment for context propagation
-                    # but only if span context is valid (not NoOpTracer)
-                    if (
-                        span.get_span_context()
-                        != trace_api.INVALID_SPAN_CONTEXT
-                    ):
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                args = self._apply_commenter(span, cursor, args)
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
                 self._populate_span(span, cursor, *args)
@@ -818,36 +820,10 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            should_comment = (
-                args
-                and self._commenter_enabled
-                and (span.is_recording() or self._commenter_for_all_spans)
-            )
+            should_comment = self._should_comment(span, args)
 
             if should_comment:
-                if span.is_recording():
-                    if self._enable_attribute_commenter:
-                        # sqlcomment in both executed query and db.statement
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                        self._populate_span(span, cursor, *args)
-                    else:
-                        # sqlcomment only in executed query, not in db.statement
-                        self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                else:
-                    # Non-recording span - add comment for context propagation
-                    # but only if span context is valid (not NoOpTracer)
-                    if (
-                        span.get_span_context()
-                        != trace_api.INVALID_SPAN_CONTEXT
-                    ):
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
+                args = self._apply_commenter(span, cursor, args)
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
                 self._populate_span(span, cursor, *args)

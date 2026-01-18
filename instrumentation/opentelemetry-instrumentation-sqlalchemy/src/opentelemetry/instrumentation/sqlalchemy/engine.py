@@ -289,6 +289,27 @@ class EngineTracer:
         for key, value in attrs.items():
             span.set_attribute(key, value)
 
+    def _apply_commenter_for_span(
+        self, span, statement: str, attrs, commenter_data
+    ) -> str:
+        has_valid_context = (
+            span.get_span_context() != trace.INVALID_SPAN_CONTEXT
+        )
+        can_add_comment = span.is_recording() or has_valid_context
+
+        commented = (
+            _add_sql_comment(statement, **commenter_data)
+            if can_add_comment
+            else statement
+        )
+        # Use commented statement in db.statement only if enable_attribute_commenter
+        attr_statement = (
+            commented if self.enable_attribute_commenter else statement
+        )
+        self._set_db_client_span_attributes(span, attr_statement, attrs)
+
+        return commented
+
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
@@ -312,30 +333,9 @@ class EngineTracer:
             if should_comment:
                 commenter_data = self._get_commenter_data(conn)
                 statement = str(statement)
-
-                if span.is_recording():
-                    if self.enable_attribute_commenter:
-                        # sqlcomment in both executed query and db.statement
-                        statement = _add_sql_comment(
-                            statement, **commenter_data
-                        )
-                        self._set_db_client_span_attributes(
-                            span, statement, attrs
-                        )
-                    else:
-                        # sqlcomment only in executed query, not in db.statement
-                        self._set_db_client_span_attributes(
-                            span, statement, attrs
-                        )
-                        statement = _add_sql_comment(
-                            statement, **commenter_data
-                        )
-                else:
-                    # Non-recording span - add comment for context propagation
-                    if span.get_span_context() != trace.INVALID_SPAN_CONTEXT:
-                        statement = _add_sql_comment(
-                            statement, **commenter_data
-                        )
+                statement = self._apply_commenter_for_span(
+                    span, statement, attrs, commenter_data
+                )
             elif span.is_recording():
                 # No sqlcomment, but still set attributes for recording spans
                 self._set_db_client_span_attributes(span, statement, attrs)
