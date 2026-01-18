@@ -686,26 +686,22 @@ class CursorTracer(Generic[CursorT]):
             if self._commenter_options.get(k, True)
         }
 
-    def _should_comment(self, span: trace_api.Span, args: tuple[Any, ...]):
+    def _can_add_comment(self, span: trace_api.Span, args: tuple[Any, ...]):
+        has_valid_context = (
+            span.get_span_context() != trace_api.INVALID_SPAN_CONTEXT
+        )
         return (
             args
             and self._commenter_enabled
             and (span.is_recording() or self._commenter_for_all_spans)
+            and has_valid_context
         )
 
     def _apply_commenter(
         self, span: trace_api.Span, cursor: CursorT, args: tuple[Any, ...]
     ) -> tuple[Any, ...]:
-        has_valid_context = (
-            span.get_span_context() != trace_api.INVALID_SPAN_CONTEXT
-        )
-        can_add_comment = span.is_recording() or has_valid_context
+        commented_args = self._update_args_with_added_sql_comment(args, cursor)
 
-        commented_args = (
-            self._update_args_with_added_sql_comment(args, cursor)
-            if can_add_comment
-            else args
-        )
         # Use commented args in db.statement only if enable_attribute_commenter
         attr_args = (
             commented_args if self._enable_attribute_commenter else args
@@ -793,9 +789,9 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            should_comment = self._should_comment(span, args)
+            can_add_comment = self._can_add_comment(span, args)
 
-            if should_comment:
+            if can_add_comment:
                 args = self._apply_commenter(span, cursor, args)
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
@@ -820,9 +816,9 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            should_comment = self._should_comment(span, args)
+            can_add_comment = self._can_add_comment(span, args)
 
-            if should_comment:
+            if can_add_comment:
                 args = self._apply_commenter(span, cursor, args)
             elif span.is_recording():
                 # No sqlcomment, but still populate span for recording spans
