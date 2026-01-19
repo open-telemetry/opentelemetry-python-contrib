@@ -188,7 +188,7 @@ def _to_dict(value: object):
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
-) -> dict[str, Any]:
+) -> dict[str, AttributeValue]:
     if not config:
         return {}
     config = _to_dict(config)
@@ -290,8 +290,8 @@ def _create_completion_details_attributes(
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
     as_str: bool = False,
-) -> dict[str, Any]:
-    attributes: dict[str, Any] = {
+) -> dict[str, AttributeValue]:
+    attributes: dict[str, AttributeValue] = {
         gen_ai_attributes.GEN_AI_INPUT_MESSAGES: [
             dataclasses.asdict(input_message)
             for input_message in input_messages
@@ -371,7 +371,7 @@ class _GenerateContentInstrumentationHelper:
             end_on_exit=end_on_exit,
         )
 
-    def create_final_attributes(self) -> dict[str, Any]:
+    def create_final_attributes(self) -> dict[str, AttributeValue]:
         final_attributes = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
@@ -385,7 +385,7 @@ class _GenerateContentInstrumentationHelper:
 
     def process_request(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict],
         span: Span,
@@ -396,7 +396,7 @@ class _GenerateContentInstrumentationHelper:
 
     def process_response(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         response: GenerateContentResponse,
     ):
         self._update_response(response)
@@ -468,9 +468,9 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_completion_details(
         self,
-        extra_attributes: dict[str, Any],
-        request_attributes: dict[str, Any],
-        final_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
+        request_attributes: dict[str, AttributeValue],
+        final_attributes: dict[str, AttributeValue],
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
@@ -533,7 +533,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_system_instruction(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
         content_union = _config_to_system_instruction(config)
@@ -564,7 +564,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_user_prompt(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         contents: Union[ContentListUnion, ContentListUnionDict],
     ):
         if isinstance(contents, list):
@@ -580,7 +580,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_single_user_prompt(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         contents: Union[ContentUnion, ContentUnionDict],
         index=0,
         total=1,
@@ -612,7 +612,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_response(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         response: GenerateContentResponse,
     ):
         self._maybe_log_response_stats(response)
@@ -633,7 +633,7 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_response_candidate(
         self,
-        extra_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
         candidate: Candidate,
         flat_candidate_index: int,
         candidate_in_response_index: int,
