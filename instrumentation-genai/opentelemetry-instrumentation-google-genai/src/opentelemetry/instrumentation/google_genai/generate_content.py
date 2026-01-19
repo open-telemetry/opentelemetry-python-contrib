@@ -385,22 +385,17 @@ class _GenerateContentInstrumentationHelper:
 
     def process_request(
         self,
-        extra_attributes: dict[str, AttributeValue],
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict],
         span: Span,
     ):
         span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system)
-        self._maybe_log_system_instruction(extra_attributes, config=config)
-        self._maybe_log_user_prompt(extra_attributes, contents)
+        self._maybe_log_system_instruction(config=config)
+        self._maybe_log_user_prompt(contents)
 
-    def process_response(
-        self,
-        extra_attributes: dict[str, AttributeValue],
-        response: GenerateContentResponse,
-    ):
+    def process_response(self, response: GenerateContentResponse):
         self._update_response(response)
-        self._maybe_log_response(extra_attributes, response)
+        self._maybe_log_response(response)
         self._response_index += 1
 
     def process_error(self, e: Exception):
@@ -532,9 +527,7 @@ class _GenerateContentInstrumentationHelper:
             # request attributes were already set on the span..
 
     def _maybe_log_system_instruction(
-        self,
-        extra_attributes: dict[str, AttributeValue],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        self, config: Optional[GenerateContentConfigOrDict] = None
     ):
         content_union = _config_to_system_instruction(config)
         if not content_union:
@@ -549,8 +542,7 @@ class _GenerateContentInstrumentationHelper:
         if not system_instruction:
             return
         self._otel_wrapper.log_system_prompt(
-            attributes=extra_attributes
-            | {
+            attributes={
                 gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
             },
             body={
@@ -563,27 +555,21 @@ class _GenerateContentInstrumentationHelper:
         )
 
     def _maybe_log_user_prompt(
-        self,
-        extra_attributes: dict[str, AttributeValue],
-        contents: Union[ContentListUnion, ContentListUnionDict],
+        self, contents: Union[ContentListUnion, ContentListUnionDict]
     ):
         if isinstance(contents, list):
             total = len(contents)
             index = 0
             for entry in contents:
                 self._maybe_log_single_user_prompt(
-                    extra_attributes, entry, index=index, total=total
+                    entry, index=index, total=total
                 )
                 index += 1
         else:
-            self._maybe_log_single_user_prompt(extra_attributes, contents)
+            self._maybe_log_single_user_prompt(contents)
 
     def _maybe_log_single_user_prompt(
-        self,
-        extra_attributes: dict[str, AttributeValue],
-        contents: Union[ContentUnion, ContentUnionDict],
-        index=0,
-        total=1,
+        self, contents: Union[ContentUnion, ContentUnionDict], index=0, total=1
     ):
         # TODO: figure out how to report the index in a manner that is
         # aligned with the OTel semantic conventions.
@@ -606,15 +592,11 @@ class _GenerateContentInstrumentationHelper:
         else:
             body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_user_prompt(
-            attributes=extra_attributes | attributes,
+            attributes=attributes,
             body=body,
         )
 
-    def _maybe_log_response(
-        self,
-        extra_attributes: dict[str, AttributeValue],
-        response: GenerateContentResponse,
-    ):
+    def _maybe_log_response(self, response: GenerateContentResponse):
         self._maybe_log_response_stats(response)
         self._maybe_log_response_safety_ratings(response)
         if not response.candidates:
@@ -622,7 +604,6 @@ class _GenerateContentInstrumentationHelper:
         candidate_in_response_index = 0
         for candidate in response.candidates:
             self._maybe_log_response_candidate(
-                extra_attributes,
                 candidate,
                 flat_candidate_index=self._candidate_index,
                 candidate_in_response_index=candidate_in_response_index,
@@ -633,7 +614,6 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_response_candidate(
         self,
-        extra_attributes: dict[str, AttributeValue],
         candidate: Candidate,
         flat_candidate_index: int,
         candidate_in_response_index: int,
@@ -667,7 +647,7 @@ class _GenerateContentInstrumentationHelper:
         if candidate.finish_reason is not None:
             body["finish_reason"] = candidate.finish_reason.name
         self._otel_wrapper.log_response_content(
-            attributes=extra_attributes | attributes,
+            attributes=attributes,
             body=body,
         )
 
@@ -768,9 +748,7 @@ def _create_instrumented_generate_content(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(
-                    extra_attributes, contents, config, span
-                )
+                helper.process_request(contents, config, span)
             try:
                 response = wrapped_func(
                     self,
@@ -788,7 +766,7 @@ def _create_instrumented_generate_content(
                         candidates += response.candidates
 
                 else:
-                    helper.process_response(extra_attributes, response)
+                    helper.process_response(response)
                 return response
             except Exception as error:
                 helper.process_error(error)
@@ -845,9 +823,7 @@ def _create_instrumented_generate_content_stream(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(
-                    extra_attributes, contents, config, span
-                )
+                helper.process_request(contents, config, span)
             try:
                 for response in wrapped_func(
                     self,
@@ -865,7 +841,7 @@ def _create_instrumented_generate_content_stream(
                             candidates += response.candidates
 
                     else:
-                        helper.process_response(extra_attributes, response)
+                        helper.process_response(response)
                     yield response
             except Exception as error:
                 helper.process_error(error)
@@ -922,9 +898,7 @@ def _create_instrumented_async_generate_content(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(
-                    extra_attributes, contents, config, span
-                )
+                helper.process_request(contents, config, span)
             try:
                 response = await wrapped_func(
                     self,
@@ -941,7 +915,7 @@ def _create_instrumented_async_generate_content(
                     if response.candidates:
                         candidates += response.candidates
                 else:
-                    helper.process_response(extra_attributes, response)
+                    helper.process_response(response)
                 return response
             except Exception as error:
                 helper.process_error(error)
@@ -1003,9 +977,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 not helper.sem_conv_opt_in_mode
                 == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
             ):
-                helper.process_request(
-                    extra_attributes, contents, config, span
-                )
+                helper.process_request(contents, config, span)
             try:
                 response_async_generator = await wrapped_func(
                     self,
@@ -1045,9 +1017,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                                     candidates += response.candidates
 
                             else:
-                                helper.process_response(
-                                    extra_attributes, response
-                                )
+                                helper.process_response(response)
                             yield response
                     except Exception as error:
                         helper.process_error(error)

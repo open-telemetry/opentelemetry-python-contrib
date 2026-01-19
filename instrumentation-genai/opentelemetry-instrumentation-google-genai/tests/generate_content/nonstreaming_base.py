@@ -520,33 +520,6 @@ class NonStreamingTestCase(TestCase):
 
                 self.tearDown()
 
-    def test_log_has_extra_genai_attributes(self):
-        self.configure_valid_response(text="Yep, it works!")
-        tok = context_api.attach(
-            context_api.set_value(
-                GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
-                {"extra_attribute_key": "extra_attribute_value"},
-            )
-        )
-        try:
-            self.generate_content(
-                model="gemini-2.0-flash",
-                contents="Does this work?",
-                config={"system_instruction": "You are a helpful assistant."},
-            )
-            self.otel.assert_has_event_named("gen_ai.system.message")
-            self.otel.assert_has_event_named("gen_ai.user.message")
-            self.otel.assert_has_event_named("gen_ai.choice")
-            for ev in self.otel.get_finished_logs():
-                assert (
-                    ev.attributes["extra_attribute_key"]
-                    == "extra_attribute_value"
-                )
-        except:
-            raise
-        finally:
-            context_api.detach(tok)
-
     def test_new_semconv_log_has_extra_genai_attributes(self):
         patched_environ = patch.dict(
             "os.environ",
