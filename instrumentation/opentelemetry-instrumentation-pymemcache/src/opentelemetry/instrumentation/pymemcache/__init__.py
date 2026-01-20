@@ -47,7 +47,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import NetTransportValues
 from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
@@ -57,6 +56,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
     NET_TRANSPORT,
+    NetTransportValues,
 )
 
 logger = logging.getLogger(__name__)
@@ -185,10 +185,8 @@ def _get_address_attributes(instance):
 
 class PymemcacheInstrumentor(BaseInstrumentor):
     """An instrumentor for pymemcache See `BaseInstrumentor`"""
-    
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
-        
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
@@ -204,7 +202,6 @@ class PymemcacheInstrumentor(BaseInstrumentor):
                 f"Client.{cmd}",
                 _wrap_cmd(tracer, cmd),
             )
-            
     def _uninstrument(self, **kwargs):
         for command in COMMANDS:
             unwrap(pymemcache.client.base.Client, f"{command}")
