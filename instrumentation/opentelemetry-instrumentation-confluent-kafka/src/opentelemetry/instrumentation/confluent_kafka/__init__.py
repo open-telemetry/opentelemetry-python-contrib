@@ -174,6 +174,24 @@ class ProxiedProducer(Producer):
             self._producer.produce, self, self._tracer, args, new_kwargs
         )
 
+    def init_transactions(self, timeout=-1):
+        self._producer.init_transactions(timeout)
+
+    def begin_transaction(self):
+        self._producer.begin_transaction()
+
+    def commit_transaction(self, timeout=-1):
+        self._producer.commit_transaction(timeout)
+
+    def abort_transaction(self, timeout=-1):
+        self._producer.abort_transaction(timeout)
+
+    def send_offsets_to_transaction(self, positions, group_metadata, timeout=-1):
+        self._producer.abort_transaction(positions, group_metadata, timeout)
+
+    def list_topics(self, topic, timeout=-1):
+        self._producer.list_topics(topic, timeout)
+
     def original_producer(self):
         return self._producer
 
@@ -220,6 +238,48 @@ class ProxiedConsumer(Consumer):
 
     def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self._consumer.subscribe(topics, on_assign, *args, **kwargs)
+
+    def assign(self, partitions):
+        return self._consumer.assign(partitions)
+
+    def assignment(self):
+        return self._consumer.assignment()
+
+    def close(self):
+        return self._consumer.close()
+
+    def consumer_group_metadata(self):
+        return self._consumer.consumer_group_metadata()
+
+    def incremental_assign(self, partitions):
+        return self._consumer.incremental_assign(partitions)
+
+    def incremental_unassign(self, partitions):
+        return self._consumer.incremental_unassign(partitions)
+
+    def list_topics(self, topic=None, timeout=-1):
+        return self._consumer.list_topics(topic, timeout)
+
+    def pause(self, partitions):
+        return self._consumer.pause(partitions)
+
+    def position(self, partitions):
+        return self._consumer.position(partitions)
+
+    def resume(self, partitions):
+        return self._consumer.resume(partitions)
+
+    def seek(self, partition):
+        return self._consumer.seek(partition)
+
+    def store_offsets(self, message=None, offsets=None):
+        return self._consumer.store_offsets(message, offsets)
+
+    def unassign(self):
+        return self._consumer.unassign()
+
+    def unsubscribe(self):
+        return self._consumer.unsubscribe()
 
     def original_consumer(self):
         return self._consumer
