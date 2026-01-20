@@ -47,7 +47,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.trace import SpanKind, get_tracer
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
@@ -58,6 +57,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
 )
+from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
 
