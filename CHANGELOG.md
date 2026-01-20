@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4050](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4050))
 - `opentelemetry-instrumentation-urllib`: add ability to capture custom headers
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
+- `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
+  ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
 - `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
   ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
 
