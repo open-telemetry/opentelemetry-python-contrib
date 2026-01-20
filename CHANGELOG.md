@@ -13,8 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-sqlalchemy`, `opentelemetry-instrumentation-dbapi`: Add `commenter_for_all_spans` option to enable SQLCommenter for all spans regardless of sampling decision
-  ([#4090](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4090))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
   ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
 - `opentelemetry-instrumentation-wsgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
@@ -39,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
 - `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation-sqlalchemy`, `opentelemetry-instrumentation-dbapi`: Add `commenter_for_all_spans` option to enable SQLCommenter for all spans regardless of sampling decision
+  ([#4090](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4090))
 
 ### Fixed
 
