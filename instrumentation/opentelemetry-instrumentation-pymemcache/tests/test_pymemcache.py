@@ -27,11 +27,6 @@ from pymemcache.exceptions import (
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
-from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import get_tracer
-
-from .utils import MockSocket, _str
-
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
@@ -40,6 +35,11 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import get_tracer
+
+from .utils import MockSocket, _str
+
 TEST_HOST = "localhost"
 TEST_PORT = 117711
 
