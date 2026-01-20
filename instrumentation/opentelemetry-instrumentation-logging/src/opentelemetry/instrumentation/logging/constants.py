@@ -29,6 +29,17 @@ The following keys are injected into log record objects by the factory:
 - ``otelServiceName``
 - ``otelTraceSampled``
 
+You can also set your own keys for the fields by passing the parameters:
+
+.. code-block::
+
+    LoggingInstrumentor(
+        trace_id_field="trace_id",
+        span_id_field="span_id",
+        trace_sampled_field="trace_sampled",
+        service_name_field="service_name",
+    )
+
 The integration uses the following logging format by default:
 
 .. code-block::
