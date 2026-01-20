@@ -20,10 +20,14 @@ import pytest
 from google.genai.types import GenerateContentConfig, Part
 from pydantic import BaseModel, Field
 
+from opentelemetry import context as context_api
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
+)
+from opentelemetry.instrumentation.google_genai import (
+    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
 )
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes,
@@ -98,6 +102,30 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(
             span.attributes["gen_ai.operation.name"], "generate_content"
         )
+
+    def test_generated_span_has_extra_genai_attributes(self):
+        self.configure_valid_response(text="Yep, it works!")
+        tok = context_api.attach(
+            context_api.set_value(
+                GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                {"extra_attribute_key": "extra_attribute_value"},
+            )
+        )
+        try:
+            self.generate_content(
+                model="gemini-2.0-flash", contents="Does this work?"
+            )
+            self.otel.assert_has_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            span = self.otel.get_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            self.assertEqual(
+                span.attributes["extra_attribute_key"], "extra_attribute_value"
+            )
+        finally:
+            context_api.detach(tok)
 
     def test_span_and_event_still_written_when_response_is_exception(self):
         self.configure_exception(ValueError("Uh oh!"))

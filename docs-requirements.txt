@@ -44,6 +44,7 @@ pyramid>=1.7
 redis>=2.6
 remoulade>=0.50
 sqlalchemy>=1.0
+starlette~=0.50
 tornado>=5.1.1
 tortoise-orm>=0.17.0
 

@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
 - `opentelemetry-instrumentation-confluent-kafka`: Increase confluent-kafka upper bound to support newer versions
   ([#4099](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4099))
+- `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
+  ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
 
 ### Fixed
 
