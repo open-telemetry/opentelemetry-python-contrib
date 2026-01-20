@@ -93,7 +93,6 @@ boto3sqs_getter = Boto3SQSGetter()
 boto3sqs_setter = Boto3SQSSetter()
 
 
-# pylint: disable=attribute-defined-outside-init
 class Boto3SQSInstrumentor(BaseInstrumentor):
     received_messages_spans: Dict[str, Span] = {}
     current_span_related_to_token: Span = None
