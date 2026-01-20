@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
 - `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
   ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
+- `opentelemetry-instrumentation-dbapi`: implement new semantic convention opt-in migration
+  ([#4109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4109))
 
 ### Fixed
 
