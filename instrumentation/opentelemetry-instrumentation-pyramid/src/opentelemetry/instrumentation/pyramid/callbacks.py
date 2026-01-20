@@ -77,7 +77,7 @@ def _before_traversal(event):
     enabled = request_environ.get(_ENVIRON_ENABLED_KEY)
     if enabled is None:
         _logger.warning(
-            "Opentelemetry pyramid tween 'opentelemetry.instrumentation.pyramid.trace_tween_factory'"
+            "OpenTelemetry pyramid tween 'opentelemetry.instrumentation.pyramid.trace_tween_factory'"
             "was not called. Make sure that the tween is included in 'pyramid.tweens' if"
             "the tween list was created manually"
         )

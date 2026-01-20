@@ -128,7 +128,7 @@ class TestLambdaExtension(TestBase):
     @mark.skip(reason="Docker error, unblocking builds for now.")
     @mark.skipif(
         sys.platform == "win32",
-        reason="requires docker and Github CI Windows does not have docker installed by default",
+        reason="requires docker and GitHub CI Windows does not have docker installed by default",
     )
     @mock_aws
     def test_invoke(self):

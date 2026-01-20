@@ -79,7 +79,7 @@ The workflow will create a pull request that should be merged in order to procee
   * Review and merge the pull request that it creates for updating the change log in main
     (note that if this is not a patch release then the change log on main may already be up-to-date,
     in which case no pull request will be created).
-  * Verify that a new [Github release](https://github.com/open-telemetry/opentelemetry-python-contrib/releases) has been created and that the CHANGELOGs look correct.
+  * Verify that a new [GitHub release](https://github.com/open-telemetry/opentelemetry-python-contrib/releases) has been created and that the CHANGELOGs look correct.
 
 ### Releasing individual package
 

@@ -140,7 +140,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
     def test_set_multi_success(self):
         client = self.make_client([b"STORED\r\n"])
-        # Alias for set_many, a convienance function that calls set for every key
+        # Alias for set_many, a convenience function that calls set for every key
         result = client.set_multi({b"key": b"value"}, noreply=False)
         spans = self.memory_exporter.get_finished_spans()
 
@@ -206,7 +206,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
     def test_delete_many_found(self):
         client = self.make_client([b"STORED\r", b"\n", b"DELETED\r\n"])
         result = client.add(b"key", b"value", noreply=False)
-        # a convienance function that calls delete for every key
+        # a convenience function that calls delete for every key
         result = client.delete_many([b"key"], noreply=False)
         self.assertTrue(result)
 
@@ -223,7 +223,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
     def test_set_many_success(self):
         client = self.make_client([b"STORED\r\n"])
-        # a convienance function that calls set for every key
+        # a convenience function that calls set for every key
         result = client.set_many({b"key": b"value"}, noreply=False)
 
         spans = self.memory_exporter.get_finished_spans()

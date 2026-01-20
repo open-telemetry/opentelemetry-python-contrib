@@ -242,7 +242,7 @@ class PymongoInstrumentor(BaseInstrumentor):
     # The instrumentation for PyMongo is based on the event listener interface
     # https://api.mongodb.com/python/current/api/pymongo/monitoring.html.
     # This interface only allows to register listeners and does not provide
-    # an unregister API. In order to provide a mechanishm to disable
+    # an unregister API. In order to provide a mechanism to disable
     # instrumentation an enabled flag is implemented in CommandTracer,
     # it's checked in the different listeners.
 

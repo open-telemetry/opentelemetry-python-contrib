@@ -22,7 +22,7 @@ from opentelemetry.instrumentation.grpc import filters
 
 class _HandlerCallDetails(
     collections.namedtuple(
-        "_HanlderCallDetails",
+        "_HandlerCallDetails",
         (
             "method",
             "invocation_metadata",

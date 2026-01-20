@@ -617,7 +617,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
-    def test_no_memory_leakage_if_engine_diposed(self):
+    def test_no_memory_leakage_if_engine_disposed(self):
         SQLAlchemyInstrumentor().instrument()
         import gc  # noqa: PLC0415
         import weakref  # noqa: PLC0415
@@ -630,7 +630,7 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         callback = mock.Mock()
 
-        def make_shortlived_engine():
+        def make_short_lived_engine():
             engine = create_engine("sqlite:///:memory:")
             # Callback will be called if engine is deallocated during garbage
             # collection
@@ -639,7 +639,7 @@ class TestSqlalchemyInstrumentation(TestBase):
                 conn.execute(text("SELECT 1 + 1;")).fetchall()
 
         for _ in range(0, 5):
-            make_shortlived_engine()
+            make_short_lived_engine()
 
         gc.collect()
         assert callback.call_count == 5

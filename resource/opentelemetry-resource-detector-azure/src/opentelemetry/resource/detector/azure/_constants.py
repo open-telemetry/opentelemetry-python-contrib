@@ -50,7 +50,7 @@ _FUNCTIONS_ATTRIBUTE_ENV_VARS = {
     ResourceAttributes.FAAS_MAX_MEMORY: _WEBSITE_MEMORY_LIMIT_MB,
 }
 
-# Vm
+# VM
 
 _AZURE_VM_METADATA_ENDPOINT = "http://169.254.169.254/metadata/instance/compute?api-version=2021-12-13&format=json"
 _AZURE_VM_SCALE_SET_NAME_ATTRIBUTE = "azure.vm.scaleset.name"

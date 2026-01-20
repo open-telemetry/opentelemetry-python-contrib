@@ -4,7 +4,7 @@ from aio_pika import __version__ as aiopika_version
 from yarl import URL
 
 AIOPIKA_VERSION_INFO = tuple(int(v) for v in aiopika_version.split("."))
-MESSAGE_ID = "meesage_id"
+MESSAGE_ID = "message_id"
 CORRELATION_ID = "correlation_id"
 MESSAGING_SYSTEM_VALUE = "rabbitmq"
 EXCHANGE_NAME = "exchange_name"

@@ -256,7 +256,7 @@ class TestStarletteManualInstrumentation(TestBase):
                     )
                     self.assertEqual(point.value, 0)
 
-    def test_metric_for_uninstrment_app_method(self):
+    def test_metric_for_uninstrument_app_method(self):
         self._client.get("/foobar")
         # uninstrumenting the existing client app
         self._instrumentor.uninstrument_app(self._app)
@@ -598,7 +598,7 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
         self.assertIs(original, should_be_original)
 
 
-class TestConditonalServerSpanCreation(TestStarletteManualInstrumentation):
+class TestConditionalServerSpanCreation(TestStarletteManualInstrumentation):
     def test_mark_span_internal_in_presence_of_another_span(self):
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span(

@@ -401,7 +401,7 @@ def runsubprocess(dry_run, params, *args, **kwargs):
     # for CreateProcessW which subprocess.run and Popen use is a follows
     # (https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw):
     # > 1. The directory from which the application loaded.
-    # This will be the directory of the global python.exe, not the venv directory, due to the suprocess mechanism.
+    # This will be the directory of the global python.exe, not the venv directory, due to the subprocess mechanism.
     # > 6. The directories that are listed in the PATH environment variable.
     # Only this would find the "correct" python.exe.
 

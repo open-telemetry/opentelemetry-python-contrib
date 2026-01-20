@@ -363,10 +363,10 @@ class URLLibIntegrationTestBase(abc.ABC):
         URLLibInstrumentor().instrument()
 
     def test_uninstrument_session(self):
-        clienr1 = urllib.request.build_opener()
-        URLLibInstrumentor().uninstrument_opener(clienr1)
+        opener1 = urllib.request.build_opener()
+        URLLibInstrumentor().uninstrument_opener(opener1)
 
-        result = self.perform_request(self.URL, clienr1)
+        result = self.perform_request(self.URL, opener1)
         self.assertEqual(result.read(), b"Hello!")
         self.assert_span(num_spans=0)
 

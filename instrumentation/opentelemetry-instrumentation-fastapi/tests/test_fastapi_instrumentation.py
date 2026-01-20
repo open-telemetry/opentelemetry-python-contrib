@@ -1253,7 +1253,7 @@ class TestAutoInstrumentation(TestBaseAutoFastAPI):
             self.assertEqual(span.resource.attributes["key1"], "value1")
             self.assertEqual(span.resource.attributes["key2"], "value2")
 
-    def test_mulitple_way_instrumentation(self):
+    def test_multiple_way_instrumentation(self):
         self._instrumentor.instrument_app(self._app)
         count = 0
         app = self._app.middleware_stack
