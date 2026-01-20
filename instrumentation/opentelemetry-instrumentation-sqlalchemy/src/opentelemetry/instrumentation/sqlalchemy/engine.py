@@ -289,20 +289,6 @@ class EngineTracer:
         for key, value in attrs.items():
             span.set_attribute(key, value)
 
-    def _apply_commenter_for_span(
-        self, span, conn, statement: str, attrs
-    ) -> str:
-        commenter_data = self._get_commenter_data(conn)
-        commented = _add_sql_comment(statement, **commenter_data)
-
-        # Use commented statement in db.statement only if enable_attribute_commenter
-        attr_statement = (
-            commented if self.enable_attribute_commenter else statement
-        )
-        self._set_db_client_span_attributes(span, attr_statement, attrs)
-
-        return commented
-
     def _before_cur_exec(
         self, conn, cursor, statement, params, context, _executemany
     ):
@@ -329,12 +315,19 @@ class EngineTracer:
             )
 
             if can_add_comment:
-                statement = self._apply_commenter_for_span(
-                    span, conn, str(statement), attrs
+                commenter_data = self._get_commenter_data(conn)
+                commented = _add_sql_comment(str(statement), **commenter_data)
+                attr_statement = (
+                    commented if self.enable_attribute_commenter else statement
                 )
-            elif span.is_recording():
-                # No sqlcomment, but still set attributes for recording spans
-                self._set_db_client_span_attributes(span, statement, attrs)
+                statement = commented
+            else:
+                attr_statement = statement
+
+            if span.is_recording():
+                self._set_db_client_span_attributes(
+                    span, attr_statement, attrs
+                )
 
         context._otel_span = span
 

@@ -697,19 +697,6 @@ class CursorTracer(Generic[CursorT]):
             and has_valid_context
         )
 
-    def _apply_commenter(
-        self, span: trace_api.Span, cursor: CursorT, args: tuple[Any, ...]
-    ) -> tuple[Any, ...]:
-        commented_args = self._update_args_with_added_sql_comment(args, cursor)
-
-        # Use commented args in db.statement only if enable_attribute_commenter
-        attr_args = (
-            commented_args if self._enable_attribute_commenter else args
-        )
-        self._populate_span(span, cursor, *attr_args)
-
-        return commented_args
-
     def _update_args_with_added_sql_comment(self, args, cursor) -> tuple:
         """Updates args with cursor info and adds sqlcomment to query statement"""
         try:
@@ -792,10 +779,20 @@ class CursorTracer(Generic[CursorT]):
             can_add_comment = self._can_add_comment(span, args)
 
             if can_add_comment:
-                args = self._apply_commenter(span, cursor, args)
-            elif span.is_recording():
-                # No sqlcomment, but still populate span for recording spans
-                self._populate_span(span, cursor, *args)
+                commented_args = self._update_args_with_added_sql_comment(
+                    args, cursor
+                )
+                attr_args = (
+                    commented_args
+                    if self._enable_attribute_commenter
+                    else args
+                )
+                args = commented_args
+            else:
+                attr_args = args
+
+            self._populate_span(span, cursor, *attr_args)
+
             return query_method(*args, **kwargs)
 
     async def traced_execution_async(
@@ -819,10 +816,20 @@ class CursorTracer(Generic[CursorT]):
             can_add_comment = self._can_add_comment(span, args)
 
             if can_add_comment:
-                args = self._apply_commenter(span, cursor, args)
-            elif span.is_recording():
-                # No sqlcomment, but still populate span for recording spans
-                self._populate_span(span, cursor, *args)
+                commented_args = self._update_args_with_added_sql_comment(
+                    args, cursor
+                )
+                attr_args = (
+                    commented_args
+                    if self._enable_attribute_commenter
+                    else args
+                )
+                args = commented_args
+            else:
+                attr_args = args
+
+            self._populate_span(span, cursor, *attr_args)
+
             return await query_method(*args, **kwargs)
 
 
