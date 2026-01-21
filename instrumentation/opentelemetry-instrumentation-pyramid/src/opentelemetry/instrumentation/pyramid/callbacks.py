@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import wsgiref.util as wsgiref_util
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
@@ -28,6 +29,7 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _report_new,
     _report_old,
+    _set_http_url,
     _StabilityMode,
 )
 from opentelemetry.instrumentation.propagators import (
@@ -48,7 +50,7 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
@@ -127,6 +129,11 @@ def _before_traversal(event):
         )
         if request.matched_route:
             attributes[HTTP_ROUTE] = request.matched_route.pattern
+        _set_http_url(
+            attributes,
+            redact_url(wsgiref_util.request_uri(request_environ)),
+            _sem_conv_opt_in_mode,
+        )
         for key, value in attributes.items():
             span.set_attribute(key, value)
         if span.kind == trace.SpanKind.SERVER:

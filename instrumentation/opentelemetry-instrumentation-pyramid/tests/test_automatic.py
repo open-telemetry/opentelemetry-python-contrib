@@ -38,6 +38,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
+    HTTP_URL,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_PORT,
@@ -47,6 +48,7 @@ from opentelemetry.semconv._incubating.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv._incubating.attributes.url_attributes import (
+    URL_FULL,
     URL_PATH,
     URL_QUERY,
     URL_SCHEME,
@@ -505,6 +507,7 @@ class TestSemConvDefault(_SemConvTestBase):
             HTTP_SCHEME: "http",
             HTTP_HOST: "localhost",
             HTTP_TARGET: "/hello/123",
+            HTTP_URL: "http://localhost/hello/123",
             NET_HOST_PORT: 80,
             HTTP_STATUS_CODE: 200,
             HTTP_FLAVOR: "1.1",
@@ -513,7 +516,7 @@ class TestSemConvDefault(_SemConvTestBase):
         for attr, value in old_attrs.items():
             self.assertEqual(span.attributes[attr], value)
 
-        for attr in [SERVER_ADDRESS, SERVER_PORT, URL_SCHEME]:
+        for attr in [SERVER_ADDRESS, SERVER_PORT, URL_SCHEME, URL_FULL]:
             self.assertNotIn(attr, span.attributes)
 
         self.assertEqual(
@@ -563,6 +566,7 @@ class TestSemConvNew(_SemConvTestBase):
             URL_SCHEME: "http",
             URL_PATH: "/hello/456",
             URL_QUERY: "query=test",
+            URL_FULL: "http://localhost/hello/456?query=test",
             SERVER_ADDRESS: "localhost",
             SERVER_PORT: 80,
             "http.response.status_code": 200,
@@ -577,6 +581,7 @@ class TestSemConvNew(_SemConvTestBase):
             HTTP_METHOD,
             HTTP_HOST,
             HTTP_TARGET,
+            HTTP_URL,
         ]
         for attr in old_attrs:
             self.assertNotIn(attr, span.attributes)
@@ -620,11 +625,13 @@ class TestSemConvDup(_SemConvTestBase):
             HTTP_METHOD: "GET",
             HTTP_SCHEME: "http",
             HTTP_HOST: "localhost",
+            HTTP_URL: "http://localhost/hello/789?query=test",
             HTTP_STATUS_CODE: 200,
             "http.request.method": "GET",
             URL_SCHEME: "http",
             URL_PATH: "/hello/789",
             URL_QUERY: "query=test",
+            URL_FULL: "http://localhost/hello/789?query=test",
             SERVER_ADDRESS: "localhost",
             "http.response.status_code": 200,
             HTTP_ROUTE: "/hello/{helloid}",
