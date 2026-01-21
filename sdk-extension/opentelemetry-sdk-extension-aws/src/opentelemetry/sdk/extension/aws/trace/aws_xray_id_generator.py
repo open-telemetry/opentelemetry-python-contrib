@@ -81,3 +81,6 @@ class AwsXRayIdGenerator(IdGenerator):
         trace_time = int(time.time())
         trace_identifier = random.getrandbits(96)
         return (trace_time << 96) + trace_identifier
+
+    def is_trace_id_random(self) -> bool:
+        return True
