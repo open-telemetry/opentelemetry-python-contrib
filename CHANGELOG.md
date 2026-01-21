@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
 - `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
+  ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
 - `opentelemetry-instrumentation-pyramid` Implement new semantic convention opt-in migration
   ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
 
@@ -68,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4068))
 - `opentelemetry-instrumentation-mysqlclient`: Replace SpanAttributes with semconv constants
   ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
+- `opentelemetry-instrumentation-pymemcache`: Remove span attributes pymemcache
+  ([#4076](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4076))
 - `opentelemetry-instrumentation-pymongo`: Replace SpanAttributes with semconv constants
   ([#4077](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4077))
 - `opentelemetry-instrumentation-pymysql`: Replace SpanAttributes with semconv constants
