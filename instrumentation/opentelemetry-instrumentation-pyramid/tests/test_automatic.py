@@ -34,7 +34,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
-    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
@@ -51,11 +50,26 @@ from opentelemetry.semconv._incubating.attributes.url_attributes import (
     URL_FULL,
     URL_PATH,
     URL_QUERY,
-    URL_SCHEME,
 )
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    HTTP_SERVER_ACTIVE_REQUESTS,
+    HTTP_SERVER_REQUEST_DURATION,
+)
+from opentelemetry.semconv.attributes.http_attributes import (
+    HTTP_REQUEST_METHOD,
+    HTTP_RESPONSE_STATUS_CODE,
+    HTTP_ROUTE,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PROTOCOL_VERSION,
+)
+from opentelemetry.semconv.attributes.url_attributes import (
+    URL_SCHEME,
+)
+from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
@@ -70,12 +84,12 @@ from opentelemetry.util.http import (
 from .pyramid_base_test import InstrumentationTest
 
 _expected_metric_names = [
-    "http.server.active_requests",
-    "http.server.duration",
+    HTTP_SERVER_ACTIVE_REQUESTS,
+    MetricInstruments.HTTP_SERVER_DURATION,
 ]
 _recommended_attrs = {
-    "http.server.active_requests": _server_active_requests_count_attrs_old,
-    "http.server.duration": _server_duration_attrs_old,
+    HTTP_SERVER_ACTIVE_REQUESTS: _server_active_requests_count_attrs_old,
+    MetricInstruments.HTTP_SERVER_DURATION: _server_duration_attrs_old,
 }
 
 
@@ -475,10 +489,10 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
         return metric_names
 
     def _verify_duration_point(self, point):
-        self.assertIn("http.request.method", point.attributes)
-        self.assertIn("url.scheme", point.attributes)
-        self.assertNotIn("http.method", point.attributes)
-        self.assertNotIn("http.scheme", point.attributes)
+        self.assertIn(HTTP_REQUEST_METHOD, point.attributes)
+        self.assertIn(URL_SCHEME, point.attributes)
+        self.assertNotIn(HTTP_METHOD, point.attributes)
+        self.assertNotIn(HTTP_SCHEME, point.attributes)
 
     def _verify_metric_duration(self, metric):
         if "duration" in metric.name:
@@ -531,11 +545,11 @@ class TestSemConvDefault(_SemConvTestBase):
         self.assertTrue(len(metrics_list.resource_metrics) == 1)
 
         expected_metrics = [
-            "http.server.active_requests",
-            "http.server.duration",
+            HTTP_SERVER_ACTIVE_REQUESTS,
+            MetricInstruments.HTTP_SERVER_DURATION,
         ]
         self._verify_metric_names(
-            metrics_list, expected_metrics, ["http.server.request.duration"]
+            metrics_list, expected_metrics, [HTTP_SERVER_REQUEST_DURATION]
         )
 
         for resource_metric in metrics_list.resource_metrics:
@@ -546,7 +560,7 @@ class TestSemConvDefault(_SemConvTestBase):
                             self.assertIn("http.method", point.attributes)
                             self.assertIn("http.scheme", point.attributes)
                             self.assertNotIn(
-                                "http.request.method", point.attributes
+                                HTTP_REQUEST_METHOD, point.attributes
                             )
 
 
@@ -562,15 +576,15 @@ class TestSemConvNew(_SemConvTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
 
         new_attrs = {
-            "http.request.method": "GET",
+            HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "http",
             URL_PATH: "/hello/456",
             URL_QUERY: "query=test",
             URL_FULL: "http://localhost/hello/456?query=test",
             SERVER_ADDRESS: "localhost",
             SERVER_PORT: 80,
-            "http.response.status_code": 200,
-            "network.protocol.version": "1.1",
+            HTTP_RESPONSE_STATUS_CODE: 200,
+            NETWORK_PROTOCOL_VERSION: "1.1",
             HTTP_ROUTE: "/hello/{helloid}",
             USER_AGENT_ORIGINAL: "test-agent",
         }
@@ -597,15 +611,15 @@ class TestSemConvNew(_SemConvTestBase):
         self.assertTrue(len(metrics_list.resource_metrics) == 1)
 
         expected_metrics = [
-            "http.server.request.duration",
-            "http.server.active_requests",
+            HTTP_SERVER_REQUEST_DURATION,
+            HTTP_SERVER_ACTIVE_REQUESTS,
         ]
         metric_names = self._verify_metric_names(
             metrics_list, expected_metrics
         )
 
-        self.assertIn("http.server.request.duration", metric_names)
-        self.assertIn("http.server.active_requests", metric_names)
+        self.assertIn(HTTP_SERVER_REQUEST_DURATION, metric_names)
+        self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metric_names)
 
         self._verify_duration_attributes(metrics_list)
 
@@ -627,13 +641,13 @@ class TestSemConvDup(_SemConvTestBase):
             HTTP_HOST: "localhost",
             HTTP_URL: "http://localhost/hello/789?query=test",
             HTTP_STATUS_CODE: 200,
-            "http.request.method": "GET",
+            HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "http",
             URL_PATH: "/hello/789",
             URL_QUERY: "query=test",
             URL_FULL: "http://localhost/hello/789?query=test",
             SERVER_ADDRESS: "localhost",
-            "http.response.status_code": 200,
+            HTTP_RESPONSE_STATUS_CODE: 200,
             HTTP_ROUTE: "/hello/{helloid}",
             USER_AGENT_ORIGINAL: "test-agent",
         }
@@ -652,9 +666,9 @@ class TestSemConvDup(_SemConvTestBase):
         self.assertTrue(len(metrics_list.resource_metrics) == 1)
 
         expected_metrics = [
-            "http.server.duration",
-            "http.server.request.duration",
-            "http.server.active_requests",
+            MetricInstruments.HTTP_SERVER_DURATION,
+            HTTP_SERVER_REQUEST_DURATION,
+            HTTP_SERVER_ACTIVE_REQUESTS,
         ]
         metric_names = self._verify_metric_names(metrics_list, None)
 
