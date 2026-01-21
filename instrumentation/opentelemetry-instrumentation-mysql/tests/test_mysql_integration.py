@@ -28,11 +28,31 @@ from opentelemetry.test.test_base import TestBase
 
 def connect_and_execute_query():
     cnx = mysql.connector.connect(database="test")
+    cnx.database = "test"
+    cnx.host = "localhost"
+    cnx.port = 3306
+    # Provide set values to avoid Magicbook attribute warnings
     cursor = cnx.cursor()
     query = "SELECT * FROM test"
     cursor.execute(query)
 
     return cnx, query
+
+
+def make_mysql_connection_mock():
+    cnx = mock.MagicMock()
+    cnx.database = "test"
+    cnx.host = "localhost"
+    cnx.port = 3306
+
+    cursor = mock.MagicMock()
+    cursor._cnx = mock.MagicMock()
+    cursor._cnx.host = "localhost"
+    cursor._cnx.port = 3306
+    cursor._cnx.database = "test"
+
+    cnx.cursor.return_value = cursor
+    return cnx
 
 
 class TestMysqlIntegration(TestBase):
@@ -44,6 +64,7 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_instrumentor(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
         MySQLInstrumentor().instrument()
 
         connect_and_execute_query()
@@ -68,6 +89,7 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_custom_tracer_provider(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
         resource = resources.Resource.create({})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
@@ -84,6 +106,7 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_instrument_connection(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
         cnx, query = connect_and_execute_query()
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -98,6 +121,7 @@ class TestMysqlIntegration(TestBase):
 
     @mock.patch("mysql.connector.connect")
     def test_instrument_connection_no_op_tracer_provider(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
         tracer_provider = trace_api.NoOpTracerProvider()
         MySQLInstrumentor().instrument(tracer_provider=tracer_provider)
         connect_and_execute_query()
@@ -137,7 +161,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -175,7 +207,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -214,7 +254,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -257,8 +305,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-        mock_cursor = mock_connect_module.connect().cursor()
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -310,8 +365,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-        mock_cursor = mock_connect_module.connect().cursor()
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -350,8 +412,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-        mock_cursor = mock_connect_module.connect().cursor()
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -391,7 +460,11 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-        mock_cursor = mock_connect_module.connect().cursor()
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
@@ -436,8 +509,15 @@ class TestMysqlIntegration(TestBase):
         )
         mock_cursor = mock_connect_module.connect().cursor()
         mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-        mock_cursor = mock_connect_module.connect().cursor()
+
+        mock_cursor._cnx.host = "localhost"
+        mock_cursor._cnx.port = 3306
+        mock_cursor._cnx.database = "test"
+
         mock_connection = mock.MagicMock()
+        mock_connection.database = "test"
+        mock_connection.host = "localhost"
+        mock_connection.port = 3306
         mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
@@ -462,6 +542,7 @@ class TestMysqlIntegration(TestBase):
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
     def test_uninstrument_connection(self, mock_connect):
+        mock_connect.return_value = make_mysql_connection_mock()
         MySQLInstrumentor().instrument()
         cnx, query = connect_and_execute_query()
 
