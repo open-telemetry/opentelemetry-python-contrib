@@ -30,44 +30,44 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call(
 
 
 # span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0 are coming from fixtures defined in conftest.py
-# @pytest.mark.vcr()
-# def test_us_amazon_nova_lite_v1_0_bedrock_llm_call(
-#     span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0
-# ):
-#     messages = [
-#         SystemMessage(content="You are a helpful assistant!"),
-#         HumanMessage(content="What is the capital of France?"),
-#     ]
-#
-#     result = us_amazon_nova_lite_v1_0.invoke(messages)
-#
-#     assert result.content.find("The capital of France is Paris") != -1
-#
-#     # verify spans
-#     spans = span_exporter.get_finished_spans()
-#     print(f"spans: {spans}")
-#     for span in spans:
-#         print(f"span: {span}")
-#         print(f"span attributes: {span.attributes}")
-#     # TODO: fix the code and ensure the assertions are correct
-#     assert_bedrock_completion_attributes(spans[0], result)
-#
-#
-# # span_exporter, start_instrumentation, gemini are coming from fixtures defined in conftest.py
-# @pytest.mark.vcr()
-# def test_gemini(span_exporter, start_instrumentation, gemini):
-#     messages = [
-#         SystemMessage(content="You are a helpful assistant!"),
-#         HumanMessage(content="What is the capital of France?"),
-#     ]
-#
-#     result = gemini.invoke(messages)
-#
-#     assert result.content.find("The capital of France is **Paris**") != -1
-#
-#     # verify spans
-#     spans = span_exporter.get_finished_spans()
-#     assert len(spans) == 0  # No spans should be created for gemini as of now
+@pytest.mark.vcr()
+def test_us_amazon_nova_lite_v1_0_bedrock_llm_call(
+    span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0
+):
+    messages = [
+        SystemMessage(content="You are a helpful assistant!"),
+        HumanMessage(content="What is the capital of France?"),
+    ]
+
+    result = us_amazon_nova_lite_v1_0.invoke(messages)
+
+    assert result.content.find("The capital of France is Paris") != -1
+
+    # verify spans
+    spans = span_exporter.get_finished_spans()
+    print(f"spans: {spans}")
+    for span in spans:
+        print(f"span: {span}")
+        print(f"span attributes: {span.attributes}")
+    # TODO: fix the code and ensure the assertions are correct
+    assert_bedrock_completion_attributes(spans[0], result)
+
+
+# span_exporter, start_instrumentation, gemini are coming from fixtures defined in conftest.py
+@pytest.mark.vcr()
+def test_gemini(span_exporter, start_instrumentation, gemini):
+    messages = [
+        SystemMessage(content="You are a helpful assistant!"),
+        HumanMessage(content="What is the capital of France?"),
+    ]
+
+    result = gemini.invoke(messages)
+
+    assert result.content.find("The capital of France is **Paris**") != -1
+
+    # verify spans
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 0  # No spans should be created for gemini as of now
 
 
 def assert_openai_completion_attributes(
@@ -84,25 +84,24 @@ def assert_openai_completion_attributes(
         == "gpt-3.5-turbo-0125"
     )
 
-    # TODO: uncomment following after PR #3862 is merged
-    # assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
-    # assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
-    # assert span.attributes["gen_ai.provider.name"] == "openai"
-    # assert gen_ai_attributes.GEN_AI_RESPONSE_ID in span.attributes
-    # assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
-    # assert (
-    #     span.attributes[gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY]
-    #     == 0.5
-    # )
-    # assert (
-    #     span.attributes[gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY]
-    #     == 0.5
-    # )
-    # stop_sequences = span.attributes.get(
-    #     gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES
-    # )
-    # assert all(seq in ["\n", "Human:", "AI:"] for seq in stop_sequences)
-    # assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] == 100
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
+    assert span.attributes["gen_ai.provider.name"] == "openai"
+    assert gen_ai_attributes.GEN_AI_RESPONSE_ID in span.attributes
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TOP_P] == 0.9
+    assert (
+        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY]
+        == 0.5
+    )
+    assert (
+        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY]
+        == 0.5
+    )
+    stop_sequences = span.attributes.get(
+        gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES
+    )
+    assert all(seq in ["\n", "Human:", "AI:"] for seq in stop_sequences)
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] == 100
 
     input_tokens = response.response_metadata.get("token_usage").get(
         "prompt_tokens"
