@@ -31,14 +31,29 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
     HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
 )
-from opentelemetry.semconv.attributes.server_attributes import (
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_PORT,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
-from opentelemetry.semconv.attributes.url_attributes import URL_SCHEME
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.url_attributes import (
+    URL_PATH,
+    URL_QUERY,
+    URL_SCHEME,
+)
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.test.globals_test import reset_trace_globals
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import SpanKind
@@ -486,13 +501,13 @@ class TestSemConvDefault(_SemConvTestBase):
         span = self.memory_exporter.get_finished_spans()[0]
 
         old_attrs = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_SCHEME: "http",
-            SpanAttributes.HTTP_HOST: "localhost",
-            SpanAttributes.HTTP_TARGET: "/hello/123",
-            SpanAttributes.NET_HOST_PORT: 80,
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_FLAVOR: "1.1",
+            HTTP_METHOD: "GET",
+            HTTP_SCHEME: "http",
+            HTTP_HOST: "localhost",
+            HTTP_TARGET: "/hello/123",
+            NET_HOST_PORT: 80,
+            HTTP_STATUS_CODE: 200,
+            HTTP_FLAVOR: "1.1",
             HTTP_ROUTE: "/hello/{helloid}",
         }
         for attr, value in old_attrs.items():
@@ -500,6 +515,11 @@ class TestSemConvDefault(_SemConvTestBase):
 
         for attr in [SERVER_ADDRESS, SERVER_PORT, URL_SCHEME]:
             self.assertNotIn(attr, span.attributes)
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
     def test_metrics_old_semconv(self):
         self.client.get("/hello/123")
@@ -531,7 +551,9 @@ class TestSemConvNew(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP
 
     def test_basic_new_semconv(self):
-        resp = self.client.get("/hello/456")
+        resp = self.client.get(
+            "/hello/456?query=test", headers={"User-Agent": "test-agent"}
+        )
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
@@ -539,23 +561,30 @@ class TestSemConvNew(_SemConvTestBase):
         new_attrs = {
             "http.request.method": "GET",
             URL_SCHEME: "http",
+            URL_PATH: "/hello/456",
+            URL_QUERY: "query=test",
             SERVER_ADDRESS: "localhost",
             SERVER_PORT: 80,
             "http.response.status_code": 200,
             "network.protocol.version": "1.1",
             HTTP_ROUTE: "/hello/{helloid}",
+            USER_AGENT_ORIGINAL: "test-agent",
         }
         for attr, value in new_attrs.items():
             self.assertEqual(span.attributes[attr], value)
 
         old_attrs = [
-            SpanAttributes.HTTP_METHOD,
-            SpanAttributes.HTTP_HOST,
-            SpanAttributes.HTTP_TARGET,
-            SpanAttributes.HTTP_URL,
+            HTTP_METHOD,
+            HTTP_HOST,
+            HTTP_TARGET,
         ]
         for attr in old_attrs:
             self.assertNotIn(attr, span.attributes)
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
 
     def test_metrics_new_semconv(self):
         self.client.get("/hello/456")
@@ -580,24 +609,34 @@ class TestSemConvDup(_SemConvTestBase):
     semconv_mode = _StabilityMode.HTTP_DUP
 
     def test_basic_both_semconv(self):
-        resp = self.client.get("/hello/789")
+        resp = self.client.get(
+            "/hello/789?query=test", headers={"User-Agent": "test-agent"}
+        )
         self.assertEqual(200, resp.status_code)
 
         span = self.memory_exporter.get_finished_spans()[0]
 
         expected_attrs = {
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_SCHEME: "http",
-            SpanAttributes.HTTP_HOST: "localhost",
-            SpanAttributes.HTTP_STATUS_CODE: 200,
+            HTTP_METHOD: "GET",
+            HTTP_SCHEME: "http",
+            HTTP_HOST: "localhost",
+            HTTP_STATUS_CODE: 200,
             "http.request.method": "GET",
             URL_SCHEME: "http",
+            URL_PATH: "/hello/789",
+            URL_QUERY: "query=test",
             SERVER_ADDRESS: "localhost",
             "http.response.status_code": 200,
             HTTP_ROUTE: "/hello/{helloid}",
+            USER_AGENT_ORIGINAL: "test-agent",
         }
         for attr, value in expected_attrs.items():
             self.assertEqual(span.attributes[attr], value)
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
 
     def test_metrics_both_semconv(self):
         self.client.get("/hello/789")
