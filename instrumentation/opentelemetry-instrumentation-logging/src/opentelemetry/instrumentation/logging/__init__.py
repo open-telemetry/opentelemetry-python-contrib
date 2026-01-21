@@ -90,7 +90,7 @@ LEVELS = {
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     __doc__ = f"""An instrumentor for stdlib logging module.
 
-    This instrumentor injects tracing context into logging records and optionally sets the global logging format to the following:
+    This instrumentor optionally injects tracing context into logging records and sets the global logging format to the following:
 
     .. code-block::
 
@@ -99,6 +99,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         def log_hook(span: Span, record: LogRecord):
             if span and span.is_recording():
                 record.custom_user_attribute_from_log_hook = "some-value"
+                span_ctx = span.get_span_context()
+                record.from_sampled_span = span_ctx.trace_flags.sampled
 
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.

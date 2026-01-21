@@ -101,9 +101,10 @@ class TestLoggingInstrumentor(TestBase):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument()
         with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
             self.assert_trace_context_injected(
                 span_id, trace_id, trace_sampled
             )
@@ -112,9 +113,10 @@ class TestLoggingInstrumentor(TestBase):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(set_logging_format=True)
         with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
             self.assert_trace_context_injected(
                 span_id, trace_id, trace_sampled
             )
@@ -197,9 +199,10 @@ class TestLoggingInstrumentor(TestBase):
             log_hook=log_hook,
         )
         with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
