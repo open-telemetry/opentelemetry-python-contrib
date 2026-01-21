@@ -160,7 +160,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             ):
                 return record
 
-            # out of spec attributes are added to the log record only if log correlation is specified
+            # out of spec attributes are added to the log record only if log correlation is set
             if set_logging_format:
                 record.otelSpanID = "0"
                 record.otelTraceID = "0"
@@ -182,6 +182,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             if span != INVALID_SPAN:
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
+                    if set_logging_format:
+                        record.otelSpanID = format(ctx.span_id, "016x")
+                        record.otelTraceID = format(ctx.trace_id, "032x")
+                        record.otelTraceSampled = ctx.trace_flags.sampled
+
                     if callable(LoggingInstrumentor._log_hook):
                         try:
                             LoggingInstrumentor._log_hook(  # pylint: disable=E1102
@@ -189,11 +194,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                             )
                         except Exception:  # pylint: disable=W0703
                             pass
-
-                    if set_logging_format:
-                        record.otelSpanID = format(ctx.span_id, "016x")
-                        record.otelTraceID = format(ctx.trace_id, "032x")
-                        record.otelTraceSampled = ctx.trace_flags.sampled
 
             return record
 
