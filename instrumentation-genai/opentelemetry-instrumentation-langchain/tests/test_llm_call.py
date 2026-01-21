@@ -83,7 +83,6 @@ def assert_openai_completion_attributes(
         span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL]
         == "gpt-3.5-turbo-0125"
     )
-
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
     assert span.attributes["gen_ai.provider.name"] == "openai"
