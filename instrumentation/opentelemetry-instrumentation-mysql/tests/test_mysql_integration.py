@@ -28,10 +28,6 @@ from opentelemetry.test.test_base import TestBase
 
 def connect_and_execute_query():
     cnx = mysql.connector.connect(database="test")
-    cnx.database = "test"
-    cnx.host = "localhost"
-    cnx.port = 3306
-    # Provide set values to avoid Magicbook attribute warnings
     cursor = cnx.cursor()
     query = "SELECT * FROM test"
     cursor.execute(query)
