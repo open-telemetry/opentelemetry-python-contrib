@@ -699,12 +699,11 @@ class CursorTracer(Generic[CursorT]):
             self._db_api_integration.database_system,
             sem_conv_mode,
         )
-        if self._db_api_integration.database:
-            _set_db_name(
-                span_attrs,
-                self._db_api_integration.database,
-                sem_conv_mode,
-            )
+        _set_db_name(
+            span_attrs,
+            self._db_api_integration.database,
+            sem_conv_mode,
+        )
         _set_db_statement(span_attrs, statement, sem_conv_mode)
 
         # Set all collected attributes
