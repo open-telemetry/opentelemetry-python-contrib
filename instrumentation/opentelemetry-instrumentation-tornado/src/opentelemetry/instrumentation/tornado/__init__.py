@@ -232,6 +232,7 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    _parse_url_query,
     get_custom_headers,
     get_excluded_urls,
     get_traced_request_attrs,
@@ -682,11 +683,13 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     )
     _set_http_scheme(attrs, request.protocol, sem_conv_opt_in_mode)
     _set_http_host_server(attrs, request.host, sem_conv_opt_in_mode)
+    uri = redact_url(request.uri)
+    _, query = _parse_url_query(uri)
     _set_http_target(
         attrs,
         request.uri,
         request.path,
-        request.query or None,
+        query,
         sem_conv_opt_in_mode,
     )
     _set_http_url(attrs, redact_url(request.uri), sem_conv_opt_in_mode)
