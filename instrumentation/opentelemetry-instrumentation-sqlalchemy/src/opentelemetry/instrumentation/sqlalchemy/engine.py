@@ -37,9 +37,15 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     is_instrumentation_enabled,
 )
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
 )
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -318,7 +324,7 @@ class EngineTracer:
 
         # Extract db_name for operation name
         # Prefer old semconv (db.name) over new semconv (db.namespace) for backwards compatibility
-        db_name = attrs.get("db.name") or attrs.get("db.namespace") or ""
+        db_name = attrs.get(DB_NAME) or attrs.get(DB_NAMESPACE) or ""
 
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
