@@ -180,6 +180,8 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_method,
     _set_http_scheme,
     _set_http_target,
+    _set_http_url,
+    _set_http_user_agent,
     _set_status,
     _StabilityMode,
 )
@@ -235,6 +237,8 @@ from opentelemetry.util.http import (
     get_traced_request_attrs,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
+    redact_url,
     sanitize_method,
 )
 
@@ -679,6 +683,14 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     _set_http_scheme(attrs, request.protocol, sem_conv_opt_in_mode)
     _set_http_host_server(attrs, request.host, sem_conv_opt_in_mode)
     _set_http_target(attrs, request.path, None, None, sem_conv_opt_in_mode)
+    _set_http_url(attrs, redact_url(request.uri), sem_conv_opt_in_mode)
+    user_agent = request.headers.get("user-agent")
+    if user_agent:
+        _set_http_user_agent(
+            attrs,
+            normalize_user_agent(user_agent),
+            sem_conv_opt_in_mode,
+        )
 
     # HTTP version
     if request.version:

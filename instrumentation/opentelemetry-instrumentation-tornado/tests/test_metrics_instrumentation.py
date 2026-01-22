@@ -34,6 +34,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
     HTTP_TARGET,
     HTTP_URL,
+    HTTP_USER_AGENT,
 )
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -43,6 +44,9 @@ from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
     URL_PATH,
     URL_SCHEME,
+)
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -338,11 +342,15 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
         self.assertIn(HTTP_HOST, server_span.attributes)
         self.assertIn(HTTP_TARGET, server_span.attributes)
         self.assertIn(HTTP_STATUS_CODE, server_span.attributes)
+        self.assertIn(HTTP_URL, server_span.attributes)
+        self.assertIn(HTTP_USER_AGENT, server_span.attributes)
         # Verify new semconv attributes are NOT present
         self.assertNotIn(HTTP_REQUEST_METHOD, server_span.attributes)
         self.assertNotIn(URL_SCHEME, server_span.attributes)
         self.assertNotIn(URL_PATH, server_span.attributes)
         self.assertNotIn(HTTP_RESPONSE_STATUS_CODE, server_span.attributes)
+        self.assertNotIn(URL_FULL, server_span.attributes)
+        self.assertNotIn(USER_AGENT_ORIGINAL, server_span.attributes)
         # Verify schema URL
         self.assertEqual(
             server_span.instrumentation_scope.schema_url,
@@ -408,11 +416,15 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self.assertIn(HTTP_REQUEST_METHOD, server_span.attributes)
         self.assertIn(URL_SCHEME, server_span.attributes)
         self.assertIn(HTTP_RESPONSE_STATUS_CODE, server_span.attributes)
+        self.assertIn(URL_FULL, server_span.attributes)
+        self.assertIn(USER_AGENT_ORIGINAL, server_span.attributes)
         # Verify old semconv attributes are NOT present
         self.assertNotIn(HTTP_METHOD, server_span.attributes)
         self.assertNotIn(HTTP_SCHEME, server_span.attributes)
         self.assertNotIn(HTTP_TARGET, server_span.attributes)
         self.assertNotIn(HTTP_STATUS_CODE, server_span.attributes)
+        self.assertNotIn(HTTP_URL, server_span.attributes)
+        self.assertNotIn(HTTP_USER_AGENT, server_span.attributes)
         # Verify schema URL
         self.assertEqual(
             server_span.instrumentation_scope.schema_url,
@@ -483,10 +495,14 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
         self.assertIn(HTTP_HOST, server_span.attributes)
         self.assertIn(HTTP_TARGET, server_span.attributes)
         self.assertIn(HTTP_STATUS_CODE, server_span.attributes)
+        self.assertIn(HTTP_URL, server_span.attributes)
+        self.assertIn(HTTP_USER_AGENT, server_span.attributes)
         # Verify new semconv attributes are also present
         self.assertIn(HTTP_REQUEST_METHOD, server_span.attributes)
         self.assertIn(URL_SCHEME, server_span.attributes)
         self.assertIn(HTTP_RESPONSE_STATUS_CODE, server_span.attributes)
+        self.assertIn(URL_FULL, server_span.attributes)
+        self.assertIn(USER_AGENT_ORIGINAL, server_span.attributes)
         # Verify values match between old and new
         self.assertEqual(
             server_span.attributes[HTTP_METHOD],
@@ -499,6 +515,14 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
         self.assertEqual(
             server_span.attributes[HTTP_SCHEME],
             server_span.attributes[URL_SCHEME],
+        )
+        self.assertEqual(
+            server_span.attributes[HTTP_URL],
+            server_span.attributes[URL_FULL],
+        )
+        self.assertEqual(
+            server_span.attributes[HTTP_USER_AGENT],
+            server_span.attributes[USER_AGENT_ORIGINAL],
         )
         # Verify schema URL (in dup mode, schema_url should be the new one)
         self.assertEqual(
