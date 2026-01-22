@@ -1258,7 +1258,7 @@ class TestDBApiIntegration(TestBase):
         cursor.execute("SELECT 1;")
         mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
         mock_cursor._connection._cmysql.get_client_info.assert_called_once()
-        mock_logger.error.assert_called_once()
+        mock_logger.debug.assert_called_once()
         self.assertEqual(
             db_integration.commenter_data["mysql_client_version"], "unknown"
         )

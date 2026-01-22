@@ -634,22 +634,21 @@ class CursorTracer(Generic[CursorT]):
         ):
             try:
                 # Autoinstrumentation and some programmatic calls
-                self._db_api_integration.commenter_data[
-                    "mysql_client_version"
-                ] = cursor._cnx._cmysql.get_client_info()
+                client_version = cursor._cnx._cmysql.get_client_info()
             except AttributeError:
                 # Other programmatic instrumentation with reassigned wrapped connection
                 try:
-                    self._db_api_integration.commenter_data[
-                        "mysql_client_version"
-                    ] = cursor._connection._cmysql.get_client_info()
+                    client_version = (
+                        cursor._connection._cmysql.get_client_info()
+                    )
                 except AttributeError as exc:
-                    _logger.error(
+                    _logger.debug(
                         "Could not set mysql_client_version: %s", exc
                     )
-                    self._db_api_integration.commenter_data[
-                        "mysql_client_version"
-                    ] = "unknown"
+                    client_version = "unknown"
+            self._db_api_integration.commenter_data["mysql_client_version"] = (
+                client_version
+            )
 
     def _get_commenter_data(self) -> dict:
         """Uses DB-API integration to return commenter data for sqlcomment"""
