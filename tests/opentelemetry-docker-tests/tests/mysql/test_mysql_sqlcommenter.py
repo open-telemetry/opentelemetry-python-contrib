@@ -79,3 +79,26 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor.close()
         MySQLInstrumentor().uninstrument_connection(instrumented_cnx)
         cnx.close()
+
+    def test_commenter_mysql_client_version_fallback_to_unknown(self):
+        """Test that mysql_client_version falls back to 'unknown' with pure Python implementation"""
+        MySQLInstrumentor().instrument(enable_commenter=True)
+        cnx = mysql.connector.connect(
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            database=MYSQL_DB_NAME,
+            use_pure=True,  # Use pure Python - no _cmysql module
+        )
+        cursor = cnx.cursor()
+
+        cursor.execute("SELECT 1;")
+        cursor.fetchall()
+
+        # With use_pure=True, _cmysql is not available, should fall back to 'unknown'
+        self.assertRegex(cursor.statement, r"mysql_client_version='unknown'")
+
+        cursor.close()
+        cnx.close()
+        MySQLInstrumentor().uninstrument()
